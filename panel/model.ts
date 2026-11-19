@@ -110,6 +110,7 @@ type DonorEquipment = {
   readonly donor: string;
   readonly donorUid?: string;
   readonly slot: "weapon" | "1" | "2" | "3" | "4" | "5";
+  readonly extraSlots?: readonly DonorEquipment["slot"][];
 };
 type NamedEquipment = { readonly slot: "weapon"; readonly weaponName: string; readonly affix?: number; readonly level?: number };
 export type EquipmentChangeSelection = DonorEquipment | NamedEquipment;
@@ -120,8 +121,9 @@ const equipmentSlots: Readonly<Record<string, EquipmentChangeSelection["slot"]>>
 };
 const ownUid = "(?:(?:uid\\s*:?\\s*)?([1-9]\\d{8,9})\\s*)?";
 const ownName = "([\\p{L}\\p{M}\\s·・]{1,24}?)";
+const slotAlias = `(?:${Object.keys(equipmentSlots).join("|")})`;
 const temporaryEquipmentCommand = new RegExp(
-  `^#(?:原神)?\\s*${ownUid}${ownName}(?:面板|面版|详情|详细|(伤害)([1-9]\\d{0,2})?)?\\s*${ownUid}换\\s*${ownUid}${ownName}\\s*${ownUid}(${Object.keys(equipmentSlots).join("|")})(?:\\s+档案\\s*([1-9]\\d{0,2}))?$`, "iu");
+  `^#(?:原神)?\\s*${ownUid}${ownName}(?:面板|面版|详情|详细|(伤害)([1-9]\\d{0,2})?)?\\s*${ownUid}换\\s*${ownUid}${ownName}\\s*${ownUid}(${slotAlias}(?:\\+${slotAlias}){0,5})(?:\\s+档案\\s*([1-9]\\d{0,2}))?$`, "iu");
 const namedEquipmentCommand = new RegExp(
   `^#(?:原神)?\\s*${ownUid}${ownName}(?:面板|面版|详情|详细|(伤害)([1-9]\\d{0,2})?)?\\s*${ownUid}换\\s*([^#换]{1,72}?)(?:\\s+档案\\s*([1-9]\\d{0,2}))?$`, "iu");
 
@@ -158,15 +160,18 @@ function matchTemporaryEquipment(message: string): PanelCommand | undefined {
   if (named) return named;
   const match = temporaryEquipmentCommand.exec(message);
   if (!match) return;
-  const [, leadingUid, target, damage, row, trailingUid, donorLeadingUid, donor, donorTrailingUid, slot, profile] = match;
-  if (!target?.trim() || !donor?.trim() || !slot || (leadingUid && trailingUid) || (donorLeadingUid && donorTrailingUid)) return;
+  const [, leadingUid, target, damage, row, trailingUid, donorLeadingUid, donor, donorTrailingUid, slots, profile] = match;
+  if (!target?.trim() || !donor?.trim() || !slots || (leadingUid && trailingUid) || (donorLeadingUid && donorTrailingUid)) return;
   const profileId = Number(profile ?? 1);
   if (profileId > MAX_PROFILE_ID) return;
+  const [slot, ...extraSlots] = slots.split("+").map(name => equipmentSlots[name]!);
+  if (!slot || new Set([slot, ...extraSlots]).size !== extraSlots.length + 1) return;
   return {
     type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
     mode: damage ? "damage" : "profile",
     damageRow: row ? Number(row) : undefined,
-    equipmentChange: { donor: donor.trim(), donorUid: donorLeadingUid ?? donorTrailingUid, slot: equipmentSlots[slot]! },
+    equipmentChange: { donor: donor.trim(), donorUid: donorLeadingUid ?? donorTrailingUid, slot,
+      ...(extraSlots.length > 0 && { extraSlots }) },
   };
 }
 

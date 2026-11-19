@@ -1,4 +1,4 @@
-import { object, selectAvatar, talentKeys, text, whole, type EquipmentChangeSelection, type PanelAvatar, type PanelSnapshot } from "./model.ts";
+import { object, selectAvatar, talentKeys, text, whole, type EquipmentChangeSelection, type PanelArtifact, type PanelAvatar, type PanelSnapshot } from "./model.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -62,16 +62,27 @@ export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: Pane
   if (!donor || transient.has(donor._source)) {
     return { message: `此档案没有「${change.donor}」可用于换装的原神角色面板。` };
   }
-  if (change.slot === "weapon") {
+  const slots = [change.slot, ...(change.extraSlots ?? [])];
+  const parts: [string, PanelArtifact][] = [];
+  for (const slot of slots) {
+    if (slot === "weapon") continue;
+    const piece = donor.artis[slot];
+    if (!piece) return { message: `此档案中「${donor.name}」没有指定位置的圣遗物。` };
+    parts.push([slot, piece]);
+  }
+  let weapon = avatar.weapon;
+  if (slots.includes("weapon")) {
     if (!donor.weapon) return { message: `此档案中「${donor.name}」的武器资料缺失。` };
     const type = text(meta?.weapon);
     const donorType = text(object(theme.characters[donor.id])?.weapon);
     if (type && donorType && donorType !== type) return { message: "装备来源的武器种类与目标角色不符。" };
     const metadata = await theme.metadata?.("meta-gs", "weapon", type, donor.weapon.name, "data.json");
     if (!type || metadata?.name !== donor.weapon.name) return { message: "本地资料无法确认该武器与目标角色兼容。" };
-    return { avatar: { ...replacement, weapon: { ...donor.weapon } }, equipped: donor.weapon.name };
+    weapon = { ...donor.weapon };
   }
-  const piece = donor.artis[change.slot];
-  if (!piece) return { message: `此档案中「${donor.name}」没有指定位置的圣遗物。` };
-  return { avatar: { ...replacement, artis: { ...avatar.artis, [change.slot]: structuredClone(piece) } }, equipped: piece.name };
+  const artis = parts.length ? { ...avatar.artis, ...Object.fromEntries(parts.map(([slot, piece]) => [slot, structuredClone(piece)])) }
+    : avatar.artis;
+  const equipped = slots.includes("weapon") ? [weapon!.name] : [];
+  equipped.push(...parts.map(([, piece]) => piece.name));
+  return { avatar: { ...replacement, weapon, artis }, equipped: equipped.join("、") };
 }
