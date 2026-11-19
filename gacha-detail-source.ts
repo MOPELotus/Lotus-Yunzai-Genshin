@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readMiaoArrayExport } from "@lotus-yunzai/gacha/miao-data";
+import { readMiaoArrayExport, readMiaoObjectExport } from "@lotus-yunzai/gacha/miao-data";
 import { resolveGenshinDetailPool, type GenshinGachaDetailOptions, type GenshinGachaDetailPeriod } from "./gacha-detail.ts";
 import type { GenshinPreviousGacha } from "./gacha-history.ts";
 import type { GenshinUigfItem, GenshinUigfItemResolver } from "./gacha-uigf.ts";
@@ -97,6 +97,40 @@ export async function readGenshinUigfItems(root: string): Promise<GenshinUigfIte
     }
   }
   return ({ itemId, name }) => (itemId ? byId.get(itemId) : undefined) ?? (name ? byName.get(name) : undefined);
+}
+
+export async function readGenshinPublicPoolSources(root: string) {
+  const [characters, weapons, calendar, charNames, weaponNames] = await Promise.all([
+    readCharacters(root), readPublicWeapons(root), readOptional(join(root, "meta-gs", "info", "pool.js")),
+    readOptional(join(root, "meta-gs", "character", "alias.js")), readOptional(join(root, "meta-gs", "weapon", "alias.js")),
+  ]);
+  const weaponAbbr = readMiaoObjectExport(weaponNames, "abbr");
+  for (const [name, abbr] of Object.entries(weaponAbbr ?? {})) {
+    const item = weapons.get(name);
+    if (item && abbr) weapons.set(name, { ...item, abbr });
+  }
+  return {
+    regular: readMiaoArrayExport(calendar, "poolDetail"),
+    mixed: readMiaoArrayExport(calendar, "mixPoolDetail"),
+    characters,
+    weapons,
+    characterAliases: readMiaoObjectExport(charNames, "alias"),
+    weaponAliases: readMiaoObjectExport(weaponNames, "alias"),
+  };
+}
+
+async function readPublicWeapons(root: string) {
+  const [details, ...indices] = await Promise.all([readWeapons(root), ...weaponTypes.map(type =>
+    readJson(join(root, "meta-gs", "weapon", type, "data.json")))]);
+  for (const [index, data] of indices.entries()) {
+    const type = weaponTypes[index]!;
+    for (const [id, value] of Object.entries(record(data) ?? {})) {
+      const row = record(value);
+      const item = row && metadata(row.id ?? id, row.name, row.abbr, 4);
+      if (row && item) details.set(item.name, { ...item, rank: itemRank(row.star), img: `meta-gs/weapon/${type}/${item.name}/icon.webp` });
+    }
+  }
+  return details;
 }
 
 function period(value: unknown): value is GenshinGachaDetailPeriod {

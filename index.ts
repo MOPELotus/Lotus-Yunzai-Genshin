@@ -12,6 +12,7 @@ import { buildGenshinGachaDetail } from "./gacha-detail.ts";
 import { renderGenshinGachaDetail } from "./gacha-detail-card.ts";
 import { genshinGachaThemeDirectory, readGenshinGachaSources, readGenshinUigfItems } from "./gacha-detail-source.ts";
 import { createGenshinGachaImport, gachaImportCommand } from "./gacha-import.ts";
+import { createGenshinPublicPoolQuery } from "./gacha-pool-command.ts";
 import { renderGenshinGachaFailure, renderGenshinGachaResult } from "./gacha-result-card.ts";
 import { buildGenshinGachaSpecial } from "./gacha-special.ts";
 import { renderGenshinGachaSpecial } from "./gacha-special-card.ts";
@@ -101,6 +102,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const gachaUpdate = createGachaUpdater((qq, profileId) => sync.sync(qq, profileId, { signal }));
   const miniappUpdate = createGachaUpdater((qq, profileId) => sync.syncMiniapp(qq, profileId, { signal }));
   const importGacha = createGenshinGachaImport(profiles, history, signal);
+  const publicPool = createGenshinPublicPoolQuery(signal);
 
   async function exportHistory(qq: string, profileId: number, version: GenshinUigfExportOptions["version"], context: GachaContext) {
     if (!context.uploadFile) return "当前会话暂不支持发送抽卡文件。";
@@ -227,6 +229,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
+      const pool = await publicPool(context.normalizedMessage);
+      if (pool !== undefined) return pool;
       const rankStats = await queryRankStats(context.normalizedMessage, signal);
       if (rankStats !== undefined) return rankStats;
       const groupPanelRank = await groupRank.query(context.normalizedMessage, context, readPanelTheme)
