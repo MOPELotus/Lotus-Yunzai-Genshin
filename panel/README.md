@@ -15,6 +15,10 @@
 
 `#天赋统计` 采用同档案的角色顺序，表格末两列显示周本材料和天赋书。`#今日天赋`、`#明日天赋`、`#周二五星天赋` 可按开放日或星级筛选，末尾可加档案号或 `档案2`。国服日期于北京时间 04:00 切换，周日可刷各类天赋书。素材和排期取自原神主题目录及固定的旧排期表，未确认的材料或开放日保留缺失状态。
 
+## 每日素材
+
+`#今日素材`、`#我的材料`、`#明日素材` 或 `#周二材料 档案2` 按地区列出所选档案已有角色的天赋书和已装备武器的突破素材。沿用国服 04:00 日界、旧地区排序和原素材卡。已达到当前突破阶段天赋上限的角色或满突破武器向后排并淡显。周日直接提示所有素材开放。可用 `#更新面板` 更新所选档案资料。
+
 ## 圣遗物评分
 
 `#芙宁娜圣遗物` 展示旧喵喵评分规则、分件得分、总分和评级。角色流派沿用固定版本规则，包括依赖命座、武器、套装和最终属性的分支。旧档已有的完整主副词条可直接评分。评分所需字段缺失时会指出原因并继续展示已有词条，更新面板后可重试。
@@ -68,4 +72,5 @@
 | `apps/profile/ProfileArtis.js`、`resources/character/artis-list.html`、`resources/character/artis-list.css` | 旧圣遗物列表入口、过滤、28 件上限和四列卡片 |
 | `apps/profile/ProfileStat.js`、`models/Player.js`、`models/character/CharTalent.js`、`resources/character/profile-stat.html`、`resources/character/profile-stat.css` | 旧练度统计入口、排行顺序、原始与实显天赋、原神十列表格 |
 | `models/character/CharMeta.js`、`models/Material.js`、`resources/meta-gs/material/{index,daily}.js` | 刷取日、素材目录和地区标签，与原版同一张表的周本和天赋书版式 |
+| `apps/wiki/TodayMaterial.js`、`resources/wiki/today-material.html`、`resources/wiki/today-material.css` | 个人角色及已装备武器的每日素材卡、排序与满级标记 |
 | `apps/profile/ProfileChange.js`、`apps/profile/ProfileDetail.js` | 同档武器与单件圣遗物替换、临时面板命令标记和旧伤害对照 |

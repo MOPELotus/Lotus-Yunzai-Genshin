@@ -6,14 +6,15 @@ import { ProfileError, type ProfileRequestContext, type createProfileStore } fro
 import { GameRecordRequestError, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { buildArtifactList } from "./artifact-list.ts";
-import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDamageCard, renderPanelDetail,
+import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
 import { matchGenshinPanel, officialPanel, propertyLabels, readPanel, selectAvatar, text, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
+import { buildDailyMaterials, paginateDailyMaterials } from "./daily-materials.ts";
 import { buildEquipmentChange } from "./equipment-change.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
-import { buildPanelStatistics, buildTalentStatistics, type PanelStatisticRow } from "./statistics.ts";
+import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
 import { readPanelTheme } from "./theme.ts";
 
 const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
@@ -74,6 +75,7 @@ type Renderers = {
   artifactList?(...args: Parameters<typeof renderArtifactList>): Promise<{ readonly png: Uint8Array }>;
   damage?(...args: Parameters<typeof renderDamageCard>): Promise<{ readonly png: Uint8Array }>;
   statistics?(...args: Parameters<typeof renderPanelStatistics>): Promise<{ readonly png: Uint8Array }>;
+  dailyMaterials?(...args: Parameters<typeof renderDailyMaterialCard>): Promise<{ readonly png: Uint8Array }>;
 };
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Reply = string | Image | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] };
@@ -101,6 +103,8 @@ export function createGenshinPanelQuery(
     const enemy = command ? undefined : matchEnemyLevel(message);
     const selection = command ?? enemy;
     if (!selection || signal.aborted) return;
+    const materialDay = command?.type === "daily-materials" ? talentStatisticsDay({ day: command.materialDay }, now()) : undefined;
+    if (materialDay?.selected === 7) return "周日全部天赋与武器突破素材均开放。";
     const { profileId } = selection;
     const user = context.user_id;
     if (!user || !Number.isSafeInteger(user) || user < 1) return "请在有原神档案的 QQ 会话使用面板。";
@@ -158,7 +162,7 @@ export function createGenshinPanelQuery(
           refreshes.delete(key);
         }
       } else {
-        snapshot = await store.readPanel(qq, uid, assets, type === "statistics");
+        snapshot = await store.readPanel(qq, uid, assets, type === "statistics" || type === "daily-materials");
       }
 
       const suffix = profileId === 1 ? "" : String(profileId);
@@ -167,6 +171,27 @@ export function createGenshinPanelQuery(
         return `UID ${uid} 本地暂无原神角色面板，请先使用 #更新面板${suffix}。`;
       }
       await verify();
+      if (type === "daily-materials" && materialDay?.selected) {
+        const result = await buildDailyMaterials(snapshot, assets, materialDay.selected, signal);
+        await verify();
+        if (!result) return "本地暂无可核对的原神素材目录。";
+        if (!result.length) return `本档案暂无${materialDay.label}可列出的角色和武器素材。`;
+        const pages: (string | Image)[] = [];
+        for (const groups of paginateDailyMaterials(result)) {
+          await verify();
+          try {
+            const { png } = await (render.dailyMaterials ?? renderDailyMaterialCard)(uid, materialDay.label, groups, assets);
+            pages.push({ type: "image", file: png });
+          } catch {
+            pages.push(groups.map(group => `${group.region} · ${group.name}\n${group.items.map(({ owner }) =>
+              group.kind === "weapon" ? `${owner.weapon!.name}（${owner.avatar.name}）` : owner.avatar.name).join("、")}`).join("\n"));
+          }
+        }
+        await verify();
+        const title = `UID ${uid} · ${materialDay.label}素材`;
+        if (pages.length === 1) return typeof pages[0] === "string" ? `${title}\n${pages[0]}` : pages[0];
+        return { type: "forward", nodes: [title, ...pages] };
+      }
       if (type === "statistics") {
         const talent = command.talentStatistics;
         const statistics = await buildPanelStatistics(snapshot, assets, signal, !talent);

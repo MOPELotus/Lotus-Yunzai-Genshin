@@ -2,6 +2,7 @@ import { renderPng } from "@lotus-yunzai/skia";
 import type { ArtifactListEntry } from "./artifact-list.ts";
 import { attrPct, basicNum } from "./miao/artifact-tables.js";
 import type { DamageEstimate, DamageRow, DamageSummary } from "./damage.ts";
+import type { DailyMaterialGroup } from "./daily-materials.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { scoreArtifacts } from "./artifact-score.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
@@ -95,6 +96,101 @@ export function panelPages(snapshot: PanelSnapshot) {
 }
 
 export const panelStatisticsPageSize = 48;
+
+export async function renderDailyMaterialCard(uid: string, day: string, groups: readonly DailyMaterialGroup[], theme: PanelTheme,
+  mode: RenderMode = "auto") {
+  const width = 700;
+  const groupsHeight = groups.map(group => 60 + Math.ceil(group.items.length / (group.kind === "talent" ? 6 : 8)) *
+    (group.kind === "talent" ? 128 : 111));
+  const height = 104 + groupsHeight.reduce((sum, value) => sum + value + 14, 0);
+  const [tile, crown, stars, pictures] = await Promise.all([
+    theme.picture("wiki", "imgs", "item-bg.png"), theme.picture("common", "item", "crown-o.png"),
+    Promise.all([1, 2, 3, 4, 5].map(star => theme.picture("common", "item", `bg${star}.png`))),
+    Promise.all(groups.map(async group => ({
+      region: await theme.picture("common", "item", `${group.region}.png`),
+      icons: await Promise.all(group.icons.map(icon => theme.picture(...icon.split("/")))),
+      items: await Promise.all(group.items.map(({ owner }) => group.kind === "talent" ?
+        character(theme, owner.avatar.name, "imgs", "face.webp").then(face => ({ face, weapon: undefined })) :
+        Promise.all([character(theme, owner.avatar.name, "imgs", "side.webp"), weaponPicture(theme, owner.avatar)])
+          .then(([face, weapon]) => ({ face, weapon })))),
+    }))),
+  ]);
+  const ink = "#504c49", muted = "#6d655d";
+  return canvas(width, height, ctx => {
+    ctx.fillStyle = "#f5f1eb";
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = "#d3bc8d";
+    ctx.fillRect(21, 16, 5, 24);
+    label(ctx, `UID ${uid}`, 33, 36, 23, ink);
+    label(ctx, `#${day}素材`, 678, 36, 22, ink, 280, "right");
+    let y = 53;
+    groups.forEach((group, groupIndex) => {
+      const { region, icons, items } = pictures[groupIndex]!;
+      const groupHeight = groupsHeight[groupIndex]!;
+      block(ctx, "#fffdfacc", 11, y, 678, groupHeight);
+      block(ctx, "#e1d2b7", 11, y, 678, 49);
+      if (region) {
+        ctx.fillStyle = "#b7a999";
+        ctx.beginPath();
+        ctx.arc(39, y + 24, 18, 0, 2 * Math.PI);
+        ctx.fill();
+        art(ctx, region, "contain", 26, y + 10, 27, 28);
+      }
+      label(ctx, group.region, region ? 66 : 25, y + 31, 24, ink, 125);
+      const materialX = 678 - icons.length * 43;
+      label(ctx, group.name, materialX - 7, y + 31, 19, ink, materialX - 140, "right");
+      icons.forEach((icon, index) => {
+        const x = materialX + index * 43;
+        art(ctx, tile, "contain", x, y + 4, 39, 39);
+        art(ctx, icon, "contain", x, y + 4, 39, 39);
+      });
+      group.items.forEach(({ owner, max }, index) => {
+        const { avatar, weapon, star, talents } = owner;
+        const { face, weapon: weaponImage } = items[index]!;
+        ctx.save();
+        if (max) ctx.globalAlpha = 0.7;
+        if (group.kind === "talent") {
+          const x = 30 + index % 6 * 105, top = y + 60 + Math.floor(index / 6) * 128;
+          block(ctx, "#e9e5dc", x, top, 95, 118);
+          art(ctx, stars[(star ?? 0) - 1], "cover", x, top, 95, 95);
+          art(ctx, face, "contain", x, top, 95, 95);
+          if (!face) label(ctx, owner.name, x + 47, top + 47, 16, ink, 89, "center");
+          if (avatar.cons) {
+            block(ctx, avatar.cons === 6 ? "#dd5838" : "#68637d", x + 4, top + 4, 30, 17);
+            label(ctx, `${avatar.cons}命`, x + 19, top + 16, 11, "#fff", 26, "center");
+          }
+          block(ctx, "#302d3ba0", x + 23, top + 74, 50, 18);
+          label(ctx, `Lv.${avatar.level}`, x + 48, top + 87, 12, "#fff", 48, "center");
+          talents.forEach((entry, talentIndex) => {
+            const tx = x + 23 + talentIndex * 24;
+            if (entry && entry.original >= 10) art(ctx, crown, "contain", tx - 10, top + 95, 20, 20);
+            label(ctx, String(entry?.level ?? "—"), tx, top + 111, 13, entry && entry.level > entry.original ? "#1b579d" : ink,
+              22, "center");
+          });
+        } else if (weapon) {
+          const x = 26 + index % 8 * 81, top = y + 60 + Math.floor(index / 8) * 111;
+          block(ctx, "#e9e5dc", x, top, 68, 84);
+          art(ctx, stars[(weapon.star ?? 0) - 1], "cover", x, top, 68, 70);
+          art(ctx, weaponImage, "contain", x, top, 68, 69);
+          if (face) {
+            block(ctx, "#4e5362", x + 48, top - 3, 24, 24);
+            art(ctx, face, "contain", x + 48, top - 3, 24, 24);
+          }
+          if (weapon.affix && weapon.affix > 1) {
+            block(ctx, weapon.affix > 3 ? "#e65a3a" : "#567faf", x + 2, top + 2, 19, 17);
+            label(ctx, String(weapon.affix), x + 11, top + 14, 11, "#fff", 15, "center");
+          }
+          label(ctx, weapon.level === undefined ? "—" : `Lv.${weapon.level}`, x + 34, top + 81, 13, ink, 62, "center");
+          label(ctx, weapon.abbr, x + 34, top + 102, 13, ink, 76, "center");
+        }
+        ctx.restore();
+      });
+      y += groupHeight + 14;
+    });
+    label(ctx, "仅显示已装备的武器 · 使用 #更新面板 更新本地资料", 16, height - 23, 12, muted, 532);
+    label(ctx, "Lotus-Yunzai", 683, height - 23, 11, muted, 100, "right");
+  }, mode, 1.1);
+}
 
 export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: readonly PanelStatisticRow[], theme: PanelTheme, {
   mode = "auto", offset = 0, total = rows.length, talentTitle,

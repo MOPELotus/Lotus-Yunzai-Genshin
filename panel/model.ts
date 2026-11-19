@@ -95,13 +95,14 @@ export interface PanelCatalog {
 }
 
 export interface PanelCommand {
-  readonly type: "list" | "update" | "detail" | "artifact-list" | "statistics" | "change";
+  readonly type: "list" | "update" | "detail" | "artifact-list" | "statistics" | "change" | "daily-materials";
   readonly profileId: number;
   readonly uid?: string;
   readonly name?: string;
   readonly mode?: "profile" | "artifacts" | "weapon" | "damage";
   readonly damageRow?: number;
   readonly talentStatistics?: TalentStatisticsSelection;
+  readonly materialDay?: TalentStatisticsSelection["day"];
   readonly equipmentChange?: EquipmentChangeSelection;
 }
 
@@ -138,6 +139,12 @@ function matchTemporaryEquipment(message: string): PanelCommand | undefined {
 
 export type TalentStatisticsSelection = { readonly day?: number | "today" | "tomorrow"; readonly star?: 4 | 5 };
 
+function statisticsDay(when?: string): TalentStatisticsSelection["day"] {
+  if (when === "今日" || when === "今天") return "today";
+  if (when === "明日" || when === "明天") return "tomorrow";
+  if (when?.startsWith("周")) return Number(when[1]) || "一二三四五六日".indexOf(when[1] === "天" ? "日" : when[1]!) + 1;
+}
+
 function statisticsCommand(value: string | undefined, talentStatistics?: TalentStatisticsSelection): PanelCommand | undefined {
   const input = value ?? "1";
   const extra = talentStatistics && { talentStatistics };
@@ -148,11 +155,18 @@ function statisticsCommand(value: string | undefined, talentStatistics?: TalentS
 
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
   if (message.includes("换")) return matchTemporaryEquipment(message);
+  const materials = /^#(?:原神)?((?:每日|我的|今日|今天|明日|明天|周[1-7一二三四五六日天])*)(?:素材|材料)\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
+  if (materials) {
+    const selection = statisticsCommand(materials[2]);
+    const markers = materials[1] ?? "";
+    const day = /周[1-7一二三四五六日天]/u.exec(markers)?.[0] ?? /明日|明天/u.exec(markers)?.[0];
+    if (selection) return { ...selection, type: "daily-materials", materialDay: statisticsDay(day) ?? "today" };
+    return;
+  }
   const talents = /^#(?:原神)?(?:我的)?(今日|今天|明日|明天|周[1-7一二三四五六日天])?([五四54]星)?(?:技能|天赋)(?:汇总|统计|列表)?\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
   if (talents) {
     const [, when, rarity, target] = talents;
-    const day = when === "今日" || when === "今天" ? "today" : when === "明日" || when === "明天" ? "tomorrow" :
-      when ? Number(when[1]) || "一二三四五六日".indexOf(when[1] === "天" ? "日" : when[1]!) + 1 : undefined;
+    const day = statisticsDay(when);
     const star = rarity ? /五|5/u.test(rarity) ? 5 : 4 : undefined;
     return statisticsCommand(target, { day, star });
   }
