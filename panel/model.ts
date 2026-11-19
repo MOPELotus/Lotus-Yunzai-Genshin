@@ -95,7 +95,7 @@ export interface PanelCatalog {
 }
 
 export interface PanelCommand {
-  readonly type: "list" | "update" | "detail" | "artifact-list";
+  readonly type: "list" | "update" | "detail" | "artifact-list" | "statistics";
   readonly profileId: number;
   readonly uid?: string;
   readonly name?: string;
@@ -104,6 +104,15 @@ export interface PanelCommand {
 }
 
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
+  const statistics = /^#(?:原神)?(?:面板)?练度统计\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
+  if (statistics) {
+    const value = statistics[1] ?? "1";
+    if (/^\d{9,10}$/u.test(value)) return { type: "statistics", profileId: 1, uid: value };
+    const profileId = Number(value.replace("档案", ""));
+    if (profileId <= MAX_PROFILE_ID) return { type: "statistics", profileId };
+    return;
+  }
+
   const artifactList = /^#(?:原神)?圣遗物列表\s*([1-9]\d{8,9}|[1-9]\d{0,2})?$/u.exec(message);
   if (artifactList) {
     const value = artifactList[1];
@@ -271,7 +280,7 @@ function storedProperties(value: unknown) {
   });
 }
 
-export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLegacy = false): PanelSnapshot | undefined {
+export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLegacy = false, includeMysRoster = false): PanelSnapshot | undefined {
   if (raw === null) return;
   const root = object(raw);
   const data = object(root?.avatars);
@@ -291,9 +300,11 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
     const name = text(meta?.name) || text(row.name);
     if (!name) continue;
     const source = text(row._source);
-    if (isLegacy && !archiveSources.has(source)) continue;
+    const basicRosterEntry = includeMysRoster && isLegacy && source === "mys";
+    if (isLegacy && !archiveSources.has(source) && !basicRosterEntry) continue;
     const artis: Record<string, PanelArtifact> = {};
-    for (const [slot, entry] of Object.entries(object(row.artis) ?? {})) {
+    const pieces = basicRosterEntry ? object(row.mysArtis) ?? object(row.artis) : object(row.artis);
+    for (const [slot, entry] of Object.entries(pieces ?? {})) {
       const item = object(entry);
       const title = text(item?.name);
       if (!title || !/^[1-5]$/u.test(slot)) continue;
@@ -301,7 +312,7 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
       const itemStar = whole(item?.star, 5);
       artis[slot] = {
         name: title, level: itemLevel ?? 0, star: itemStar || 5,
-        scoreReady: item?.scoreReady !== false && itemLevel !== undefined && !!itemStar &&
+        scoreReady: !basicRosterEntry && item?.scoreReady !== false && itemLevel !== undefined && !!itemStar &&
           Array.isArray(item?.attrIds) && item.attrIds.length <= 12,
         set: catalog.artifactSets.get(title) || text(item?.set),
         mainId: whole(item?.mainId, 99_999),
@@ -309,12 +320,13 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
         properties: storedProperties(item?.properties),
       };
     }
+    const storedDetails = object(row._lotus);
     avatars[id] = {
       name, id, elem: elements[text(row.elem ?? meta?.elem).toLowerCase()] ?? "", level,
       star: whole(row.star ?? meta?.star, 5), cons: whole(row.cons, 6), promote: whole(row.promote, 6),
       costume: whole(row.costume, 999_999), fetter: whole(row.fetter, 10), talent: talent(object(row.talent)),
-      weapon: weapon(object(row.weapon)), artis, _source: archiveSources.has(source) ? source : "local",
-      _time: whole(row._time, Number.MAX_SAFE_INTEGER), _lotus: { properties: storedProperties(object(row._lotus)?.properties) },
+      weapon: weapon(object(row.weapon)), artis, _source: basicRosterEntry || archiveSources.has(source) ? source : "local",
+      _time: whole(row._time, Number.MAX_SAFE_INTEGER), _lotus: storedDetails && { properties: storedProperties(storedDetails.properties) },
     };
   }
   return { uid, _profile: whole(root?._profile, Number.MAX_SAFE_INTEGER), avatars };

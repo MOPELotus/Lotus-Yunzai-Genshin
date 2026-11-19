@@ -6,11 +6,13 @@ import { ProfileError, type ProfileRequestContext, type createProfileStore } fro
 import { GameRecordRequestError, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { buildArtifactList } from "./artifact-list.ts";
-import { panelPages, renderArtifactList, renderDamageCard, renderPanelDetail, renderPanelList } from "./card.ts";
+import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDamageCard, renderPanelDetail,
+  renderPanelList, renderPanelStatistics } from "./card.ts";
 import { matchGenshinPanel, officialPanel, readPanel, selectAvatar, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
+import { buildPanelStatistics } from "./statistics.ts";
 import { readPanelTheme } from "./theme.ts";
 
 const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
@@ -22,7 +24,7 @@ interface PanelClient {
     Promise<{ readonly avatars: readonly Json[]; readonly revision: string }>;
 }
 
-async function oldPanel(root: string, uid: string, catalog: PanelCatalog): Promise<PanelSnapshot | undefined> {
+async function oldPanel(root: string, uid: string, catalog: PanelCatalog, includeMysRoster = false): Promise<PanelSnapshot | undefined> {
   if (!/^[1-9]\d{8,9}$/u.test(uid)) throw new TypeError("原神 UID 格式无效。");
   let file;
   try {
@@ -45,7 +47,7 @@ async function oldPanel(root: string, uid: string, catalog: PanelCatalog): Promi
     if (latest.mtimeMs !== snapshot.mtimeMs || latest.ctimeMs !== snapshot.ctimeMs || latest.size !== snapshot.size) {
       throw new Error("旧面板文件已变更。");
     }
-    return readPanel(uid, JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)), catalog, true);
+    return readPanel(uid, JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)), catalog, true, includeMysRoster);
   } finally {
     await file.close();
   }
@@ -59,8 +61,8 @@ export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
   return {
     update: store.update,
     readLegacy: (uid: string, catalog: PanelCatalog) => oldPanel(legacyDirectory, uid, catalog),
-    async readPanel(qq: string, uid: string, catalog: PanelCatalog) {
-      return readPanel(uid, await store.read(qq, uid), catalog) ?? await oldPanel(legacyDirectory, uid, catalog);
+    async readPanel(qq: string, uid: string, catalog: PanelCatalog, includeMysRoster = false) {
+      return readPanel(uid, await store.read(qq, uid), catalog) ?? await oldPanel(legacyDirectory, uid, catalog, includeMysRoster);
     },
   };
 }
@@ -70,6 +72,7 @@ type Renderers = {
   detail(...args: Parameters<typeof renderPanelDetail>): Promise<{ readonly png: Uint8Array }>;
   artifactList?(...args: Parameters<typeof renderArtifactList>): Promise<{ readonly png: Uint8Array }>;
   damage?(...args: Parameters<typeof renderDamageCard>): Promise<{ readonly png: Uint8Array }>;
+  statistics?(...args: Parameters<typeof renderPanelStatistics>): Promise<{ readonly png: Uint8Array }>;
 };
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Reply = string | Image | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] };
@@ -154,7 +157,7 @@ export function createGenshinPanelQuery(
           refreshes.delete(key);
         }
       } else {
-        snapshot = await store.readPanel(qq, uid, assets);
+        snapshot = await store.readPanel(qq, uid, assets, type === "statistics");
       }
 
       const suffix = profileId === 1 ? "" : String(profileId);
@@ -163,6 +166,33 @@ export function createGenshinPanelQuery(
         return `UID ${uid} 本地暂无原神角色面板，请先使用 #更新面板${suffix}。`;
       }
       await verify();
+      if (type === "statistics") {
+        const rows = await buildPanelStatistics(snapshot, assets, signal);
+        await verify();
+        if (!rows.length) return `UID ${uid} 本地暂无原神角色练度资料，请先使用 #更新面板${suffix}。`;
+        const title = `UID ${uid} · 面板练度统计 · 共 ${rows.length} 名角色`;
+        const pages: (string | Image)[] = [];
+        for (let offset = 0; offset < rows.length; offset += panelStatisticsPageSize) {
+          const page = rows.slice(offset, offset + panelStatisticsPageSize);
+          await verify();
+          try {
+            const { png } = await (render.statistics ?? renderPanelStatistics)(snapshot, page, assets, { offset, total: rows.length });
+            pages.push({ type: "image", file: png });
+          } catch {
+            const labels = page.map(({ avatar, talents, weapon, rating, fetter }) =>
+              [avatar.name, `Lv.${avatar.level}`, `命座 ${avatar.cons ?? "—"}`, `好感 ${fetter ?? "—"}`,
+                `天赋 ${talents.map(talent => talent?.level ?? "—").join("/")}`, `武器 ${weapon?.name ?? "—"}`,
+                rating ? `圣遗物 ${rating.rank} ${rating.score.toFixed(1)}` : "圣遗物 暂无评分"].join(" · "));
+            pages.push(labels.join("\n"));
+          }
+        }
+        await verify();
+        if (pages.length === 1) {
+          const result = pages[0]!;
+          return typeof result === "string" ? `${title}\n${result}` : result;
+        }
+        return { type: "forward", nodes: [title, ...pages] };
+      }
       if (type === "artifact-list") {
         const items = await buildArtifactList(snapshot, assets, signal);
         await verify();

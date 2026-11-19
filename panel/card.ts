@@ -4,6 +4,7 @@ import { attrPct, basicNum } from "./miao/artifact-tables.js";
 import type { DamageEstimate, DamageRow, DamageSummary } from "./damage.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { scoreArtifacts } from "./artifact-score.ts";
+import type { PanelStatistic } from "./statistics.ts";
 import {
   artifactProperties, object, propertyLabels, talentKeys, text, whole, type PanelAvatar, type PanelSnapshot,
 } from "./model.ts";
@@ -90,6 +91,116 @@ export function panelPages(snapshot: PanelSnapshot) {
     (b.star ?? 0) - (a.star ?? 0) || b.level - a.level || b.id - a.id);
   for (let offset = 0; offset < characters.length; offset += 48) result.push(characters.slice(offset, offset + 48));
   return result;
+}
+
+export const panelStatisticsPageSize = 48;
+
+export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: readonly PanelStatistic[], theme: PanelTheme, {
+  mode = "auto", offset = 0, total = rows.length,
+}: { readonly mode?: RenderMode; readonly offset?: number; readonly total?: number } = {}) {
+  const width = 630, tableY = 94, rowHeight = 36;
+  const height = tableY + (rows.length + 1) * rowHeight + 51;
+  const [backdrop, top, crown, fetter, pictures] = await Promise.all([
+    theme.picture("character", "imgs", "bg-01.jpg"), theme.picture("character", "imgs", "main-01.png"),
+    theme.picture("common", "item", "crown-o.png"), theme.picture("common", "item", "fetter.png"),
+    Promise.all(rows.map(async row => Promise.all([
+      character(theme, row.avatar.name, "imgs", "face.webp"),
+      row.weapon && (await theme.picture("meta-gs", "weapon", row.weapon.type, row.weapon.name, "icon.webp") ??
+        await weaponPicture(theme, row.avatar)),
+      Promise.all(row.sets.map(async set => await theme.picture("meta-gs", "artifact", "imgs", set, "1.webp") ??
+        await theme.picture("meta-gs", "artifact", "imgs", set, "5.webp"))),
+    ]))),
+  ]);
+  const columns = [0, 30, 135, 170, 210, 250, 285, 320, 355, 515, width];
+  const levelColors = ["#ececec", "#c0c1c1", "#8cdc9c", "#8ac0ea", "#bc9ef8", "#f9928a"];
+  const levels = [0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 5];
+  return canvas(width, height, ctx => {
+    frame(ctx, undefined, "hydro", width, height);
+    if (backdrop) {
+      const tileHeight = (width / backdrop.width) * backdrop.height;
+      const firstY = ((height - tileHeight) / 2) % tileHeight - tileHeight;
+      for (let y = firstY; y < height; y += tileHeight) ctx.drawImage(backdrop, 0, y, width, tileHeight);
+    }
+    if (top) ctx.drawImage(top, 0, -25, width, width / top.width * top.height);
+    ctx.save();
+    ctx.shadowColor = "#1e2437";
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetY = 1;
+    label(ctx, "#面板练度统计", 32, 51, 35, "#fff");
+    label(ctx, `UID ${snapshot.uid} · 共 ${total} 名角色`, 34, 78, 15, "#f3e7ca");
+    ctx.restore();
+    ctx.fillStyle = "#252a32df";
+    ctx.fillRect(0, tableY, width, rowHeight);
+    const center = (column: number) => (columns[column]! + columns[column + 1]!) / 2;
+    ["#", "角色", "Lv", "命座", "好感", "A", "E", "Q", "武器", "圣遗物"].forEach((name, index) =>
+      label(ctx, name, center(index), tableY + 24, 13, "#e9d4a9", 105, "center"));
+    rows.forEach((row, index) => {
+      const y = tableY + (index + 1) * rowHeight;
+      const [face, weapon, relics] = pictures[index]!;
+      const charColor = row.star === 5 ? "#ffe4b8" : row.star === 4 ? "#e2c9ec" : "#eee";
+      ctx.fillStyle = index % 2 ? "#f0f0f0" : "#fff";
+      ctx.fillRect(0, y, width, rowHeight);
+      ctx.fillStyle = charColor;
+      ctx.fillRect(0, y, columns[2]!, rowHeight);
+      label(ctx, String(offset + index + 1), center(0), y + 24, 12, "#303039", 29, "center");
+      art(ctx, face, "contain", 33, y + 3, 30, 30);
+      label(ctx, row.name, 66, y + 24, 13, "#30283c", 66);
+      label(ctx, String(row.avatar.level), center(2), y + 24, 13, "#2b2d35", 32, "center");
+      const cons = row.avatar.cons;
+      if (cons) block(ctx, cons === 6 ? "#e9572b" : "#525ea7", center(3) - 9, y + 8, 18, 22);
+      label(ctx, String(cons ?? "—"), center(3), y + 24, 13, cons ? "#fff" : "#333", 32, "center");
+      if (fetter && row.fetter) {
+        const tile = fetter.width / 10;
+        ctx.drawImage(fetter, (row.fetter - 1) * tile, 0, tile, fetter.height, center(4) - 16, y + 2, 32, 32);
+      } else label(ctx, String(row.fetter || "—"), center(4), y + 24, 13, "#333", 35, "center");
+      row.talents.forEach((talent, i) => {
+        const level = talent ? levels[Math.min(talent.original, 10)]! : 0;
+        ctx.fillStyle = levelColors[level]!;
+        ctx.fillRect(columns[i + 5]!, y, 35, rowHeight);
+        if (level === 5) art(ctx, crown, "contain", columns[i + 5]! + 1, y + 2, 33, 32);
+        label(ctx, String(talent?.level ?? "—"), center(i + 5), y + 24, 13,
+          talent && talent.level > talent.original ? "#064e95" : "#25252c", 32, "center");
+      });
+      if (row.weapon) {
+        ctx.fillStyle = row.weapon.star === 5 ? "#ffe4b8" : row.weapon.star === 4 ? "#e2c9ec" : "#e9edef";
+        ctx.fillRect(355, y, 160, rowHeight);
+        label(ctx, row.weapon.level === undefined ? "—" : `Lv${row.weapon.level}`, 360, y + 24, 10, "#35313b", 29);
+        art(ctx, weapon, "contain", 391, y + 3, 28, 30);
+        label(ctx, row.weapon.affix ? String(row.weapon.affix) : "—", 423, y + 24, 11, "#523e5b", 12, "center");
+        label(ctx, row.weapon.abbr, 435, y + 24, 12, "#35313b", 77);
+      } else label(ctx, "—", center(8), y + 24, 13, "#333", 90, "center");
+      const grade = row.rating?.rank;
+      const gradeColor = grade === "MAX" || grade?.startsWith("ACE") ? "#d84a22" :
+        grade?.startsWith("SS") ? "#6a40ac" : grade?.startsWith("S") || grade === "A" ? "#465cad" : "#747581";
+      if (grade) {
+        ctx.fillStyle = gradeColor + "35";
+        ctx.fillRect(515, y, 115, rowHeight);
+      }
+      relics.forEach((picture, i) => art(ctx, picture, "contain", 518 + i * 17, y + 5, 24, 25));
+      const hasSetImage = relics.some(Boolean);
+      if (row.rating && grade) {
+        block(ctx, gradeColor, 556, y + 9, 33, 19);
+        label(ctx, grade, 572, y + 23, 10, "#fff", 31, "center");
+        label(ctx, row.rating.score.toFixed(1), 627, y + 24, 11, "#2d2831", 36, "right");
+      } else label(ctx, "暂无评分", hasSetImage ? 558 : 572, y + 24, 11, "#56515a", 65, hasSetImage ? "left" : "center");
+      ctx.strokeStyle = "#33333330";
+      ctx.lineWidth = 0.55;
+      ctx.beginPath();
+      for (const x of columns.slice(1, -1)) {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + rowHeight);
+      }
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    });
+    const updated = snapshot._profile && Number.isFinite(new Date(snapshot._profile).getTime()) ? time.format(snapshot._profile) : "";
+    const notice = updated ? `面板更新 ${updated} · #更新面板` : "使用 #更新面板 刷新角色资料";
+    ctx.fillStyle = "#252a327f";
+    ctx.fillRect(0, height - 51, width, 51);
+    label(ctx, notice, 17, height - 31, 12, "#f3e7ca");
+    footer(ctx, width, height);
+  }, mode, 1.4);
 }
 
 export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly PanelAvatar[], theme: PanelTheme, {
