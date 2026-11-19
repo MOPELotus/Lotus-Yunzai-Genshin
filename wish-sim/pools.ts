@@ -58,10 +58,20 @@ export async function readWishYaml(file: string | URL) {
   return value;
 }
 
+export async function readOptionalWishYaml(file: string) {
+  try {
+    return await readWishYaml(file);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
 function flowerDate(value: unknown): number | undefined {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/u.test(value)) return;
   const date = Date.parse(value.replace(" ", "T") + "+08:00");
-  if (Number.isFinite(date)) return date;
+  if (Number.isFinite(date) && new Date(date + 8 * 3_600_000).toISOString().slice(0, 19).replace("T", " ") === value) {
+    return date;
+  }
 }
 
 function flowerBanner(source: Record<string, unknown>): Banner {
@@ -91,17 +101,31 @@ function scheduleBanner(rows: readonly unknown[], now: number): Banner | undefin
   }
 }
 
+async function readFlowerBanner(directory: string, qq: string | undefined, config: Record<string, unknown> | undefined): Promise<Banner> {
+  const personal = qq && /^[1-9]\d*$/u.test(qq)
+    ? await readOptionalWishYaml(join(directory, "data", qq, "pool.yaml"))
+    : undefined;
+  if (personal) return flowerBanner(personal);
+  const base = await readWishYaml(join(directory, "def", "pool.yaml"));
+  const custom = config?.sync === false ? await readOptionalWishYaml(join(directory, "config", "pool.yaml")) : undefined;
+  return flowerBanner({ ...base, ...custom });
+}
+
 export function createWishPoolSource({
   bannerFile = Bun.env.LOTUS_GENSHIN_WISH_POOL_FILE?.trim(),
   themeDirectory = genshinGachaThemeDirectory(),
-}: { readonly bannerFile?: string; readonly themeDirectory?: string } = {}) {
-  const standard = () => readWishYaml(new URL("gacha.yaml", defaults));
-  return async (kind: PoolKind, now: number): Promise<WishPool | undefined> => {
-    const def = await standard();
+  flowerDirectory = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim(),
+}: { readonly bannerFile?: string; readonly themeDirectory?: string; readonly flowerDirectory?: string } = {}) {
+  return async (kind: PoolKind, now: number, qq?: string): Promise<WishPool | undefined> => {
+    const config = flowerDirectory ? await readOptionalWishYaml(join(flowerDirectory, "config", "gacha.yaml")) : undefined;
+    const stock = flowerDirectory ? await readOptionalWishYaml(join(flowerDirectory, "def", "gacha.yaml")) : undefined;
+    const def = { ...(stock ?? await readWishYaml(new URL("gacha.yaml", defaults))), ...config };
     let banner: Banner | undefined;
     if (kind !== "permanent") {
       if (bannerFile) {
         banner = flowerBanner(await readWishYaml(bannerFile));
+      } else if (flowerDirectory) {
+        banner = await readFlowerBanner(flowerDirectory, qq, config);
       } else {
         const miao = await readFile(join(themeDirectory, "meta-gs", "info", "pool.js"), "utf8")
           .catch((error: NodeJS.ErrnoException) => {

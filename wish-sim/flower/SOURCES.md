@@ -5,6 +5,7 @@
 | 上游文件均位于 `GachaMOD/Genshin/` | 使用范围 |
 | --- | --- |
 | `model/gachaData.js`、`model/pool.js`、`apps/singlegacha.js` | 抽选、保底、星级排序、UP 和非 UP 物品分组 |
+| `model/base.js`、`model/setting.js`、`apps/admin.js` | 旧 Redis 键前缀、配置覆盖和卡池更新来源 |
 | `model/coin.js`、`apps/coin.js`、`apps/torrent.js` | 每日球数、命令兼容、分批结果、武器定轨 |
 | `def/gacha.yaml`、`def/pool.yaml`、`def/coin.yaml` | Flower 的默认配置与历史卡池 |
 | `resources/html/gacha/gacha.html`、`resources/html/gacha/gacha.css` | 十连结果的横排祈愿框、裁切路径、位置与素材图层 |

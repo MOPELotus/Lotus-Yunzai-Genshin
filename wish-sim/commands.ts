@@ -87,7 +87,7 @@ export function createWishCommands({
     const group = identity(context.group_id) ? String(context.group_id) : "private";
     const time = now();
     try {
-      const pool = draw || track ? await poolSource(track ? "weapon" : draw!.kind, time) : undefined;
+      const pool = draw || track ? await poolSource(track ? "weapon" : draw!.kind, time, qq) : undefined;
       if ((draw || track) && !pool) return "当前卡池没有第二个角色活动祈愿。";
       const { result, issued } = await update<string | WishCardOptions>(qq, group, time, (balance, session) => {
         if (wallet) return `今日你还有${balance.pink}个纠缠之缘和${balance.blue}个相遇之缘。`;

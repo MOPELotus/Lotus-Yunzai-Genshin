@@ -76,7 +76,7 @@ export function drawWish(
     if (roll(probability(pool.kind, state.num5, session.week.five))) {
       const pity = state.num5 + 1;
       state.num5 = 0;
-      state.num4++;
+      state.num4 = Math.min(state.num4 + 1, 9);
       session.week.five++;
       const target = kind === "weapon" && pool.up5.find(({ name }) => name === weapon.target);
       let item: WishItem;

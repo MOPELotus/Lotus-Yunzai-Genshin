@@ -122,7 +122,8 @@ function banner(ctx: Context, pull: WishPull, art: PullArt, x: number, y: number
 
 export async function renderWishCard({
   title, name, pity, target, fate, pulls, page = 1,
-  themeDirectory = Bun.env.LOTUS_GENSHIN_WISH_THEME_DIR?.trim(), mode = "auto",
+  themeDirectory = Bun.env.LOTUS_GENSHIN_WISH_THEME_DIR?.trim() || (Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim()
+    ? join(Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR.trim(), "resources") : undefined), mode = "auto",
 }: WishCardOptions) {
   if (!pulls.length || pulls.length > 10) throw new RangeError("模拟祈愿每页须包含 1 至 10 抽。");
   const single = pulls.length === 1;
@@ -130,7 +131,9 @@ export async function renderWishCard({
   const visible = [...pulls].sort((left, right) => right.star - left.star ||
     left.type.localeCompare(right.type, "en") || left.at - right.at);
   const assets = (...parts: string[]) => picture(themeDirectory, variant, ...parts);
-  const elementsDir = Bun.env.LOTUS_GENSHIN_WISH_ELEMENTS_DIR?.trim();
+  const flower = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim();
+  const elementsDir = Bun.env.LOTUS_GENSHIN_WISH_ELEMENTS_DIR?.trim() ||
+    (flower ? join(flower, "../../..", "genshin", "defSet", "element") : undefined);
   const elements = async (type: WishPull["type"]) => elementsDir
     ? readWishYaml(join(elementsDir, `${type}.yaml`)).catch(() => undefined)
     : undefined;
