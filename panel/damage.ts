@@ -7,7 +7,8 @@ import catalystRules from "./miao/damage/catalyst.js";
 import claymoreRules from "./miao/damage/claymore.js";
 import polearmRules from "./miao/damage/polearm.js";
 import { characterDamageRules } from "./miao/damage/character-rules.js";
-import { artifactStatRecord, object, propertyLabels, text, whole, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
+import { artifactStatRecord, object, propertyLabels, talentKeys, text, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
+import { panelTalentLevels, travelerIds } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 
 interface Buff {
@@ -55,7 +56,6 @@ const weaponClass: Readonly<Record<string, string>> = { sword: "单手剑", clay
 const elementNames: Readonly<Record<string, string>> = { pyro: "火", hydro: "水", anemo: "风", electro: "雷", dendro: "草", cryo: "冰", geo: "岩" };
 const actorLevels = [1, 20, 40, 50, 60, 70, 80, 90, 100];
 const weaponLevels = actorLevels.slice(0, -1);
-const travelers = new Set([10000005, 10000007, 20000000]);
 const attributeKeys = ["hp", "atk", "def", "mastery", "recharge", "cpct", "cdmg", "dmg", "phy", "heal", "shield", "coloringDmg"];
 const basePercent = ["hp", "atk", "def"];
 const masteryName: Readonly<Record<string, string>> = { vaporize: "蒸发", melt: "融化", swirl: "扩散", aggravate: "超激化", spread: "蔓激化" };
@@ -133,20 +133,18 @@ function strictTable(table: Json) {
   });
 }
 
-function talents(avatar: PanelAvatar, record: Json, constellations: number) {
+function talents(avatar: PanelAvatar, record: Json, archiveMeta: Json | undefined) {
   const talent = object(record.talentData);
-  const talentCons = object(record.talentCons);
   const result: Json = {};
   const talentLevel: Json = {};
-  for (const key of ["a", "e", "q"]) {
-    const level = avatar.talent[key as keyof typeof avatar.talent];
-    if (!level || !object(talent?.[key])) throw new Unavailable("天赋等级或旧版倍率表不完整，请先更新面板。");
-    const threshold = whole(talentCons?.[key], 6);
-    const actual = level + (threshold && constellations >= threshold ? 3 : 0);
-    talentLevel[key] = { original: level, level: actual };
+  const levels = panelTalentLevels(avatar, record, archiveMeta);
+  for (const [index, key] of talentKeys.entries()) {
+    const level = levels[index];
+    if (!level || level.level > 15 || !object(talent?.[key])) throw new Unavailable("天赋等级或旧版倍率表不完整，请先更新面板。");
+    talentLevel[key] = level;
     const values = Object.fromEntries(Object.entries(object(talent?.[key])!).flatMap(([label, rows]) => {
       if (!Array.isArray(rows)) return [];
-      const value = rows[actual - 1];
+      const value = rows[level.level - 1];
       if (Array.isArray(value) && value.length && value.every(x => finite(x) !== undefined)) return [[label, value]];
       return finite(value) === undefined ? [] : [[label, value]];
     }));
@@ -260,7 +258,7 @@ async function sourceData(theme: PanelTheme, avatar: PanelAvatar, name: string) 
   if (!load || !avatar.weapon) throw new Unavailable("缺少本地主题或武器资料。");
   const charPath = name.split("/");
   const detail = await load("meta-gs", "character", ...charPath, "data.json");
-  const expectedName = travelers.has(avatar.id) ? "旅行者" : avatar.name;
+  const expectedName = travelerIds.has(avatar.id) ? "旅行者" : avatar.name;
   if (text(detail.name) !== expectedName) throw new Unavailable("旧主题缺少当前角色的数值表。");
   const weaponType = text(detail.weapon) || text(object(theme.characters[avatar.id])?.weapon);
   if (!Object.hasOwn(weaponClass, weaponType)) throw new Unavailable("旧主题缺少对应角色或武器种类。");
@@ -292,7 +290,7 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme) {
   if (!equippedWeapon?.affix || cons === undefined || !Object.keys(avatar.artis).length) {
     throw new Unavailable("伤害估算需要武器精炼、命座和圣遗物词条，请先更新面板。");
   }
-  const name = travelers.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+  const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
   if (!Object.hasOwn(formulas, name)) throw new Unavailable("当前规则库没有这个角色的伤害规则。");
   const rule = formulas[name]!();
   const tables = await sourceData(theme, avatar, name);
@@ -341,7 +339,7 @@ export async function readChangedPanelProperties(avatar: PanelAvatar, theme: Pan
   } catch (error) {
     if (!(error instanceof Unavailable)) throw error;
     try {
-      const name = travelers.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+      const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
       const { detail, weapon } = await sourceData(theme, avatar, name);
       const starting = readInitial(avatar, detail, weapon, [], { stats: [] });
       return basePercent.flatMap(key => {
@@ -360,7 +358,7 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     { readonly includeComparison?: boolean; readonly ranking?: boolean } = {}): Promise<DamageEstimate> {
   try {
     const { cons, rule, tables, gear, weapon, allBuffs, starting } = await panelInputs(avatar, theme);
-    const talent = talents(avatar, tables.detail, cons);
+    const talent = talents(avatar, tables.detail, object(theme.characters[avatar.id]));
     const character = { ...tables.detail, elem: avatar.elem, weaponTypeName: weaponClass[tables.weaponType] };
     const originalAttr = DmgAttr.getAttr({ originalAttr: undefined, attr: starting, weapon, char: character, game: "gs" });
     const base = { characterName: avatar.name, level: avatar.level, cons, talent, trees: {}, weapon };

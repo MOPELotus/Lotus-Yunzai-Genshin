@@ -3,6 +3,7 @@ import { findRankCharacter } from "../rank-statistics/stats.ts";
 import { scorePanelArtifacts } from "./artifact-score.ts";
 import { estimatePanelDamage } from "./damage.ts";
 import { object, text, whole, type PanelAvatar } from "./model.ts";
+import { panelTalentLevels } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 
 export type RankMode = "damage" | "artifacts" | "crit" | "valid";
@@ -126,12 +127,7 @@ export async function projectRankAvatar(avatar: PanelAvatar, theme: PanelTheme) 
   const sets = new Map<string, number>();
   for (const item of Object.values(avatar.artis)) if (item.set) sets.set(item.set, (sets.get(item.set) ?? 0) + 1);
   const weapon = avatar.weapon && { name: avatar.weapon.name, level: avatar.weapon.level, affix: avatar.weapon.affix };
-  const thresholds = object(object(theme.characters[avatar.id])?.talentCons);
-  const talents = (["a", "e", "q"] as const).map(key => {
-    const base = avatar.talent[key];
-    const threshold = whole(thresholds?.[key], 6);
-    return base === undefined ? null : base + (threshold && (avatar.cons ?? 0) >= threshold ? 3 : 0);
-  });
+  const talents = panelTalentLevels(avatar, object(theme.characters[avatar.id])).map(level => level?.level ?? null);
   return decodeRankAvatar({
     id: avatar.id, name: avatar.name, elem: avatar.elem, cons: avatar.cons, talents, weapon,
     sets: [...sets.entries()].filter(row => row[1] >= 2).sort((a, b) => b[1] - a[1]).map(([name]) => name).slice(0, 2),

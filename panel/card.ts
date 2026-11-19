@@ -5,6 +5,7 @@ import type { DamageEstimate, DamageRow, DamageSummary } from "./damage.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { scoreArtifacts } from "./artifact-score.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
+import { panelTalentLevels } from "./talent-levels.ts";
 import {
   artifactProperties, object, propertyLabels, talentKeys, text, whole, type PanelAvatar, type PanelSnapshot,
 } from "./model.ts";
@@ -456,6 +457,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
   const showWeapon = !!avatar.weapon;
   const meta = object(theme.characters[avatar.id]);
   const talentCons = object(meta?.talentCons);
+  const levels = panelTalentLevels(avatar, meta);
   const summary = pane === "profile" && damage?.rows.length ? damage : undefined;
   const [backdrop, splash, badge, crown, icons, talents, constellations, equip, relicArt, summaryTexture] = await Promise.all([
     theme.picture("common", "bg", `bg-${element}.webp`),
@@ -491,20 +493,18 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
     if (!splash) label(ctx, avatar.name, 137, 289, 45, "#ffffff65", 220, "center");
     label(ctx, avatar.name, 579, 68, 49, "#fff0d5", 300, "right");
     label(ctx, `UID ${snapshot.uid} · Lv.${avatar.level}${avatar.cons === undefined ? "" : ` · ${avatar.cons}命`}`, 579, 95, 17, blue, 295, "right");
-    talentKeys.forEach((key, index) => {
+    levels.forEach((level, index) => {
       const x = 288 + index * 98;
       const y = 110;
       art(ctx, badge, "contain", x, y, 88, 88);
       const img = talents[index];
       if (img) art(ctx, img, "contain", x + 22, y + 16, 44, 44);
       else label(ctx, ["普攻", "战技", "爆发"][index]!, x + 44, y + 45, 13, "#fff", 60, "center");
-      const original = avatar.talent[key];
-      const threshold = whole(talentCons?.[key], 6);
-      if (actual(original)) {
-        const increased = !!threshold && (avatar.cons ?? 0) >= threshold;
+      if (level) {
+        const increased = level.level > level.original;
         block(ctx, increased ? "#303441" : "#f3eee5", x + 25, y + 53, 38, 24);
-        label(ctx, String(original + (increased ? 3 : 0)), x + 44, y + 71, 15, increased ? gold : "#232333", 35, "center");
-        if (original >= 10) art(ctx, crown, "contain", x + 34, y - 6, 25, 25);
+        label(ctx, String(level.level), x + 44, y + 71, 15, increased ? gold : "#232333", 35, "center");
+        if (level.original >= 10) art(ctx, crown, "contain", x + 34, y - 6, 25, 25);
       }
     });
     block(ctx, "#121623aa", 280, 203, 305, 264);
@@ -567,10 +567,6 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
     }
     footer(ctx, width, height);
   }, mode);
-}
-
-function actual(value: number | undefined): value is number {
-  return typeof value === "number" && value > 0;
 }
 
 const ratingScale = 46.6 / 6 / 100;
