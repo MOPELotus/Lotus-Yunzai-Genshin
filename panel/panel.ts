@@ -8,9 +8,10 @@ import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunza
 import { buildArtifactList } from "./artifact-list.ts";
 import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
-import { matchGenshinPanel, officialPanel, readPanel, selectAvatar, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
-import { estimatePanelDamage } from "./damage.ts";
+import { matchGenshinPanel, officialPanel, propertyLabels, readPanel, selectAvatar, text, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
+import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
+import { buildEquipmentChange } from "./equipment-change.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
 import { buildPanelStatistics, buildTalentStatistics, type PanelStatisticRow } from "./statistics.ts";
 import { readPanelTheme } from "./theme.ts";
@@ -129,7 +130,7 @@ export function createGenshinPanelQuery(
       }
       if (!command) return;
       const { name, type, mode } = command;
-      const observedAt = source && mode === "profile" && groupRank?.allows(context) ? now() : undefined;
+      const observedAt = type === "detail" && source && mode === "profile" && groupRank?.allows(context) ? now() : undefined;
       const key = `${qq}:${uid}`;
       const assets = await theme();
       let snapshot: PanelSnapshot | undefined;
@@ -216,6 +217,39 @@ export function createGenshinPanelQuery(
         if (png) return { type: "image", file: png };
         return [`UID ${uid} · 圣遗物列表`, ...items.entries.map(({ avatar, item, rated }, index) =>
           `${index + 1}. ${item.name} · ${avatar.name} · ${rated.score.toFixed(1)} 分`)].join("\n");
+      }
+      if (type === "change" && command.equipmentChange) {
+        const original = selectAvatar(snapshot, name!, assets);
+        if (!original) return `此原神面板没有「${name}」，请使用 #面板${suffix} 查看列表。`;
+        const replacement = await buildEquipmentChange(snapshot, original, command.equipmentChange, assets);
+        await verify();
+        if ("message" in replacement) return replacement.message;
+        const avatar = replacement.avatar;
+        const level = await preferences.level(qq);
+        const estimate = await estimatePanelDamage(avatar, assets, command.damageRow, level, { includeComparison: mode === "damage" });
+        const change = { command: text(message), equipped: replacement.equipped, ...("message" in estimate && { reason: estimate.message }) };
+        await verify();
+        let png: Uint8Array | undefined;
+        if (mode === "damage" && "rows" in estimate) {
+          try {
+            ({ png } = await (render.damage ?? renderDamageCard)(snapshot, avatar, assets, estimate, { profileId, change }));
+          } catch {}
+          await verify();
+          if (png) return { type: "image", file: png };
+          return [`临时换装 · ${avatar.name} · ${replacement.equipped}`, ...estimate.rows.map(row =>
+            `${row.title} · ${row.unavailable ? "数据不全" : [row.average !== undefined && `期望 ${row.average}`,
+              row.crit !== undefined && `暴击 ${row.crit}`].filter(Boolean).join(" / ")}`)].join("\n");
+        }
+        const properties = await readChangedPanelProperties(avatar, assets);
+        const projected = { ...avatar, _lotus: { properties } };
+        await verify();
+        try {
+          ({ png } = await render.detail(snapshot, projected, assets, { profileId, change, damage: "rows" in estimate ? estimate : undefined }));
+        } catch {}
+        await verify();
+        if (png) return { type: "image", file: png };
+        return [`临时换装 · ${avatar.name} · ${replacement.equipped}`, change.reason, ...properties.map(row =>
+          `${propertyLabels[row.key]} ${row.value || `基础 ${row.base}`}`)].filter(Boolean).join("\n");
       }
       if (type === "detail") {
         const avatar = selectAvatar(snapshot, name!, assets);

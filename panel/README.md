@@ -29,6 +29,12 @@
 
 普通详情图在装备下沿用旧版伤害表，列出暴击、期望与治疗等单值结果，目标与同档案的独立伤害命令一致。部分情景缺少数值时标为「数据不全」。没有可计算的情景时仍可查看原面板资料。
 
+## 临时换装
+
+`#芙芙面板换绫华武器` 使用同档案中绫华保存的武器。`#芙芙伤害2换绫华杯子 档案2` 替换同档两角色相同位置的一件圣遗物，并查看第二种旧伤害情景。也可使用「花」「羽毛」「沙漏」「杯子」「头」等旧位置名。指定 UID 时，目标与来源都须属于所选档案当前绑定的原神角色。
+
+结果标为临时换装，保留目标角色的元素底图和旧比较布局。资料不全时保留能核对的装备与基础属性。临时结果不保存到面板档案、预设或群榜。武器类型不合、来源角色或装备缺失时直接提示。
+
 ## 群面板榜
 
 `#芙宁娜排行` 和 `#芙宁娜圣遗物评分排行` 查询本群当前成员的角色榜。伤害使用原规则默认情景的期望值，目标固定 103 级。圣遗物按角色总分排序，最多展示 15 项，分数相同沿用旧榜的 UID 逆序。
@@ -60,3 +66,4 @@
 | `apps/profile/ProfileArtis.js`、`resources/character/artis-list.html`、`resources/character/artis-list.css` | 旧圣遗物列表入口、过滤、28 件上限和四列卡片 |
 | `apps/profile/ProfileStat.js`、`models/Player.js`、`models/character/CharTalent.js`、`resources/character/profile-stat.html`、`resources/character/profile-stat.css` | 旧练度统计入口、排行顺序、原始与实显天赋、原神十列表格 |
 | `models/character/CharMeta.js`、`models/Material.js`、`resources/meta-gs/material/{index,daily}.js` | 刷取日、素材目录和地区标签，与原版同一张表的周本和天赋书版式 |
+| `apps/profile/ProfileChange.js`、`apps/profile/ProfileDetail.js` | 同档武器与单件圣遗物替换、临时面板命令标记和旧伤害对照 |

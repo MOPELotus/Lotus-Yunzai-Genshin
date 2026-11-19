@@ -43,7 +43,7 @@ export const whole = (value: unknown, max: number) => {
 };
 export const avatarId = (value: unknown) => whole(value, 99_999_999) || undefined;
 
-interface PanelProperty {
+export interface PanelProperty {
   readonly key: string;
   readonly value: string;
   readonly base?: string;
@@ -95,13 +95,45 @@ export interface PanelCatalog {
 }
 
 export interface PanelCommand {
-  readonly type: "list" | "update" | "detail" | "artifact-list" | "statistics";
+  readonly type: "list" | "update" | "detail" | "artifact-list" | "statistics" | "change";
   readonly profileId: number;
   readonly uid?: string;
   readonly name?: string;
   readonly mode?: "profile" | "artifacts" | "weapon" | "damage";
   readonly damageRow?: number;
   readonly talentStatistics?: TalentStatisticsSelection;
+  readonly equipmentChange?: EquipmentChangeSelection;
+}
+
+export type EquipmentChangeSelection = {
+  readonly donor: string;
+  readonly donorUid?: string;
+  readonly slot: "weapon" | "1" | "2" | "3" | "4" | "5";
+};
+const equipmentSlots: Readonly<Record<string, EquipmentChangeSelection["slot"]>> = {
+  武器: "weapon", 生之花: "1", 花: "1", 死之羽: "2", 羽毛: "2", 羽: "2", 毛: "2",
+  时之沙: "3", 沙漏: "3", 沙: "3", 表: "3", 空之杯: "4", 杯子: "4", 杯: "4",
+  理之冠: "5", 礼冠: "5", 帽子: "5", 头: "5", 冠: "5", 帽: "5",
+};
+const ownUid = "(?:(?:uid\\s*:?\\s*)?([1-9]\\d{8,9})\\s*)?";
+const ownName = "([\\p{L}\\p{M}\\s·・]{1,24}?)";
+const temporaryEquipmentCommand = new RegExp(
+  `^#(?:原神)?\\s*${ownUid}${ownName}(?:面板|面版|详情|详细|(伤害)([1-9]\\d{0,2})?)?\\s*${ownUid}换\\s*${ownUid}${ownName}\\s*${ownUid}(${Object.keys(equipmentSlots).join("|")})(?:\\s+档案\\s*([1-9]\\d{0,2}))?$`, "iu");
+
+function matchTemporaryEquipment(message: string): PanelCommand | undefined {
+  if (/星铁|绝区零|崩坏|换.*换/u.test(message)) return;
+  const match = temporaryEquipmentCommand.exec(message);
+  if (!match) return;
+  const [, leadingUid, target, damage, row, trailingUid, donorLeadingUid, donor, donorTrailingUid, slot, profile] = match;
+  if (!target?.trim() || !donor?.trim() || !slot || (leadingUid && trailingUid) || (donorLeadingUid && donorTrailingUid)) return;
+  const profileId = Number(profile ?? 1);
+  if (profileId > MAX_PROFILE_ID) return;
+  return {
+    type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
+    mode: damage ? "damage" : "profile",
+    damageRow: row ? Number(row) : undefined,
+    equipmentChange: { donor: donor.trim(), donorUid: donorLeadingUid ?? donorTrailingUid, slot: equipmentSlots[slot]! },
+  };
 }
 
 export type TalentStatisticsSelection = { readonly day?: number | "today" | "tomorrow"; readonly star?: 4 | 5 };
@@ -115,6 +147,7 @@ function statisticsCommand(value: string | undefined, talentStatistics?: TalentS
 }
 
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
+  if (message.includes("换")) return matchTemporaryEquipment(message);
   const talents = /^#(?:原神)?(?:我的)?(今日|今天|明日|明天|周[1-7一二三四五六日天])?([五四54]星)?(?:技能|天赋)(?:汇总|统计|列表)?\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
   if (talents) {
     const [, when, rarity, target] = talents;

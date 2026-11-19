@@ -7,7 +7,7 @@ import catalystRules from "./miao/damage/catalyst.js";
 import claymoreRules from "./miao/damage/claymore.js";
 import polearmRules from "./miao/damage/polearm.js";
 import { characterDamageRules } from "./miao/damage/character-rules.js";
-import { artifactStatRecord, object, propertyLabels, text, whole, type Json, type PanelAvatar } from "./model.ts";
+import { artifactStatRecord, object, propertyLabels, text, whole, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
 import type { PanelTheme } from "./theme.ts";
 
 interface Buff {
@@ -193,7 +193,7 @@ function weaponBuffs(name: string, refinement: number) {
 }
 
 function readInitial(avatar: PanelAvatar, detail: Json, weapon: Json, buffs: readonly Buff[],
-  other: ReturnType<typeof equipment>) {
+  other: Pick<ReturnType<typeof equipment>, "stats">) {
   const record = Object.fromEntries(attributeKeys.map(key => [key, { base: 0, plus: 0, pct: 0 }]));
   function add(key: string, input: unknown) {
     const mapped = /^(.*?)(Base|Plus|Pct)$/u.exec(key);
@@ -297,6 +297,10 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme) {
   const rule = formulas[name]!();
   const tables = await sourceData(theme, avatar, name);
   const gear = equipment(avatar);
+  if (avatar._source === "change" && Object.entries(gear.pieces).some(([set, count]) =>
+    !Object.hasOwn(sets, set) || !sets[set]?.[2] || (count === 4 && !sets[set]?.[4]))) {
+    throw new Unavailable("旧伤害规则缺少这套装备生效的圣遗物套装数值。");
+  }
   const weapon = { ...equippedWeapon, type: tables.weaponType, typeName: weaponClass[tables.weaponType] };
   const allBuffs = [...(rule.buffs ?? []), ...weaponBuffs(weapon.name, equippedWeapon.affix), ...gear.buffs];
   const starting = readInitial(avatar, tables.detail, tables.weapon,
@@ -314,6 +318,40 @@ export async function readLegacyArtifactRuleProperties(avatar: PanelAvatar, them
   } catch (error) {
     if (error instanceof Unavailable) return [];
     throw error;
+  }
+}
+
+export async function readChangedPanelProperties(avatar: PanelAvatar, theme: PanelTheme): Promise<readonly PanelProperty[]> {
+  try {
+    const { starting } = await panelInputs(avatar, theme);
+    const elemental = finite(starting.dmg), physical = finite(starting.phy);
+    const damage = physical !== undefined && elemental !== undefined && physical > elemental ? "phy" : "dmg";
+    return ["hp", "atk", "def", "mastery", "cpct", "cdmg", "recharge", damage].flatMap(key => {
+      const number = finite(starting[key]);
+      if (number === undefined) return [];
+      const plain = ["hp", "atk", "def", "mastery"].includes(key);
+      const base = finite(starting[`${key}Base`]);
+      const format = (amount: number) => amount.toFixed(key === "hp" ? 0 : 1);
+      return [{
+        key: key === "dmg" ? avatar.elem : key,
+        value: `${format(number)}${plain ? "" : "%"}`,
+        ...(base !== undefined && { base: format(base), plus: format(number - base) }),
+      }];
+    });
+  } catch (error) {
+    if (!(error instanceof Unavailable)) throw error;
+    try {
+      const name = travelers.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+      const { detail, weapon } = await sourceData(theme, avatar, name);
+      const starting = readInitial(avatar, detail, weapon, [], { stats: [] });
+      return basePercent.flatMap(key => {
+        const base = finite(starting[`${key}Base`]);
+        return base === undefined ? [] : [{ key, value: "", base: base.toFixed(key === "hp" ? 0 : 1) }];
+      });
+    } catch (fallback) {
+      if (fallback instanceof Unavailable) return [];
+      throw fallback;
+    }
   }
 }
 
