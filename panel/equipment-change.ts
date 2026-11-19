@@ -1,4 +1,4 @@
-import { object, selectAvatar, talentKeys, text, whole, type EquipmentChangeSelection, type Json, type PanelArtifact, type PanelAvatar, type PanelSnapshot } from "./model.ts";
+import { object, selectAvatar, talentKeys, text, whole, type DisplayedTalentLevels, type EquipmentChangeSelection, type Json, type PanelArtifact, type PanelAvatar, type PanelSnapshot } from "./model.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -117,4 +117,11 @@ export function buildConstellationChange(avatar: PanelAvatar, constellations: nu
   }
   return { avatar: { ...temporaryAvatar(avatar, object(theme.characters[avatar.id])), cons: constellations },
     equipped: `${avatar.cons} 命 → ${constellations} 命` };
+}
+
+export function buildTalentChange(avatar: PanelAvatar, levels: DisplayedTalentLevels, theme: PanelTheme): TemporaryChange {
+  if (transient.has(avatar._source) || avatar.cons === undefined) {
+    return { message: "天赋试算需要本档案已保存的实际角色面板及命座。" };
+  }
+  return { avatar: temporaryAvatar(avatar, object(theme.characters[avatar.id])), equipped: `显示等级 ${levels.join(" / ")}` };
 }

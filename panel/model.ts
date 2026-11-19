@@ -6,6 +6,7 @@ import { attrIdMap, attrPct, basicNum, mainIdMap } from "./miao/artifact-tables.
 export type Json = Record<string, unknown>;
 type TalentKey = "a" | "e" | "q";
 export const talentKeys = ["a", "e", "q"] as const;
+export type DisplayedTalentLevels = readonly [attack: number, skill: number, burst: number];
 const elements: Readonly<Record<string, string>> = {
   pyro: "pyro", hydro: "hydro", anemo: "anemo", electro: "electro", dendro: "dendro", cryo: "cryo", geo: "geo",
   fire: "pyro", water: "hydro", wind: "anemo", electric: "electro", grass: "dendro", ice: "cryo", rock: "geo",
@@ -105,6 +106,7 @@ export interface PanelCommand {
   readonly materialDay?: TalentStatisticsSelection["day"];
   readonly equipmentChange?: EquipmentChangeSelection;
   readonly constellationChange?: number;
+  readonly talentChange?: DisplayedTalentLevels;
 }
 
 type DonorEquipment = {
@@ -172,6 +174,21 @@ export function matchConstellationChange(message: string): PanelCommand | undefi
   const constellationChange = /^\d$/u.test(cons) ? Number(cons) : "零一二三四五六".indexOf(cons === "满" ? "六" : cons);
   return { type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
     mode: damage ? "damage" : "profile", damageRow: row ? Number(row) : undefined, constellationChange };
+}
+
+export function matchTalentChange(message: string): PanelCommand | undefined {
+  if (!message.includes("换") || /星铁|绝区零|崩坏|换.*换/u.test(message)) return;
+  const match = namedEquipmentCommand.exec(message);
+  if (!match) return;
+  const [, leadingUid, target, damage, row, trailingUid, raw, profile] = match;
+  const input = /^(?:天赋|技能|行迹)([\d ]+)$/u.exec(raw?.trim() ?? "")?.[1];
+  const levels = input && (input.includes(" ") ? /^(1[0-5]|[1-9]) (1[0-5]|[1-9]) (1[0-5]|[1-9])$/u
+    : /^(1[0-5]|[1-9])(1[0-5]|[1-9])(1[0-5]|[1-9])$/u).exec(input);
+  const profileId = Number(profile ?? 1);
+  if (!target?.trim() || !levels || (leadingUid && trailingUid) || profileId > MAX_PROFILE_ID) return;
+  return { type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
+    mode: damage ? "damage" : "profile", damageRow: row ? Number(row) : undefined,
+    talentChange: [Number(levels[1]), Number(levels[2]), Number(levels[3])] };
 }
 
 function matchTemporaryEquipment(message: string): PanelCommand | undefined {

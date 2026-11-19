@@ -7,7 +7,7 @@ import catalystRules from "./miao/damage/catalyst.js";
 import claymoreRules from "./miao/damage/claymore.js";
 import polearmRules from "./miao/damage/polearm.js";
 import { characterDamageRules } from "./miao/damage/character-rules.js";
-import { artifactStatRecord, object, propertyLabels, talentKeys, text, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
+import { artifactStatRecord, object, propertyLabels, talentKeys, text, type DisplayedTalentLevels, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
 import { panelTalentLevels, travelerIds } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -133,11 +133,11 @@ function strictTable(table: Json) {
   });
 }
 
-function talents(avatar: PanelAvatar, record: Json, archiveMeta: Json | undefined) {
+function talents(avatar: PanelAvatar, record: Json, archiveMeta: Json | undefined, displayed?: DisplayedTalentLevels) {
   const talent = object(record.talentData);
   const result: Json = {};
   const talentLevel: Json = {};
-  const levels = panelTalentLevels(avatar, record, archiveMeta);
+  const levels = panelTalentLevels(avatar, record, archiveMeta, displayed);
   for (const [index, key] of talentKeys.entries()) {
     const level = levels[index];
     if (!level || level.level > 15 || !object(talent?.[key])) throw new Unavailable("天赋等级或旧版倍率表不完整，请先更新面板。");
@@ -354,11 +354,11 @@ export async function readChangedPanelProperties(avatar: PanelAvatar, theme: Pan
 }
 
 export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme, row?: number,
-  enemyLevel = genshinDamageEnemyLevel, { includeComparison = true, ranking = false }:
-    { readonly includeComparison?: boolean; readonly ranking?: boolean } = {}): Promise<DamageEstimate> {
+  enemyLevel = genshinDamageEnemyLevel, { includeComparison = true, ranking = false, displayedTalent }:
+    { readonly includeComparison?: boolean; readonly ranking?: boolean; readonly displayedTalent?: DisplayedTalentLevels } = {}): Promise<DamageEstimate> {
   try {
     const { cons, rule, tables, gear, weapon, allBuffs, starting } = await panelInputs(avatar, theme);
-    const talent = talents(avatar, tables.detail, object(theme.characters[avatar.id]));
+    const talent = talents(avatar, tables.detail, object(theme.characters[avatar.id]), displayedTalent);
     const character = { ...tables.detail, elem: avatar.elem, weaponTypeName: weaponClass[tables.weaponType] };
     const originalAttr = DmgAttr.getAttr({ originalAttr: undefined, attr: starting, weapon, char: character, game: "gs" });
     const base = { characterName: avatar.name, level: avatar.level, cons, talent, trees: {}, weapon };

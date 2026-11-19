@@ -8,7 +8,7 @@ import { scoreArtifacts } from "./artifact-score.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
 import {
-  artifactProperties, object, propertyLabels, talentKeys, text, whole, type PanelAvatar, type PanelSnapshot,
+  artifactProperties, object, propertyLabels, talentKeys, text, whole, type DisplayedTalentLevels, type PanelAvatar, type PanelSnapshot,
 } from "./model.ts";
 import type { PanelTheme, Picture } from "./theme.ts";
 
@@ -533,12 +533,14 @@ interface EquipmentNotice {
   readonly command: string;
   readonly equipped: string;
   readonly constellation?: boolean;
+  readonly displayedTalent?: DisplayedTalentLevels;
   readonly reason?: string;
 }
 
 function drawEquipmentChange(ctx: Context, width: number, y: number, change: EquipmentNotice) {
   block(ctx, "#382a25df", 12, y, width - 24, change.reason ? 61 : 42);
-  label(ctx, `${change.constellation ? "临时命座试算" : "临时换装面板"} · ${change.equipped}`, 24, y + 17, 13, gold, width - 48);
+  const title = change.displayedTalent ? "临时天赋试算" : change.constellation ? "临时命座试算" : "临时换装面板";
+  label(ctx, `${title} · ${change.equipped}`, 24, y + 17, 13, gold, width - 48);
   label(ctx, `当前替换命令 ${change.command}`, 24, y + 34, 12, "#f2e9df", width - 48);
   if (change.reason) label(ctx, change.reason, 24, y + 53, 12, "#ffe0b8", width - 48);
 }
@@ -554,7 +556,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
   const showWeapon = !!avatar.weapon;
   const meta = object(theme.characters[avatar.id]);
   const talentCons = object(meta?.talentCons);
-  const levels = panelTalentLevels(avatar, meta);
+  const levels = panelTalentLevels(avatar, meta, meta, change?.displayedTalent);
   const summary = pane === "profile" && damage?.rows.length ? damage : undefined;
   const [backdrop, splash, badge, crown, icons, talents, constellations, equip, relicArt, summaryTexture] = await Promise.all([
     theme.picture("common", "bg", `bg-${element}.webp`),
