@@ -104,6 +104,7 @@ export interface PanelCommand {
   readonly talentStatistics?: TalentStatisticsSelection;
   readonly materialDay?: TalentStatisticsSelection["day"];
   readonly equipmentChange?: EquipmentChangeSelection;
+  readonly constellationChange?: number;
 }
 
 type DonorEquipment = {
@@ -158,6 +159,19 @@ function matchNamedEquipment(message: string, bare = false): PanelCommand | unde
 
 export function matchBareEquipment(message: string) {
   if (message.includes("换") && !/星铁|绝区零|崩坏|换.*换/u.test(message)) return matchNamedEquipment(message, true);
+}
+
+export function matchConstellationChange(message: string): PanelCommand | undefined {
+  if (!message.includes("换") || /星铁|绝区零|崩坏/u.test(message)) return;
+  const match = namedEquipmentCommand.exec(message);
+  if (!match) return;
+  const [, leadingUid, target, damage, row, trailingUid, raw, profile] = match;
+  const cons = /^([0-6零一二三四五六满])(?:命|星魂|魂)$/u.exec(raw?.trim() ?? "")?.[1];
+  const profileId = Number(profile ?? 1);
+  if (!target?.trim() || !cons || (leadingUid && trailingUid) || profileId > MAX_PROFILE_ID) return;
+  const constellationChange = /^\d$/u.test(cons) ? Number(cons) : "零一二三四五六".indexOf(cons === "满" ? "六" : cons);
+  return { type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
+    mode: damage ? "damage" : "profile", damageRow: row ? Number(row) : undefined, constellationChange };
 }
 
 function matchTemporaryEquipment(message: string): PanelCommand | undefined {

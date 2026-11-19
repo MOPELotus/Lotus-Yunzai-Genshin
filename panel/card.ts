@@ -532,12 +532,13 @@ function drawDamageSummary(ctx: Context, model: DamageSummary, texture: Picture 
 interface EquipmentNotice {
   readonly command: string;
   readonly equipped: string;
+  readonly constellation?: boolean;
   readonly reason?: string;
 }
 
 function drawEquipmentChange(ctx: Context, width: number, y: number, change: EquipmentNotice) {
   block(ctx, "#382a25df", 12, y, width - 24, change.reason ? 61 : 42);
-  label(ctx, `临时换装面板 · ${change.equipped}`, 24, y + 17, 13, gold, width - 48);
+  label(ctx, `${change.constellation ? "临时命座试算" : "临时换装面板"} · ${change.equipped}`, 24, y + 17, 13, gold, width - 48);
   label(ctx, `当前替换命令 ${change.command}`, 24, y + 34, 12, "#f2e9df", width - 48);
   if (change.reason) label(ctx, change.reason, 24, y + 53, 12, "#ffe0b8", width - 48);
 }

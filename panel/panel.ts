@@ -8,12 +8,12 @@ import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunza
 import { buildArtifactList } from "./artifact-list.ts";
 import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
-import { matchBareEquipment, matchEquipmentChain, matchGenshinPanel, object, officialPanel, propertyLabels, readPanel,
+import { matchBareEquipment, matchConstellationChange, matchEquipmentChain, matchGenshinPanel, object, officialPanel, propertyLabels, readPanel,
   selectAvatar, text, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
 import { buildDailyMaterials, paginateDailyMaterials } from "./daily-materials.ts";
-import { buildEquipmentChange, resolvePanelWeapon } from "./equipment-change.ts";
+import { buildConstellationChange, buildEquipmentChange, resolvePanelWeapon } from "./equipment-change.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
 import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
@@ -105,10 +105,12 @@ export function createGenshinPanelQuery(
     let command = matchGenshinPanel(message);
     let preflight: PanelTheme | undefined;
     if (!command) {
-      const candidate = matchEquipmentChain(message) ?? matchBareEquipment(message);
+      const candidate = matchConstellationChange(message) ?? matchEquipmentChain(message) ?? matchBareEquipment(message);
       const target = candidate?.name && findRankCharacter(candidate.name);
       const change = candidate?.equipmentChange;
-      if (candidate && target && change) {
+      if (candidate && target && candidate.constellationChange !== undefined) {
+        command = { ...candidate, name: target.name };
+      } else if (candidate && target && change) {
         if ("weaponName" in change) {
           try {
             preflight = await theme();
@@ -265,16 +267,21 @@ export function createGenshinPanelQuery(
         return [`UID ${uid} · 圣遗物列表`, ...items.entries.map(({ avatar, item, rated }, index) =>
           `${index + 1}. ${item.name} · ${avatar.name} · ${rated.score.toFixed(1)} 分`)].join("\n");
       }
-      if (type === "change" && command.equipmentChange) {
+      if (type === "change") {
         const original = selectAvatar(snapshot, name!, assets);
         if (!original) return `此原神面板没有「${name}」，请使用 #面板${suffix} 查看列表。`;
-        const replacement = await buildEquipmentChange(snapshot, original, command.equipmentChange, assets);
+        const constellation = command.constellationChange;
+        const replacement = constellation !== undefined ? buildConstellationChange(original, constellation, assets) :
+          command.equipmentChange && await buildEquipmentChange(snapshot, original, command.equipmentChange, assets);
+        if (!replacement) return;
         await verify();
         if ("message" in replacement) return replacement.message;
         const avatar = replacement.avatar;
         const level = await preferences.level(qq);
         const estimate = await estimatePanelDamage(avatar, assets, command.damageRow, level, { includeComparison: mode === "damage" });
-        const change = { command: text(message), equipped: replacement.equipped, ...("message" in estimate && { reason: estimate.message }) };
+        const change = { command: text(message), equipped: replacement.equipped, constellation: constellation !== undefined,
+          ...("message" in estimate && { reason: estimate.message }) };
+        const title = `${change.constellation ? "临时命座试算" : "临时换装"} · ${avatar.name} · ${replacement.equipped}`;
         await verify();
         let png: Uint8Array | undefined;
         if (mode === "damage" && "rows" in estimate) {
@@ -283,7 +290,7 @@ export function createGenshinPanelQuery(
           } catch {}
           await verify();
           if (png) return { type: "image", file: png };
-          return [`临时换装 · ${avatar.name} · ${replacement.equipped}`, ...estimate.rows.map(row =>
+          return [title, ...estimate.rows.map(row =>
             `${row.title} · ${row.unavailable ? "数据不全" : [row.average !== undefined && `期望 ${row.average}`,
               row.crit !== undefined && `暴击 ${row.crit}`].filter(Boolean).join(" / ")}`)].join("\n");
         }
@@ -295,7 +302,7 @@ export function createGenshinPanelQuery(
         } catch {}
         await verify();
         if (png) return { type: "image", file: png };
-        return [`临时换装 · ${avatar.name} · ${replacement.equipped}`, change.reason, ...properties.map(row =>
+        return [title, change.reason, ...properties.map(row =>
           `${propertyLabels[row.key]} ${row.value || `基础 ${row.base}`}`)].filter(Boolean).join("\n");
       }
       if (type === "detail") {

@@ -1,4 +1,4 @@
-import { object, selectAvatar, talentKeys, text, whole, type EquipmentChangeSelection, type PanelArtifact, type PanelAvatar, type PanelSnapshot } from "./model.ts";
+import { object, selectAvatar, talentKeys, text, whole, type EquipmentChangeSelection, type Json, type PanelArtifact, type PanelAvatar, type PanelSnapshot } from "./model.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -6,6 +6,7 @@ const transient = new Set(["change", "customize", "share"]);
 const weaponTypes = new Set(["sword", "claymore", "polearm", "bow", "catalyst"]);
 const weaponLevelCaps = [20, 40, 50, 60, 70, 80, 90];
 const nameKey = (name: string) => name.normalize("NFKC").replace(/\s/gu, "").toLowerCase();
+type TemporaryChange = { readonly avatar: PanelAvatar; readonly equipped: string } | { readonly message: string };
 
 export async function resolvePanelWeapon(name: string, type: string, theme: PanelTheme) {
   if (!weaponTypes.has(type)) return;
@@ -54,12 +55,10 @@ async function namedWeapon(avatar: PanelAvatar, type: string, input: Extract<Equ
 }
 
 export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: PanelAvatar, change: EquipmentChangeSelection,
-  theme: PanelTheme): Promise<{ readonly avatar: PanelAvatar; readonly equipped: string } | { readonly message: string }> {
+  theme: PanelTheme): Promise<TemporaryChange> {
   if (transient.has(avatar._source)) return { message: "临时换装需要本人已保存的原神角色面板。" };
   const meta = object(theme.characters[avatar.id]);
-  const levels = panelTalentLevels(avatar, meta);
-  const talent = Object.fromEntries(talentKeys.flatMap((key, index) => levels[index] ? [[key, levels[index]!.original]] : []));
-  const replacement = { ...avatar, talent, _source: "change", _time: undefined, _lotus: undefined };
+  const replacement = temporaryAvatar(avatar, meta);
   if ("weaponName" in change) {
     const weapon = await namedWeapon(avatar, text(meta?.weapon), change, theme);
     if (weapon && "message" in weapon) return { message: weapon.message };
@@ -101,4 +100,18 @@ export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: Pane
   const equipped = weaponLabel ? [weaponLabel] : [];
   equipped.push(...parts.map(([, piece]) => piece.name));
   return { avatar: { ...replacement, weapon, artis }, equipped: equipped.join("、") };
+}
+
+function temporaryAvatar(avatar: PanelAvatar, meta: Json | undefined): PanelAvatar {
+  const levels = panelTalentLevels(avatar, meta);
+  const talent = Object.fromEntries(talentKeys.flatMap((key, index) => levels[index] ? [[key, levels[index]!.original]] : []));
+  return { ...avatar, talent, _source: "change", _time: undefined, _lotus: undefined };
+}
+
+export function buildConstellationChange(avatar: PanelAvatar, constellations: number, theme: PanelTheme): TemporaryChange {
+  if (transient.has(avatar._source) || avatar.cons === undefined) {
+    return { message: "命座试算需要本档案已保存的实际角色面板及命座。" };
+  }
+  return { avatar: { ...temporaryAvatar(avatar, object(theme.characters[avatar.id])), cons: constellations },
+    equipped: `${avatar.cons} 命 → ${constellations} 命` };
 }
