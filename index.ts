@@ -225,6 +225,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     commands: {},
     gachaUpdate,
     fallbackFeatures({ normalizedMessage: message, attachment }: GachaContext) {
+      if (genshinBackpackCommand.test(message)) return ["[genshin] 背包"];
+      if (worldBossCommand.test(message) || worldBossRankingCommand.test(message)) return ["[genshin] 世界 BOSS"];
       const gacha = gachaImportCommand.test(message) || helpCommand.test(message) || updateCommand.test(message) ||
         miniappCommand.test(message) || exportCommand.test(message) || matchGachaQuery(message) ||
         (!message.trim() && attachment && /\.json$/iu.test(attachment.name));
