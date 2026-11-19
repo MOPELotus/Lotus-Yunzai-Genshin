@@ -1,0 +1,63 @@
+import { readFile, stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { loadImage } from "skia-canvas";
+import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
+import { avatarId, object, text, type Json, type PanelCatalog } from "./model.ts";
+
+const imageLimit = 12 * 1024 * 1024;
+const metadataLimit = 5 * 1024 * 1024;
+const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+
+export type Picture = Awaited<ReturnType<typeof loadImage>>;
+export interface PanelTheme extends PanelCatalog {
+  readonly picture: (...parts: string[]) => Promise<Picture | undefined>;
+}
+
+async function json(path: string): Promise<Json> {
+  try {
+    if ((await stat(path)).size <= metadataLimit) return object(JSON.parse(await readFile(path, "utf8"))) ?? {};
+  } catch {}
+  return {};
+}
+
+export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THEME_DIR?.trim() || genshinGachaThemeDirectory()): Promise<PanelTheme> {
+  const root = resolve(directory);
+  const [characters, relics] = await Promise.all([
+    json(join(root, "meta-gs", "character", "data.json")), json(join(root, "meta-gs", "artifact", "data.json")),
+  ]);
+  const artifacts = new Map<number, { name: string; set: string }>();
+  const artifactSets = new Map<string, string>();
+  for (const entry of Object.values(relics)) {
+    const row = object(entry);
+    const set = text(row?.name);
+    if (!set) continue;
+    for (const value of Object.values(object(row?.idxs) ?? {})) {
+      const piece = object(value);
+      const name = text(piece?.name);
+      if (!name) continue;
+      artifactSets.set(name, set);
+      for (const raw of [piece?.id, ...Object.values(object(piece?.ids) ?? {})]) {
+        const id = avatarId(raw);
+        if (id) artifacts.set(id, { name, set });
+      }
+    }
+  }
+  return {
+    characters, artifacts, artifactSets,
+    async picture(...parts) {
+      if (parts.some(part => !part || part === "." || part === ".." || /[\/\\\0]/u.test(part))) return;
+      try {
+        const file = join(root, ...parts);
+        const info = await stat(file);
+        if (!info.isFile() || info.size > imageLimit) return;
+        const data = await readFile(file);
+        if (data.length > imageLimit || !(data.subarray(0, 8).equals(png) ||
+            (data.toString("ascii", 0, 4) === "RIFF" && data.toString("ascii", 8, 12) === "WEBP") ||
+            (data[0] === 255 && data[1] === 216))) return;
+        return await loadImage(data);
+      } catch {
+        return;
+      }
+    },
+  };
+}

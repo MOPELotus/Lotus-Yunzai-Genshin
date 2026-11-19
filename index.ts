@@ -1,4 +1,5 @@
 import { createWishCommands } from "./wish-sim/commands.ts";
+import { createGenshinPanelQuery } from "./panel/panel.ts";
 import { fileURLToPath } from "node:url";
 import { createProfileStore, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createGachaUpdater } from "@lotus-yunzai/gacha/update";
@@ -91,6 +92,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const profiles = createProfileStore(Bun.env.LOTUS_PROFILE_DIR || undefined);
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const client = createProfileHoyoClient(profiles);
+  const panel = createGenshinPanelQuery(profiles, client, lockFile, signal);
   const sync = createGenshinGachaSync(profiles, client, history);
   const worldBossRanking = createGenshinWorldBossRanking(rankingDirectory, lockFile);
   const worldBossQuery = createWorldBossQuery(profiles, client, worldBossRanking, signal);
@@ -218,7 +220,15 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   return {
     commands: {},
     gachaUpdate,
+    fallbackFeatures({ normalizedMessage: message, attachment }: GachaContext) {
+      const gacha = gachaImportCommand.test(message) || helpCommand.test(message) || updateCommand.test(message) ||
+        miniappCommand.test(message) || exportCommand.test(message) || matchGachaQuery(message) ||
+        (!message.trim() && attachment && /\.json$/iu.test(attachment.name));
+      return gacha ? ["[Lotus-Plugin] Gacha Log"] : [];
+    },
     async fallback(_message: string, context: GachaContext) {
+      const panelReply = await panel(context.normalizedMessage, context);
+      if (panelReply !== undefined) return panelReply;
       const simulation = await wish(context.normalizedMessage, context);
       if (simulation !== undefined) return simulation;
       const worldBoss = worldBossCommand.exec(context.normalizedMessage);
