@@ -12,6 +12,8 @@
     "@lotus-yunzai/gacha": "workspace:*",
     "@lotus-yunzai/hoyo-client": "workspace:*",
     "@lotus-yunzai/skia": "workspace:*",
-    "@lotus-yunzai/storage": "workspace:*"
+    "@lotus-yunzai/storage": "workspace:*",
+    "skia-canvas": "3.0.8",
+    "yaml": "2.9.1"
   }
 }

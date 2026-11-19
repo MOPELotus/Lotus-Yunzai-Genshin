@@ -1,3 +1,4 @@
+import { createWishCommands } from "./wish-sim/commands.ts";
 import { fileURLToPath } from "node:url";
 import { createProfileStore, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createGachaUpdater } from "@lotus-yunzai/gacha/update";
@@ -73,6 +74,8 @@ interface GachaContext {
   readonly group_id?: number;
   readonly adapter?: string;
   readonly message_type?: string;
+  readonly sender?: Readonly<Record<string, unknown>>;
+  readonly isMaster?: boolean;
   readonly attachment?: { readonly name: string; read(signal?: AbortSignal): Promise<Uint8Array | undefined> };
   readonly canReadAttachments?: boolean;
   readonly uploadFile?: (file: { readonly name: string; readonly bytes: Uint8Array }) => Promise<"confirmed" | "rejected" | "unknown">;
@@ -84,6 +87,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   lockFile: Parameters<typeof createGenshinGachaHistoryStore>[1];
   runtimeVersion?: { readonly version?: string; readonly revision?: string };
 }) {
+  const wish = createWishCommands({ lockFile, signal });
   const profiles = createProfileStore(Bun.env.LOTUS_PROFILE_DIR || undefined);
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const client = createProfileHoyoClient(profiles);
@@ -215,6 +219,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     commands: {},
     gachaUpdate,
     async fallback(_message: string, context: GachaContext) {
+      const simulation = await wish(context.normalizedMessage, context);
+      if (simulation !== undefined) return simulation;
       const worldBoss = worldBossCommand.exec(context.normalizedMessage);
       if (worldBoss) return worldBossQuery(Number(worldBoss[1] ?? 1), context);
       if (worldBossRankingCommand.test(context.normalizedMessage)) return worldBossRankingQuery(context);
