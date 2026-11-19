@@ -254,7 +254,9 @@ export function createGenshinPanelQuery(
       if (type === "detail") {
         const avatar = selectAvatar(snapshot, name!, assets);
         if (!avatar) return `此原神面板没有「${name}」，请使用 #面板${suffix} 查看列表。`;
+        const recorded = !["change", "customize", "share"].includes(avatar._source);
         if (mode === "damage") {
+          if (!recorded) return `伤害估算需要本档案的实际角色面板，请先使用 #更新面板${suffix}。`;
           const estimate = await estimatePanelDamage(avatar, assets, command.damageRow, await preferences.level(qq));
           await verify();
           if ("message" in estimate) return estimate.message;
@@ -274,7 +276,7 @@ export function createGenshinPanelQuery(
         if (mode === "artifacts" && !Object.keys(avatar.artis).length) {
           return "未能获得圣遗物详情，请重新获取面板信息后查看。";
         }
-        const summary = mode === "profile" ? await preferences.level(qq)
+        const summary = mode === "profile" && recorded ? await preferences.level(qq)
           .then(level => estimatePanelDamage(avatar, assets, undefined, level, { includeComparison: false }))
           .catch(() => undefined) : undefined;
         if (mode === "profile") await verify();
