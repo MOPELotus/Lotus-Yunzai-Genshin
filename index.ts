@@ -1,4 +1,4 @@
-import { queryArkRankStats } from "./ark-rank/stats.ts";
+import { queryRankStats } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createGenshinPanelQuery } from "./panel/panel.ts";
 import { fileURLToPath } from "node:url";
@@ -228,8 +228,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
-      const ark = await queryArkRankStats(context.normalizedMessage, signal);
-      if (ark !== undefined) return ark;
+      const rankStats = await queryRankStats(context.normalizedMessage, signal);
+      if (rankStats !== undefined) return rankStats;
       const panelReply = await panel(context.normalizedMessage, context);
       if (panelReply !== undefined) return panelReply;
       const simulation = await wish(context.normalizedMessage, context);

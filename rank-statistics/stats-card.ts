@@ -1,12 +1,12 @@
 import { renderPng } from "@lotus-yunzai/skia";
 import { readPanelTheme } from "../panel/theme.ts";
-import type { ArkDamageStats } from "./stats.ts";
+import type { DamageRankStats } from "./stats.ts";
 
 type Context = Parameters<Parameters<typeof renderPng>[2]>[0];
 type RenderMode = Parameters<typeof renderPng>[3];
 const font = '"Noto Sans CJK SC", sans-serif';
 const cyan = "#67e8f9";
-export const arkRankPercentiles = [1, 5, 10, 20, 30, 50, 70, 90, 95, 99] as const;
+export const rankPercentiles = [1, 5, 10, 20, 30, 50, 70, 90, 95, 99] as const;
 const format = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 });
 const date = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", dateStyle: "short", timeStyle: "short" });
 
@@ -25,7 +25,7 @@ function block(ctx: Context, x: number, y: number, width: number, height: number
   ctx.fill();
 }
 
-export async function renderArkRankStats(name: string, stats: ArkDamageStats, {
+export async function renderRankStats(name: string, stats: DamageRankStats, {
   mode = "auto", now = new Date(), themeDirectory = Bun.env.LOTUS_GENSHIN_ARK_THEME_DIR?.trim(),
 }: { readonly mode?: RenderMode; readonly now?: Date; readonly themeDirectory?: string } = {}) {
   const background = themeDirectory && await (await readPanelTheme(themeDirectory)).picture("graph", "background.png");
@@ -34,7 +34,7 @@ export async function renderArkRankStats(name: string, stats: ArkDamageStats, {
   const scale = 1.4;
   const chart = { left: 119, right: 1135, top: 204, bottom: 560 };
   const maximum = Math.max(1, Math.ceil(Math.max(...stats.scores) * 1.15));
-  const points = arkRankPercentiles.map((percent, index) => ({
+  const points = rankPercentiles.map((percent, index) => ({
     x: chart.left + (chart.right - chart.left) * percent / 100,
     y: chart.bottom - (chart.bottom - chart.top) * stats.scores[index]! / maximum,
   }));
@@ -116,15 +116,15 @@ export async function renderArkRankStats(name: string, stats: ArkDamageStats, {
       ctx.strokeStyle = "#f3faff";
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      label(ctx, `${arkRankPercentiles[index]}%`, x, chart.bottom + 23, 11, "#c2cde0", 35);
+      label(ctx, `${rankPercentiles[index]}%`, x, chart.bottom + 23, 11, "#c2cde0", 35);
     });
 
     for (const [index, value] of stats.scores.entries()) {
       const x = 34 + index * 114;
       block(ctx, x, 669, 104, 68, 9, index < 3 ? "#2c7d9d65" : "#393a626d");
-      label(ctx, `TOP ${arkRankPercentiles[index]}%`, x + 52, 694, 12, "#c9d6e9", 93);
+      label(ctx, `TOP ${rankPercentiles[index]}%`, x + 52, 694, 12, "#c9d6e9", 93);
       label(ctx, format.format(value), x + 52, 723, 17, index < 3 ? cyan : "#ffffff", 99);
     }
-    label(ctx, "数据来源 · Ark", 600, 772, 12, "#c0cbe0");
+    label(ctx, "Lotus-Yunzai", 600, 772, 12, "#c0cbe0");
   }, mode);
 }

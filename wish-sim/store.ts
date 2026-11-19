@@ -68,11 +68,11 @@ function readData(value: unknown): SimulationData {
 }
 
 async function allowance(group: string, file: string | undefined) {
-  const flower = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim();
+  const legacyDirectory = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim();
   const builtIn = new URL("./flower/coin.yaml", import.meta.url);
-  const config = file ? await readWishYaml(file) : flower ? {
-    ...(await readOptionalWishYaml(join(flower, "def", "coin.yaml")) ?? await readWishYaml(builtIn)),
-    ...await readOptionalWishYaml(join(flower, "config", "coin.yaml")),
+  const config = file ? await readWishYaml(file) : legacyDirectory ? {
+    ...(await readOptionalWishYaml(join(legacyDirectory, "def", "coin.yaml")) ?? await readWishYaml(builtIn)),
+    ...await readOptionalWishYaml(join(legacyDirectory, "config", "coin.yaml")),
   } : await readWishYaml(builtIn);
   const defaults = record(config.default);
   const override = group === "private" ? undefined : record(config[group]);
@@ -93,7 +93,7 @@ function wishArchive(directory: string, lock: AcquireRoleArchiveLock) {
   });
 }
 
-export function createFlowerWishImport(directory: string, lock: AcquireRoleArchiveLock, signal: AbortSignal) {
+export function createLegacyWishImport(directory: string, lock: AcquireRoleArchiveLock, signal: AbortSignal) {
   const archive = wishArchive(directory, lock);
   async function mergeAccount(qq: string, legacy: {
     readonly balance?: WishBalance;

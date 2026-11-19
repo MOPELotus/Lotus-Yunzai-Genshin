@@ -6,7 +6,7 @@ import { selectGenshinUigf } from "./gacha-uigf.ts";
 
 export const gachaImportCommand = /^#?(?:原神)?(强制)?导入记录(?:json)?([1-9]\d{0,2})?$/u;
 
-function legacyMiaoTime(input: unknown): boolean {
+function usesLegacyServerTime(input: unknown): boolean {
   if (typeof input !== "object" || !input || !("info" in input)) return false;
   const { info } = input;
   return typeof info === "object" && info !== null && "export_app" in info && info.export_app === "Miao-Yunzai" &&
@@ -34,7 +34,7 @@ export function createGenshinGachaImport(
     },
     async importDocument(input, { qq, profileId, role: { uid }, verifyProfile }) {
       const resolveItem = await readGenshinUigfItems(genshinGachaThemeDirectory());
-      const snapshot = selectGenshinUigf(input, { uid, resolveItem, legacyMiaoServerTime: legacyMiaoTime(input) });
+      const snapshot = selectGenshinUigf(input, { uid, resolveItem, legacyServerTime: usesLegacyServerTime(input) });
       const result = await history.merge({ qq, uid }, snapshot, verifyProfile);
       const counts = new Map(snapshot.pools.map(({ type, records }) => [type, records.length]));
       const lines = result.pools.flatMap(({ type, name, total, added }) => {

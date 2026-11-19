@@ -35,8 +35,8 @@
 ```
 
 ```sh
-bun plugins/genshin/wish-sim/import-flower-cli.ts 授权.json data/genshin/wish-sim
-bun plugins/genshin/wish-sim/import-flower-cli.ts --apply 授权.json data/genshin/wish-sim
+bun plugins/genshin/wish-sim/import-legacy-cli.ts 授权.json data/genshin/wish-sim
+bun plugins/genshin/wish-sim/import-legacy-cli.ts --apply 授权.json data/genshin/wish-sim
 ```
 
 第一条预检并统计将导入的球数和会话。第二条逐 QQ 保存，留存已有的当日球数和保底。每个 QQ 的数据和完成记录一起提交，重复运行会跳过已完成的 QQ。旧来源保持只读。当天已过期的球数按新版发放规则处理，旧保底保留原 TTL。

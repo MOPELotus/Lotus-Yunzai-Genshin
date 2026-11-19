@@ -66,7 +66,7 @@ export async function readOptionalWishYaml(file: string) {
   }
 }
 
-function flowerDate(value: unknown): number | undefined {
+function archiveDate(value: unknown): number | undefined {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/u.test(value)) return;
   const date = Date.parse(value.replace(" ", "T") + "+08:00");
   if (Number.isFinite(date) && new Date(date + 8 * 3_600_000).toISOString().slice(0, 19).replace("T", " ") === value) {
@@ -74,11 +74,11 @@ function flowerDate(value: unknown): number | undefined {
   }
 }
 
-function flowerBanner(source: Record<string, unknown>): Banner {
+function configuredBanner(source: Record<string, unknown>): Banner {
   return {
     char5: [...names(source, "up5"), ...(source.up5_2 === undefined ? [] : names(source, "up5_2"))],
     char4: names(source, "up4"), weapon5: names(source, "weapon5"), weapon4: names(source, "weapon4"),
-    end: flowerDate(source.endTime),
+    end: archiveDate(source.endTime),
   };
 }
 
@@ -86,8 +86,8 @@ function scheduleBanner(rows: readonly unknown[], now: number): Banner | undefin
   for (const entry of rows) {
     const row = record(entry);
     if (!row) continue;
-    const from = flowerDate(row.from);
-    const to = flowerDate(row.to);
+    const from = archiveDate(row.from);
+    const to = archiveDate(row.to);
     if (from === undefined || to === undefined || now < from || now > to) continue;
     try {
       return {
@@ -101,39 +101,39 @@ function scheduleBanner(rows: readonly unknown[], now: number): Banner | undefin
   }
 }
 
-async function readFlowerBanner(directory: string, qq: string | undefined, config: Record<string, unknown> | undefined): Promise<Banner> {
+async function readLegacyBanner(directory: string, qq: string | undefined, config: Record<string, unknown> | undefined): Promise<Banner> {
   const personal = qq && /^[1-9]\d*$/u.test(qq)
     ? await readOptionalWishYaml(join(directory, "data", qq, "pool.yaml"))
     : undefined;
-  if (personal) return flowerBanner(personal);
+  if (personal) return configuredBanner(personal);
   const base = await readWishYaml(join(directory, "def", "pool.yaml"));
   const custom = config?.sync === false ? await readOptionalWishYaml(join(directory, "config", "pool.yaml")) : undefined;
-  return flowerBanner({ ...base, ...custom });
+  return configuredBanner({ ...base, ...custom });
 }
 
 export function createWishPoolSource({
   bannerFile = Bun.env.LOTUS_GENSHIN_WISH_POOL_FILE?.trim(),
   themeDirectory = genshinGachaThemeDirectory(),
-  flowerDirectory = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim(),
-}: { readonly bannerFile?: string; readonly themeDirectory?: string; readonly flowerDirectory?: string } = {}) {
+  legacyDirectory = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim(),
+}: { readonly bannerFile?: string; readonly themeDirectory?: string; readonly legacyDirectory?: string } = {}) {
   return async (kind: PoolKind, now: number, qq?: string): Promise<WishPool | undefined> => {
-    const config = flowerDirectory ? await readOptionalWishYaml(join(flowerDirectory, "config", "gacha.yaml")) : undefined;
-    const stock = flowerDirectory ? await readOptionalWishYaml(join(flowerDirectory, "def", "gacha.yaml")) : undefined;
+    const config = legacyDirectory ? await readOptionalWishYaml(join(legacyDirectory, "config", "gacha.yaml")) : undefined;
+    const stock = legacyDirectory ? await readOptionalWishYaml(join(legacyDirectory, "def", "gacha.yaml")) : undefined;
     const def = { ...(stock ?? await readWishYaml(new URL("gacha.yaml", defaults))), ...config };
     let banner: Banner | undefined;
     if (kind !== "permanent") {
       if (bannerFile) {
-        banner = flowerBanner(await readWishYaml(bannerFile));
-      } else if (flowerDirectory) {
-        banner = await readFlowerBanner(flowerDirectory, qq, config);
+        banner = configuredBanner(await readWishYaml(bannerFile));
+      } else if (legacyDirectory) {
+        banner = await readLegacyBanner(legacyDirectory, qq, config);
       } else {
-        const miao = await readFile(join(themeDirectory, "meta-gs", "info", "pool.js"), "utf8")
+        const calendar = await readFile(join(themeDirectory, "meta-gs", "info", "pool.js"), "utf8")
           .catch((error: NodeJS.ErrnoException) => {
             if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
             return "";
           });
-        banner = scheduleBanner(readMiaoArrayExport(miao, "poolDetail"), now)
-          ?? flowerBanner(await readWishYaml(new URL("pool.yaml", defaults)));
+        banner = scheduleBanner(readMiaoArrayExport(calendar, "poolDetail"), now)
+          ?? configuredBanner(await readWishYaml(new URL("pool.yaml", defaults)));
       }
     }
 

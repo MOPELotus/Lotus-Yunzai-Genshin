@@ -21,7 +21,7 @@ export type GenshinUigfItemResolver = (item: GenshinUigfItemQuery) => GenshinUig
 export interface GenshinUigfImportOptions {
   readonly uid: string;
   readonly resolveItem?: GenshinUigfItemResolver;
-  readonly legacyMiaoServerTime?: boolean;
+  readonly legacyServerTime?: boolean;
 }
 
 export interface GenshinUigfExportOptions {
@@ -102,7 +102,7 @@ function cnTime(value: unknown, sourceZone: number): string {
   return calendar(ms + (cnTimezone - sourceZone) * hourMs);
 }
 
-function sourceAccount(input: unknown, { uid, legacyMiaoServerTime }: GenshinUigfImportOptions) {
+function sourceAccount(input: unknown, { uid, legacyServerTime }: GenshinUigfImportOptions) {
   if (!object(input) || !object(input.info)) throw new TypeError("UIGF 文件缺少有效的导出信息。");
   const info = input.info;
   if (info.version !== undefined) {
@@ -115,7 +115,7 @@ function sourceAccount(input: unknown, { uid, legacyMiaoServerTime }: GenshinUig
     if (accounts.length !== 1) throw new TypeError("UIGF 文件须恰好包含一个与当前档案 UID 匹配的原神账号。");
     const account = accounts[0]!;
     const declaredZone = zone(account.timezone);
-    return { list: account.list, lang: text(account.lang), offset: legacyMiaoServerTime ? cnTimezone : declaredZone,
+    return { list: account.list, lang: text(account.lang), offset: legacyServerTime ? cnTimezone : declaredZone,
       legacy: false };
   }
   if (info.srgf_version !== undefined || typeof info.uigf_version !== "string" ||

@@ -72,7 +72,8 @@ export interface DamageComparison {
   readonly cells: readonly (readonly { readonly average?: number | string; readonly crit?: number | string }[])[];
 }
 export type DamageEstimate =
-  | { readonly rows: readonly DamageRow[]; readonly selected: number; readonly createdBy: string; readonly enemyLevel: number;
+  | { readonly rows: readonly DamageRow[]; readonly selected: number; readonly enemyLevel: number;
+      readonly ruleAuthors: readonly string[];
       readonly comparison?: DamageComparison }
   | { readonly message: string };
 
@@ -250,7 +251,7 @@ function readInitial(avatar: PanelAvatar, detail: Json, weapon: Json, buffs: rea
 
 async function sourceData(theme: PanelTheme, avatar: PanelAvatar, name: string) {
   const load = theme.metadata;
-  if (!load || !avatar.weapon) throw new Unavailable("缺少旧版喵喵主题或武器资料。");
+  if (!load || !avatar.weapon) throw new Unavailable("缺少本地主题或武器资料。");
   const charPath = name.split("/");
   const detail = await load("meta-gs", "character", ...charPath, "data.json");
   const expectedName = travelers.has(avatar.id) ? "旅行者" : avatar.name;
@@ -286,7 +287,7 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme) {
     throw new Unavailable("伤害估算需要武器精炼、命座和圣遗物词条，请先更新面板。");
   }
   const name = travelers.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
-  if (!Object.hasOwn(formulas, name)) throw new Unavailable("旧版喵喵没有这个角色的伤害规则。");
+  if (!Object.hasOwn(formulas, name)) throw new Unavailable("当前规则库没有这个角色的伤害规则。");
   const rule = formulas[name]!();
   const tables = await sourceData(theme, avatar, name);
   const gear = equipment(avatar);
@@ -382,7 +383,9 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
         })),
       };
     }
-    return { rows: titles, selected, createdBy: text(rule.createdBy) || "喵喵", enemyLevel: genshinDamageEnemyLevel, comparison };
+    const ruleAuthors = text(rule.createdBy).split("&").map(name => name.trim())
+      .filter(name => name && name !== "喵喵");
+    return { rows: titles, selected, enemyLevel: genshinDamageEnemyLevel, ruleAuthors, comparison };
   } catch (error) {
     if (error instanceof Unavailable) return { message: error.message };
     throw error;

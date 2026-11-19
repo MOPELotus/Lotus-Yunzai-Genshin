@@ -22,7 +22,7 @@ const elements: Readonly<Record<string, string>> = {
 };
 const tableKeys = ["hp", "atk", "def", "mastery", "cpct", "cdmg", "recharge", "dmg"];
 const sourceLabels: Readonly<Record<string, string>> = {
-  mysPanel: "米游社", enka: "Enka", miao: "喵喵", mgg: "Mgg", hutao: "胡桃", homo: "Mihomo",
+  mysPanel: "米游社", enka: "第三方面板", miao: "第三方面板", mgg: "第三方面板", hutao: "第三方面板", homo: "第三方面板",
   change: "面板变换", customize: "自定义", share: "共享", local: "本地",
 };
 const time = new Intl.DateTimeFormat("zh-CN", {
@@ -70,7 +70,7 @@ function frame(ctx: Context, image: Picture | undefined, element: string, width:
 }
 
 function footer(ctx: Context, width: number, height: number) {
-  label(ctx, "Created by miao-plugin & Lotus-Yunzai", width / 2, height - 14, 12, "#f0e7d9", 550, "center");
+  label(ctx, "Lotus-Yunzai", width / 2, height - 14, 12, "#f0e7d9", 550, "center");
 }
 
 function canvas(width: number, height: number, draw: (ctx: Context) => void, mode: RenderMode, scale = 2) {
@@ -410,7 +410,8 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
     block(ctx, "#161b2cc9", 337, 101, 296, 116);
     label(ctx, "伤害估算", 352, 130, 23, gold);
     label(ctx, `目标 · ${model.enemyLevel} 级小宝 · 10% 基础抗性`, 352, 158, 14, "#e8eaf4", 273);
-    label(ctx, `旧规则 · ${model.createdBy}`, 352, 185, 13, "#e8eaf4", 270);
+    label(ctx, model.ruleAuthors.length ? `规则作者 · ${model.ruleAuthors.join("、")}` : "固定版本计算规则",
+      352, 185, 13, "#e8eaf4", 270);
     block(ctx, "#171c2ce5", 14, rowsStart - 51, 622, 52 + model.rows.length * 35);
     label(ctx, "伤害计算 · 旧情景", 29, rowsStart - 26, 19, gold);
     label(ctx, "期望", 505, rowsStart - 10, 12, "#e8eaf4", 95, "right");

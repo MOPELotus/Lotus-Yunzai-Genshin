@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { createWishPoolSource, record } from "./pools.ts";
 import {
-  createFlowerWishImport, wishDailyKey, wishDayMs, wishRetentionDays, wishWeeklyKey,
+  createLegacyWishImport, wishDailyKey, wishDayMs, wishRetentionDays, wishWeeklyKey,
   type WishBalance, type WishConversation,
 } from "./store.ts";
 import type { Pity, WishSession } from "./draw.ts";
@@ -16,7 +16,7 @@ interface ImportOptions {
   readonly sourceUrl: string;
   readonly authorizationFile: string;
   readonly destinationDirectory: string;
-  readonly flowerDirectory?: string;
+  readonly legacyDirectory?: string;
   readonly apply: boolean;
   readonly signal?: AbortSignal;
   readonly now?: () => number;
@@ -55,16 +55,16 @@ async function readKey(
   if (value === null || ttl === -2 || ttl === 0) return;
   if (typeof ttl !== "number" || !Number.isSafeInteger(ttl) || ttl < 1 || ttl > maximumTtl ||
     Buffer.byteLength(value, "utf8") > 256 * 1024) {
-    throw new TypeError("旧 Flower 数据的过期时间或大小无效。");
+    throw new TypeError("旧模拟数据的过期时间或大小无效。");
   }
   const data = record(JSON.parse(value));
-  if (!data) throw new TypeError("旧 Flower 数据须为 JSON 对象。");
+  if (!data) throw new TypeError("旧模拟数据须为 JSON 对象。");
   return { data, ttl };
 }
 
 function count(value: unknown, upper: number = Number.MAX_SAFE_INTEGER): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0 || value > upper) {
-    throw new TypeError("旧 Flower 计数无效。");
+    throw new TypeError("旧模拟计数无效。");
   }
   return value;
 }
@@ -76,7 +76,7 @@ function expiry(value: unknown): number {
 function decodeBalance(data: Record<string, unknown>, now: number): WishBalance | undefined {
   const until = expiry(data.expire);
   if (until < now) return;
-  if (until - now > wishDayMs * 7 / 6) throw new TypeError("旧 Flower 球数的刷新时间无效。");
+  if (until - now > wishDayMs * 7 / 6) throw new TypeError("旧模拟球数的刷新时间无效。");
   return { day: wishDailyKey(now), pink: count(data.pink), blue: count(data.blue) };
 }
 
@@ -97,7 +97,7 @@ async function decodeConversation(
   const daily = wishDailyKey(now);
   const week = record(data.week);
   const until = expiry(week?.expire);
-  if (until - now > 8 * wishDayMs) throw new TypeError("旧 Flower 每周五星计数的刷新时间无效。");
+  if (until - now > 8 * wishDayMs) throw new TypeError("旧模拟每周五星计数的刷新时间无效。");
   const weaponState = record(data.weapon);
   const index = count(weaponState?.type, 2);
   const fate = count(weaponState?.lifeNum);
@@ -120,18 +120,18 @@ async function decodeConversation(
   return { activeDay: wishDailyKey(expiresAt - wishRetentionDays * wishDayMs), expiresAt, session };
 }
 
-export async function importFlowerWish(options: ImportOptions, lockFile: AcquireRoleArchiveLock) {
-  const { sourceUrl, authorizationFile, destinationDirectory, flowerDirectory, apply, now = Date.now,
+export async function importLegacyWishes(options: ImportOptions, lockFile: AcquireRoleArchiveLock) {
+  const { sourceUrl, authorizationFile, destinationDirectory, legacyDirectory, apply, now = Date.now,
     signal = new AbortController().signal } = options;
   const accounts = await authorization(authorizationFile);
   const protocol = URL.parse(sourceUrl)?.protocol;
-  if (protocol !== "redis:" && protocol !== "rediss:") throw new Error("旧 Flower Valkey 地址须使用 redis:// 或 rediss://。");
-  const target = createFlowerWishImport(destinationDirectory, lockFile, signal);
-  const oldPool = flowerDirectory ? createWishPoolSource({ flowerDirectory, bannerFile: "" }) : undefined;
+  if (protocol !== "redis:" && protocol !== "rediss:") throw new Error("旧模拟数据的 Valkey 地址须使用 redis:// 或 rediss://。");
+  const target = createLegacyWishImport(destinationDirectory, lockFile, signal);
+  const oldPool = legacyDirectory ? createWishPoolSource({ legacyDirectory, bannerFile: "" }) : undefined;
   const redis = new Bun.RedisClient(sourceUrl, { autoReconnect: false, enableOfflineQueue: false, connectionTimeout: 2000 });
   try {
     try { await redis.connect(); }
-    catch { throw new Error("无法连接旧 Flower Valkey。"); }
+    catch { throw new Error("无法连接旧模拟数据的 Valkey。"); }
 
     const results = { accounts: accounts.length, imported: 0, already: 0, empty: 0, balances: 0, sessions: 0 };
     for (const { qq, groups } of accounts) {
@@ -152,7 +152,7 @@ export async function importFlowerWish(options: ImportOptions, lockFile: Acquire
           if (entry) conversations[group] = await decodeConversation(entry, now(), qq, oldPool);
         }
       } catch {
-        throw new Error("读取旧 Flower 球数、保底或定轨失败，请检查授权键格式、过期时间和旧卡池。");
+        throw new Error("读取旧模拟球数、保底或定轨失败，请检查授权键格式、过期时间和旧卡池。");
       }
       const merged = await target.mergeAccount(qq, { balance, conversations }, apply);
       results[merged.status]++;

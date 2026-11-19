@@ -131,9 +131,9 @@ export async function renderWishCard({
   const visible = [...pulls].sort((left, right) => right.star - left.star ||
     left.type.localeCompare(right.type, "en") || left.at - right.at);
   const assets = (...parts: string[]) => picture(themeDirectory, variant, ...parts);
-  const flower = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim();
+  const legacyDirectory = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim();
   const elementsDir = Bun.env.LOTUS_GENSHIN_WISH_ELEMENTS_DIR?.trim() ||
-    (flower ? join(flower, "../../..", "genshin", "defSet", "element") : undefined);
+    (legacyDirectory ? join(legacyDirectory, "../../..", "genshin", "defSet", "element") : undefined);
   const elements = async (type: WishPull["type"]) => elementsDir
     ? readWishYaml(join(elementsDir, `${type}.yaml`)).catch(() => undefined)
     : undefined;
@@ -200,6 +200,6 @@ export async function renderWishCard({
     const label = ["原神模拟祈愿", target && title.endsWith("历史卡池") ? "历史卡池" : "", single ? "" : `第 ${page} 页`];
     text(ctx, label.filter(Boolean).join(" · "), 65, height - 35, 21, "#e2ebfa", width / 2);
     ctx.textAlign = "right";
-    text(ctx, "Lotus-Yunzai · Flower", width - 55, height - 35, 20, "#e2ebfa", width / 2);
+    text(ctx, "Lotus-Yunzai", width - 55, height - 35, 20, "#e2ebfa", width / 2);
   }, mode);
 }
