@@ -1,3 +1,4 @@
+import { queryArkRankStats } from "./ark-rank/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createGenshinPanelQuery } from "./panel/panel.ts";
 import { fileURLToPath } from "node:url";
@@ -227,6 +228,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[Lotus-Plugin] Gacha Log"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
+      const ark = await queryArkRankStats(context.normalizedMessage, signal);
+      if (ark !== undefined) return ark;
       const panelReply = await panel(context.normalizedMessage, context);
       if (panelReply !== undefined) return panelReply;
       const simulation = await wish(context.normalizedMessage, context);
