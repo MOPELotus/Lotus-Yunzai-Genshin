@@ -13,6 +13,8 @@
 
 `#芙宁娜圣遗物` 展示旧喵喵评分规则、分件得分、总分和评级。角色流派沿用固定版本规则，包括依赖命座、武器、套装和最终属性的分支。旧档已有的完整主副词条可直接评分。评分所需字段缺失时会指出原因并继续展示已有词条，更新面板后可重试。
 
+`#圣遗物列表` 汇总绑定档案中可评分的圣遗物，按旧版筛选规则排序并展示前 28 件。末尾加档案号可切换档案，例如 `#圣遗物列表2`。若旧档缺少评分流派需要的角色属性，目录中的完整旧数值表可用于复算。资料不足的角色暂不进入列表。
+
 ## 伤害估算
 
 `#胡桃伤害` 使用绑定角色的面板，列出旧喵喵预设情景、期望和暴击数值。`#胡桃伤害2` 选择第二种情景查看词条替换对照及生效条件。末尾用 `档案2` 切换账号档案，例如 `#胡桃伤害2 档案2`。默认目标为旧版 103 级小宝及 10% 基础抗性，实际游戏中的队伍、抗性和触发条件会影响结果。
@@ -37,3 +39,4 @@
 | `models/ProfileDmg.js`、`models/dmg/*.js`、`models/attr/Attr.js`、`models/Weapon.js` | 原神面板基础属性、旧情景与词条替换计算 |
 | `resources/meta-gs/character/**/calc.js`、`resources/meta-gs/weapon/*/calc.js`、`resources/meta-gs/artifact/calc.js` | 原版人物、武器和套装伤害规则 |
 | `resources/character/profile-detail.html`、`resources/character/profile-detail.css` | 伤害清单、词条对照和触发条件布局 |
+| `apps/profile/ProfileArtis.js`、`resources/character/artis-list.html`、`resources/character/artis-list.css` | 旧圣遗物列表入口、过滤、28 件上限和四列卡片 |

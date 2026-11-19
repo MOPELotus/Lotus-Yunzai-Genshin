@@ -1,4 +1,6 @@
 import { renderPng } from "@lotus-yunzai/skia";
+import type { ArtifactListEntry } from "./artifact-list.ts";
+import { attrPct, basicNum } from "./miao/artifact-tables.js";
 import type { DamageEstimate } from "./damage.ts";
 import { scoreArtifacts } from "./artifact-score.ts";
 import {
@@ -71,9 +73,8 @@ function footer(ctx: Context, width: number, height: number) {
   label(ctx, "Created by miao-plugin & Lotus-Yunzai", width / 2, height - 14, 12, "#f0e7d9", 550, "center");
 }
 
-function canvas(width: number, height: number, draw: (ctx: Context) => void, mode: RenderMode) {
-  const scale = 2;
-  return renderPng(width * scale, height * scale, ctx => {
+function canvas(width: number, height: number, draw: (ctx: Context) => void, mode: RenderMode, scale = 2) {
+  return renderPng(Math.round(width * scale), Math.round(height * scale), ctx => {
     ctx.scale(scale, scale);
     draw(ctx);
   }, mode);
@@ -454,4 +455,74 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
     }
     footer(ctx, width, height);
   }, mode);
+}
+
+
+const rollValues: Readonly<Record<string, number>> = attrPct;
+
+export async function renderArtifactList(snapshot: PanelSnapshot, entries: readonly ArtifactListEntry[], theme: PanelTheme,
+  mode: RenderMode = "auto") {
+  if (!entries.length) throw new Error("原神圣遗物列表没有可绘制的条目。");
+  const [backdrop, texture, ...pictures] = await Promise.all([
+    theme.picture("common", "bg", "bg-hydro.webp"),
+    theme.picture("common", "cont", "card-bg.png"),
+    ...entries.map(async ({ avatar, slot, item }) => Promise.all([
+      character(theme, avatar.name, "imgs", "side.webp"),
+      theme.picture("meta-gs", "artifact", "imgs", item.set ?? "", `${slot}.webp`),
+    ])),
+  ]);
+  const width = 790;
+  const height = 76 + Math.ceil(entries.length / 4) * 195;
+  return canvas(width, height, ctx => {
+    frame(ctx, backdrop, "hydro", width, height);
+    label(ctx, "圣遗物列表", 15, 33, 22, "#fff0d5");
+    label(ctx, `UID ${snapshot.uid}`, width - 16, 32, 15, "#e8effe", 220, "right");
+    entries.forEach(({ avatar, item, rated, weights }, index) => {
+      const x = 10 + index % 4 * 194;
+      const y = 48 + Math.floor(index / 4) * 195;
+      const [portrait, gear] = pictures[index] ?? [];
+      block(ctx, "#1d2030dd", x, y, 185, 187);
+      if (texture) {
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        art(ctx, texture, "cover", x, y, 185, 65);
+        ctx.restore();
+      }
+      art(ctx, gear, "contain", x + 112, y - 4, 69, 69);
+      if (portrait) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x + 166, y + 44, 17, 0, Math.PI * 2);
+        ctx.clip();
+        art(ctx, portrait, "cover", x + 149, y + 27, 34, 34);
+        ctx.restore();
+      }
+      label(ctx, item.name, x + 9, y + 20, 14, "#fff9ec", 130);
+      const rating = `${rated.score.toFixed(1)} 分${rated.rank ? ` · ${rated.rank}` : ""}`;
+      label(ctx, rating, x + 10, y + 40, 13, rarityColors[rated.rank ?? ""] ?? gold, 117);
+      label(ctx, avatar.name, x + 10, y + 56, 10, "#e3e7f1", 130);
+      const rows = [rated.main, ...rated.subs.slice(0, 4)];
+      rows.forEach((row, line) => {
+        const top = y + 64 + line * 23;
+        ctx.fillStyle = line % 2 ? "#090d1960" : "#42404c62";
+        ctx.fillRect(x + 3, top, 179, 22);
+        const weight = weights[row.key]?.weight ?? 0;
+        const color = line === 0 ? "#fff2d5" : weight >= 80 ? gold : weight > 0 ? "#e1ede1" : "#9c9baa";
+        const rollUnit = rollValues[row.key];
+        if (line !== 0 && rollUnit && "rolls" in row) {
+          block(ctx, "#0408119b", x + 6, top + 4, 24, 14);
+          label(ctx, (row.value / (basicNum * rollUnit * 0.85)).toFixed(1), x + 18, top + 15, 8, color, 21, "center");
+          for (let dot = 0; dot < Math.min(Math.max(0, Number(row.rolls) - 1), 5); dot++) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x + 98 + 4 * dot, top + 11, 1.3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        label(ctx, propertyLabels[row.key] ?? row.key, x + (line === 0 ? 12 : 35), top + 15, 11, color, 62);
+        label(ctx, `+${showValue(row.key, row.value)}`, x + 177, top + 15, 11, color, 58, "right");
+      });
+    });
+    footer(ctx, width, height);
+  }, mode, 1.4);
 }

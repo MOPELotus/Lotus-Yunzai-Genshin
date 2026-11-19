@@ -43,7 +43,7 @@ const rules: Readonly<Record<string, (inputs: RuleInputs) => RuleResult>> =
 interface Attribute { readonly key: string; readonly value: number }
 interface RatingInput {
   readonly main: Attribute;
-  readonly subs: readonly Attribute[];
+  readonly subs: readonly (Attribute & { readonly rolls: number })[];
 }
 interface Weight { readonly weight: number; readonly mark: number; readonly fixWeight: number }
 interface RatedArtifact {
@@ -52,7 +52,7 @@ interface RatedArtifact {
   readonly scale: number;
   readonly coefficient: number;
   readonly main: Attribute;
-  readonly subs: readonly (Attribute & { readonly contribution: number })[];
+  readonly subs: readonly (Attribute & { readonly rolls: number; readonly contribution: number })[];
 }
 interface ArtifactRating {
   readonly title: string;

@@ -95,7 +95,7 @@ export interface PanelCatalog {
 }
 
 export interface PanelCommand {
-  readonly type: "list" | "update" | "detail";
+  readonly type: "list" | "update" | "detail" | "artifact-list";
   readonly profileId: number;
   readonly uid?: string;
   readonly name?: string;
@@ -104,6 +104,15 @@ export interface PanelCommand {
 }
 
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
+  const artifactList = /^#(?:原神)?圣遗物列表\s*([1-9]\d{8,9}|[1-9]\d{0,2})?$/u.exec(message);
+  if (artifactList) {
+    const value = artifactList[1];
+    if (value && value.length >= 9) return { type: "artifact-list", profileId: 1, uid: value };
+    const profileId = Number(value ?? 1);
+    if (profileId <= MAX_PROFILE_ID) return { type: "artifact-list", profileId };
+    return;
+  }
+
   const damage = /^#(?:原神)?\s*([^#]{1,24}?)\s*伤害(?:\s*([1-9]\d{8,9})|([1-9]\d{0,2})?)(?:\s+(?:档案\s*([1-9]\d{0,2})|([1-9]\d{8,9})))?$/u.exec(message);
   if (damage && !/星铁|崩坏|绝区零|攻略|图鉴|^(?:更新|删除|加载|修复|重设|清空|群内|最强|排行)/u.test(damage[1]!)) {
     const profileId = Number(damage[4] ?? 1);
@@ -317,14 +326,18 @@ export function artifactStatRecord(item: PanelArtifact) {
   const multiplier = key && (multipliers[key] ?? multipliers.dmg);
   const main = key && rarity && multiplier ? { key, value: basicNum * multiplier * (1.2 + 0.34 * item.level) *
     (fixedKeys.has(key) && key !== "mastery" ? 2 : 1) * rarity } : undefined;
-  const values = new Map<string, number>();
+  const values = new Map<string, { value: number; rolls: number }>();
   let unrecognized = false;
   for (const id of item.attrIds) {
     const row = rollTables[id];
     if (!row) { unrecognized = true; continue; }
-    values.set(row.key, (values.get(row.key) ?? 0) + row.value * (fixedKeys.has(row.key) ? 1 : 100));
+    const last = values.get(row.key);
+    values.set(row.key, {
+      value: (last?.value ?? 0) + row.value * (fixedKeys.has(row.key) ? 1 : 100),
+      rolls: (last?.rolls ?? 0) + 1,
+    });
   }
-  return { main, subs: [...values].map(([key, value]) => ({ key, value })), unrecognized };
+  return { main, subs: [...values].map(([key, stats]) => ({ key, ...stats })), unrecognized };
 }
 
 export function artifactProperties(item: PanelArtifact): readonly PanelProperty[] {

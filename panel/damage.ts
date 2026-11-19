@@ -278,25 +278,45 @@ const resultValue = (value: unknown): number | string | undefined => {
   return typeof value === "string" && /^\d+(?:\.\d+)?%$/u.test(value) ? value : undefined;
 };
 
+async function panelInputs(avatar: PanelAvatar, theme: PanelTheme) {
+  if (!Object.hasOwn(elementNames, avatar.elem)) throw new Unavailable("面板缺少有效的角色元素。");
+  const cons = avatar.cons;
+  const equippedWeapon = avatar.weapon;
+  if (!equippedWeapon?.affix || cons === undefined || !Object.keys(avatar.artis).length) {
+    throw new Unavailable("伤害估算需要武器精炼、命座和圣遗物词条，请先更新面板。");
+  }
+  const name = travelers.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+  if (!Object.hasOwn(formulas, name)) throw new Unavailable("旧版喵喵没有这个角色的伤害规则。");
+  const rule = formulas[name]!();
+  const tables = await sourceData(theme, avatar, name);
+  const gear = equipment(avatar);
+  const weapon = { ...equippedWeapon, type: tables.weaponType, typeName: weaponClass[tables.weaponType] };
+  const allBuffs = [...(rule.buffs ?? []), ...weaponBuffs(weapon.name, equippedWeapon.affix), ...gear.buffs];
+  const starting = readInitial(avatar, tables.detail, tables.weapon,
+    allBuffs.filter((item): item is Buff => typeof item !== "string"), gear);
+  return { cons, rule, tables, gear, weapon, allBuffs, starting };
+}
+
+export async function readLegacyArtifactRuleProperties(avatar: PanelAvatar, theme: PanelTheme) {
+  try {
+    const { starting } = await panelInputs(avatar, theme);
+    return ["hp", "cpct", "cdmg", "mastery", "recharge"].flatMap(key => {
+      const number = finite(starting[key]);
+      return number === undefined ? [] : [{ key, value: String(number) }];
+    });
+  } catch (error) {
+    if (error instanceof Unavailable) return [];
+    throw error;
+  }
+}
+
 export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme, row?: number): Promise<DamageEstimate> {
   try {
-    if (!Object.hasOwn(elementNames, avatar.elem)) throw new Unavailable("面板缺少有效的角色元素。");
-    if (!avatar.weapon?.affix || avatar.cons === undefined || !Object.keys(avatar.artis).length) {
-      throw new Unavailable("伤害估算需要武器精炼、命座和圣遗物词条，请先更新面板。");
-    }
-    const name = travelers.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
-    if (!Object.hasOwn(formulas, name)) throw new Unavailable("旧版喵喵没有这个角色的伤害规则。");
-    const rule = formulas[name]!();
-    const tables = await sourceData(theme, avatar, name);
-    const talent = talents(avatar, tables.detail, avatar.cons);
-    const gear = equipment(avatar);
-    const weapon = { ...avatar.weapon, type: tables.weaponType, typeName: weaponClass[tables.weaponType] };
-    const allBuffs = [...(rule.buffs ?? []), ...weaponBuffs(weapon.name, weapon.affix!), ...gear.buffs];
-    const starting = readInitial(avatar, tables.detail, tables.weapon,
-      allBuffs.filter((item): item is Buff => typeof item !== "string"), gear);
+    const { cons, rule, tables, gear, weapon, allBuffs, starting } = await panelInputs(avatar, theme);
+    const talent = talents(avatar, tables.detail, cons);
     const character = { ...tables.detail, elem: avatar.elem, weaponTypeName: weaponClass[tables.weaponType] };
     const originalAttr = DmgAttr.getAttr({ originalAttr: undefined, attr: starting, weapon, char: character, game: "gs" });
-    const base = { characterName: avatar.name, level: avatar.level, cons: avatar.cons, talent, trees: {}, weapon };
+    const base = { characterName: avatar.name, level: avatar.level, cons, talent, trees: {}, weapon };
     const defaults = typeof rule.defParams === "function" ? rule.defParams(base) : rule.defParams;
     const defaultIdx = typeof rule.defDmgIdx === "function" ? rule.defDmgIdx(base) : rule.defDmgIdx;
     const defaultKey = typeof rule.defDmgKey === "function" ? rule.defDmgKey(base) : rule.defDmgKey;
@@ -321,9 +341,9 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     for (const [index, raw] of rule.details.entries()) {
       let label = typeof raw !== "function" && typeof raw.title === "string" ? raw.title : `旧场景 ${index + 1}`;
       try {
-        if (typeof raw !== "function" && (raw.isStatic || (raw.cons && avatar.cons < raw.cons))) continue;
+        if (typeof raw !== "function" && (raw.isStatic || (raw.cons && cons < raw.cons))) continue;
         const formula = typeof raw === "function" ? raw({ ...calc().ds, profile: { ...avatar, attr: starting } }) : raw;
-        if (formula.isStatic || (formula.cons && avatar.cons < formula.cons) || !formula.dmg) continue;
+        if (formula.isStatic || (formula.cons && cons < formula.cons) || !formula.dmg) continue;
         const params = { ...defaults, ...(typeof formula.params === "function" ? formula.params(base) : formula.params) };
         const outcome = calculate(formula, params);
         if (!outcome) continue;
