@@ -32,13 +32,15 @@ type CardPool = { readonly version: string; readonly half: Half; readonly from: 
 type PoolReprint = { readonly up: boolean; readonly days: number; readonly text: string };
 type GenshinPoolModel = { readonly game: "gs"; readonly pools: readonly CardPool[]; readonly reprint?: PoolReprint };
 
-export interface PublicPoolSources {
-  readonly regular: readonly unknown[];
-  readonly mixed: readonly unknown[];
+export interface GenshinCatalogSources {
   readonly characters: ReadonlyMap<string, Item>;
   readonly weapons: ReadonlyMap<string, Item>;
   readonly characterAliases?: Readonly<Record<string, string>>;
   readonly weaponAliases?: Readonly<Record<string, string>>;
+}
+export interface PublicPoolSources extends GenshinCatalogSources {
+  readonly regular: readonly unknown[];
+  readonly mixed: readonly unknown[];
 }
 
 export type GenshinPoolQuery = { readonly type: "help" } | { readonly type: "version"; readonly version: string; readonly half?: Half } |
@@ -114,7 +116,7 @@ function reprintInfo(periods: readonly Period[], now: number): PoolReprint | und
 
 const normalizeName = (name: string) => name.normalize("NFKC").replace(/[\s·・]/gu, "").toLowerCase();
 
-function canonicalPoolNames(sources: PublicPoolSources) {
+function canonicalPoolNames(sources: GenshinCatalogSources) {
   const exact = { character: sources.characters, weapon: sources.weapons };
   const aliases = { character: new Map<string, string | null>(), weapon: new Map<string, string | null>() };
   for (const type of ["character", "weapon"] as const) {
@@ -132,7 +134,7 @@ function canonicalPoolNames(sources: PublicPoolSources) {
   return (name: string, type: ItemType) => exact[type].has(name) ? name : aliases[type].get(normalizeName(name)) ?? name;
 }
 
-function resolveTarget(query: string, sources: PublicPoolSources, periods: readonly Period[]) {
+export function resolveGenshinCatalogTarget(query: string, sources: GenshinCatalogSources, periods: readonly Period[] = []) {
   const key = normalizeName(query);
   const known: Record<ItemType, Set<string>> = { character: new Set(sources.characters.keys()), weapon: new Set(sources.weapons.keys()) };
   for (const pool of periods) for (const group of groups) for (const name of pool.membership[group.key]) known[group.type].add(name);
@@ -157,7 +159,7 @@ export function buildGenshinPublicPool(query: Exclude<GenshinPoolQuery, { type: 
   const names = canonicalPoolNames(sources);
   const history = [...sources.regular.map(row => period(row, false, names)), ...sources.mixed.map(row => period(row, true, names))]
     .filter((row): row is Period => row !== undefined);
-  const item = query.type === "item" ? resolveTarget(query.name, sources, history) : undefined;
+  const item = query.type === "item" ? resolveGenshinCatalogTarget(query.name, sources, history) : undefined;
   if (item === "ambiguous") return { message: "有多个原神角色或武器匹配，请使用完整名称查询卡池。" };
   if (query.type === "item" && !item && !query.explicitlyGenshin) return;
   const matching = history.filter(pool => query.type === "version"

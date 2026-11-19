@@ -99,9 +99,9 @@ export async function readGenshinUigfItems(root: string): Promise<GenshinUigfIte
   return ({ itemId, name }) => (itemId ? byId.get(itemId) : undefined) ?? (name ? byName.get(name) : undefined);
 }
 
-export async function readGenshinPublicPoolSources(root: string) {
-  const [characters, weapons, calendar, charNames, weaponNames] = await Promise.all([
-    readCharacters(root), readPublicWeapons(root), readOptional(join(root, "meta-gs", "info", "pool.js")),
+export async function readGenshinGachaCatalogue(root: string) {
+  const [characters, weapons, charNames, weaponNames] = await Promise.all([
+    readCharacters(root), readPublicWeapons(root),
     readOptional(join(root, "meta-gs", "character", "alias.js")), readOptional(join(root, "meta-gs", "weapon", "alias.js")),
   ]);
   const weaponAbbr = readMiaoObjectExport(weaponNames, "abbr");
@@ -110,12 +110,17 @@ export async function readGenshinPublicPoolSources(root: string) {
     if (item && abbr) weapons.set(name, { ...item, abbr });
   }
   return {
-    regular: readMiaoArrayExport(calendar, "poolDetail"),
-    mixed: readMiaoArrayExport(calendar, "mixPoolDetail"),
     characters,
     weapons,
     characterAliases: readMiaoObjectExport(charNames, "alias"),
     weaponAliases: readMiaoObjectExport(weaponNames, "alias"),
+  };
+}
+
+export async function readGenshinPublicPoolSources(root: string) {
+  const [catalogue, calendar] = await Promise.all([readGenshinGachaCatalogue(root), readOptional(join(root, "meta-gs", "info", "pool.js"))]);
+  return {
+    ...catalogue, regular: readMiaoArrayExport(calendar, "poolDetail"), mixed: readMiaoArrayExport(calendar, "mixPoolDetail"),
   };
 }
 

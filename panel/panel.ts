@@ -51,6 +51,20 @@ async function oldPanel(root: string, uid: string, catalog: PanelCatalog): Promi
   }
 }
 
+export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
+  archiveDirectory = Bun.env.LOTUS_GENSHIN_PANEL_DIR?.trim() || mainDirectory,
+  legacyDirectory = Bun.env.LOTUS_GENSHIN_LEGACY_PANEL_DIR?.trim() || previousDirectory,
+}: { readonly archiveDirectory?: string; readonly legacyDirectory?: string } = {}) {
+  const store = createRoleJsonArchive(archiveDirectory, lockFile, { subject: "原神面板", lockSuffix: "panel", maxBytes: limit, rejectNull: true });
+  return {
+    update: store.update,
+    readLegacy: (uid: string, catalog: PanelCatalog) => oldPanel(legacyDirectory, uid, catalog),
+    async readPanel(qq: string, uid: string, catalog: PanelCatalog) {
+      return readPanel(uid, await store.read(qq, uid), catalog) ?? await oldPanel(legacyDirectory, uid, catalog);
+    },
+  };
+}
+
 type Renderers = {
   list(...args: Parameters<typeof renderPanelList>): Promise<{ readonly png: Uint8Array }>;
   detail(...args: Parameters<typeof renderPanelDetail>): Promise<{ readonly png: Uint8Array }>;
@@ -74,7 +88,7 @@ export function createGenshinPanelQuery(
     readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "observe" | "allows">;
     readonly theme?: typeof readPanelTheme; readonly now?: () => number } = {},
 ) {
-  const store = createRoleJsonArchive(archiveDirectory, lockFile, { subject: "原神面板", lockSuffix: "panel", maxBytes: limit, rejectNull: true });
+  const store = createGenshinPanelArchive(lockFile, { archiveDirectory, legacyDirectory });
   const preferences = createDamagePreferences(join(archiveDirectory, "preferences"), lockFile, signal, legacyPreferences);
   const refreshes = new Set<string>();
 
@@ -131,7 +145,7 @@ export function createGenshinPanelQuery(
           snapshot = await store.update({ qq, uid }, verify, async current => {
             const previous = readPanel(uid, current, assets);
             if (previous?._profile !== undefined && previous._profile >= startedAt) return { result: previous };
-            const inherited = previous ?? await oldPanel(legacyDirectory, uid, assets);
+            const inherited = previous ?? await store.readLegacy(uid, assets);
             const document = { ...next, avatars: { ...inherited?.avatars, ...next.avatars } };
             updated = true;
             return { document, result: document };
@@ -140,7 +154,7 @@ export function createGenshinPanelQuery(
           refreshes.delete(key);
         }
       } else {
-        snapshot = readPanel(uid, await store.read(qq, uid), assets) ?? await oldPanel(legacyDirectory, uid, assets);
+        snapshot = await store.readPanel(qq, uid, assets);
       }
 
       const suffix = profileId === 1 ? "" : String(profileId);
