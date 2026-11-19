@@ -43,6 +43,7 @@ interface Rule {
   readonly defDmgKey?: string | ((context: Context) => string);
   readonly defParams?: Json | ((context: Context) => Json);
   readonly mainAttr?: string;
+  readonly enemyName?: string;
 }
 
 const formulas: Readonly<Record<string, () => Rule>> = characterDamageRules as unknown as Readonly<Record<string, () => Rule>>;
@@ -64,6 +65,7 @@ export type DamageRow = {
   readonly title: string;
   readonly average?: number | string;
   readonly crit?: number | string;
+  readonly unit?: "%";
   readonly unavailable?: true;
   readonly buffs: readonly string[];
 };
@@ -71,10 +73,14 @@ export interface DamageComparison {
   readonly axes: readonly string[];
   readonly cells: readonly (readonly { readonly average?: number | string; readonly crit?: number | string }[])[];
 }
+export interface DamageSummary {
+  readonly rows: readonly DamageRow[];
+  readonly enemyLevel: number;
+  readonly enemyName: string;
+  readonly ruleAuthors: readonly string[];
+}
 export type DamageEstimate =
-  | { readonly rows: readonly DamageRow[]; readonly selected: number; readonly enemyLevel: number;
-      readonly ruleAuthors: readonly string[];
-      readonly comparison?: DamageComparison }
+  | (DamageSummary & { readonly selected: number; readonly comparison?: DamageComparison })
   | { readonly message: string };
 
 class Unavailable extends Error {}
@@ -312,7 +318,7 @@ export async function readLegacyArtifactRuleProperties(avatar: PanelAvatar, them
 }
 
 export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme, row?: number,
-  enemyLevel = genshinDamageEnemyLevel): Promise<DamageEstimate> {
+  enemyLevel = genshinDamageEnemyLevel, { includeComparison = true }: { readonly includeComparison?: boolean } = {}): Promise<DamageEstimate> {
   try {
     const { cons, rule, tables, gear, weapon, allBuffs, starting } = await panelInputs(avatar, theme);
     const talent = talents(avatar, tables.detail, cons);
@@ -337,7 +343,7 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
       if (!formula.dmg || (formula.check && !formula.check(ds))) return;
       const hit = DmgCalc.getDmgFn({ ds, attr, level: avatar.level, enemyLv: enemyLevel, showDetail: false, game: "gs" });
       const result = object(formula.dmg(ds, hit));
-      return { ds, msg, average: resultValue(result?.avg), crit: resultValue(result?.dmg) };
+      return { ds, msg, average: resultValue(result?.avg), crit: resultValue(result?.dmg), unit: result?.unit === "%" ? "%" as const : undefined };
     }
 
     for (const [index, raw] of rule.details.entries()) {
@@ -349,12 +355,12 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
         const params = { ...defaults, ...(typeof formula.params === "function" ? formula.params(base) : formula.params) };
         const outcome = calculate(formula, params);
         if (!outcome) continue;
-        const { ds, msg, average, crit } = outcome;
+        const { ds, msg, average, crit, unit } = outcome;
         label = text(typeof formula.title === "string" ? formula.title : formula.title(ds)) || label;
         if (defaultKey ? formula.dmgKey === defaultKey && preferred < 0 : index === defaultIdx) preferred = titles.length;
         scenarios.push({ formula, params });
         titles.push(average !== undefined || crit !== undefined
-          ? { title: label, average, crit, buffs: msg.map(text).filter(Boolean) }
+          ? { title: label, average, crit, ...(unit && { unit }), buffs: msg.map(text).filter(Boolean) }
           : { title: label, unavailable: true, buffs: [] });
       } catch {
         scenarios.push(undefined);
@@ -369,7 +375,7 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     let comparison: DamageComparison | undefined;
     const selectedScenario = scenarios[selected];
     const keys = (rule.mainAttr || "atk,cpct,cdmg").split(",").filter(key => Object.hasOwn(propertyLabels, key));
-    if (selectedScenario && !titles[selected]?.unavailable && keys.length >= 2) {
+    if (includeComparison && selectedScenario && !titles[selected]?.unavailable && keys.length >= 2) {
       const { formula, params } = selectedScenario;
       comparison = {
         axes: keys.map(key => propertyLabels[key]!),
@@ -386,7 +392,7 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     }
     const ruleAuthors = text(rule.createdBy).split("&").map(name => name.trim())
       .filter(name => name && name !== "喵喵");
-    return { rows: titles, selected, enemyLevel, ruleAuthors, comparison };
+    return { rows: titles, selected, enemyLevel, enemyName: text(rule.enemyName) || "小宝", ruleAuthors, comparison };
   } catch (error) {
     if (error instanceof Unavailable) return { message: error.message };
     throw error;

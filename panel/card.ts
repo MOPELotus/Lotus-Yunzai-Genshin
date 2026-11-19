@@ -1,7 +1,7 @@
 import { renderPng } from "@lotus-yunzai/skia";
 import type { ArtifactListEntry } from "./artifact-list.ts";
 import { attrPct, basicNum } from "./miao/artifact-tables.js";
-import type { DamageEstimate } from "./damage.ts";
+import type { DamageEstimate, DamageRow, DamageSummary } from "./damage.ts";
 import { scoreArtifacts } from "./artifact-score.ts";
 import {
   artifactProperties, object, propertyLabels, talentKeys, text, whole, type PanelAvatar, type PanelSnapshot,
@@ -161,9 +161,68 @@ async function weaponPicture(theme: PanelTheme, avatar: PanelAvatar) {
   }
 }
 
+const summaryRowHeight = 40;
+const summaryHeaderHeight = 80;
+const summaryFooterHeight = 34;
+const displayDamage = (value: DamageRow["average"], unit?: DamageRow["unit"]) =>
+  value === undefined ? "—" : typeof value === "number" ? `${Math.round(value).toLocaleString("zh-CN")}${unit ?? ""}` : value;
+
+function drawDamageSummary(ctx: Context, model: DamageSummary, texture: Picture | undefined, y: number, detailCommand: string, profileSuffix: string) {
+  const x = 10, width = detailWidth - x * 2;
+  const typeWidth = width * 0.4, valueWidth = (width - typeWidth) / 2;
+  const critCenter = x + typeWidth + valueWidth / 2, averageCenter = critCenter + valueWidth;
+  const tableBottom = y + summaryHeaderHeight + model.rows.length * summaryRowHeight;
+  const height = tableBottom + summaryFooterHeight - y;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, 10);
+  ctx.clip();
+  ctx.fillStyle = "#262735";
+  ctx.fillRect(x, y, width, height);
+  if (texture?.width && texture.height) {
+    const tileWidth = Math.max(1, texture.width * height / texture.height);
+    for (let tile = 0; tile < width; tile += tileWidth) ctx.drawImage(texture, x + tile, y, tileWidth, height);
+  }
+  ctx.fillStyle = "#0006";
+  ctx.fillRect(x, y, width, summaryHeaderHeight);
+  label(ctx, "伤害计算", x + 20, y + 26, 16, "#d3bc8e");
+  label(ctx, `使用 ${detailCommand} 查看伤害详情`, x + 100, y + 25, 12, "#c6c3c2", 460);
+  label(ctx, "伤害类型", x + typeWidth - 15, y + 66, 15, "#d3bc8e", typeWidth - 20, "right");
+  label(ctx, "暴击伤害", critCenter, y + 66, 15, "#d3bc8e", valueWidth - 15, "center");
+  label(ctx, "期望伤害", averageCenter, y + 66, 15, "#d3bc8e", valueWidth - 15, "center");
+  model.rows.forEach((row, index) => {
+    const top = y + summaryHeaderHeight + index * summaryRowHeight;
+    ctx.fillStyle = index % 2 ? "#32323266" : "#0006";
+    ctx.fillRect(x, top, width, summaryRowHeight);
+    ctx.fillStyle = "#0006";
+    ctx.fillRect(x, top, typeWidth, summaryRowHeight);
+    ctx.fillStyle = "#ffffff36";
+    ctx.fillRect(x, top, width, 1);
+    ctx.fillRect(x + typeWidth, top, 1, summaryRowHeight);
+    label(ctx, row.title, x + typeWidth - 15, top + 26, 15, "#d3bc8e", typeWidth - 21, "right");
+    if (row.crit === undefined) {
+      label(ctx, row.unavailable ? "数据不全" : displayDamage(row.average, row.unit), x + typeWidth + valueWidth,
+        top + 27, 18, row.unavailable ? "#cecad7" : "#fff", valueWidth * 2 - 20, "center");
+    } else {
+      ctx.fillStyle = "#ffffff36";
+      ctx.fillRect(x + typeWidth + valueWidth, top, 1, summaryRowHeight);
+      label(ctx, displayDamage(row.crit, row.unit), critCenter, top + 27, 18, "#fff", valueWidth - 15, "center");
+      label(ctx, displayDamage(row.average, row.unit), averageCenter, top + 27, 18, "#fff", valueWidth - 15, "center");
+    }
+  });
+  ctx.fillStyle = "#0008";
+  ctx.fillRect(x, tableBottom, width, summaryFooterHeight);
+  label(ctx, `目标为 ${model.enemyLevel} 级${model.enemyName} · #敌人等级${model.enemyLevel}${profileSuffix}`, x + 15,
+    tableBottom + 22, 12, "#e8e4dd", model.ruleAuthors.length ? 335 : width - 30);
+  if (model.ruleAuthors.length) label(ctx, `规则作者 · ${model.ruleAuthors.join("、")}`, x + width - 15,
+    tableBottom + 22, 12, "#e8e4dd", 195, "right");
+  ctx.restore();
+}
+
 export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme, {
-  pane = "profile", mode = "auto",
-}: { readonly pane?: "profile" | "artifacts" | "weapon"; readonly mode?: RenderMode } = {}) {
+  pane = "profile", mode = "auto", damage, profileId = 1,
+}: { readonly pane?: "profile" | "artifacts" | "weapon"; readonly mode?: RenderMode;
+  readonly damage?: DamageSummary; readonly profileId?: number } = {}) {
   if (pane === "artifacts") return renderArtifactCard(snapshot, avatar, theme, mode);
   const element = elements[avatar.elem] ? avatar.elem : "hydro";
   const equipment = Object.entries(avatar.artis).sort(([left], [right]) => Number(left) - Number(right));
@@ -171,7 +230,8 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
   const showWeapon = !!avatar.weapon;
   const meta = object(theme.characters[avatar.id]);
   const talentCons = object(meta?.talentCons);
-  const [backdrop, splash, badge, crown, icons, talents, constellations, equip, relicArt] = await Promise.all([
+  const summary = pane === "profile" && damage?.rows.length ? damage : undefined;
+  const [backdrop, splash, badge, crown, icons, talents, constellations, equip, relicArt, summaryTexture] = await Promise.all([
     theme.picture("common", "bg", `bg-${element}.webp`),
     await character(theme, avatar.name, "imgs", avatar.costume ? "splash2.webp" : "splash.webp") ??
       await character(theme, avatar.name, "imgs", "splash.webp"),
@@ -185,11 +245,13 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
     showWeapon ? weaponPicture(theme, avatar) : undefined,
     showRelics ? Promise.all(equipment.map(([slot, relic]) =>
       theme.picture("meta-gs", "artifact", "imgs", relic.set ?? "", `${slot}.webp`))) : [],
+    summary && theme.picture("common", "cont", "card-bg.png"),
   ]);
   const width = detailWidth;
   const relicRows = showRelics ? Math.ceil(equipment.length / 2) : 0;
   const gearHeight = (showWeapon && avatar.weapon ? 104 : 0) + (showRelics ? 32 + relicRows * 133 : 0);
-  const height = 523 + gearHeight + 35;
+  const summaryY = 523 + gearHeight;
+  const height = summaryY + (summary ? summaryHeaderHeight + summary.rows.length * summaryRowHeight + summaryFooterHeight + 9 : 0) + 35;
   const raw = new Map(avatar._lotus?.properties?.map(property => [property.key, property]));
   const stats = tableKeys.map(key => key === "dmg"
     ? raw.get(element) ?? raw.get("phy")
@@ -267,6 +329,11 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
           label(ctx, property.value, x + 270, line, 11, n === 0 ? gold : "#b3ee6b", 105, "right");
         });
       });
+    }
+    if (summary) {
+      const profileSuffix = profileId === 1 ? "" : ` 档案${profileId}`;
+      const name = text(meta?.abbr) || avatar.name;
+      drawDamageSummary(ctx, summary, summaryTexture, summaryY, `#${name}伤害${profileSuffix}`, profileSuffix);
     }
     footer(ctx, width, height);
   }, mode);
@@ -382,9 +449,6 @@ export async function renderArtifactCard(snapshot: PanelSnapshot, avatar: PanelA
 }
 
 
-const displayDamage = (value: string | number | undefined) =>
-  value === undefined ? "—" : typeof value === "number" ? Math.round(value).toLocaleString("zh-CN") : value;
-
 export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme,
   model: Extract<DamageEstimate, { rows: unknown }>, { mode = "auto", profileId = 1 }:
     { readonly mode?: RenderMode; readonly profileId?: number } = {}) {
@@ -410,7 +474,7 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
     label(ctx, `UID ${snapshot.uid} · Lv.${avatar.level} · ${avatar.cons}命`, 626, 84, 16, blue, 296, "right");
     block(ctx, "#161b2cc9", 337, 101, 296, 116);
     label(ctx, "伤害估算", 352, 130, 23, gold);
-    label(ctx, `目标 · ${model.enemyLevel} 级小宝 · 10% 基础抗性`, 352, 158, 14, "#e8eaf4", 273);
+    label(ctx, `目标 · ${model.enemyLevel} 级${model.enemyName} · 10% 基础抗性`, 352, 158, 14, "#e8eaf4", 273);
     label(ctx, model.ruleAuthors.length ? `规则作者 · ${model.ruleAuthors.join("、")}` : "固定版本计算规则",
       352, 185, 13, "#e8eaf4", 270);
     label(ctx, `#敌人等级${model.enemyLevel}${profileId === 1 ? "" : ` 档案${profileId}`}`, 352, 204, 11, "#a4ddff", 270);
@@ -426,8 +490,8 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
       label(ctx, `${index + 1}. ${entry.title}`, 30, y + 23, 15, highlight ? gold : "#e8eaf4", 343);
       if (entry.unavailable) label(ctx, "数据不全", 616, y + 23, 13, "#d6c8a9", 121, "right");
       else {
-        label(ctx, displayDamage(entry.average), 505, y + 23, 15, blue, 108, "right");
-        label(ctx, displayDamage(entry.crit), 617, y + 23, 15, gold, 105, "right");
+        label(ctx, displayDamage(entry.average, entry.unit), 505, y + 23, 15, blue, 108, "right");
+        label(ctx, displayDamage(entry.crit, entry.unit), 617, y + 23, 15, gold, 105, "right");
       }
     });
     if (comparison) {
@@ -444,7 +508,7 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
         label(ctx, axes[index]!, 29, y + 19, 11, "#e8eaf4", 76);
         row.forEach(({ average, crit }, col) => {
           const value = index === col ? "—" : average === undefined && crit === undefined ? "缺数据"
-            : [average, crit].filter(val => val !== undefined).map(displayDamage).join(" / ");
+            : [average, crit].filter(val => val !== undefined).map(value => displayDamage(value, selected?.unit)).join(" / ");
           const color = typeof average === "number" && typeof selected?.average === "number"
             ? average > selected.average ? "#a9dc92" : average < selected.average ? "#e7abaa" : "#e8eaf4" : "#e8eaf4";
           label(ctx, value, 110 + (col + 0.5) * column, y + 19, 11, color, column - 7, "center");

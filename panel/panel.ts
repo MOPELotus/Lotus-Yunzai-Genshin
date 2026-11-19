@@ -180,8 +180,16 @@ export function createGenshinPanelQuery(
         if (mode === "artifacts" && !Object.keys(avatar.artis).length) {
           return "未能获得圣遗物详情，请重新获取面板信息后查看。";
         }
+        const summary = mode === "profile" ? await preferences.level(qq)
+          .then(level => estimatePanelDamage(avatar, assets, undefined, level, { includeComparison: false }))
+          .catch(() => undefined) : undefined;
+        if (mode === "profile") await verify();
         let png: Uint8Array | undefined;
-        try { ({ png } = await render.detail(snapshot, avatar, assets, { pane: mode })); } catch {}
+        try {
+          ({ png } = await render.detail(snapshot, avatar, assets, {
+            pane: mode, profileId, damage: summary && "rows" in summary ? summary : undefined,
+          }));
+        } catch {}
         await verify();
         if (png) return { type: "image", file: png };
         return [`UID ${uid} · ${avatar.name} · Lv.${avatar.level}`,
