@@ -113,13 +113,16 @@ export function createGenshinPanelQuery(
         command = { ...candidate, name: target.name };
       } else if (candidate && target && change) {
         if ("weaponName" in change) {
-          try {
-            preflight = await theme();
-            const weapon = change.weaponName === "专武" ? `${target.name}专武` : change.weaponName;
-            const type = text(object(preflight.characters[target.id])?.weapon);
-            const known = await resolvePanelWeapon(weapon, type, preflight);
-            if (known) command = { ...candidate, name: target.name, equipmentChange: { ...change, weaponName: known.canonical } };
-          } catch {}
+          if (!change.bare) command = { ...candidate, name: target.name };
+          else {
+            try {
+              preflight = await theme();
+              const weapon = change.weaponName === "专武" ? `${target.name}专武` : change.weaponName;
+              const type = text(object(preflight.characters[target.id])?.weapon);
+              const known = await resolvePanelWeapon(weapon, type, preflight);
+              if (known) command = { ...candidate, name: target.name, equipmentChange: { ...change, weaponName: known.canonical } };
+            } catch {}
+          }
         } else if ([change, ...(change.moreDonors ?? [])].every(source => findRankCharacter(source.donor))) {
           command = candidate;
         }

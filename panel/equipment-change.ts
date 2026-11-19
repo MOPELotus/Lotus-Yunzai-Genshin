@@ -65,7 +65,8 @@ export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: Pane
   if ("weaponName" in change) {
     const weapon = await namedWeapon(avatar, text(meta?.weapon), change, theme);
     if (weapon && "message" in weapon) return { message: weapon.message };
-    return weapon ? { avatar: { ...replacement, weapon }, equipped: weapon.name } :
+    return weapon ? { avatar: { ...replacement, weapon },
+      equipped: characterChange ? `${characterChange.equipped}、${weapon.name} Lv.${weapon.level} 精${weapon.affix}` : weapon.name } :
       { message: "本地资料无法确认这件原神武器、别名或适配种类。" };
   }
   const changes = [change, ...(change.moreDonors ?? [])];

@@ -57,7 +57,7 @@ test("旧命座与来源装备可以前后调换，重复命座、重复部位�
     constellationChange: 6, equipmentChange: { donor: "绫华", slot: "1" },
   });
   for (const command of ["#芙芙换绫华花换满命换0命", "#芙芙换0命换绫华花换胡桃花",
-    "#芙芙换0命换绫华花换错指令", "#芙芙换0命换90级雾切", "#星铁芙芙换0命换绫华花"]) {
+    "#芙芙换0命换绫华花换错指令", "#芙芙换0命换雾切", "#星铁芙芙换0命换绫华花"]) {
     expect(matchConstellationEquipment(command)).toBeUndefined();
   }
 });

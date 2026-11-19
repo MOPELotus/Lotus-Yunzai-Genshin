@@ -285,7 +285,7 @@ export function matchConstellationEquipment(message: string): PanelCommand | und
   if (constellationChange === undefined || donors.length === 0) return;
   const equipment = `${target}换${donors.join("换")}${suffix}`;
   const command = donors.length > 1 ? matchEquipmentChain(equipment) : matchTemporaryEquipment(equipment);
-  if (command?.equipmentChange && !("weaponName" in command.equipmentChange)) return { ...command, constellationChange };
+  if (command?.equipmentChange) return { ...command, constellationChange };
 }
 
 export type TalentStatisticsSelection = { readonly day?: number | "today" | "tomorrow"; readonly star?: 4 | 5 };

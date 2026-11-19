@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { ProfileError } from "@lotus-yunzai/account";
 import { buildEquipmentChange } from "./equipment-change.ts";
-import { matchBareEquipment, matchGenshinPanel, type PanelAvatar } from "./model.ts";
+import { matchBareEquipment, matchConstellationEquipment, matchGenshinPanel, type PanelAvatar } from "./model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -64,6 +64,30 @@ test("裸武器名字沿用同档保存的等级、突破与精炼，来源数�
   const missing = { ...avatar, weapon: { name: "护摩之杖" } };
   expect(await buildEquipmentChange(snapshot, missing, change, theme)).toMatchObject({ message: expect.stringContaining("已装备武器") });
   expect(matchBareEquipment("#胡桃换武器")).toBeUndefined();
+});
+
+test("一段命座与一段显式等级或精炼合并且同档武器配置保持只读", async () => {
+  const start = `#UID:${uid}胡桃伤害2换`;
+  const candidate = matchConstellationEquipment(start + "0命换90级精1灭辰 档案2");
+  expect(candidate).toMatchObject({ uid, profileId: 2, damageRow: 2, constellationChange: 0,
+    equipmentChange: { weaponName: "灭辰", level: 90, affix: 1 } });
+  expect(matchConstellationEquipment(start + "90级精1灭辰换0命 档案2")).toEqual(candidate);
+  for (const value of ["0命换90级精6灭辰", "0命换灭辰", "0命换90级灭辰换满精护摩", "0命换满精护摩换绫华杯"]) {
+    expect(matchConstellationEquipment(start + value)).toBeUndefined();
+  }
+  const before = JSON.stringify(snapshot);
+  const change = (command: string) => {
+    const parsed = matchConstellationEquipment(command)!;
+    return buildEquipmentChange(snapshot, avatar, parsed.equipmentChange!, theme, { constellation: parsed.constellationChange });
+  };
+  expect(await change("#胡桃换0命换90级精1灭辰")).toMatchObject({
+    equipped: "0 命 → 0 命、匣里灭辰 Lv.90 精1",
+    avatar: { cons: 0, weapon: { name: "匣里灭辰", level: 90, promote: 6, affix: 1 } },
+  });
+  expect(await change("#胡桃换精5武器换满命")).toMatchObject({ equipped: "0 命 → 6 命、护摩之杖 Lv.80 精5",
+    avatar: { cons: 6, weapon: { name: "护摩之杖", level: 80, promote: 6, affix: 5 } } });
+  expect(await change("#胡桃换三命换满精雾切")).toMatchObject({ message: expect.stringContaining("适配种类") });
+  expect(JSON.stringify(snapshot)).toBe(before);
 });
 
 test("裸名先确认原角色与同类唯一武器，未匹配时不读取档案或接管后续路由", async () => {
