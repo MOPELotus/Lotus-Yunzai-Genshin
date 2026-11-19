@@ -7,13 +7,10 @@ const weaponTypes = new Set(["sword", "claymore", "polearm", "bow", "catalyst"])
 const weaponLevelCaps = [20, 40, 50, 60, 70, 80, 90];
 const nameKey = (name: string) => name.normalize("NFKC").replace(/\s/gu, "").toLowerCase();
 
-async function namedWeapon(avatar: PanelAvatar, type: string, input: Extract<EquipmentChangeSelection, { weaponName: string }>, theme: PanelTheme) {
+export async function resolvePanelWeapon(name: string, type: string, theme: PanelTheme) {
   if (!weaponTypes.has(type)) return;
   const rows = await theme.metadata?.("meta-gs", "weapon", type, "data.json");
   const entries = Object.values(rows ?? {}).map(object).filter(row => text(row?.name));
-  const current = avatar.weapon;
-  const name = input.weaponName === "武器" ? current?.name : input.weaponName === "专武" ? `${avatar.name}专武` : input.weaponName;
-  if (!name) return;
   const key = nameKey(name);
   let match = entries.find(row => nameKey(text(row?.name)) === key);
   if (!match) {
@@ -29,6 +26,16 @@ async function namedWeapon(avatar: PanelAvatar, type: string, input: Extract<Equ
   const canonical = text(match?.name);
   const star = whole(match?.star, 5);
   if (!star) return;
+  return { canonical, star, entries };
+}
+
+async function namedWeapon(avatar: PanelAvatar, type: string, input: Extract<EquipmentChangeSelection, { weaponName: string }>,
+  theme: PanelTheme): Promise<PanelAvatar["weapon"] | { readonly message: string }> {
+  const current = avatar.weapon;
+  const name = input.weaponName === "武器" ? current?.name : input.weaponName === "专武" ? `${avatar.name}专武` : input.weaponName;
+  const selected = name && await resolvePanelWeapon(name, type, theme);
+  if (!selected) return;
+  const { canonical, star, entries } = selected;
   const detail = await theme.metadata?.("meta-gs", "weapon", type, canonical, "data.json");
   if (detail?.name !== canonical || whole(detail.star, 5) !== star) return;
   const refinements = object(object(detail.affixData)?.datas);
@@ -36,6 +43,9 @@ async function namedWeapon(avatar: PanelAvatar, type: string, input: Extract<Equ
   const levels = refinements["0"];
   const maxAffix = Array.isArray(levels) && levels[4] ? 5 : 1;
   const currentStar = whole(entries.find(row => text(row?.name) === current?.name)?.star, 5);
+  if (input.bare && (!current?.level || !current.affix || current.promote === undefined || !currentStar)) {
+    return { message: "请先更新当前档案的已装备武器等级、突破和精炼，或在命令中明确指定试算参数。" };
+  }
   const level = Math.min(star <= 2 ? 70 : 90, input.level ?? (current?.level || 90));
   const promote = current?.level === level && current.promote !== undefined && current.promote <= (star <= 2 ? 4 : 6)
     ? current.promote : weaponLevelCaps.findIndex(cap => level <= cap);
@@ -52,37 +62,43 @@ export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: Pane
   const replacement = { ...avatar, talent, _source: "change", _time: undefined, _lotus: undefined };
   if ("weaponName" in change) {
     const weapon = await namedWeapon(avatar, text(meta?.weapon), change, theme);
+    if (weapon && "message" in weapon) return { message: weapon.message };
     return weapon ? { avatar: { ...replacement, weapon }, equipped: weapon.name } :
       { message: "本地资料无法确认这件原神武器、别名或适配种类。" };
   }
-  if (change.donorUid !== undefined && change.donorUid !== snapshot.uid) {
-    return { message: "装备来源必须属于本次所选档案绑定的原神 UID。" };
-  }
-  const donor = selectAvatar(snapshot, change.donor, theme);
-  if (!donor || transient.has(donor._source)) {
-    return { message: `此档案没有「${change.donor}」可用于换装的原神角色面板。` };
-  }
-  const slots = [change.slot, ...(change.extraSlots ?? [])];
+  const changes = [change, ...(change.moreDonors ?? [])];
   const parts: [string, PanelArtifact][] = [];
-  for (const slot of slots) {
-    if (slot === "weapon") continue;
-    const piece = donor.artis[slot];
-    if (!piece) return { message: `此档案中「${donor.name}」没有指定位置的圣遗物。` };
-    parts.push([slot, piece]);
-  }
   let weapon = avatar.weapon;
-  if (slots.includes("weapon")) {
-    if (!donor.weapon) return { message: `此档案中「${donor.name}」的武器资料缺失。` };
-    const type = text(meta?.weapon);
-    const donorType = text(object(theme.characters[donor.id])?.weapon);
-    if (type && donorType && donorType !== type) return { message: "装备来源的武器种类与目标角色不符。" };
-    const metadata = await theme.metadata?.("meta-gs", "weapon", type, donor.weapon.name, "data.json");
-    if (!type || metadata?.name !== donor.weapon.name) return { message: "本地资料无法确认该武器与目标角色兼容。" };
-    weapon = { ...donor.weapon };
+  let weaponLabel: string | undefined;
+  for (const change of changes) {
+    if (change.donorUid !== undefined && change.donorUid !== snapshot.uid) {
+      return { message: "装备来源必须属于本次所选档案绑定的原神 UID。" };
+    }
+    const donor = selectAvatar(snapshot, change.donor, theme);
+    if (!donor || transient.has(donor._source)) {
+      return { message: `此档案没有「${change.donor}」可用于换装的原神角色面板。` };
+    }
+    const slots = [change.slot, ...(change.extraSlots ?? [])];
+    for (const slot of slots) {
+      if (slot === "weapon") continue;
+      const piece = donor.artis[slot];
+      if (!piece) return { message: `此档案中「${donor.name}」没有指定位置的圣遗物。` };
+      parts.push([slot, piece]);
+    }
+    if (slots.includes("weapon")) {
+      if (!donor.weapon) return { message: `此档案中「${donor.name}」的武器资料缺失。` };
+      const type = text(meta?.weapon);
+      const donorType = text(object(theme.characters[donor.id])?.weapon);
+      if (type && donorType && donorType !== type) return { message: "装备来源的武器种类与目标角色不符。" };
+      const metadata = await theme.metadata?.("meta-gs", "weapon", type, donor.weapon.name, "data.json");
+      if (!type || metadata?.name !== donor.weapon.name) return { message: "本地资料无法确认该武器与目标角色兼容。" };
+      weapon = { ...donor.weapon };
+      weaponLabel = weapon.name;
+    }
   }
   const artis = parts.length ? { ...avatar.artis, ...Object.fromEntries(parts.map(([slot, piece]) => [slot, structuredClone(piece)])) }
     : avatar.artis;
-  const equipped = slots.includes("weapon") ? [weapon!.name] : [];
+  const equipped = weaponLabel ? [weaponLabel] : [];
   equipped.push(...parts.map(([, piece]) => piece.name));
   return { avatar: { ...replacement, weapon, artis }, equipped: equipped.join("、") };
 }

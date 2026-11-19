@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
+import { ProfileError } from "@lotus-yunzai/account";
 import { buildEquipmentChange } from "./equipment-change.ts";
-import { matchGenshinPanel, type PanelAvatar } from "./model.ts";
+import { matchBareEquipment, matchGenshinPanel, type PanelAvatar } from "./model.ts";
+import { createGenshinPanelQuery } from "./panel.ts";
 import type { PanelTheme } from "./theme.ts";
 
 const avatar: PanelAvatar = {
@@ -50,4 +52,31 @@ test("只从目标武器种类解旧别名，保留旧等级、突破和精炼�
   expect(await change("#胡桃换90级满精新手长枪")).toMatchObject({ avatar: { weapon: { name: "新手长枪", level: 70, promote: 4, affix: 1 } } });
   expect(await change("#胡桃换满精雾切")).toMatchObject({ message: expect.stringContaining("适配种类") });
   expect(snapshot.avatars[avatar.id]?.weapon).toEqual({ name: "护摩之杖", level: 80, promote: 6, affix: 2 });
+});
+
+test("裸武器名字沿用同档保存的等级、突破与精炼，来源数据不完整时不给试算", async () => {
+  const input = matchBareEquipment("#胡桃伤害2换灭辰 档案2");
+  expect(input).toMatchObject({ profileId: 2, damageRow: 2, equipmentChange: { weaponName: "灭辰", bare: true } });
+  const change = input!.equipmentChange!;
+  expect(await buildEquipmentChange(snapshot, avatar, change, theme)).toMatchObject({
+    equipped: "匣里灭辰", avatar: { weapon: { name: "匣里灭辰", level: 80, promote: 6, affix: 2 } },
+  });
+  const missing = { ...avatar, weapon: { name: "护摩之杖" } };
+  expect(await buildEquipmentChange(snapshot, missing, change, theme)).toMatchObject({ message: expect.stringContaining("已装备武器") });
+  expect(matchBareEquipment("#胡桃换武器")).toBeUndefined();
+});
+
+test("裸名先确认原角色与同类唯一武器，未匹配时不读取档案或接管后续路由", async () => {
+  let reads = 0;
+  const query = createGenshinPanelQuery({
+    async savedRole() { throw Error("unexpected saved role"); },
+    async requestContext() { reads++; throw new ProfileError("missing", "fixture"); },
+  }, { async fetchGenshinPanel() { throw Error("unexpected network"); } },
+  async () => ({ close() {} }), new AbortController().signal, { theme: async () => theme });
+  for (const message of ["#胡桃换个立绘", "#胡桃换雾切", "#混入未核角色换灭辰", "#胡桃换绫华杯换未核角色头"]) {
+    expect(await query(message, { user_id: 42 })).toBeUndefined();
+  }
+  expect(reads).toBe(0);
+  expect(await query("#胡桃换灭辰", { user_id: 42 })).toContain("请先登录");
+  expect(reads).toBe(1);
 });

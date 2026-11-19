@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ProfileRequestContext } from "@lotus-yunzai/account";
 import { buildEquipmentChange } from "./equipment-change.ts";
-import { matchGenshinPanel, type PanelAvatar, type PanelArtifact } from "./model.ts";
+import { matchEquipmentChain, matchGenshinPanel, type PanelAvatar, type PanelArtifact } from "./model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -85,4 +85,21 @@ test("组合渲染期间换绑时不发旧角色卡也不生成群榜、面板�
   } finally {
     await rm(legacyDirectory, { recursive: true, force: true });
   }
+});
+
+test("连续换装的不同角色各自提供确定部位，后段越权不会保留前段结果", async () => {
+  const keqing: PanelAvatar = { ...ayaka, id: 10000042, name: "刻晴", artis: { 5: piece("刻晴头冠") } };
+  const snapshot = { uid, avatars: { [furina.id]: furina, [ayaka.id]: ayaka, [keqing.id]: keqing } };
+  const raw = JSON.stringify(snapshot);
+  const input = matchEquipmentChain("#芙芙伤害2换绫华武器+杯子换刻晴头 档案2");
+  expect(input).toMatchObject({ profileId: 2, damageRow: 2,
+    equipmentChange: { donor: "绫华", slot: "weapon", extraSlots: ["4"], moreDonors: [{ donor: "刻晴", slot: "5" }] } });
+  expect(await buildEquipmentChange(snapshot, furina, input!.equipmentChange!, theme)).toMatchObject({
+    equipped: "雾切之回光、冰杯、刻晴头冠", avatar: { artis: { 4: ayaka.artis[4], 5: keqing.artis[5] } },
+  });
+  const foreign = matchEquipmentChain("#芙芙换绫华武器+杯子换刻晴100654321头")!;
+  expect(await buildEquipmentChange(snapshot, furina, foreign.equipmentChange!, theme)).toMatchObject({ message: expect.stringContaining("UID") });
+  expect(matchEquipmentChain("#芙芙换绫华杯换刻晴空之杯")).toBeUndefined();
+  expect(matchEquipmentChain("#芙芙换绫华杯换精5护摩")).toBeUndefined();
+  expect(JSON.stringify(snapshot)).toBe(raw);
 });

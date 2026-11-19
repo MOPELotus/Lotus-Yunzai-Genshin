@@ -111,8 +111,9 @@ type DonorEquipment = {
   readonly donorUid?: string;
   readonly slot: "weapon" | "1" | "2" | "3" | "4" | "5";
   readonly extraSlots?: readonly DonorEquipment["slot"][];
+  readonly moreDonors?: readonly DonorEquipment[];
 };
-type NamedEquipment = { readonly slot: "weapon"; readonly weaponName: string; readonly affix?: number; readonly level?: number };
+type NamedEquipment = { readonly slot: "weapon"; readonly weaponName: string; readonly affix?: number; readonly level?: number; readonly bare?: true };
 export type EquipmentChangeSelection = DonorEquipment | NamedEquipment;
 const equipmentSlots: Readonly<Record<string, EquipmentChangeSelection["slot"]>> = {
   武器: "weapon", 生之花: "1", 花: "1", 死之羽: "2", 羽毛: "2", 羽: "2", 毛: "2",
@@ -127,7 +128,7 @@ const temporaryEquipmentCommand = new RegExp(
 const namedEquipmentCommand = new RegExp(
   `^#(?:原神)?\\s*${ownUid}${ownName}(?:面板|面版|详情|详细|(伤害)([1-9]\\d{0,2})?)?\\s*${ownUid}换\\s*([^#换]{1,72}?)(?:\\s+档案\\s*([1-9]\\d{0,2}))?$`, "iu");
 
-function matchNamedEquipment(message: string): PanelCommand | undefined {
+function matchNamedEquipment(message: string, bare = false): PanelCommand | undefined {
   const match = namedEquipmentCommand.exec(message);
   if (!match) return;
   const [, firstUid, target, damage, row, lastUid, raw, profile] = match;
@@ -147,11 +148,16 @@ function matchNamedEquipment(message: string): PanelCommand | undefined {
       input = input.slice(refine[0].length);
     } else break;
   }
-  if ((!level && !affix) || /^(?:等级|精炼?\s*[0-9])/u.test(input) ||
+  if ((bare ? level !== undefined || affix !== undefined || input === "武器" : !level && !affix) ||
+    /^(?:等级|精炼?\s*[0-9])/u.test(input) ||
     !/^[\p{L}\p{M}「」『』·・][\p{L}\p{M}\p{N}「」『』·・'’\-\s]{0,39}$/u.test(input)) return;
   return { type: "change", name: target.trim(), profileId, uid: firstUid ?? lastUid,
     mode: damage ? "damage" : "profile", damageRow: row ? Number(row) : undefined,
-    equipmentChange: { slot: "weapon", weaponName: input, affix, level } };
+    equipmentChange: { slot: "weapon", weaponName: input, affix, level, ...(bare && { bare: true }) } };
+}
+
+export function matchBareEquipment(message: string) {
+  if (message.includes("换") && !/星铁|绝区零|崩坏|换.*换/u.test(message)) return matchNamedEquipment(message, true);
 }
 
 function matchTemporaryEquipment(message: string): PanelCommand | undefined {
@@ -173,6 +179,26 @@ function matchTemporaryEquipment(message: string): PanelCommand | undefined {
     equipmentChange: { donor: donor.trim(), donorUid: donorLeadingUid ?? donorTrailingUid, slot,
       ...(extraSlots.length > 0 && { extraSlots }) },
   };
+}
+
+export function matchEquipmentChain(message: string): PanelCommand | undefined {
+  if (!/换.*换/u.test(message) || /星铁|绝区零|崩坏/u.test(message)) return;
+  const profile = /\s+档案\s*[1-9]\d{0,2}$/u.exec(message);
+  const [target, ...donors] = (profile ? message.slice(0, profile.index) : message).split("换");
+  if (!target || donors.length < 2 || donors.length > 6) return;
+  const source: DonorEquipment[] = [];
+  let head: PanelCommand | undefined;
+  for (const donor of donors) {
+    const command = matchTemporaryEquipment(`${target}换${donor}${profile?.[0] ?? ""}`);
+    const equipment = command?.equipmentChange;
+    if (!equipment || "weaponName" in equipment) return;
+    head ??= command;
+    source.push(equipment);
+  }
+  const slots = source.flatMap(part => [part.slot, ...(part.extraSlots ?? [])]);
+  if (new Set(slots).size !== slots.length) return;
+  const [first, ...moreDonors] = source;
+  if (head && first) return { ...head, equipmentChange: { ...first, moreDonors } };
 }
 
 export type TalentStatisticsSelection = { readonly day?: number | "today" | "tomorrow"; readonly star?: 4 | 5 };

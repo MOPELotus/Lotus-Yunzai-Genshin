@@ -8,14 +8,16 @@ import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunza
 import { buildArtifactList } from "./artifact-list.ts";
 import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
-import { matchGenshinPanel, officialPanel, propertyLabels, readPanel, selectAvatar, text, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
+import { matchBareEquipment, matchEquipmentChain, matchGenshinPanel, object, officialPanel, propertyLabels, readPanel,
+  selectAvatar, text, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
 import { buildDailyMaterials, paginateDailyMaterials } from "./daily-materials.ts";
-import { buildEquipmentChange } from "./equipment-change.ts";
+import { buildEquipmentChange, resolvePanelWeapon } from "./equipment-change.ts";
+import { findRankCharacter } from "../rank-statistics/stats.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
 import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
-import { readPanelTheme } from "./theme.ts";
+import { readPanelTheme, type PanelTheme } from "./theme.ts";
 
 const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
 const previousDirectory = fileURLToPath(new URL("../../../data/PlayerData/gs/", import.meta.url));
@@ -99,7 +101,27 @@ export function createGenshinPanelQuery(
   const refreshes = new Set<string>();
 
   return async (message: string, context: GroupRankContext): Promise<Reply | undefined> => {
-    const command = matchGenshinPanel(message);
+    if (signal.aborted) return;
+    let command = matchGenshinPanel(message);
+    let preflight: PanelTheme | undefined;
+    if (!command) {
+      const candidate = matchEquipmentChain(message) ?? matchBareEquipment(message);
+      const target = candidate?.name && findRankCharacter(candidate.name);
+      const change = candidate?.equipmentChange;
+      if (candidate && target && change) {
+        if ("weaponName" in change) {
+          try {
+            preflight = await theme();
+            const weapon = change.weaponName === "专武" ? `${target.name}专武` : change.weaponName;
+            const type = text(object(preflight.characters[target.id])?.weapon);
+            const known = await resolvePanelWeapon(weapon, type, preflight);
+            if (known) command = { ...candidate, name: target.name, equipmentChange: { ...change, weaponName: known.canonical } };
+          } catch {}
+        } else if ([change, ...(change.moreDonors ?? [])].every(source => findRankCharacter(source.donor))) {
+          command = candidate;
+        }
+      }
+    }
     const enemy = command ? undefined : matchEnemyLevel(message);
     const selection = command ?? enemy;
     if (!selection || signal.aborted) return;
@@ -136,7 +158,7 @@ export function createGenshinPanelQuery(
       const { name, type, mode } = command;
       const observedAt = type === "detail" && source && mode === "profile" && groupRank?.allows(context) ? now() : undefined;
       const key = `${qq}:${uid}`;
-      const assets = await theme();
+      const assets = preflight ?? await theme();
       let snapshot: PanelSnapshot | undefined;
       let updated = false;
       if (type === "update") {
