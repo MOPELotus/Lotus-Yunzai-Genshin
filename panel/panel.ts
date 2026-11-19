@@ -5,8 +5,9 @@ import { fileURLToPath } from "node:url";
 import { ProfileError, type ProfileRequestContext, type createProfileStore } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
-import { panelPages, renderPanelDetail, renderPanelList } from "./card.ts";
+import { panelPages, renderDamageCard, renderPanelDetail, renderPanelList } from "./card.ts";
 import { matchGenshinPanel, officialPanel, readPanel, selectAvatar, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
+import { estimatePanelDamage } from "./damage.ts";
 import { readPanelTheme } from "./theme.ts";
 
 const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
@@ -50,6 +51,7 @@ async function oldPanel(root: string, uid: string, catalog: PanelCatalog): Promi
 type Renderers = {
   list(...args: Parameters<typeof renderPanelList>): Promise<{ readonly png: Uint8Array }>;
   detail(...args: Parameters<typeof renderPanelDetail>): Promise<{ readonly png: Uint8Array }>;
+  damage?(...args: Parameters<typeof renderDamageCard>): Promise<{ readonly png: Uint8Array }>;
 };
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Reply = string | Image | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] };
@@ -59,7 +61,7 @@ export function createGenshinPanelQuery(
   client: PanelClient, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
     archiveDirectory = Bun.env.LOTUS_GENSHIN_PANEL_DIR?.trim() || mainDirectory,
     legacyDirectory = Bun.env.LOTUS_GENSHIN_LEGACY_PANEL_DIR?.trim() || previousDirectory,
-    render = { list: renderPanelList, detail: renderPanelDetail },
+    render = { list: renderPanelList, detail: renderPanelDetail, damage: renderDamageCard },
     theme = readPanelTheme,
     now = Date.now,
   }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly render?: Renderers;
@@ -132,6 +134,23 @@ export function createGenshinPanelQuery(
       if (type === "detail") {
         const avatar = selectAvatar(snapshot, name!, assets);
         if (!avatar) return `此原神面板没有「${name}」，请使用 #面板${suffix} 查看列表。`;
+        if (mode === "damage") {
+          const estimate = await estimatePanelDamage(avatar, assets, command.damageRow);
+          await verify();
+          if ("message" in estimate) return estimate.message;
+          try {
+            const { png } = await (render.damage ?? renderDamageCard)(snapshot, avatar, assets, estimate);
+            await verify();
+            return { type: "image", file: png };
+          } catch (error) {
+            if (error instanceof ProfileError) throw error;
+            await verify();
+            return [`UID ${uid} · ${avatar.name} · 目标 ${estimate.enemyLevel} 级`, ...estimate.rows.map((entry, index) => {
+              const numbers = [entry.average !== undefined ? `期望 ${entry.average}` : "", entry.crit !== undefined ? `暴击 ${entry.crit}` : ""];
+              return `${index + 1}. ${entry.title} · ${entry.unavailable ? "数据不全" : numbers.filter(Boolean).join(" / ")}`;
+            })].join("\n");
+          }
+        }
         if (mode === "artifacts" && !Object.keys(avatar.artis).length) {
           return "未能获得圣遗物详情，请重新获取面板信息后查看。";
         }

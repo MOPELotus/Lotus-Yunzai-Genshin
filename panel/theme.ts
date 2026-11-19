@@ -10,6 +10,7 @@ const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 export type Picture = Awaited<ReturnType<typeof loadImage>>;
 export interface PanelTheme extends PanelCatalog {
+  readonly metadata?: (...parts: string[]) => Promise<Json>;
   readonly picture: (...parts: string[]) => Promise<Picture | undefined>;
 }
 
@@ -42,10 +43,14 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
       }
     }
   }
+  const safe = (parts: readonly string[]) => parts.every(part => part && part !== "." && part !== ".." && !/[\/\\\0]/u.test(part));
   return {
     characters, artifacts, artifactSets,
+    async metadata(...parts) {
+      return safe(parts) ? json(join(root, ...parts)) : {};
+    },
     async picture(...parts) {
-      if (parts.some(part => !part || part === "." || part === ".." || /[\/\\\0]/u.test(part))) return;
+      if (!safe(parts)) return;
       try {
         const file = join(root, ...parts);
         const info = await stat(file);

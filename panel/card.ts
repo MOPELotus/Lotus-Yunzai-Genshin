@@ -1,4 +1,5 @@
 import { renderPng } from "@lotus-yunzai/skia";
+import type { DamageEstimate } from "./damage.ts";
 import { scoreArtifacts } from "./artifact-score.ts";
 import {
   artifactProperties, object, propertyLabels, talentKeys, text, whole, type PanelAvatar, type PanelSnapshot,
@@ -374,6 +375,82 @@ export async function renderArtifactCard(snapshot: PanelSnapshot, avatar: PanelA
         label(ctx, (46.6 * weight.weight / 300).toFixed(1), columns[3]!, y, 12, blue, 117, "right");
       });
       label(ctx, "沙、杯、冠加入 25% 主词条裸分。按位置对齐至旧版 66 分基准。", 25, height - 48, 11, "#d5d5e8", 615);
+    }
+    footer(ctx, width, height);
+  }, mode);
+}
+
+
+const displayDamage = (value: string | number | undefined) =>
+  value === undefined ? "—" : typeof value === "number" ? Math.round(value).toLocaleString("zh-CN") : value;
+
+export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme,
+  model: Extract<DamageEstimate, { rows: unknown }>, mode: RenderMode = "auto") {
+  const element = elements[avatar.elem] ? avatar.elem : "hydro";
+  const [background, splash] = await Promise.all([
+    theme.picture("common", "bg", `bg-${element}.webp`),
+    await character(theme, avatar.name, "imgs", avatar.costume ? "splash2.webp" : "splash.webp") ??
+      await character(theme, avatar.name, "imgs", "splash.webp"),
+  ]);
+  const selected = model.rows[model.selected];
+  const buffs = [...new Set(selected?.buffs ?? [])];
+  const width = 650;
+  const rowsStart = 282;
+  const comparison = model.comparison;
+  const matrixStart = rowsStart + model.rows.length * 35 + 20;
+  const buffsStart = matrixStart + (comparison ? 86 + comparison.axes.length * 32 : 0);
+  const height = buffsStart + (buffs.length ? 67 + buffs.length * 23 : 47);
+
+  return canvas(width, height, ctx => {
+    frame(ctx, background, element, width, height);
+    art(ctx, splash, "contain", -4, 0, 380, 270);
+    label(ctx, avatar.name, 624, 55, 47, "#fff4e0", 308, "right");
+    label(ctx, `UID ${snapshot.uid} · Lv.${avatar.level} · ${avatar.cons}命`, 626, 84, 16, blue, 296, "right");
+    block(ctx, "#161b2cc9", 337, 101, 296, 116);
+    label(ctx, "伤害估算", 352, 130, 23, gold);
+    label(ctx, `目标 · ${model.enemyLevel} 级小宝 · 10% 基础抗性`, 352, 158, 14, "#e8eaf4", 273);
+    label(ctx, `旧规则 · ${model.createdBy}`, 352, 185, 13, "#e8eaf4", 270);
+    block(ctx, "#171c2ce5", 14, rowsStart - 51, 622, 52 + model.rows.length * 35);
+    label(ctx, "伤害计算 · 旧情景", 29, rowsStart - 26, 19, gold);
+    label(ctx, "期望", 505, rowsStart - 10, 12, "#e8eaf4", 95, "right");
+    label(ctx, "暴击", 617, rowsStart - 10, 12, "#e8eaf4", 95, "right");
+    model.rows.forEach((entry, index) => {
+      const y = rowsStart + index * 35;
+      const highlight = index === model.selected;
+      ctx.fillStyle = highlight ? "#53602d96" : index % 2 ? "#13172477" : "#31364666";
+      ctx.fillRect(19, y, 612, 34);
+      label(ctx, `${index + 1}. ${entry.title}`, 30, y + 23, 15, highlight ? gold : "#e8eaf4", 343);
+      if (entry.unavailable) label(ctx, "数据不全", 616, y + 23, 13, "#d6c8a9", 121, "right");
+      else {
+        label(ctx, displayDamage(entry.average), 505, y + 23, 15, blue, 108, "right");
+        label(ctx, displayDamage(entry.crit), 617, y + 23, 15, gold, 105, "right");
+      }
+    });
+    if (comparison) {
+      const { axes, cells } = comparison;
+      block(ctx, "#171c2ce5", 14, matrixStart, 622, 72 + axes.length * 32);
+      label(ctx, `词条伤害计算 · 第 ${model.selected + 1} 项`, 29, matrixStart + 27, 18, gold);
+      label(ctx, "减 / 加", 29, matrixStart + 55, 12, "#e8eaf4");
+      const column = 514 / axes.length;
+      axes.forEach((axis, index) => label(ctx, axis, 110 + (index + 0.5) * column, matrixStart + 55, 12, "#e8eaf4", column - 6, "center"));
+      cells.forEach((row, index) => {
+        const y = matrixStart + 64 + index * 32;
+        ctx.fillStyle = index % 2 ? "#13172477" : "#31364666";
+        ctx.fillRect(20, y, 610, 30);
+        label(ctx, axes[index]!, 29, y + 19, 11, "#e8eaf4", 76);
+        row.forEach(({ average, crit }, col) => {
+          const value = index === col ? "—" : average === undefined && crit === undefined ? "缺数据"
+            : [average, crit].filter(val => val !== undefined).map(displayDamage).join(" / ");
+          const color = typeof average === "number" && typeof selected?.average === "number"
+            ? average > selected.average ? "#a9dc92" : average < selected.average ? "#e7abaa" : "#e8eaf4" : "#e8eaf4";
+          label(ctx, value, 110 + (col + 0.5) * column, y + 19, 11, color, column - 7, "center");
+        });
+      });
+    }
+    if (buffs.length) {
+      block(ctx, "#171c2ce5", 14, buffsStart, 622, 42 + buffs.length * 23);
+      label(ctx, `第 ${model.selected + 1} 项 · 计算条件`, 29, buffsStart + 26, 17, gold);
+      buffs.forEach((value, index) => label(ctx, value, 29, buffsStart + 49 + index * 23, 13, "#e8eaf4", 589));
     }
     footer(ctx, width, height);
   }, mode);
