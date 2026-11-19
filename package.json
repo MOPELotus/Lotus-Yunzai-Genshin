@@ -1,0 +1,17 @@
+{
+  "name": "@lotus-yunzai/genshin",
+  "private": true,
+  "type": "module",
+  "lotusYunzai": {
+    "entry": "./index.ts",
+    "games": ["genshin"]
+  },
+  "dependencies": {
+    "@lotus-yunzai/account": "workspace:*",
+    "@lotus-yunzai/atlas": "workspace:*",
+    "@lotus-yunzai/gacha": "workspace:*",
+    "@lotus-yunzai/hoyo-client": "workspace:*",
+    "@lotus-yunzai/skia": "workspace:*",
+    "@lotus-yunzai/storage": "workspace:*"
+  }
+}
