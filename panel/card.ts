@@ -386,7 +386,8 @@ const displayDamage = (value: string | number | undefined) =>
   value === undefined ? "—" : typeof value === "number" ? Math.round(value).toLocaleString("zh-CN") : value;
 
 export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme,
-  model: Extract<DamageEstimate, { rows: unknown }>, mode: RenderMode = "auto") {
+  model: Extract<DamageEstimate, { rows: unknown }>, { mode = "auto", profileId = 1 }:
+    { readonly mode?: RenderMode; readonly profileId?: number } = {}) {
   const element = elements[avatar.elem] ? avatar.elem : "hydro";
   const [background, splash] = await Promise.all([
     theme.picture("common", "bg", `bg-${element}.webp`),
@@ -412,6 +413,7 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
     label(ctx, `目标 · ${model.enemyLevel} 级小宝 · 10% 基础抗性`, 352, 158, 14, "#e8eaf4", 273);
     label(ctx, model.ruleAuthors.length ? `规则作者 · ${model.ruleAuthors.join("、")}` : "固定版本计算规则",
       352, 185, 13, "#e8eaf4", 270);
+    label(ctx, `#敌人等级${model.enemyLevel}${profileId === 1 ? "" : ` 档案${profileId}`}`, 352, 204, 11, "#a4ddff", 270);
     block(ctx, "#171c2ce5", 14, rowsStart - 51, 622, 52 + model.rows.length * 35);
     label(ctx, "伤害计算 · 旧情景", 29, rowsStart - 26, 19, gold);
     label(ctx, "期望", 505, rowsStart - 10, 12, "#e8eaf4", 95, "right");

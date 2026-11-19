@@ -311,7 +311,8 @@ export async function readLegacyArtifactRuleProperties(avatar: PanelAvatar, them
   }
 }
 
-export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme, row?: number): Promise<DamageEstimate> {
+export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme, row?: number,
+  enemyLevel = genshinDamageEnemyLevel): Promise<DamageEstimate> {
   try {
     const { cons, rule, tables, gear, weapon, allBuffs, starting } = await panelInputs(avatar, theme);
     const talent = talents(avatar, tables.detail, cons);
@@ -334,7 +335,7 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     function calculate(formula: Formula, params: Json, inc = "", reduce = "") {
       const { ds, attr, msg } = calc(params, formula.talent, inc, reduce);
       if (!formula.dmg || (formula.check && !formula.check(ds))) return;
-      const hit = DmgCalc.getDmgFn({ ds, attr, level: avatar.level, enemyLv: genshinDamageEnemyLevel, showDetail: false, game: "gs" });
+      const hit = DmgCalc.getDmgFn({ ds, attr, level: avatar.level, enemyLv: enemyLevel, showDetail: false, game: "gs" });
       const result = object(formula.dmg(ds, hit));
       return { ds, msg, average: resultValue(result?.avg), crit: resultValue(result?.dmg) };
     }
@@ -385,7 +386,7 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     }
     const ruleAuthors = text(rule.createdBy).split("&").map(name => name.trim())
       .filter(name => name && name !== "喵喵");
-    return { rows: titles, selected, enemyLevel: genshinDamageEnemyLevel, ruleAuthors, comparison };
+    return { rows: titles, selected, enemyLevel, ruleAuthors, comparison };
   } catch (error) {
     if (error instanceof Unavailable) return { message: error.message };
     throw error;

@@ -9,6 +9,7 @@ import { buildArtifactList } from "./artifact-list.ts";
 import { panelPages, renderArtifactList, renderDamageCard, renderPanelDetail, renderPanelList } from "./card.ts";
 import { matchGenshinPanel, officialPanel, readPanel, selectAvatar, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage } from "./damage.ts";
+import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
 import { readPanelTheme } from "./theme.ts";
 
 const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
@@ -63,32 +64,34 @@ export function createGenshinPanelQuery(
   client: PanelClient, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
     archiveDirectory = Bun.env.LOTUS_GENSHIN_PANEL_DIR?.trim() || mainDirectory,
     legacyDirectory = Bun.env.LOTUS_GENSHIN_LEGACY_PANEL_DIR?.trim() || previousDirectory,
+    legacyPreferences = Bun.env.LOTUS_GENSHIN_PANEL_LEGACY_REDIS_URL?.trim(),
     render = { list: renderPanelList, detail: renderPanelDetail, damage: renderDamageCard, artifactList: renderArtifactList },
     theme = readPanelTheme,
     now = Date.now,
-  }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly render?: Renderers;
+  }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly legacyPreferences?: string; readonly render?: Renderers;
     readonly theme?: typeof readPanelTheme; readonly now?: () => number } = {},
 ) {
   const store = createRoleJsonArchive(archiveDirectory, lockFile, { subject: "原神面板", lockSuffix: "panel", maxBytes: limit, rejectNull: true });
+  const preferences = createDamagePreferences(join(archiveDirectory, "preferences"), lockFile, signal, legacyPreferences);
   const refreshes = new Set<string>();
 
   return async (message: string, context: { readonly user_id?: number }): Promise<Reply | undefined> => {
     const command = matchGenshinPanel(message);
-    if (!command || signal.aborted) return;
-    const { profileId, name, type, mode } = command;
+    const enemy = command ? undefined : matchEnemyLevel(message);
+    const selection = command ?? enemy;
+    if (!selection || signal.aborted) return;
+    const { profileId } = selection;
     const user = context.user_id;
     if (!user || !Number.isSafeInteger(user) || user < 1) return "请在有原神档案的 QQ 会话使用面板。";
     const qq = String(user);
     try {
       const source = await profiles.requestContext(qq, profileId, "gs").catch(error => {
-        if (type !== "update" && error instanceof ProfileError && error.code === "login-required") return undefined;
+        if (command?.type !== "update" && error instanceof ProfileError && error.code === "login-required") return undefined;
         throw error;
       });
       const role = source?.role ?? await profiles.savedRole(qq, profileId, "gs");
       const { uid } = role;
-      if (command.uid && command.uid !== uid) return "此 UID 与当前档案绑定的原神角色不一致。";
-      const key = `${qq}:${uid}`;
-      const assets = await theme();
+      if (command?.uid && command.uid !== uid) return "此 UID 与当前档案绑定的原神角色不一致。";
       let expected = source?.revision;
       async function verify() {
         signal.throwIfAborted();
@@ -100,6 +103,14 @@ export function createGenshinPanelQuery(
         }
       }
 
+      if (enemy) {
+        const level = await preferences.setLevel(qq, enemy.enemyLevel, verify);
+        return `敌人等级已经设置为${level}`;
+      }
+      if (!command) return;
+      const { name, type, mode } = command;
+      const key = `${qq}:${uid}`;
+      const assets = await theme();
       let snapshot: PanelSnapshot | undefined;
       let updated = false;
       if (type === "update") {
@@ -150,11 +161,11 @@ export function createGenshinPanelQuery(
         const avatar = selectAvatar(snapshot, name!, assets);
         if (!avatar) return `此原神面板没有「${name}」，请使用 #面板${suffix} 查看列表。`;
         if (mode === "damage") {
-          const estimate = await estimatePanelDamage(avatar, assets, command.damageRow);
+          const estimate = await estimatePanelDamage(avatar, assets, command.damageRow, await preferences.level(qq));
           await verify();
           if ("message" in estimate) return estimate.message;
           try {
-            const { png } = await (render.damage ?? renderDamageCard)(snapshot, avatar, assets, estimate);
+            const { png } = await (render.damage ?? renderDamageCard)(snapshot, avatar, assets, estimate, { profileId });
             await verify();
             return { type: "image", file: png };
           } catch (error) {
@@ -201,6 +212,7 @@ export function createGenshinPanelQuery(
         if (error.code === "role-missing") return `profile ${profileId} 没有同步原神 UID。`;
       }
       if (error instanceof GameRecordRequestError) return error.message;
+      if (error instanceof DamagePreferencesError) return error.message;
       if (error instanceof HoyoRequestError) {
         if (error.code === "profile-changed") return "原神面板档案已变化，请重新查询。";
         if (error.code === "refresh") return "原神面板 Cookie 未能续期，请确认当前档案登录状态。";
