@@ -104,7 +104,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const miniappUpdate = createGachaUpdater((qq, profileId) => sync.syncMiniapp(qq, profileId, { signal }));
   const importGacha = createGenshinGachaImport(profiles, history, signal);
   const publicPool = createGenshinPublicPoolQuery(signal);
-  const grow = createGenshinGrowQuery(profiles, lockFile, signal);
+  const grow = createGenshinGrowQuery(profiles, lockFile, signal, { client });
 
   async function exportHistory(qq: string, profileId: number, version: GenshinUigfExportOptions["version"], context: GachaContext) {
     if (!context.uploadFile) return "当前会话暂不支持发送抽卡文件。";

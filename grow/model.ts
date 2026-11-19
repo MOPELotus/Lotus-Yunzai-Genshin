@@ -34,18 +34,23 @@ export interface GrowthRequest {
   readonly numbers: readonly string[];
   readonly profileId: number;
   readonly explicitProfile: boolean;
+  readonly deductInventory?: true;
   readonly uid?: string;
 }
 
 export const growthHelp = ["养成计算格式", "#养成计算 刻晴 · 等级90、天赋10/10/10",
   "#养成计算 刻晴 天赋 10 9 10", "#养成计算 刻晴 等级89 天赋 10 9 10",
-  "#养成计算 雾切 80 · 从1级升至80级，未突破", "#养成计算 雾切 50-80+ · 从50级升至80级并突破"].join("\n");
+  "#养成计算 雾切 80 · 从1级升至80级，未突破", "#养成计算 雾切 50-80+ · 从50级升至80级并突破",
+  "登录后可在私聊扣除当前档案的背包，群聊需在指令中加上「扣除背包」。"].join("\n");
 
 export function matchGrowthCommand(message: string): GrowthRequest | "help" | undefined {
   const start = /^#(?:原神)?(?:养成|培养)计算/u.exec(message);
   if (!start) return;
   let body = message.slice(start[0].length).trim();
   if (body.length > 192) return "help";
+  const deduct = /(?:^|\s)扣除背包(?=\s|$)/u;
+  const deductInventory = deduct.test(body);
+  if (deductInventory) body = body.replace(deduct, "").trim();
   const profile = /\s+档案\s*([1-9]\d{0,2})$/u.exec(body);
   const profileId = Number(profile?.[1] ?? 1);
   if (profileId > MAX_PROFILE_ID) return "help";
@@ -73,7 +78,7 @@ export function matchGrowthCommand(message: string): GrowthRequest | "help" | un
   }
   if (!/^(?:\d{1,3}\+?(?:[\s,，/]+|$)|[\s,，/]+)*$/u.test(rest)) return "help";
   return { name, from, level, talent, numbers: rest.match(/\d+\+?/gu) ?? [], profileId,
-    explicitProfile: !!profile, uid: givenUid?.[1] };
+    explicitProfile: !!profile, ...(deductInventory && { deductInventory: true as const }), uid: givenUid?.[1] };
 }
 
 function validLevel(state: GrowthLevel | undefined, maximum: number, stages: number) {
@@ -81,6 +86,9 @@ function validLevel(state: GrowthLevel | undefined, maximum: number, stages: num
     Number.isInteger(state.promote) && state.promote >= getPromote(state.level) && state.promote <= stages &&
     (state.promote === getPromote(state.level) || promoteLvs[state.promote - 1] === state.level));
 }
+
+// The original calculator encodes an ascended milestone as the next level.
+export const officialGrowthLevel = (state: GrowthLevel) => Math.min(90, state.level + (state.promote > getPromote(state.level) ? 1 : 0));
 
 export function characterTarget(request: GrowthRequest) {
   const numbers = [...request.numbers];

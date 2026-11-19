@@ -1,11 +1,13 @@
 import { renderPng } from "@lotus-yunzai/skia";
 import type { PanelTheme, Picture } from "../panel/theme.ts";
+import type { GrowthShortfall } from "./inventory.ts";
 import type { GrowthResult, GrowthStar } from "./model.ts";
 
 type Context = Parameters<Parameters<typeof renderPng>[2]>[0];
 type Mode = Parameters<typeof renderPng>[3];
 export type GrowthCard = GrowthResult & { readonly title: string; readonly star: GrowthStar; readonly icon: string;
-  readonly elem?: string; readonly isWeapon: boolean; readonly uid?: string; readonly notice: readonly string[] };
+  readonly elem?: string; readonly isWeapon: boolean; readonly uid?: string; readonly notice: readonly string[];
+  readonly shortfall?: GrowthShortfall; readonly inventoryMora?: number };
 
 const width = 600;
 const columns = 6;
@@ -57,7 +59,10 @@ function block(ctx: Context, texture: Picture | undefined, y: number, height: nu
 export async function renderGrowthCard(model: GrowthCard, theme: PanelTheme, mode: Mode = "auto") {
   const targetRows = Math.ceil(model.rows.length / 3);
   const targetHeight = 75 + targetRows * 25;
-  const groupHeights = model.groups.map(group => group.items.length ? 53 + Math.ceil(group.items.length / columns) * 102 : 70);
+  const groups = model.shortfall ? [{ title: "还需材料", desc: model.shortfall.complete ? "已扣除背包内材料（含可合成材料）" : "已核对的背包缺口",
+    items: model.shortfall.rows,
+    empty: model.shortfall.complete ? "背包材料已足够" : "官方缺口资料不完整" }, ...model.groups] : model.groups;
+  const groupHeights = groups.map(group => group.items.length ? 53 + Math.ceil(group.items.length / columns) * 102 : 70);
   const noteHeight = Math.max(1, model.notice.length) * 21;
   const height = 112 + targetHeight + groupHeights.reduce((sum, size) => sum + size + 9, 0) + noteHeight + 52;
   const local = (path: string) => theme.picture(...path.split("/"));
@@ -65,7 +70,7 @@ export async function renderGrowthCard(model: GrowthCard, theme: PanelTheme, mod
     model.elem ? theme.picture("common", "bg", `bg-${model.elem}.webp`) : undefined,
     theme.picture("common", "cont", "card-bg.png"), local(model.icon),
     Promise.all([1, 2, 3, 4, 5].map(star => theme.picture("common", "item", `bg${star}.png`))),
-    Promise.all(model.groups.map(group => Promise.all(group.items.map(item => local(item.icon))))),
+    Promise.all(groups.map(group => Promise.all(group.items.map(item => item.icon ? local(item.icon) : undefined)))),
   ]);
   const starColors = ["#535854", "#34644d", "#3b5677", "#584478", "#996e41"];
   return renderPng(Math.round(width * scale), Math.round(height * scale), ctx => {
@@ -95,21 +100,21 @@ export async function renderGrowthCard(model: GrowthCard, theme: PanelTheme, mod
     const moraY = y + targetHeight - 12;
     ctx.fillStyle = "#ffffff20";
     ctx.fillRect(24, moraY - 19, 552, 1);
-    label(ctx, "摩拉合计", 25, moraY, 14, gold);
-    label(ctx, textNumber(model.moraTotal), 574, moraY, 16, "#ffcc66", 144, "right");
+    label(ctx, model.inventoryMora === undefined ? "摩拉合计" : "摩拉合计 · 已扣除背包", 25, moraY, 14, gold);
+    label(ctx, textNumber(model.inventoryMora ?? model.moraTotal), 574, moraY, 16, "#ffcc66", 144, "right");
     y += targetHeight + 9;
-    model.groups.forEach((group, index) => {
+    groups.forEach((group, index) => {
       block(ctx, texture, y, groupHeights[index]!, group.title, group.desc);
-      if (!group.items.length) label(ctx, "已达成目标，无需额外材料", width / 2, y + 59, 14, gold, 440, "center");
+      if (!group.items.length) label(ctx, "empty" in group ? group.empty : "已达成目标，无需额外材料", width / 2, y + 59, 14, gold, 440, "center");
       group.items.forEach((item, slot) => {
         const x = 24 + slot % columns * 84;
         const top = y + 45 + Math.floor(slot / columns) * 102;
         clipped(ctx, x, top, 76, 94, 6);
         ctx.fillStyle = "#e7e5d9";
         ctx.fillRect(x, top, 76, 94);
-        ctx.fillStyle = starColors[item.star - 1]!;
+        ctx.fillStyle = item.star === undefined ? "#53585c" : starColors[item.star - 1]!;
         ctx.fillRect(x, top, 76, 76);
-        picture(ctx, stars[item.star - 1], x, top, 76, 76, true);
+        if (item.star !== undefined) picture(ctx, stars[item.star - 1], x, top, 76, 76, true);
         picture(ctx, artwork[index]?.[slot], x + 3, top + 3, 70, 70);
         const count = textNumber(item.num);
         ctx.fillStyle = "#000a";
