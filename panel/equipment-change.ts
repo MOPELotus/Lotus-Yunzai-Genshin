@@ -119,9 +119,12 @@ export function buildConstellationChange(avatar: PanelAvatar, constellations: nu
     equipped: `${avatar.cons} 命 → ${constellations} 命` };
 }
 
-export function buildTalentChange(avatar: PanelAvatar, levels: DisplayedTalentLevels, theme: PanelTheme): TemporaryChange {
+export function buildTalentChange(avatar: PanelAvatar, levels: DisplayedTalentLevels, theme: PanelTheme, constellation?: number): TemporaryChange {
   if (transient.has(avatar._source) || avatar.cons === undefined) {
     return { message: "天赋试算需要本档案已保存的实际角色面板及命座。" };
   }
-  return { avatar: temporaryAvatar(avatar, object(theme.characters[avatar.id])), equipped: `显示等级 ${levels.join(" / ")}` };
+  const projected = temporaryAvatar(avatar, object(theme.characters[avatar.id]));
+  const talent = `显示等级 ${levels.join(" / ")}`;
+  return constellation === undefined ? { avatar: projected, equipped: talent } :
+    { avatar: { ...projected, cons: constellation }, equipped: `${avatar.cons} 命 → ${constellation} 命、${talent}` };
 }

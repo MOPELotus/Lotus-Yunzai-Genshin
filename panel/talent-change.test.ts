@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ProfileRequestContext } from "@lotus-yunzai/account";
 import { buildTalentChange } from "./equipment-change.ts";
-import { matchTalentChange, type PanelAvatar } from "./model.ts";
+import { matchConstellationTalent, matchTalentChange, type PanelAvatar } from "./model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
@@ -39,12 +39,25 @@ test("按旧 setTalent(level) 使用显示等级，命座与常驻被动只回�
   expect(panelTalentLevels(projection.avatar, meta, meta, displayed)).toEqual([
     { level: 15, original: 15 }, { level: 1, original: -3 }, { level: 13, original: 10 },
   ]);
-  expect(panelTalentLevels({ ...projection.avatar, cons: 0 }, meta, meta, displayed)).toEqual([
+  const zero = buildTalentChange(skirk, displayed, theme, 0);
+  if (!("avatar" in zero)) throw Error(zero.message);
+  expect(zero).toMatchObject({ avatar: { cons: 0, weapon: skirk.weapon }, equipped: "6 命 → 0 命、显示等级 15 / 1 / 13" });
+  expect(panelTalentLevels(zero.avatar, meta, meta, displayed)).toEqual([
     { level: 15, original: 15 }, { level: 1, original: 0 }, { level: 13, original: 13 },
   ]);
   expect(JSON.stringify(skirk)).toBe(original);
   expect(buildTalentChange({ ...skirk, cons: undefined }, displayed, theme)).toHaveProperty("message");
   expect(buildTalentChange({ ...skirk, _source: "share" }, displayed, theme)).toHaveProperty("message");
+});
+
+test("旧命座和天赋换段可换序，空段、重复和其他操作整条拒绝", () => {
+  const first = matchConstellationTalent(`#UID:${uid}芙芙伤害2换0命换天赋91312 档案2`);
+  expect(first).toMatchObject({ name: "芙芙", uid, constellationChange: 0, talentChange: [9, 13, 12], damageRow: 2, profileId: 2 });
+  expect(matchConstellationTalent(`#UID:${uid}芙芙伤害2换天赋91312换0命 档案2`)).toEqual(first);
+  for (const message of ["#芙芙换天赋91312换天赋999", "#芙芙换0命换满命", "#芙芙换0命换换天赋91312",
+    "#芙芙换0命换天赋91312换绫华花", "#芙芙换天赋0 13 12换满命", "#星铁芙芙换0命换行迹999"]) {
+    expect(matchConstellationTalent(message)).toBeUndefined();
+  }
 });
 
 test("天赋试算用当前本人档案，换绑时丢弃已渲染的卡片且不写榜或存档", async () => {
@@ -65,15 +78,16 @@ test("天赋试算用当前本人档案，换绑时丢弃已渲染的卡片且�
       groupRank: { allows() { return true; }, async observe() { records++; } },
       render: { async list() { throw Error("unexpected list"); }, async detail(_snapshot, avatar, _theme, options) {
         renders++;
-        expect(avatar.cons).toBe(skirk.cons);
+        expect(avatar.cons).toBe(0);
         expect(options?.change?.displayedTalent).toEqual([15, 1, 13]);
+        expect(options?.change?.equipped).toBe("6 命 → 0 命、显示等级 15 / 1 / 13");
         revision = "after";
         return { png: new Uint8Array([1]) };
       } },
     });
-    expect(await query("#未知角色换天赋15 1 13", { user_id: 42 })).toBeUndefined();
-    expect(await query("#100999999丝柯克换天赋15 1 13 档案2", { user_id: 42 })).toContain("当前档案绑定");
-    expect(await query("#丝柯克换天赋15 1 13 档案2", { user_id: 42, group_id: 77 })).toContain("档案已变化");
+    expect(await query("#未知角色换0命换天赋15 1 13", { user_id: 42 })).toBeUndefined();
+    expect(await query("#100999999丝柯克换0命换天赋15 1 13 档案2", { user_id: 42 })).toContain("当前档案绑定");
+    expect(await query("#丝柯克换天赋15 1 13换0命 档案2", { user_id: 42, group_id: 77 })).toContain("档案已变化");
     expect([renders, records]).toEqual([1, 0]);
     await expect(stat(archiveDirectory)).rejects.toMatchObject({ code: "ENOENT" });
     expect(await readFile(file, "utf8")).toBe(original);

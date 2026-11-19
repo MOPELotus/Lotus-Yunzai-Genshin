@@ -191,6 +191,18 @@ export function matchTalentChange(message: string): PanelCommand | undefined {
     talentChange: [Number(levels[1]), Number(levels[2]), Number(levels[3])] };
 }
 
+export function matchConstellationTalent(message: string): PanelCommand | undefined {
+  if (!/换.*换/u.test(message)) return;
+  const profile = /\s+档案\s*[1-9]\d{0,2}$/u.exec(message);
+  const [target, first, second, extra] = (profile ? message.slice(0, profile.index) : message).split("换");
+  if (!target || !first || !second || extra !== undefined) return;
+  const suffix = profile?.[0] ?? "";
+  const commands = [`${target}换${first}${suffix}`, `${target}换${second}${suffix}`];
+  const constellation = commands.map(matchConstellationChange).find(command => command !== undefined);
+  const talent = commands.map(matchTalentChange).find(command => command !== undefined);
+  if (constellation && talent) return { ...constellation, talentChange: talent.talentChange };
+}
+
 function matchTemporaryEquipment(message: string): PanelCommand | undefined {
   if (/星铁|绝区零|崩坏|换.*换/u.test(message)) return;
   const named = matchNamedEquipment(message);
