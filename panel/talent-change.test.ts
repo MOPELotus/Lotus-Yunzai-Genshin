@@ -89,11 +89,28 @@ test("天赋与单源圣遗物可调换顺序，跨档、缺件和混入武器�
   expect(JSON.stringify(snapshot)).toBe(previous);
 });
 
+test("三项可任意换序，各类型恰好一段且保留显式零命", () => {
+  const cons = "0命", talent = "天赋91312", relics = `${uid}绫华杯子+头`;
+  const permutations = [[cons, talent, relics], [cons, relics, talent], [talent, cons, relics],
+    [talent, relics, cons], [relics, cons, talent], [relics, talent, cons]];
+  for (const parts of permutations) {
+    expect(matchTalentArtifacts(`#UID:${uid}芙芙伤害2换${parts.join("换")} 档案2`)).toMatchObject({
+      name: "芙芙", uid, profileId: 2, damageRow: 2, constellationChange: 0, talentChange: [9, 13, 12],
+      equipmentChange: { donor: "绫华", donorUid: uid, slot: "4", extraSlots: ["5"] },
+    });
+  }
+  for (const extra of ["满命", "天赋999", "胡桃武器", ""]) {
+    expect(matchTalentArtifacts(`#芙芙换0命换天赋91312换${extra}`)).toBeUndefined();
+  }
+  expect(matchTalentArtifacts("#芙芙换0命换天赋91312换绫华杯换胡桃花")).toBeUndefined();
+  expect(matchTalentArtifacts("#芙芙换0命换天赋91312换绫华杯+武器")).toBeUndefined();
+});
+
 test("天赋试算用当前本人档案，换绑时丢弃已渲染的卡片且不写榜或存档", async () => {
   const legacyDirectory = await mkdtemp(join(tmpdir(), "lotus-genshin-talent-"));
   const archiveDirectory = join(legacyDirectory, "archive");
   const file = join(legacyDirectory, uid + ".json");
-  const original = JSON.stringify({ uid, avatars: { [skirk.id]: skirk } });
+  const original = JSON.stringify({ uid, avatars: { [skirk.id]: skirk, [ayaka.id]: ayaka } });
   await writeFile(file, original);
   let revision = "before", renders = 0, records = 0;
   const role = { uid, region: "cn_gf01", nickname: "", gameBiz: "hk4e_cn", chosen: true };
@@ -109,14 +126,16 @@ test("天赋试算用当前本人档案，换绑时丢弃已渲染的卡片且�
         renders++;
         expect(avatar.cons).toBe(0);
         expect(options?.change?.displayedTalent).toEqual([15, 1, 13]);
-        expect(options?.change?.equipped).toBe("6 命 → 0 命、显示等级 15 / 1 / 13");
+        expect(avatar.artis[4]?.name).toBe(cup.name);
+        expect(options?.change?.equipped).toBe("6 命 → 0 命、显示等级 15 / 1 / 13、遍结寒霜的傲骨");
         revision = "after";
         return { png: new Uint8Array([1]) };
       } },
     });
     expect(await query("#未知角色换0命换天赋15 1 13", { user_id: 42 })).toBeUndefined();
     expect(await query("#100999999丝柯克换0命换天赋15 1 13 档案2", { user_id: 42 })).toContain("当前档案绑定");
-    expect(await query("#丝柯克换天赋15 1 13换0命 档案2", { user_id: 42, group_id: 77 })).toContain("档案已变化");
+    expect(await query("#丝柯克换天赋15 1 13换0命换100999999绫华杯 档案2", { user_id: 42 })).toContain("所选档案");
+    expect(await query("#丝柯克换天赋15 1 13换0命换绫华杯 档案2", { user_id: 42, group_id: 77 })).toContain("档案已变化");
     expect([renders, records]).toEqual([1, 0]);
     await expect(stat(archiveDirectory)).rejects.toMatchObject({ code: "ENOENT" });
     expect(await readFile(file, "utf8")).toBe(original);

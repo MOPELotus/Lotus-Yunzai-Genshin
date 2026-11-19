@@ -191,17 +191,17 @@ export function matchTalentChange(message: string): PanelCommand | undefined {
     talentChange: [Number(levels[1]), Number(levels[2]), Number(levels[3])] };
 }
 
-function splitTwoChanges(message: string) {
+function splitChanges(message: string, maxParts: 2 | 3) {
   if (!/换.*换/u.test(message)) return;
   const profile = /\s+档案\s*[1-9]\d{0,2}$/u.exec(message);
-  const [target, first, second, extra] = (profile ? message.slice(0, profile.index) : message).split("换");
-  if (!target || !first || !second || extra !== undefined) return;
+  const [target, ...parts] = (profile ? message.slice(0, profile.index) : message).split("换");
+  if (!target || parts.length < 2 || parts.length > maxParts || parts.some(part => !part)) return;
   const suffix = profile?.[0] ?? "";
-  return [`${target}换${first}${suffix}`, `${target}换${second}${suffix}`];
+  return parts.map(part => `${target}换${part}${suffix}`);
 }
 
 export function matchConstellationTalent(message: string): PanelCommand | undefined {
-  const commands = splitTwoChanges(message);
+  const commands = splitChanges(message, 2);
   if (!commands) return;
   const constellation = commands.map(matchConstellationChange).find(command => command !== undefined);
   const talent = commands.map(matchTalentChange).find(command => command !== undefined);
@@ -230,13 +230,19 @@ function matchTemporaryEquipment(message: string): PanelCommand | undefined {
 }
 
 export function matchTalentArtifacts(message: string): PanelCommand | undefined {
-  const commands = splitTwoChanges(message);
+  const commands = splitChanges(message, 3);
   if (!commands) return;
   const talent = commands.map(matchTalentChange).find(command => command !== undefined);
   if (!talent) return;
+  const constellationChange = commands.length === 3
+    ? commands.map(matchConstellationChange).find(command => command !== undefined)?.constellationChange
+    : undefined;
+  if (commands.length === 3 && constellationChange === undefined) return;
   const equipmentChange = commands.map(matchTemporaryEquipment).find(command => command !== undefined)?.equipmentChange;
   if (equipmentChange && !("weaponName" in equipmentChange) && equipmentChange.slot !== "weapon" &&
-    !equipmentChange.extraSlots?.includes("weapon")) return { ...talent, equipmentChange };
+    !equipmentChange.extraSlots?.includes("weapon")) {
+    return { ...talent, equipmentChange, ...(constellationChange !== undefined && { constellationChange }) };
+  }
 }
 
 export function matchEquipmentChain(message: string): PanelCommand | undefined {
