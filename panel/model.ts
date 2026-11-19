@@ -191,13 +191,18 @@ export function matchTalentChange(message: string): PanelCommand | undefined {
     talentChange: [Number(levels[1]), Number(levels[2]), Number(levels[3])] };
 }
 
-export function matchConstellationTalent(message: string): PanelCommand | undefined {
+function splitTwoChanges(message: string) {
   if (!/换.*换/u.test(message)) return;
   const profile = /\s+档案\s*[1-9]\d{0,2}$/u.exec(message);
   const [target, first, second, extra] = (profile ? message.slice(0, profile.index) : message).split("换");
   if (!target || !first || !second || extra !== undefined) return;
   const suffix = profile?.[0] ?? "";
-  const commands = [`${target}换${first}${suffix}`, `${target}换${second}${suffix}`];
+  return [`${target}换${first}${suffix}`, `${target}换${second}${suffix}`];
+}
+
+export function matchConstellationTalent(message: string): PanelCommand | undefined {
+  const commands = splitTwoChanges(message);
+  if (!commands) return;
   const constellation = commands.map(matchConstellationChange).find(command => command !== undefined);
   const talent = commands.map(matchTalentChange).find(command => command !== undefined);
   if (constellation && talent) return { ...constellation, talentChange: talent.talentChange };
@@ -222,6 +227,16 @@ function matchTemporaryEquipment(message: string): PanelCommand | undefined {
     equipmentChange: { donor: donor.trim(), donorUid: donorLeadingUid ?? donorTrailingUid, slot,
       ...(extraSlots.length > 0 && { extraSlots }) },
   };
+}
+
+export function matchTalentArtifacts(message: string): PanelCommand | undefined {
+  const commands = splitTwoChanges(message);
+  if (!commands) return;
+  const talent = commands.map(matchTalentChange).find(command => command !== undefined);
+  if (!talent) return;
+  const equipmentChange = commands.map(matchTemporaryEquipment).find(command => command !== undefined)?.equipmentChange;
+  if (equipmentChange && !("weaponName" in equipmentChange) && equipmentChange.slot !== "weapon" &&
+    !equipmentChange.extraSlots?.includes("weapon")) return { ...talent, equipmentChange };
 }
 
 export function matchEquipmentChain(message: string): PanelCommand | undefined {

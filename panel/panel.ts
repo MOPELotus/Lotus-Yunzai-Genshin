@@ -9,7 +9,7 @@ import { buildArtifactList } from "./artifact-list.ts";
 import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
 import { matchBareEquipment, matchConstellationChange, matchConstellationEquipment, matchEquipmentChain, matchGenshinPanel, object, officialPanel, propertyLabels, readPanel,
-  matchConstellationTalent, matchTalentChange, selectAvatar, text, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
+  matchConstellationTalent, matchTalentArtifacts, matchTalentChange, selectAvatar, text, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
 import { buildDailyMaterials, paginateDailyMaterials } from "./daily-materials.ts";
@@ -106,7 +106,7 @@ export function createGenshinPanelQuery(
     let preflight: PanelTheme | undefined;
     if (!command) {
       const candidate = matchConstellationChange(message) ?? matchTalentChange(message) ?? matchConstellationTalent(message) ??
-        matchConstellationEquipment(message) ?? matchEquipmentChain(message) ?? matchBareEquipment(message);
+        matchConstellationEquipment(message) ?? matchTalentArtifacts(message) ?? matchEquipmentChain(message) ?? matchBareEquipment(message);
       const target = candidate?.name && findRankCharacter(candidate.name);
       const change = candidate?.equipmentChange;
       if (candidate && target && !change && (candidate.constellationChange !== undefined || candidate.talentChange)) {
@@ -273,9 +273,10 @@ export function createGenshinPanelQuery(
         if (!original) return `此原神面板没有「${name}」，请使用 #面板${suffix} 查看列表。`;
         const constellation = command.constellationChange;
         const displayedTalent = command.talentChange;
-        const replacement = displayedTalent ? buildTalentChange(original, displayedTalent, assets, constellation) : command.equipmentChange
-          ? await buildEquipmentChange(snapshot, original, command.equipmentChange, assets, constellation)
-          : constellation !== undefined && buildConstellationChange(original, constellation, assets);
+        const replacement = command.equipmentChange
+          ? await buildEquipmentChange(snapshot, original, command.equipmentChange, assets, { constellation, displayedTalent })
+          : displayedTalent ? buildTalentChange(original, displayedTalent, assets, constellation)
+            : constellation !== undefined && buildConstellationChange(original, constellation, assets);
         if (!replacement) return;
         await verify();
         if ("message" in replacement) return replacement.message;

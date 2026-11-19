@@ -55,12 +55,13 @@ async function namedWeapon(avatar: PanelAvatar, type: string, input: Extract<Equ
 }
 
 export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: PanelAvatar, change: EquipmentChangeSelection,
-  theme: PanelTheme, constellation?: number): Promise<TemporaryChange> {
+  theme: PanelTheme, { constellation, displayedTalent }: { constellation?: number; displayedTalent?: DisplayedTalentLevels } = {}): Promise<TemporaryChange> {
   if (transient.has(avatar._source)) return { message: "临时换装需要本人已保存的原神角色面板。" };
   const meta = object(theme.characters[avatar.id]);
-  const constellationChange = constellation === undefined ? undefined : buildConstellationChange(avatar, constellation, theme);
-  if (constellationChange && "message" in constellationChange) return constellationChange;
-  const replacement = constellationChange?.avatar ?? temporaryAvatar(avatar, meta);
+  const characterChange = displayedTalent ? buildTalentChange(avatar, displayedTalent, theme, constellation) :
+    constellation === undefined ? undefined : buildConstellationChange(avatar, constellation, theme);
+  if (characterChange && "message" in characterChange) return characterChange;
+  const replacement = characterChange?.avatar ?? temporaryAvatar(avatar, meta);
   if ("weaponName" in change) {
     const weapon = await namedWeapon(avatar, text(meta?.weapon), change, theme);
     if (weapon && "message" in weapon) return { message: weapon.message };
@@ -99,7 +100,7 @@ export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: Pane
   }
   const artis = parts.length ? { ...avatar.artis, ...Object.fromEntries(parts.map(([slot, piece]) => [slot, structuredClone(piece)])) }
     : avatar.artis;
-  const equipped = constellationChange ? [constellationChange.equipped] : [];
+  const equipped = characterChange ? [characterChange.equipped] : [];
   if (weaponLabel) equipped.push(weaponLabel);
   equipped.push(...parts.map(([, piece]) => piece.name));
   return { avatar: { ...replacement, weapon, artis }, equipped: equipped.join("、") };
