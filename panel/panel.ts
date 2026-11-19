@@ -132,6 +132,9 @@ export function createGenshinPanelQuery(
       if (type === "detail") {
         const avatar = selectAvatar(snapshot, name!, assets);
         if (!avatar) return `此原神面板没有「${name}」，请使用 #面板${suffix} 查看列表。`;
+        if (mode === "artifacts" && !Object.keys(avatar.artis).length) {
+          return "未能获得圣遗物详情，请重新获取面板信息后查看。";
+        }
         let png: Uint8Array | undefined;
         try { ({ png } = await render.detail(snapshot, avatar, assets, { pane: mode })); } catch {}
         await verify();

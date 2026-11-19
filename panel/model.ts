@@ -49,13 +49,14 @@ interface PanelProperty {
   readonly base?: string;
   readonly plus?: string;
 }
-interface PanelArtifact {
+export interface PanelArtifact {
   readonly name: string;
   readonly set?: string;
   readonly level: number;
   readonly star: number;
   readonly mainId?: number;
   readonly attrIds: readonly string[];
+  readonly scoreReady?: boolean;
   readonly properties?: readonly PanelProperty[];
 }
 interface PanelWeapon {
@@ -182,12 +183,16 @@ function officialArtifact(row: Json, catalog: PanelCatalog) {
     ...(key && mainValue ? [{ key, value: mainValue }] : []),
     ...subs.flatMap(row => property(row, false) ?? []),
   ];
-  const attrIds = subs.flatMap(row => {
+  const rolls = subs.map(row => {
     const prop = property(row, false);
     const times = whole(row.times, 5);
     return prop && times !== undefined ? closestRolls(prop.key, prop.value, times + 1, star) : [];
   });
-  return [String(slot), { name, set, level: whole(row.level, 20) ?? 0, star, mainId, attrIds, properties }] as const;
+  const attrIds = rolls.flat();
+  const level = whole(row.level, 20);
+  const scoreReady = level !== undefined && whole(row.rarity, 5) === star && !!mainId &&
+    Array.isArray(row.sub_property_list) && row.sub_property_list.length === subs.length && rolls.every(ids => ids.length > 0);
+  return [String(slot), { name, set, level: level ?? 0, star, mainId, attrIds, scoreReady, properties }] as const;
 }
 
 function talent(row: Json | undefined) {
@@ -272,8 +277,12 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
       const item = object(entry);
       const title = text(item?.name);
       if (!title || !/^[1-5]$/u.test(slot)) continue;
+      const itemLevel = whole(item?.level, 20);
+      const itemStar = whole(item?.star, 5);
       artis[slot] = {
-        name: title, level: whole(item?.level, 20) ?? 0, star: whole(item?.star, 5) || 5,
+        name: title, level: itemLevel ?? 0, star: itemStar || 5,
+        scoreReady: item?.scoreReady !== false && itemLevel !== undefined && !!itemStar &&
+          Array.isArray(item?.attrIds) && item.attrIds.length <= 12,
         set: catalog.artifactSets.get(title) || text(item?.set),
         mainId: whole(item?.mainId, 99_999),
         attrIds: Array.isArray(item?.attrIds) ? item.attrIds.slice(0, 12).map((id: unknown) => String(whole(id, 999_999) ?? "")) : [],
@@ -291,21 +300,28 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
   return { uid, _profile: whole(root?._profile, Number.MAX_SAFE_INTEGER), avatars };
 }
 
-export function artifactProperties(item: PanelArtifact): readonly PanelProperty[] {
-  if (item.properties?.length) return item.properties;
+export function artifactStatRecord(item: PanelArtifact) {
+  const key = mainKeys[String(item.mainId)];
+  const rarity = [0, 0.21, 0.36, 0.6, 0.9, 1][item.star];
+  const multiplier = key && (multipliers[key] ?? multipliers.dmg);
+  const main = key && rarity && multiplier ? { key, value: basicNum * multiplier * (1.2 + 0.34 * item.level) *
+    (fixedKeys.has(key) && key !== "mastery" ? 2 : 1) * rarity } : undefined;
   const values = new Map<string, number>();
-  const main = mainKeys[String(item.mainId)];
-  const rarities = [0, 0.21, 0.36, 0.6, 0.9, 1];
-  if (main) {
-    const multiplier = multipliers[main] ?? multipliers.dmg!;
-    const value = basicNum * multiplier * (1.2 + 0.34 * item.level) *
-      (fixedKeys.has(main) && main !== "mastery" ? 2 : 1) * rarities[item.star]!;
-    values.set(main, value);
-  }
+  let unrecognized = false;
   for (const id of item.attrIds) {
     const row = rollTables[id];
-    if (row) values.set(row.key, (values.get(row.key) ?? 0) + row.value * (fixedKeys.has(row.key) ? 1 : 100));
+    if (!row) { unrecognized = true; continue; }
+    values.set(row.key, (values.get(row.key) ?? 0) + row.value * (fixedKeys.has(row.key) ? 1 : 100));
   }
+  return { main, subs: [...values].map(([key, value]) => ({ key, value })), unrecognized };
+}
+
+export function artifactProperties(item: PanelArtifact): readonly PanelProperty[] {
+  if (item.properties?.length) return item.properties;
+  const { main, subs } = artifactStatRecord(item);
+  const values = new Map<string, number>();
+  if (main) values.set(main.key, main.value);
+  for (const { key, value } of subs) values.set(key, (values.get(key) ?? 0) + value);
   return [...values.entries()].map(([key, value]) => ({ key, value: `${value.toFixed(fixedKeys.has(key) ? 0 : 1)}${fixedKeys.has(key) ? "" : "%"}` }));
 }
 
