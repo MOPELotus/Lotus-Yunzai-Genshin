@@ -5,7 +5,10 @@ import { estimatePanelDamage } from "./damage.ts";
 import { object, text, whole, type PanelAvatar } from "./model.ts";
 import type { PanelTheme } from "./theme.ts";
 
-export type RankMode = "damage" | "artifacts";
+export type RankMode = "damage" | "artifacts" | "crit" | "valid";
+export const rankModeNames: Readonly<Record<RankMode, string>> = {
+  damage: "伤害", artifacts: "圣遗物评分", crit: "双暴副词条", valid: "加权有效词条",
+};
 export interface RankAvatar {
   readonly id: number;
   readonly name: string;
@@ -16,13 +19,32 @@ export interface RankAvatar {
   readonly sets: readonly string[];
   readonly artifacts?: { readonly score: number; readonly grade?: string };
   readonly damage?: { readonly score: number; readonly title: string; readonly percent?: true };
+  readonly crit?: { readonly score: number };
+  readonly valid?: { readonly score: number };
+}
+
+const rankMetric = "(?:圣遗物)?(?:双[暴爆](?:副?词条)?|加权(?:有效)?词条|有效词条|词条|评分)|圣遗物";
+const metricPrefix = new RegExp(`^(?:${rankMetric})`, "u");
+const metricSuffix = new RegExp(`(?:${rankMetric})$`, "u");
+function rankModeOf(metric?: string): RankMode {
+  if (!metric) return "damage";
+  if (/双[暴爆]/u.test(metric)) return "crit";
+  if (metric.includes("词条")) return "valid";
+  return "artifacts";
 }
 
 export function matchGroupPanelRank(message: string) {
-  const match = /^#(?:原神)?(?:群内?)?([^#]{1,24}?)(圣遗物(?:评分)?|评分)?(?:排名|排行)榜?$/u.exec(message);
+  const match = /^#(?:原神)?(?:群内?)?([^#]{1,36}?)(?:排名|排行)榜?$/u.exec(message);
   if (!match?.[1]) return;
-  const character = findRankCharacter(match[1].trim());
-  if (character) return { character, mode: match[2] ? "artifacts" as const : "damage" as const };
+  const body = match[1].trim();
+  const plain = findRankCharacter(body);
+  if (plain) return { character: plain, mode: "damage" as const };
+  const suffix = metricSuffix.exec(body)?.[0];
+  const root = suffix ? body.slice(0, -suffix.length).trim() : body;
+  const prefix = metricPrefix.exec(root)?.[0];
+  if ((!suffix && !prefix) || (suffix && prefix && rankModeOf(suffix) !== rankModeOf(prefix))) return;
+  const character = findRankCharacter(prefix ? root.slice(prefix.length).trim() : root);
+  if (character) return { character, mode: rankModeOf(suffix ?? prefix) };
 }
 
 export const rankId = (value: unknown): value is number =>
@@ -33,6 +55,11 @@ export const rankUid = (value: unknown): value is string =>
 function measured(value: unknown) {
   const number = typeof value === "string" && /^\d+(?:\.\d+)?%$/u.test(value) ? Number(value.slice(0, -1)) : value;
   return typeof number === "number" && Number.isFinite(number) && number > 0 && number <= Number.MAX_SAFE_INTEGER ? number : undefined;
+}
+
+export function displayedRankScore(avatar: RankAvatar, mode: RankMode) {
+  const score = avatar[mode]?.score;
+  if (score !== undefined) return mode === "crit" ? score * 6.6044 : score;
 }
 
 function boundedText(value: unknown, max = 96) {
@@ -55,12 +82,34 @@ export function decodeRankAvatar(value: unknown): RankAvatar | undefined {
   const weapon = weaponName ? { name: weaponName, level: whole(rawWeapon?.level, 100), affix: whole(rawWeapon?.affix, 5) } : undefined;
   const art = object(raw.artifacts), dmg = object(raw.damage);
   const artScore = measured(art?.score), dmgScore = measured(dmg?.score), title = boundedText(dmg?.title);
-  if (!artScore && !(dmgScore && title)) return;
+  const crit = measured(object(raw.crit)?.score), valid = measured(object(raw.valid)?.score);
+  if (!artScore && !(dmgScore && title) && !crit && !valid) return;
   return {
     id, name, elem, talents, sets, weapon, cons: whole(raw.cons, 6),
     ...(artScore && { artifacts: { score: artScore, grade: boundedText(art?.grade, 8) || undefined } }),
     ...(dmgScore && title && { damage: { score: dmgScore, title, ...(dmg?.percent === true && { percent: true }) } }),
+    ...(crit && { crit: { score: crit } }),
+    ...(valid && { valid: { score: valid } }),
   };
+}
+
+type Rating = NonNullable<Awaited<ReturnType<typeof scorePanelArtifacts>>["rating"]>;
+
+export function legacyAffixRankScores(rating: Rating) {
+  // MIT miao-plugin edae19cf, models/profile/ArtisMark.js (getCritMark/getValidMark).
+  let crit = 0, valid = 0;
+  for (const item of Object.values(rating.items)) {
+    let pieceCrit = item.main.key === "cpct" || item.main.key === "cdmg" ? 9.41 : 0;
+    let pieceValid = 0;
+    for (const attr of item.subs) {
+      const rolls = (rating.weights[attr.key]?.mark ?? 0) * attr.value / 85;
+      pieceValid += rolls;
+      if (attr.key === "cpct" || attr.key === "cdmg") pieceCrit += rolls;
+    }
+    crit += pieceCrit;
+    valid += pieceValid;
+  }
+  return { crit, valid };
 }
 
 export async function projectRankAvatar(avatar: PanelAvatar, theme: PanelTheme) {
@@ -73,6 +122,7 @@ export async function projectRankAvatar(avatar: PanelAvatar, theme: PanelTheme) 
   const damage = "rows" in estimates ? estimates.rows[0] : undefined;
   const damageScore = measured(damage?.average);
   const artScore = rating?.total && Number(rating.total.toFixed(1));
+  const affix = rating && legacyAffixRankScores(rating);
   const sets = new Map<string, number>();
   for (const item of Object.values(avatar.artis)) if (item.set) sets.set(item.set, (sets.get(item.set) ?? 0) + 1);
   const weapon = avatar.weapon && { name: avatar.weapon.name, level: avatar.weapon.level, affix: avatar.weapon.affix };
@@ -87,6 +137,7 @@ export async function projectRankAvatar(avatar: PanelAvatar, theme: PanelTheme) 
     sets: [...sets.entries()].filter(row => row[1] >= 2).sort((a, b) => b[1] - a[1]).map(([name]) => name).slice(0, 2),
     artifacts: artScore && { score: artScore, grade: rating?.rank },
     damage: damageScore && { score: damageScore, title: damage?.title, percent: damage?.unit === "%" || typeof damage?.average === "string" },
+    ...(affix && { crit: { score: affix.crit }, valid: { score: affix.valid } }),
   });
 }
 

@@ -2,7 +2,8 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { GameRole } from "@lotus-yunzai/account";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
-import { decodeRankAvatar, isRankProfile, matchGroupPanelRank, projectRankAvatar, rankId, rankUid, type RankAvatar, type RankMode } from "./group-rank-model.ts";
+import { decodeRankAvatar, displayedRankScore, isRankProfile, matchGroupPanelRank, projectRankAvatar, rankId, rankModeNames,
+  rankUid, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { renderGroupPanelRank } from "./card.ts";
 import { object, type PanelAvatar } from "./model.ts";
 import type { PanelTheme } from "./theme.ts";
@@ -164,7 +165,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         }
       }
       const ranked = rankRows(candidates, mode);
-      if (!ranked.length) return `本群暂无${character.name}的${mode === "damage" ? "伤害" : "圣遗物评分"}排行。可在本群查看自己的角色详情加入。`;
+      if (!ranked.length) return `本群暂无${character.name}的${rankModeNames[mode]}排行。可在本群查看自己的角色详情加入。`;
       const rows = ranked.map(row => ({ uid: row.role.uid, avatar: row.avatar }));
       let png: Uint8Array | undefined;
       try { ({ png } = await render(character.name, mode, rows, await loadTheme())); } catch {}
@@ -175,8 +176,11 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       }
       if (signal.aborted) return;
       if (png) return { type: "image" as const, file: png };
-      return [`${character.name} · 本群${mode === "damage" ? "伤害" : "圣遗物评分"}排行`, ...rows.map(({ uid, avatar }, index) =>
-        `${index + 1}. UID ${uid} · ${avatar[mode]!.score}${mode === "damage" && avatar.damage?.percent ? "%" : ""}`)].join("\n");
+      return [`${character.name} · 本群${rankModeNames[mode]}排行`, ...rows.map(({ uid, avatar }, index) => {
+        const score = displayedRankScore(avatar, mode)!;
+        const formatted = mode === "crit" || mode === "valid" ? score.toFixed(1) : String(score);
+        return `${index + 1}. UID ${uid} · ${formatted}${mode === "damage" && avatar.damage?.percent ? "%" : ""}`;
+      })].join("\n");
     },
   };
 }

@@ -2,7 +2,7 @@ import { renderPng } from "@lotus-yunzai/skia";
 import type { ArtifactListEntry } from "./artifact-list.ts";
 import { attrPct, basicNum } from "./miao/artifact-tables.js";
 import type { DamageEstimate, DamageRow, DamageSummary } from "./damage.ts";
-import type { RankAvatar, RankMode } from "./group-rank-model.ts";
+import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { scoreArtifacts } from "./artifact-score.ts";
 import {
   artifactProperties, object, propertyLabels, talentKeys, text, whole, type PanelAvatar, type PanelSnapshot,
@@ -187,12 +187,16 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
   ]);
   const format = new Intl.NumberFormat("zh-CN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const badgeSide = rankMode === "damage" ? 0 : 1;
+  const metric = rankMode === "damage" ? "artifacts" : rankMode;
+  const explain = rankMode === "crit" ? "双暴榜按原规则对暴击、暴伤副词条加权，并计入双暴头部主词条。"
+    : rankMode === "valid" ? "有效词条榜按角色评分权重换算全部副词条。"
+    : "综合练度按 103 级目标的期望伤害排序，圣遗物榜按角色评分规则排序。";
   return canvas(width, height, ctx => {
     frame(ctx, backdrop, element, width, height);
-    label(ctx, `#${name}${rankMode === "artifacts" ? "圣遗物评分" : ""}排行`, 22, 58, 33, "#fff1d2", 770);
+    label(ctx, `#${name}${rankMode === "damage" ? "" : rankModeNames[rankMode]}排行`, 22, 58, 33, "#fff1d2", 770);
     block(ctx, "#202331dd", 12, 82, 796, 122);
     label(ctx, "群排名说明", 29, 112, 18, gold);
-    label(ctx, "综合练度按 103 级目标的期望伤害排序，圣遗物榜按角色评分规则排序。", 29, 143, 13, "#e9e2d6", 761);
+    label(ctx, explain, 29, 143, 13, "#e9e2d6", 761);
     label(ctx, "排名范围 · 本群当前成员在群内主动查看过的本人角色详情", 29, 170, 13, "#e9e2d6", 760);
     for (const [title, x] of [["名次", 26], ["角色 / UID", 116], ["天赋", 263], ["武器", 386], ["圣遗物", 575], ["期望伤害", 741]] as const) {
       label(ctx, title, x, 195, 12, "#c4b69c", 74);
@@ -201,10 +205,11 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
       const y = rowStart + index * (rowHeight + gap);
       const [face, weapon, sets, talents] = people[index]!;
       block(ctx, "#25262ddd", 12, y, 796, rowHeight);
-      const medal = index === 0 ? first : medals;
+      const showFirst = index === 0 && (rankMode === "damage" || rankMode === "artifacts");
+      const medal = showFirst ? first : medals;
       if (medal) ctx.drawImage(medal, medal.width / 2 * badgeSide, 0, medal.width / 2, medal.height,
-        index ? 27 : 17, y + 17, index ? 25 : 45, 25);
-      if (!medal || index) label(ctx, String(index + 1), 40, y + 34, 12, "#fff", 24, "center");
+        showFirst ? 17 : 27, y + 17, showFirst ? 45 : 25, 25);
+      if (!medal || !showFirst) label(ctx, String(index + 1), 40, y + 34, 12, "#fff", 24, "center");
       ctx.save();
       ctx.beginPath();
       ctx.arc(86, y + 30, 24, 0, 2 * Math.PI);
@@ -230,8 +235,9 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
       }
       sets.forEach((picture, i) => art(ctx, picture, "contain", 527 + i * 23, y + 5, 26, 29));
       label(ctx, avatar.sets.join(" / "), 580, y + 22, 12, gold, 105);
-      if (avatar.artifacts) label(ctx, `${avatar.artifacts.grade ?? ""}  ${format.format(avatar.artifacts.score)}`, 575, y + 45,
-        14, rankMode === "artifacts" ? gold : "#f9f0e0", 105);
+      const score = displayedRankScore(avatar, metric);
+      if (score !== undefined) label(ctx, `${avatar.artifacts?.grade ?? ""}  ${format.format(score)}`, 575, y + 45,
+        14, rankMode === "damage" ? "#f9f0e0" : gold, 105);
       if (avatar.damage) {
         label(ctx, avatar.damage.title, 796, y + 23, 11, "#d4bd93", 106, "right");
         label(ctx, `${format.format(avatar.damage.score)}${avatar.damage.percent ? "%" : ""}`, 795, y + 44,
