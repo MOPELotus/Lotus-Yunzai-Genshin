@@ -15,8 +15,8 @@ function legacyMiaoTime(input: unknown): boolean {
 
 function profileFailure(error: unknown, profileId: number): string | undefined {
   if (!(error instanceof ProfileError)) return;
-  if (error.code === "missing") return `[荷花插件]请先登录 profile ${profileId}。`;
-  if (error.code === "role-missing") return `[荷花插件]profile ${profileId} 没有同步原神 UID。`;
+  if (error.code === "missing") return `[genshin] 请先登录 profile ${profileId}。`;
+  if (error.code === "role-missing") return `[genshin] profile ${profileId} 没有同步原神 UID。`;
   if (error.code === "changed") return "原神档案角色已变化，请重新导入。";
 }
 

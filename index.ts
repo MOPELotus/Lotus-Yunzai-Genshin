@@ -125,8 +125,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing") return `[荷花插件]请先登录 profile ${profileId}。`;
-        if (error.code === "role-missing") return `[荷花插件]profile ${profileId} 没有同步原神 UID。`;
+        if (error.code === "missing") return `[genshin] 请先登录 profile ${profileId}。`;
+        if (error.code === "role-missing") return `[genshin] profile ${profileId} 没有同步原神 UID。`;
       }
       if (error instanceof TypeError && /^(?:UIGF|当前档案没有可导出的原神抽卡记录)/u.test(error.message)) return error.message;
       return "原神抽卡记录导出失败，请检查本地历史文件。";
@@ -136,10 +136,10 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   async function importMiniapp(qq: string, profileId: number, context: GachaContext) {
     try {
       const result = await miniappUpdate(qq, profileId, () =>
-        context.reply(`[荷花插件]正在同步 profile ${profileId} 的提瓦特小助手抽卡记录。`));
+        context.reply(`[genshin] 正在同步 profile ${profileId} 的提瓦特小助手抽卡记录。`));
       if (signal.aborted) return;
       if (!result) return "该档案的小助手抽卡记录正在同步，请稍后再试。";
-      const title = `[荷花插件]profile ${profileId} · UID ${result.uid}`;
+      const title = `[genshin] profile ${profileId} · UID ${result.uid}`;
       const imported = result.pools.filter(({ received }) => received > 0);
       if (!imported.length) return `${title}\n提瓦特小助手抽卡记录为空，本地记录已保留。`;
       const lines = imported.map(({ name, received, added, total }) => `${name}记录：收到 ${received} 条，新增 ${added} 条，共 ${total} 条`);
@@ -154,7 +154,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       } else if (error instanceof HoyoRequestError) {
         message = error.status === 429 ? "访问过于频繁，请稍后再试。" : error.message;
       }
-      return `[荷花插件]小助手抽卡记录同步失败：${message}`;
+      return `[genshin] 小助手抽卡记录同步失败：${message}`;
     }
   }
 
@@ -211,8 +211,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing") return `[荷花插件]请先登录 profile ${profileId}。`;
-        if (error.code === "role-missing") return `[荷花插件]profile ${profileId} 没有同步原神 UID。`;
+        if (error.code === "missing") return `[genshin] 请先登录 profile ${profileId}。`;
+        if (error.code === "role-missing") return `[genshin] profile ${profileId} 没有同步原神 UID。`;
       }
       return "原神抽卡记录读取失败，请检查本地历史文件。";
     }
@@ -225,7 +225,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       const gacha = gachaImportCommand.test(message) || helpCommand.test(message) || updateCommand.test(message) ||
         miniappCommand.test(message) || exportCommand.test(message) || matchGachaQuery(message) ||
         (!message.trim() && attachment && /\.json$/iu.test(attachment.name));
-      return gacha ? ["[Lotus-Plugin] Gacha Log"] : [];
+      return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
       const ark = await queryArkRankStats(context.normalizedMessage, signal);
@@ -269,19 +269,19 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (query) return view(qq, profileId, query.view, query.all);
       try {
         const result = await gachaUpdate(qq, profileId, () =>
-          context.reply(`[荷花插件]正在更新 Profile ${profileId} 的抽卡记录，会补齐官方范围内的缺档。`));
+          context.reply(`[genshin] 正在更新 Profile ${profileId} 的抽卡记录，会补齐官方范围内的缺档。`));
         if (!result) return "该档案的原神抽卡记录正在更新，请稍后再试。";
         try {
           const { png } = await renderGenshinGachaResult(qq, result);
           return { type: "image" as const, file: png };
         } catch {
-          return "[荷花插件]抽卡记录更新完成。";
+          return "[genshin] 抽卡记录更新完成。";
         }
       } catch (error) {
         if (signal.aborted) return;
         if (error instanceof ProfileError) {
-          if (error.code === "missing" || error.code === "login-required") return `[荷花插件]请先登录 profile ${profileId}。`;
-          if (error.code === "role-missing") return `[荷花插件]profile ${profileId} 没有同步原神 UID。`;
+          if (error.code === "missing" || error.code === "login-required") return `[genshin] 请先登录 profile ${profileId}。`;
+          if (error.code === "role-missing") return `[genshin] profile ${profileId} 没有同步原神 UID。`;
         }
         const reason = error instanceof HoyoRequestError && error.status === 429 ? "rate-limited"
           : (error instanceof ProfileError && error.code === "changed") ||
@@ -290,7 +290,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
           const { png } = await renderGenshinGachaFailure({ qq, profileId, reason });
           return { type: "image" as const, file: png };
         } catch {
-          return "[荷花插件]抽卡记录更新失败，请检查档案登录状态与原神 UID。";
+          return "[genshin] 抽卡记录更新失败，请检查档案登录状态与原神 UID。";
         }
       }
     },
