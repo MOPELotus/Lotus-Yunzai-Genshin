@@ -101,17 +101,30 @@ export interface PanelCommand {
   readonly name?: string;
   readonly mode?: "profile" | "artifacts" | "weapon" | "damage";
   readonly damageRow?: number;
+  readonly talentStatistics?: TalentStatisticsSelection;
+}
+
+export type TalentStatisticsSelection = { readonly day?: number | "today" | "tomorrow"; readonly star?: 4 | 5 };
+
+function statisticsCommand(value: string | undefined, talentStatistics?: TalentStatisticsSelection): PanelCommand | undefined {
+  const input = value ?? "1";
+  const extra = talentStatistics && { talentStatistics };
+  if (/^\d{9,10}$/u.test(input)) return { type: "statistics", profileId: 1, uid: input, ...extra };
+  const profileId = Number(input.replace("档案", ""));
+  if (profileId <= MAX_PROFILE_ID) return { type: "statistics", profileId, ...extra };
 }
 
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
-  const statistics = /^#(?:原神)?(?:面板)?练度统计\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
-  if (statistics) {
-    const value = statistics[1] ?? "1";
-    if (/^\d{9,10}$/u.test(value)) return { type: "statistics", profileId: 1, uid: value };
-    const profileId = Number(value.replace("档案", ""));
-    if (profileId <= MAX_PROFILE_ID) return { type: "statistics", profileId };
-    return;
+  const talents = /^#(?:原神)?(?:我的)?(今日|今天|明日|明天|周[1-7一二三四五六日天])?([五四54]星)?(?:技能|天赋)(?:汇总|统计|列表)?\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
+  if (talents) {
+    const [, when, rarity, target] = talents;
+    const day = when === "今日" || when === "今天" ? "today" : when === "明日" || when === "明天" ? "tomorrow" :
+      when ? Number(when[1]) || "一二三四五六日".indexOf(when[1] === "天" ? "日" : when[1]!) + 1 : undefined;
+    const star = rarity ? /五|5/u.test(rarity) ? 5 : 4 : undefined;
+    return statisticsCommand(target, { day, star });
   }
+  const statistics = /^#(?:原神)?(?:面板)?练度统计\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
+  if (statistics) return statisticsCommand(statistics[1]);
 
   const artifactList = /^#(?:原神)?圣遗物列表\s*([1-9]\d{8,9}|[1-9]\d{0,2})?$/u.exec(message);
   if (artifactList) {

@@ -12,7 +12,7 @@ import { matchGenshinPanel, officialPanel, readPanel, selectAvatar, type Json, t
 import { estimatePanelDamage } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
-import { buildPanelStatistics } from "./statistics.ts";
+import { buildPanelStatistics, buildTalentStatistics, type PanelStatisticRow } from "./statistics.ts";
 import { readPanelTheme } from "./theme.ts";
 
 const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
@@ -167,22 +167,34 @@ export function createGenshinPanelQuery(
       }
       await verify();
       if (type === "statistics") {
-        const rows = await buildPanelStatistics(snapshot, assets, signal);
+        const talent = command.talentStatistics;
+        const statistics = await buildPanelStatistics(snapshot, assets, signal, !talent);
+        const schedule = talent && await buildTalentStatistics(statistics, assets, talent, now(), signal);
+        const rows: readonly PanelStatisticRow[] = schedule?.rows ?? statistics;
         await verify();
+        if (schedule && !rows.length) return "本档案暂无符合条件的天赋资料。可用 #天赋统计 查看全部。";
         if (!rows.length) return `UID ${uid} 本地暂无原神角色练度资料，请先使用 #更新面板${suffix}。`;
-        const title = `UID ${uid} · 面板练度统计 · 共 ${rows.length} 名角色`;
+        const talentTitle = schedule && ["天赋统计", schedule.day.label, talent?.star === 5 ? "五星" : talent?.star === 4 ? "四星" : ""]
+          .filter(Boolean).join(" · ");
+        const title = `UID ${uid} · ${talentTitle ?? "面板练度统计"} · 共 ${rows.length} 名角色`;
         const pages: (string | Image)[] = [];
         for (let offset = 0; offset < rows.length; offset += panelStatisticsPageSize) {
           const page = rows.slice(offset, offset + panelStatisticsPageSize);
           await verify();
           try {
-            const { png } = await (render.statistics ?? renderPanelStatistics)(snapshot, page, assets, { offset, total: rows.length });
+            const { png } = await (render.statistics ?? renderPanelStatistics)(snapshot, page, assets, {
+              offset, total: rows.length, ...(talentTitle && { talentTitle }),
+            });
             pages.push({ type: "image", file: png });
           } catch {
-            const labels = page.map(({ avatar, talents, weapon, rating, fetter }) =>
-              [avatar.name, `Lv.${avatar.level}`, `命座 ${avatar.cons ?? "—"}`, `好感 ${fetter ?? "—"}`,
-                `天赋 ${talents.map(talent => talent?.level ?? "—").join("/")}`, `武器 ${weapon?.name ?? "—"}`,
-                rating ? `圣遗物 ${rating.rank} ${rating.score.toFixed(1)}` : "圣遗物 暂无评分"].join(" · "));
+            const labels = page.map(({ avatar, talents, weapon, rating, fetter, materials }) => {
+              const entries = schedule ?
+                [`周本 ${materials?.weekly?.name ?? "—"}`, `天赋书 ${materials?.talent?.name ?? "—"}`,
+                  materials?.talent?.days ?? ""] :
+                [`武器 ${weapon?.name ?? "—"}`, rating ? `圣遗物 ${rating.rank} ${rating.score.toFixed(1)}` : "圣遗物 暂无评分"];
+              return [avatar.name, `Lv.${avatar.level}`, `命座 ${avatar.cons ?? "—"}`, `好感 ${fetter ?? "—"}`,
+                `天赋 ${talents.map(talent => talent?.level ?? "—").join("/")}`, ...entries].filter(Boolean).join(" · ");
+            });
             pages.push(labels.join("\n"));
           }
         }

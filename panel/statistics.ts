@@ -1,5 +1,7 @@
 import { scorePanelArtifacts } from "./artifact-score.ts";
-import { object, talentKeys, text, whole, type PanelAvatar, type PanelSnapshot } from "./model.ts";
+import { resolveGrowthMaterials } from "../grow/catalogue.ts";
+import { talentRegions, talentSchedule } from "./miao/talent-schedule.ts";
+import { object, talentKeys, text, whole, type PanelAvatar, type PanelSnapshot, type TalentStatisticsSelection } from "./model.ts";
 import type { PanelTheme } from "./theme.ts";
 
 const travelers = new Set([10000005, 10000007, 20000000]);
@@ -39,7 +41,7 @@ function completeSets(avatar: PanelAvatar) {
   return [...counts].filter(([, count]) => count >= 2).map(([name]) => name);
 }
 
-export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: PanelTheme, signal?: AbortSignal) {
+export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: PanelTheme, signal?: AbortSignal, includeRating = true) {
   const weaponData = new Map<string, { type: string; star: number | undefined; abbr: string }>();
   const weapons = await Promise.all(types.map(type => theme.metadata?.("meta-gs", "weapon", type, "data.json")));
   for (const [index, catalog] of weapons.entries()) {
@@ -59,7 +61,7 @@ export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: Panel
     const weapon = avatar.weapon && {
       ...avatar.weapon, type: equipped?.type ?? text(meta?.weapon), star: equipped?.star, abbr: equipped?.abbr ?? avatar.weapon.name,
     };
-    const rating = avatar._source === "mys" ? undefined : (await scorePanelArtifacts(avatar, theme)).rating;
+    const rating = includeRating && avatar._source !== "mys" ? (await scorePanelArtifacts(avatar, theme)).rating : undefined;
     result.push({
       avatar, name: text(meta?.abbr) || avatar.name, star: avatar.star || whole(meta?.star, 5),
       fetter: travelers.has(avatar.id) || avatar.id === 10000117 || avatar.id === 10000118 ? 10 : avatar.fetter,
@@ -80,3 +82,52 @@ export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: Panel
 }
 
 export type PanelStatistic = Awaited<ReturnType<typeof buildPanelStatistics>>[number];
+
+const bookDays = ["周一/周四", "周二/周五", "周三/周六"];
+const weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+const bookGroups = new Map<string, { group: number; region: string; days: string }>(talentSchedule.flatMap((names, index) => names.map((name, region) =>
+  [name, { group: index, region: talentRegions[region]!, days: bookDays[index]! }] as const)));
+
+type MaterialIcon = { readonly name: string; readonly icon: string };
+type TrainingMaterials = {
+  readonly weekly?: MaterialIcon;
+  readonly talent?: MaterialIcon & { readonly region?: string; readonly days?: string };
+  readonly open: boolean;
+};
+export type PanelStatisticRow = PanelStatistic & { readonly materials?: TrainingMaterials };
+
+export function talentStatisticsDay(selection: TalentStatisticsSelection, now: number) {
+  // China server reset is at 04:00 CST, which is 20:00 UTC on the preceding calendar date.
+  const today = (new Date(now + 4 * 60 * 60 * 1000).getUTCDay() + 6) % 7 + 1;
+  const selected = selection.day === "today" ? today : selection.day === "tomorrow" ? today % 7 + 1 : selection.day;
+  return {
+    today, selected,
+    label: selected === undefined ? "" : weekdays[selected - 1]!,
+  };
+}
+
+export async function buildTalentStatistics(rows: readonly PanelStatistic[], theme: PanelTheme, selection: TalentStatisticsSelection,
+  now: number, signal?: AbortSignal) {
+  const day = talentStatisticsDay(selection, now);
+  const resolve = resolveGrowthMaterials(await theme.metadata?.("meta-gs", "material", "data.json"));
+  const result: PanelStatisticRow[] = [];
+  for (const row of rows) {
+    signal?.throwIfAborted();
+    if (selection.star && row.star !== selection.star) continue;
+    const { avatar } = row;
+    const location = travelers.has(avatar.id) ? ["旅行者", avatar.elem] : [avatar.name];
+    const detail = await theme.metadata?.("meta-gs", "character", ...location, "data.json");
+    const materials = object(detail?.materials);
+    const talentName = text(materials?.talent), weeklyName = text(materials?.weekly);
+    const book = resolve(talentName);
+    const week = resolve(weeklyName);
+    const family = /^「(.+)」/u.exec(talentName)?.[1];
+    const schedule = family ? bookGroups.get(family) : undefined;
+    const known = book?.icon.startsWith("meta-gs/material/talent/");
+    if (day.selected !== undefined && day.selected !== 7 && (!known || schedule?.group !== (day.selected - 1) % 3)) continue;
+    const talent = known && book ? { name: family ?? talentName, icon: book.icon, region: schedule?.region, days: schedule?.days } : undefined;
+    const weekly = week?.icon.startsWith("meta-gs/material/weekly/") ? { name: weeklyName, icon: week.icon } : undefined;
+    result.push({ ...row, materials: { weekly, talent, open: !!talent && !!schedule && (day.today === 7 || schedule.group === (day.today - 1) % 3) } });
+  }
+  return { rows: result, day };
+}

@@ -13,6 +13,8 @@
 
 `#原神练度统计`、`#面板练度统计` 或 `#练度统计` 汇总当前档案的本地角色练度，展示等级、命座、好感、三项天赋、武器等级和精炼、圣遗物套装和已核对的评分。例 `#练度统计2` 可选档案。列表沿用旧版等级、星级、基础天赋总和、命座、武器和好感的排序，每 48 名角色分页。旧米游社简档可显示查得到的条目，缺项显示横线或「暂无评分」。当前实现从 `#更新面板` 获取新数据，查看统计无需即时访问米游社。资源使用旧模板的原神底图、头图、好感、天赋皇冠和装备图。
 
+`#天赋统计` 采用同档案的角色顺序，表格末两列显示周本材料和天赋书。`#今日天赋`、`#明日天赋`、`#周二五星天赋` 可按开放日或星级筛选，末尾可加档案号或 `档案2`。国服日期于北京时间 04:00 切换，周日可刷各类天赋书。素材和排期取自原神主题目录及固定的旧排期表，未确认的材料或开放日保留缺失状态。
+
 ## 圣遗物评分
 
 `#芙宁娜圣遗物` 展示旧喵喵评分规则、分件得分、总分和评级。角色流派沿用固定版本规则，包括依赖命座、武器、套装和最终属性的分支。旧档已有的完整主副词条可直接评分。评分所需字段缺失时会指出原因并继续展示已有词条，更新面板后可重试。
@@ -57,3 +59,4 @@
 | `resources/character/profile-detail.html`、`resources/character/profile-detail.css` | 伤害清单、词条对照和触发条件布局 |
 | `apps/profile/ProfileArtis.js`、`resources/character/artis-list.html`、`resources/character/artis-list.css` | 旧圣遗物列表入口、过滤、28 件上限和四列卡片 |
 | `apps/profile/ProfileStat.js`、`models/Player.js`、`models/character/CharTalent.js`、`resources/character/profile-stat.html`、`resources/character/profile-stat.css` | 旧练度统计入口、排行顺序、原始与实显天赋、原神十列表格 |
+| `models/character/CharMeta.js`、`models/Material.js`、`resources/meta-gs/material/{index,daily}.js` | 刷取日、素材目录和地区标签，与原版同一张表的周本和天赋书版式 |
