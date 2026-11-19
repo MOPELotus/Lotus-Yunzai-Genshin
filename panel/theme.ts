@@ -1,6 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { loadImage } from "skia-canvas";
+import { readMiaoObjectExport } from "@lotus-yunzai/gacha/miao-data";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
 import { avatarId, object, text, type Json, type PanelCatalog } from "./model.ts";
 
@@ -11,6 +12,7 @@ const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 export type Picture = Awaited<ReturnType<typeof loadImage>>;
 export interface PanelTheme extends PanelCatalog {
   readonly metadata?: (...parts: string[]) => Promise<Json>;
+  readonly weaponNames?: () => Promise<readonly Readonly<Record<string, string>>[]>;
   readonly picture: (...parts: string[]) => Promise<Picture | undefined>;
 }
 
@@ -46,6 +48,16 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
   const safe = (parts: readonly string[]) => parts.every(part => part && part !== "." && part !== ".." && !/[\/\\\0]/u.test(part));
   return {
     characters, artifacts, artifactSets,
+    async weaponNames() {
+      const file = join(root, "meta-gs", "weapon", "alias.js");
+      try {
+        if ((await stat(file)).size <= metadataLimit) {
+          const source = await readFile(file, "utf8");
+          return [readMiaoObjectExport(source, "alias") ?? {}, readMiaoObjectExport(source, "abbr") ?? {}];
+        }
+      } catch {}
+      return [];
+    },
     async metadata(...parts) {
       return safe(parts) ? json(join(root, ...parts)) : {};
     },

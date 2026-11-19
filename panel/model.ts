@@ -106,11 +106,13 @@ export interface PanelCommand {
   readonly equipmentChange?: EquipmentChangeSelection;
 }
 
-export type EquipmentChangeSelection = {
+type DonorEquipment = {
   readonly donor: string;
   readonly donorUid?: string;
   readonly slot: "weapon" | "1" | "2" | "3" | "4" | "5";
 };
+type NamedEquipment = { readonly slot: "weapon"; readonly weaponName: string; readonly affix?: number; readonly level?: number };
+export type EquipmentChangeSelection = DonorEquipment | NamedEquipment;
 const equipmentSlots: Readonly<Record<string, EquipmentChangeSelection["slot"]>> = {
   武器: "weapon", 生之花: "1", 花: "1", 死之羽: "2", 羽毛: "2", 羽: "2", 毛: "2",
   时之沙: "3", 沙漏: "3", 沙: "3", 表: "3", 空之杯: "4", 杯子: "4", 杯: "4",
@@ -120,9 +122,40 @@ const ownUid = "(?:(?:uid\\s*:?\\s*)?([1-9]\\d{8,9})\\s*)?";
 const ownName = "([\\p{L}\\p{M}\\s·・]{1,24}?)";
 const temporaryEquipmentCommand = new RegExp(
   `^#(?:原神)?\\s*${ownUid}${ownName}(?:面板|面版|详情|详细|(伤害)([1-9]\\d{0,2})?)?\\s*${ownUid}换\\s*${ownUid}${ownName}\\s*${ownUid}(${Object.keys(equipmentSlots).join("|")})(?:\\s+档案\\s*([1-9]\\d{0,2}))?$`, "iu");
+const namedEquipmentCommand = new RegExp(
+  `^#(?:原神)?\\s*${ownUid}${ownName}(?:面板|面版|详情|详细|(伤害)([1-9]\\d{0,2})?)?\\s*${ownUid}换\\s*([^#换]{1,72}?)(?:\\s+档案\\s*([1-9]\\d{0,2}))?$`, "iu");
+
+function matchNamedEquipment(message: string): PanelCommand | undefined {
+  const match = namedEquipmentCommand.exec(message);
+  if (!match) return;
+  const [, firstUid, target, damage, row, lastUid, raw, profile] = match;
+  const profileId = Number(profile ?? 1);
+  if (!target?.trim() || !raw || (firstUid && lastUid) || profileId > MAX_PROFILE_ID) return;
+  let input = raw.trim();
+  let level: number | undefined, affix: number | undefined;
+  for (let i = 0; i < 2; i++) {
+    const lvl = /^(?:等级\s*([1-9]\d?)|([1-9]\d?)\s*级)\s*/u.exec(input);
+    const refine = /^(?:([1-5一二三四五满])\s*精炼?|精炼?\s*([1-5一二三四五]))\s*/u.exec(input);
+    if (lvl && level === undefined) {
+      level = Number(lvl[1] ?? lvl[2]);
+      input = input.slice(lvl[0].length);
+    } else if (refine && affix === undefined) {
+      const value = (refine[1] ?? refine[2])!;
+      affix = Number(value) || "一二三四五".indexOf(value === "满" ? "五" : value) + 1;
+      input = input.slice(refine[0].length);
+    } else break;
+  }
+  if ((!level && !affix) || /^(?:等级|精炼?\s*[0-9])/u.test(input) ||
+    !/^[\p{L}\p{M}「」『』·・][\p{L}\p{M}\p{N}「」『』·・'’\-\s]{0,39}$/u.test(input)) return;
+  return { type: "change", name: target.trim(), profileId, uid: firstUid ?? lastUid,
+    mode: damage ? "damage" : "profile", damageRow: row ? Number(row) : undefined,
+    equipmentChange: { slot: "weapon", weaponName: input, affix, level } };
+}
 
 function matchTemporaryEquipment(message: string): PanelCommand | undefined {
   if (/星铁|绝区零|崩坏|换.*换/u.test(message)) return;
+  const named = matchNamedEquipment(message);
+  if (named) return named;
   const match = temporaryEquipmentCommand.exec(message);
   if (!match) return;
   const [, leadingUid, target, damage, row, trailingUid, donorLeadingUid, donor, donorTrailingUid, slot, profile] = match;

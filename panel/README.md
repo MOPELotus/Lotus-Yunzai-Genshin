@@ -39,6 +39,8 @@
 
 `#芙芙面板换绫华武器` 使用同档案中绫华保存的武器。`#芙芙伤害2换绫华杯子 档案2` 替换同档两角色相同位置的一件圣遗物，并查看第二种旧伤害情景。也可使用「花」「羽毛」「沙漏」「杯子」「头」等旧位置名。指定 UID 时，目标与来源都须属于所选档案当前绑定的原神角色。
 
+`#胡桃伤害2换90级精1灭辰`、`#胡桃换满精护摩` 或 `#胡桃换精5武器` 可用原武器名称或别名试算。至少明确指定等级或精炼。未指定的参数沿用旧规则，从当前武器和原武器元数据决定。命令会按目标武器上限处理数值，并拒绝不同武器种类和无法确认的别名。
+
 结果标为临时换装，保留目标角色的元素底图和旧比较布局。资料不全时保留能核对的装备与基础属性。临时结果不保存到面板档案、预设或群榜。武器类型不合、来源角色或装备缺失时直接提示。
 
 ## 群面板榜
@@ -74,3 +76,4 @@
 | `models/character/CharMeta.js`、`models/Material.js`、`resources/meta-gs/material/{index,daily}.js` | 刷取日、素材目录和地区标签，与原版同一张表的周本和天赋书版式 |
 | `apps/wiki/TodayMaterial.js`、`resources/wiki/today-material.html`、`resources/wiki/today-material.css` | 个人角色及已装备武器的每日素材卡、排序与满级标记 |
 | `apps/profile/ProfileChange.js`、`apps/profile/ProfileDetail.js` | 同档武器与单件圣遗物替换、临时面板命令标记和旧伤害对照 |
+| `models/Weapon.js`、`resources/meta-gs/weapon/alias.js` | 试算武器别名、等级和精炼上限 |
