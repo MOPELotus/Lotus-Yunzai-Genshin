@@ -162,7 +162,7 @@ export function matchBareEquipment(message: string) {
 }
 
 export function matchConstellationChange(message: string): PanelCommand | undefined {
-  if (!message.includes("换") || /星铁|绝区零|崩坏/u.test(message)) return;
+  if (!message.includes("换") || /星铁|绝区零|崩坏|换.*换/u.test(message)) return;
   const match = namedEquipmentCommand.exec(message);
   if (!match) return;
   const [, leadingUid, target, damage, row, trailingUid, raw, profile] = match;
@@ -213,6 +213,29 @@ export function matchEquipmentChain(message: string): PanelCommand | undefined {
   if (new Set(slots).size !== slots.length) return;
   const [first, ...moreDonors] = source;
   if (head && first) return { ...head, equipmentChange: { ...first, moreDonors } };
+}
+
+export function matchConstellationEquipment(message: string): PanelCommand | undefined {
+  if (!/换.*换/u.test(message)) return;
+  const profile = /\s+档案\s*[1-9]\d{0,2}$/u.exec(message);
+  const [target, ...parts] = (profile ? message.slice(0, profile.index) : message).split("换");
+  if (!target || parts.length < 2 || parts.length > 7) return;
+  const suffix = profile?.[0] ?? "";
+  const donors: string[] = [];
+  let constellationChange: number | undefined;
+  for (const part of parts) {
+    const candidate = matchConstellationChange(`${target}换${part}${suffix}`);
+    if (candidate?.constellationChange === undefined) {
+      donors.push(part);
+    } else {
+      if (constellationChange !== undefined) return;
+      constellationChange = candidate.constellationChange;
+    }
+  }
+  if (constellationChange === undefined || donors.length === 0) return;
+  const equipment = `${target}换${donors.join("换")}${suffix}`;
+  const command = donors.length > 1 ? matchEquipmentChain(equipment) : matchTemporaryEquipment(equipment);
+  if (command?.equipmentChange && !("weaponName" in command.equipmentChange)) return { ...command, constellationChange };
 }
 
 export type TalentStatisticsSelection = { readonly day?: number | "today" | "tomorrow"; readonly star?: 4 | 5 };
