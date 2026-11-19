@@ -518,7 +518,8 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
         ctx.drawImage(icons, rowSize * (index + 1), 0, rowSize, rowSize, 289, y + 7, 16, 16);
       }
       label(ctx, propertyLabels[key]!, 311, y + 22, 13);
-      label(ctx, property?.value || "—", 520, y + 22, 17, "#fff", 91, "right");
+      const valueX = property?.base && !property.value ? 506 : 520;
+      label(ctx, property?.value || "—", valueX, y + 22, 17, "#fff", 91, "right");
       if (property?.base) label(ctx, property.value ? property.base : `基础 ${property.base}`, 575,
         y + (property.plus ? 13 : 22), 11, "#eee", property.value ? 43 : 78, "right");
       if (property?.plus) label(ctx, `+${property.plus}`, 575, y + 25, 11, "#a8ef24", 43, "right");
