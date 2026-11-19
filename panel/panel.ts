@@ -10,6 +10,7 @@ import { panelPages, renderArtifactList, renderDamageCard, renderPanelDetail, re
 import { matchGenshinPanel, officialPanel, readPanel, selectAvatar, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
+import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
 import { readPanelTheme } from "./theme.ts";
 
 const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
@@ -65,17 +66,19 @@ export function createGenshinPanelQuery(
     archiveDirectory = Bun.env.LOTUS_GENSHIN_PANEL_DIR?.trim() || mainDirectory,
     legacyDirectory = Bun.env.LOTUS_GENSHIN_LEGACY_PANEL_DIR?.trim() || previousDirectory,
     legacyPreferences = Bun.env.LOTUS_GENSHIN_PANEL_LEGACY_REDIS_URL?.trim(),
+    groupRank,
     render = { list: renderPanelList, detail: renderPanelDetail, damage: renderDamageCard, artifactList: renderArtifactList },
     theme = readPanelTheme,
     now = Date.now,
   }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly legacyPreferences?: string; readonly render?: Renderers;
+    readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "observe" | "allows">;
     readonly theme?: typeof readPanelTheme; readonly now?: () => number } = {},
 ) {
   const store = createRoleJsonArchive(archiveDirectory, lockFile, { subject: "原神面板", lockSuffix: "panel", maxBytes: limit, rejectNull: true });
   const preferences = createDamagePreferences(join(archiveDirectory, "preferences"), lockFile, signal, legacyPreferences);
   const refreshes = new Set<string>();
 
-  return async (message: string, context: { readonly user_id?: number }): Promise<Reply | undefined> => {
+  return async (message: string, context: GroupRankContext): Promise<Reply | undefined> => {
     const command = matchGenshinPanel(message);
     const enemy = command ? undefined : matchEnemyLevel(message);
     const selection = command ?? enemy;
@@ -109,6 +112,7 @@ export function createGenshinPanelQuery(
       }
       if (!command) return;
       const { name, type, mode } = command;
+      const observedAt = source && mode === "profile" && groupRank?.allows(context) ? now() : undefined;
       const key = `${qq}:${uid}`;
       const assets = await theme();
       let snapshot: PanelSnapshot | undefined;
@@ -191,7 +195,13 @@ export function createGenshinPanelQuery(
           }));
         } catch {}
         await verify();
-        if (png) return { type: "image", file: png };
+        if (png) {
+          if (observedAt !== undefined && groupRank) {
+            await groupRank.observe(context, profileId, role, avatar, assets, observedAt, verify).catch(() => undefined);
+            await verify();
+          }
+          return { type: "image", file: png };
+        }
         return [`UID ${uid} · ${avatar.name} · Lv.${avatar.level}`,
           avatar.weapon?.name && `武器 ${avatar.weapon.name}`,
           ...Object.values(avatar.artis).map(part => `${part.name} +${part.level}`)].filter(Boolean).join("\n");

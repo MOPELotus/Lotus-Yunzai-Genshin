@@ -318,7 +318,8 @@ export async function readLegacyArtifactRuleProperties(avatar: PanelAvatar, them
 }
 
 export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme, row?: number,
-  enemyLevel = genshinDamageEnemyLevel, { includeComparison = true }: { readonly includeComparison?: boolean } = {}): Promise<DamageEstimate> {
+  enemyLevel = genshinDamageEnemyLevel, { includeComparison = true, ranking = false }:
+    { readonly includeComparison?: boolean; readonly ranking?: boolean } = {}): Promise<DamageEstimate> {
   try {
     const { cons, rule, tables, gear, weapon, allBuffs, starting } = await panelInputs(avatar, theme);
     const talent = talents(avatar, tables.detail, cons);
@@ -347,6 +348,8 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     }
 
     for (const [index, raw] of rule.details.entries()) {
+      if (ranking && (defaultKey ? typeof raw === "function" || raw.dmgKey !== defaultKey
+        : index !== (typeof defaultIdx === "number" && defaultIdx >= 0 ? defaultIdx : 0))) continue;
       let label = typeof raw !== "function" && typeof raw.title === "string" ? raw.title : `旧场景 ${index + 1}`;
       try {
         if (typeof raw !== "function" && (raw.isStatic || (raw.cons && cons < raw.cons))) continue;
@@ -375,7 +378,7 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     let comparison: DamageComparison | undefined;
     const selectedScenario = scenarios[selected];
     const keys = (rule.mainAttr || "atk,cpct,cdmg").split(",").filter(key => Object.hasOwn(propertyLabels, key));
-    if (includeComparison && selectedScenario && !titles[selected]?.unavailable && keys.length >= 2) {
+    if (!ranking && includeComparison && selectedScenario && !titles[selected]?.unavailable && keys.length >= 2) {
       const { formula, params } = selectedScenario;
       comparison = {
         axes: keys.map(key => propertyLabels[key]!),

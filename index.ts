@@ -1,6 +1,8 @@
 import { queryRankStats } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createGenshinPanelQuery } from "./panel/panel.ts";
+import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
+import { readPanelTheme } from "./panel/theme.ts";
 import { fileURLToPath } from "node:url";
 import { createProfileStore, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createGachaUpdater } from "@lotus-yunzai/gacha/update";
@@ -35,6 +37,7 @@ type GachaView = { readonly detail: GenshinGachaPool } | { readonly version: Ver
   | { readonly special: "beginner" | "all" };
 const historyDirectory = fileURLToPath(new URL("../../data/gachaJson/", import.meta.url));
 const rankingDirectory = fileURLToPath(new URL("../../data/genshinWorldBossRecords/", import.meta.url));
+const groupPanelRankDirectory = fileURLToPath(new URL("../../data/genshin/panel-ranks/", import.meta.url));
 const help = [
   "原神抽卡记录",
   "#登录列表 可查看档案，#同步角色 可同步原神角色。",
@@ -69,13 +72,8 @@ function matchGachaQuery(message: string): { profileId: number; view: GachaView;
   return { profileId: Number(pool[5] ?? 1), view, all: !!(pool[1] || pool[3]) };
 }
 
-interface GachaContext {
+interface GachaContext extends GroupRankContext {
   readonly normalizedMessage: string;
-  readonly user_id?: number;
-  readonly self_id?: number;
-  readonly group_id?: number;
-  readonly adapter?: string;
-  readonly message_type?: string;
   readonly sender?: Readonly<Record<string, unknown>>;
   readonly isMaster?: boolean;
   readonly attachment?: { readonly name: string; read(signal?: AbortSignal): Promise<Uint8Array | undefined> };
@@ -93,7 +91,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const profiles = createProfileStore(Bun.env.LOTUS_PROFILE_DIR || undefined);
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const client = createProfileHoyoClient(profiles);
-  const panel = createGenshinPanelQuery(profiles, client, lockFile, signal);
+  const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal);
+  const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank });
   const sync = createGenshinGachaSync(profiles, client, history);
   const worldBossRanking = createGenshinWorldBossRanking(rankingDirectory, lockFile);
   const worldBossQuery = createWorldBossQuery(profiles, client, worldBossRanking, signal);
@@ -230,6 +229,9 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     async fallback(_message: string, context: GachaContext) {
       const rankStats = await queryRankStats(context.normalizedMessage, signal);
       if (rankStats !== undefined) return rankStats;
+      const groupPanelRank = await groupRank.query(context.normalizedMessage, context, readPanelTheme)
+        .catch(() => signal.aborted ? undefined : "群面板排名暂时无法读取，请稍后查询。");
+      if (groupPanelRank !== undefined) return groupPanelRank;
       const panelReply = await panel(context.normalizedMessage, context);
       if (panelReply !== undefined) return panelReply;
       const simulation = await wish(context.normalizedMessage, context);

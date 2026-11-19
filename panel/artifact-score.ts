@@ -1,4 +1,6 @@
 import characterMetadata from "./miao/character-artifact-base.json";
+import { readLegacyArtifactRuleProperties } from "./damage.ts";
+import type { PanelTheme } from "./theme.ts";
 import weaponMetadata from "./miao/weapon-artifact-bonus.json";
 import { characterRules, usefulAttr } from "./miao/character-artifact-rules.js";
 import { attrPct, basicNum } from "./miao/artifact-tables.js";
@@ -239,4 +241,15 @@ export function scoreArtifacts(avatar: PanelAvatar): ArtifactScore {
     if (error instanceof Missing) return { missing: error.message };
     throw error;
   }
+}
+
+export async function scorePanelArtifacts(avatar: PanelAvatar, theme: PanelTheme): Promise<ArtifactScore> {
+  const result = scoreArtifacts(avatar);
+  if (result.rating || !result.missing?.startsWith("缺少角色最终属性")) return result;
+  const recorded = avatar._lotus?.properties ?? [];
+  const derived = await readLegacyArtifactRuleProperties(avatar, theme);
+  if (!derived.length) return result;
+  return scoreArtifacts({ ...avatar, _lotus: {
+    properties: [...derived.filter(row => !recorded.some(property => property.key === row.key)), ...recorded],
+  } });
 }
