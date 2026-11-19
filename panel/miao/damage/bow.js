@@ -55,9 +55,10 @@ export default function (step, staticStep) {
 
     弓藏: {
       title: '普攻造成的伤害提升[aDmg]%，重击造成的伤害下降10%',
+      // The original -10 is constant at every refinement.
+      data: { a2Dmg: -10 },
       refine: {
-        aDmg: step(40),
-        a2Dmg: -10
+        aDmg: step(40)
       }
     },
 
