@@ -533,13 +533,15 @@ interface EquipmentNotice {
   readonly command: string;
   readonly equipped: string;
   readonly constellation?: boolean;
+  readonly characterLevel?: boolean;
   readonly displayedTalent?: DisplayedTalentLevels;
   readonly reason?: string;
 }
 
 function drawEquipmentChange(ctx: Context, width: number, y: number, change: EquipmentNotice) {
   block(ctx, "#382a25df", 12, y, width - 24, change.reason ? 61 : 42);
-  const title = change.displayedTalent ? "临时天赋试算" : change.constellation ? "临时命座试算" : "临时换装面板";
+  const title = change.characterLevel ? "临时等级试算" : change.displayedTalent ? "临时天赋试算" :
+    change.constellation ? "临时命座试算" : "临时换装面板";
   label(ctx, `${title} · ${change.equipped}`, 24, y + 17, 13, gold, width - 48);
   label(ctx, `当前替换命令 ${change.command}`, 24, y + 34, 12, "#f2e9df", width - 48);
   if (change.reason) label(ctx, change.reason, 24, y + 53, 12, "#ffe0b8", width - 48);

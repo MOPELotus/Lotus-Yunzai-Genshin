@@ -7,6 +7,7 @@ export type Json = Record<string, unknown>;
 type TalentKey = "a" | "e" | "q";
 export const talentKeys = ["a", "e", "q"] as const;
 export type DisplayedTalentLevels = readonly [attack: number, skill: number, burst: number];
+export const characterLevelBreakpoints = [1, 20, 40, 50, 60, 70, 80, 90, 100] as const;
 const elements: Readonly<Record<string, string>> = {
   pyro: "pyro", hydro: "hydro", anemo: "anemo", electro: "electro", dendro: "dendro", cryo: "cryo", geo: "geo",
   fire: "pyro", water: "hydro", wind: "anemo", electric: "electro", grass: "dendro", ice: "cryo", rock: "geo",
@@ -107,6 +108,7 @@ export interface PanelCommand {
   readonly equipmentChange?: EquipmentChangeSelection;
   readonly constellationChange?: number;
   readonly talentChange?: DisplayedTalentLevels;
+  readonly characterLevelChange?: number;
 }
 
 type DonorEquipment = {
@@ -196,6 +198,21 @@ export function matchTalentChange(message: string): PanelCommand | undefined {
   return { type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
     mode: damage ? "damage" : "profile", damageRow: row ? Number(row) : undefined,
     talentChange: [Number(levels[1]), Number(levels[2]), Number(levels[3])] };
+}
+
+export function matchCharacterLevelChange(message: string): PanelCommand | undefined {
+  if (!message.includes("换") || /星铁|绝区零|崩坏|换.*换/u.test(message)) return;
+  const match = namedEquipmentCommand.exec(message);
+  if (!match) return;
+  const [, leadingUid, target, damage, row, trailingUid, raw, profile] = match;
+  const level = /^(?:等级[ :：]([1-9]\d{0,2})|([1-9]\d{0,2})级)$/u.exec(raw?.trim() ?? "");
+  if (!level) return;
+  const characterLevelChange = Number(level[1] ?? level[2]);
+  const profileId = Number(profile ?? 1);
+  if (!target?.trim() || (characterLevelChange > 90 && characterLevelChange !== 95 && characterLevelChange !== 100) ||
+    (leadingUid && trailingUid) || profileId > MAX_PROFILE_ID) return;
+  return { type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
+    mode: damage ? "damage" : "profile", damageRow: row ? Number(row) : undefined, characterLevelChange };
 }
 
 function splitChanges(message: string, maxParts: 2 | 3 | 4) {

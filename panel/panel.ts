@@ -8,13 +8,13 @@ import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunza
 import { buildArtifactList } from "./artifact-list.ts";
 import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
-import { matchBareEquipment, matchConstellationChange, matchConstellationEquipment, matchEquipmentChain, matchGenshinPanel, object, officialPanel, propertyLabels, readPanel,
+import { matchBareEquipment, matchCharacterLevelChange, matchConstellationChange, matchConstellationEquipment, matchEquipmentChain, matchGenshinPanel, object, officialPanel, propertyLabels, readPanel,
   matchConstellationTalent, matchNamedWeaponArtifacts, matchTalentArtifacts, matchTalentChange, matchTalentWeapon, selectAvatar, text,
   type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
 import { buildDailyMaterials, paginateDailyMaterials } from "./daily-materials.ts";
-import { buildConstellationChange, buildEquipmentChange, buildTalentChange, resolvePanelWeapon } from "./equipment-change.ts";
+import { buildCharacterLevelChange, buildConstellationChange, buildEquipmentChange, buildTalentChange, resolvePanelWeapon } from "./equipment-change.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
 import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
@@ -106,12 +106,13 @@ export function createGenshinPanelQuery(
     let command = matchGenshinPanel(message);
     let preflight: PanelTheme | undefined;
     if (!command) {
-      const candidate = matchConstellationChange(message) ?? matchTalentChange(message) ?? matchConstellationTalent(message) ??
+      const candidate = matchCharacterLevelChange(message) ?? matchConstellationChange(message) ?? matchTalentChange(message) ?? matchConstellationTalent(message) ??
         matchConstellationEquipment(message) ?? matchTalentWeapon(message) ?? matchTalentArtifacts(message) ??
         matchNamedWeaponArtifacts(message) ?? matchEquipmentChain(message) ?? matchBareEquipment(message);
       const target = candidate?.name && findRankCharacter(candidate.name);
       const change = candidate?.equipmentChange;
-      if (candidate && target && !change && (candidate.constellationChange !== undefined || candidate.talentChange)) {
+      if (candidate && target && !change && (candidate.constellationChange !== undefined || candidate.talentChange ||
+        candidate.characterLevelChange !== undefined)) {
         command = { ...candidate, name: target.name };
       } else if (candidate && target && change) {
         if ("weaponName" in change) {
@@ -280,7 +281,8 @@ export function createGenshinPanelQuery(
         if (!original) return `此原神面板没有「${name}」，请使用 #面板${suffix} 查看列表。`;
         const constellation = command.constellationChange;
         const displayedTalent = command.talentChange;
-        const replacement = command.equipmentChange
+        const characterLevel = command.characterLevelChange;
+        const replacement = characterLevel !== undefined ? buildCharacterLevelChange(original, characterLevel, assets) : command.equipmentChange
           ? await buildEquipmentChange(snapshot, original, command.equipmentChange, assets, { constellation, displayedTalent })
           : displayedTalent ? buildTalentChange(original, displayedTalent, assets, constellation)
             : constellation !== undefined && buildConstellationChange(original, constellation, assets);
@@ -291,9 +293,11 @@ export function createGenshinPanelQuery(
         const level = await preferences.level(qq);
         const estimate = await estimatePanelDamage(avatar, assets, command.damageRow, level,
           { includeComparison: mode === "damage", displayedTalent });
-        const change = { command: text(message), equipped: replacement.equipped, constellation: constellation !== undefined, displayedTalent,
+        const change = { command: text(message), equipped: replacement.equipped, constellation: constellation !== undefined,
+          displayedTalent, characterLevel: characterLevel !== undefined,
           ...("message" in estimate && { reason: estimate.message }) };
-        const title = `${displayedTalent ? "临时天赋试算" : change.constellation ? "临时命座试算" : "临时换装"} · ${avatar.name} · ${replacement.equipped}`;
+        const title = `${change.characterLevel ? "临时等级试算" : displayedTalent ? "临时天赋试算" :
+          change.constellation ? "临时命座试算" : "临时换装"} · ${avatar.name} · ${replacement.equipped}`;
         await verify();
         let png: Uint8Array | undefined;
         if (mode === "damage" && "rows" in estimate) {

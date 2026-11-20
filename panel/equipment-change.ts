@@ -1,4 +1,5 @@
-import { object, selectAvatar, talentKeys, text, whole, type DisplayedTalentLevels, type EquipmentChangeSelection, type Json, type PanelArtifact, type PanelAvatar, type PanelSnapshot } from "./model.ts";
+import { characterLevelBreakpoints, object, selectAvatar, talentKeys, text, whole,
+  type DisplayedTalentLevels, type EquipmentChangeSelection, type Json, type PanelArtifact, type PanelAvatar, type PanelSnapshot } from "./model.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -132,4 +133,14 @@ export function buildTalentChange(avatar: PanelAvatar, levels: DisplayedTalentLe
   const talent = `显示等级 ${levels.join(" / ")}`;
   return constellation === undefined ? { avatar: projected, equipped: talent } :
     { avatar: { ...projected, cons: constellation }, equipped: `${avatar.cons} 命 → ${constellation} 命、${talent}` };
+}
+
+export function buildCharacterLevelChange(avatar: PanelAvatar, level: number, theme: PanelTheme): TemporaryChange {
+  if (transient.has(avatar._source)) return { message: "等级试算需要本档案已保存的实际角色面板。" };
+  // The old Avatar retains a recorded ascension only when the target level matches the archive.
+  const minimum = characterLevelBreakpoints.slice(1).findIndex(cap => level <= cap);
+  if (!Number.isSafeInteger(level) || level < 1 || minimum < 0) return { message: "本地资料无法确认指定的角色等级。" };
+  const promote = level === avatar.level ? Math.max(avatar.promote ?? 0, minimum) : minimum;
+  return { avatar: { ...temporaryAvatar(avatar, object(theme.characters[avatar.id])), level, promote },
+    equipped: `Lv.${avatar.level} → Lv.${level}` };
 }

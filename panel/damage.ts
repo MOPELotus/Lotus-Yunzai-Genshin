@@ -7,7 +7,8 @@ import catalystRules from "./miao/damage/catalyst.js";
 import claymoreRules from "./miao/damage/claymore.js";
 import polearmRules from "./miao/damage/polearm.js";
 import { characterDamageRules } from "./miao/damage/character-rules.js";
-import { artifactStatRecord, object, propertyLabels, talentKeys, text, type DisplayedTalentLevels, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
+import { artifactStatRecord, characterLevelBreakpoints, object, propertyLabels, talentKeys, text,
+  type DisplayedTalentLevels, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
 import { panelTalentLevels, travelerIds } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -54,8 +55,7 @@ const weapons: Readonly<Record<string, readonly Buff[] | Buff>> = Object.assign(
   ...[swordRules, bowRules, catalystRules, claymoreRules, polearmRules].map(factory => factory(step, constant)));
 const weaponClass: Readonly<Record<string, string>> = { sword: "单手剑", claymore: "双手剑", polearm: "长柄武器", bow: "弓", catalyst: "法器" };
 const elementNames: Readonly<Record<string, string>> = { pyro: "火", hydro: "水", anemo: "风", electro: "雷", dendro: "草", cryo: "冰", geo: "岩" };
-const actorLevels = [1, 20, 40, 50, 60, 70, 80, 90, 100];
-const weaponLevels = actorLevels.slice(0, -1);
+const weaponLevels = characterLevelBreakpoints.slice(0, -1);
 const attributeKeys = ["hp", "atk", "def", "mastery", "recharge", "cpct", "cdmg", "dmg", "phy", "heal", "shield", "coloringDmg"];
 const basePercent = ["hp", "atk", "def"];
 const masteryName: Readonly<Record<string, string>> = { vaporize: "蒸发", melt: "融化", swirl: "扩散", aggravate: "超激化", spread: "蔓激化" };
@@ -207,7 +207,7 @@ function readInitial(avatar: PanelAvatar, detail: Json, weapon: Json, buffs: rea
 
   const attrs = object(detail.attr);
   const data = object(attrs?.details);
-  const lv = range(avatar.level, avatar.promote, actorLevels);
+  const lv = range(avatar.level, avatar.promote, characterLevelBreakpoints);
   const charLeft = data?.[`${lv.left}+`] ?? data?.[lv.left];
   const charRight = data?.[lv.right];
   const keys = attrs?.keys;
