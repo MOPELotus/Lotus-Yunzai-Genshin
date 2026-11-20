@@ -399,6 +399,13 @@ function statisticsCommand(value: string | undefined, talentStatistics?: TalentS
   if (profileId <= MAX_PROFILE_ID) return { type: "statistics", profileId, ...extra };
 }
 
+function profileQueryName(raw: string, knownOnly = false) {
+  const plain = raw.trim();
+  const name = plain.replace(/老婆|老公/gu, "").trim();
+  if (!name || /星铁|崩坏|绝区零|攻略|图鉴|^(?:更新|删除|加载|修复|重设|清空|群内|最强|排行)/u.test(name)) return;
+  return { name, ...((knownOnly || name !== plain) && { knownCharacterOnly: true as const }) };
+}
+
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
   if (message.includes("换")) return matchTemporaryEquipment(message);
   const materials = /^#(?:原神)?((?:每日|我的|今日|今天|明日|明天|周[1-7一二三四五六日天])*)(?:素材|材料)\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
@@ -432,13 +439,14 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
   const leadingUid = leading?.[2];
   const detailMessage = leading ? `#${leading[1]}${message.slice(leading[0].length)}` : message;
   const damage = /^#(?:原神)?\s*([^#]{1,24}?)\s*(伤害|武器(?=[1-7](?!\d)))(?:\s*([1-9]\d{8,9})|([1-9]\d{0,2})?)(?:\s+(?:档案\s*([1-9]\d{0,2})|([1-9]\d{8,9})))?$/u.exec(detailMessage);
-  if (damage && !/星铁|崩坏|绝区零|攻略|图鉴|^(?:更新|删除|加载|修复|重设|清空|群内|最强|排行)/u.test(damage[1]!)) {
-    const [, name, operation, firstUid, row, archive, lastUid] = damage;
+  if (damage) {
+    const [, rawName, operation, firstUid, row, archive, lastUid] = damage;
+    const target = profileQueryName(rawName!, operation === "武器" || leadingUid !== undefined);
     const profileId = Number(archive ?? 1);
     const trailingUid = firstUid ?? lastUid;
-    if (profileId <= MAX_PROFILE_ID && !(firstUid && lastUid) && !(leadingUid && trailingUid)) {
-      return { type: "detail", profileId, uid: leadingUid ?? trailingUid, name: name!.trim(), mode: "damage",
-        damageRow: row ? Number(row) : undefined, ...((operation === "武器" || leadingUid) && { knownCharacterOnly: true }) };
+    if (target && profileId <= MAX_PROFILE_ID && !(firstUid && lastUid) && !(leadingUid && trailingUid)) {
+      return { type: "detail", profileId, uid: leadingUid ?? trailingUid, ...target, mode: "damage",
+        damageRow: row ? Number(row) : undefined };
     }
     return;
   }
@@ -453,12 +461,12 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
     if (message.startsWith("#")) return { type: "list", ...opts };
     return;
   }
-  if (detail?.[1] && !/星铁|崩坏|绝区零|攻略|图鉴|^(?:更新|删除|加载|修复|重设|清空|群内|最强|排行)/u.test(detail[1])) {
+  if (detail?.[1]) {
+    const target = profileQueryName(detail[1], leadingUid !== undefined);
     const opts = suffix(detail[3] ?? detail[4]);
-    if (opts.profileId > MAX_PROFILE_ID || (leadingUid && opts.uid)) return;
+    if (!target || opts.profileId > MAX_PROFILE_ID || (leadingUid && opts.uid)) return;
     const mode = detail[2] === "圣遗物" ? "artifacts" : detail[2] === "武器" ? "weapon" : "profile";
-    return { type: "detail", name: detail[1].trim(), mode, ...opts,
-      ...(leadingUid && { uid: leadingUid, knownCharacterOnly: true }) };
+    return { type: "detail", ...target, mode, ...opts, ...(leadingUid && { uid: leadingUid }) };
   }
 }
 
