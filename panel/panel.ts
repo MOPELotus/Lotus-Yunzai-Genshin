@@ -104,6 +104,7 @@ export function createGenshinPanelQuery(
   return async (message: string, context: GroupRankContext): Promise<Reply | undefined> => {
     if (signal.aborted) return;
     let command = matchGenshinPanel(message);
+    if (command?.weaponDamageAlias && (!command.name || !findRankCharacter(command.name))) return;
     let preflight: PanelTheme | undefined;
     if (!command) {
       const candidate = matchCharacterLevelChange(message) ?? matchCharacterLevelCombination(message) ??
