@@ -111,7 +111,7 @@ test("显式武器与显示天赋双换段可调换顺序，保留命座和圣�
   expect(trial).toMatchObject({ uid, profileId: 2, damageRow: 2, talentChange: [13, 12, 10],
     equipmentChange: { weaponName: "灭辰", level: 90, affix: 1 } });
   expect(matchTalentWeapon(start + "技能13 12 10换90级精1灭辰 档案2")).toEqual(trial);
-  for (const value of ["天赋91312换灭辰", "天赋91312换绫华武器", "天赋91312换90级精1灭辰换满命",
+  for (const value of ["天赋91312换灭辰", "天赋91312换绫华武器", "天赋91312换90级精1灭辰换满命换绫华花",
     "天赋91312换90级精6灭辰", "天赋0 13 12换90级精1灭辰", "天赋91312换天赋999"]) {
     expect(matchTalentWeapon(start + value)).toBeUndefined();
   }
@@ -128,6 +128,30 @@ test("显式武器与显示天赋双换段可调换顺序，保留命座和圣�
   expect(await change("#胡桃换天赋91312换精2武器")).toMatchObject({ equipped: "显示等级 9 / 13 / 12、护摩之杖 Lv.80 精2" });
   expect(await change("#胡桃换天赋91312换满精雾切")).toMatchObject({ message: expect.stringContaining("适配种类") });
   expect(JSON.stringify(snapshot)).toBe(original);
+});
+
+test("三段显式武器、命座及天赋顺序独立，显式零命与武器模式都保留", async () => {
+  const start = `#UID:${uid}胡桃伤害2换`;
+  const cons = "0命", talent = "技能13 12 10", weapon = "90级精1灭辰";
+  for (const order of [[cons, talent, weapon], [cons, weapon, talent], [talent, cons, weapon],
+    [talent, weapon, cons], [weapon, cons, talent], [weapon, talent, cons]]) {
+    expect(matchTalentWeapon(start + order.join("换") + " 档案2")).toMatchObject({
+      uid, profileId: 2, damageRow: 2, constellationChange: 0, talentChange: [13, 12, 10],
+      equipmentChange: { weaponName: "灭辰", level: 90, affix: 1 },
+    });
+  }
+  for (const value of ["0命换天赋91312换雾切", "0命换天赋91312换绫华杯", "0命换天赋91312换满命",
+    "0命换精1灭辰换满精护摩", "0命换天赋91312换精1灭辰换绫华杯"]) {
+    expect(matchTalentWeapon(start + value)).toBeUndefined();
+  }
+  const command = matchTalentWeapon(start + "精2武器换满命换天赋91312")!;
+  expect(await buildEquipmentChange(snapshot, avatar, command.equipmentChange!, theme,
+    { constellation: command.constellationChange, displayedTalent: command.talentChange })).toMatchObject({
+    equipped: "0 命 → 6 命、显示等级 9 / 13 / 12、护摩之杖 Lv.80 精2",
+    avatar: { cons: 6, artis: avatar.artis, weapon: { name: "护摩之杖", level: 80, promote: 6, affix: 2 } },
+  });
+  expect(snapshot.avatars[avatar.id]).toBe(avatar);
+  expect(avatar.cons).toBe(0);
 });
 
 test("显式武器与同一来源的圣遗物合并且缺一件整条停止", async () => {

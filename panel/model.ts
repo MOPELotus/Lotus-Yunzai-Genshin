@@ -216,13 +216,19 @@ export function matchConstellationTalent(message: string): PanelCommand | undefi
 }
 
 export function matchTalentWeapon(message: string): PanelCommand | undefined {
-  const commands = splitChanges(message, 2);
+  const commands = splitChanges(message, 3);
   if (!commands) return;
   const talent = commands.map(matchTalentChange).find(command => command !== undefined);
   if (!talent) return;
+  const constellationChange = commands.length === 3
+    ? commands.map(matchConstellationChange).find(command => command !== undefined)?.constellationChange
+    : undefined;
+  if (commands.length === 3 && constellationChange === undefined) return;
   const equipmentChange = commands.map(part => matchNamedEquipment(part))
     .find(command => command !== undefined)?.equipmentChange;
-  if (equipmentChange) return { ...talent, equipmentChange };
+  if (equipmentChange) {
+    return { ...talent, equipmentChange, ...(constellationChange !== undefined && { constellationChange }) };
+  }
 }
 
 function matchTemporaryEquipment(message: string): PanelCommand | undefined {
