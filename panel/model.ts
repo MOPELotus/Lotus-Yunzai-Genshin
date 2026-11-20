@@ -8,6 +8,8 @@ type TalentKey = "a" | "e" | "q";
 export const talentKeys = ["a", "e", "q"] as const;
 export type DisplayedTalentLevels = readonly [attack: number, skill: number, burst: number];
 export const characterLevelBreakpoints = [1, 20, 40, 50, 60, 70, 80, 90, 100] as const;
+const finalPromotion = characterLevelBreakpoints.length - 2;
+const finalPromotionStart = characterLevelBreakpoints[finalPromotion]!;
 const elements: Readonly<Record<string, string>> = {
   pyro: "pyro", hydro: "hydro", anemo: "anemo", electro: "electro", dendro: "dendro", cryo: "cryo", geo: "geo",
   fire: "pyro", water: "hydro", wind: "anemo", electric: "electro", grass: "dendro", ice: "cryo", rock: "geo",
@@ -534,6 +536,12 @@ function talent(row: Json | undefined) {
   })) as Partial<Record<TalentKey, number>>;
 }
 
+function readCharacterPromotion(level: number, value: unknown) {
+  // The original Avatar derives this final segment from the level even if the saved field was capped at six.
+  if (level > finalPromotionStart) return finalPromotion;
+  return whole(value, level === finalPromotionStart ? finalPromotion : finalPromotion - 1);
+}
+
 export function officialPanel(uid: string, raw: readonly Json[], catalog: PanelCatalog, now: number): PanelSnapshot {
   const avatars: Record<string, PanelAvatar> = {};
   for (const row of raw) {
@@ -561,7 +569,8 @@ export function officialPanel(uid: string, raw: readonly Json[], catalog: PanelC
       }
     }
     const properties = rows(row.selected_properties).slice(0, 32).flatMap(entry => property(entry, true) ?? []);
-    const promotion = whole(base?.promote_level, 6) ?? [20, 40, 50, 60, 70, 80].filter(minimum => level > minimum).length;
+    const promotion = readCharacterPromotion(level, base?.promote_level) ??
+      characterLevelBreakpoints.slice(1).findIndex(cap => level <= cap);
     avatars[id] = {
       name, id, elem, level, star: whole(base?.rarity ?? meta?.star, 5), fetter: whole(base?.fetter, 10),
       promote: promotion, cons, costume: whole(rows(row.costumes)[0]?.id, 999_999), talent: talents,
@@ -626,7 +635,7 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
     const storedDetails = object(row._lotus);
     avatars[id] = {
       name, id, elem: elements[text(row.elem ?? meta?.elem).toLowerCase()] ?? "", level,
-      star: whole(row.star ?? meta?.star, 5), cons: whole(row.cons, 6), promote: whole(row.promote, 6),
+      star: whole(row.star ?? meta?.star, 5), cons: whole(row.cons, 6), promote: readCharacterPromotion(level, row.promote),
       costume: whole(row.costume, 999_999), fetter: whole(row.fetter, 10), talent: talent(object(row.talent)),
       weapon: weapon(object(row.weapon)), artis, _source: basicRosterEntry || archiveSources.has(source) ? source : "local",
       _time: whole(row._time, Number.MAX_SAFE_INTEGER), _lotus: storedDetails && { properties: storedProperties(storedDetails.properties) },

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ProfileRequestContext } from "@lotus-yunzai/account";
 import { buildCharacterLevelChange, buildEquipmentChange } from "./equipment-change.ts";
-import { matchCharacterLevelChange, matchCharacterLevelCombination, matchGenshinPanel, type PanelAvatar } from "./model.ts";
+import { matchCharacterLevelChange, matchCharacterLevelCombination, matchGenshinPanel, officialPanel, readPanel, type PanelAvatar } from "./model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
@@ -18,6 +18,23 @@ const meta = { name: avatar.name, weapon: "polearm", talentCons: { e: 3, q: 5 } 
 const theme: PanelTheme = { characters: { [avatar.id]: meta, [ayaka.id]: { name: ayaka.name, abbr: "绫华" } },
   artifacts: new Map(), artifactSets: new Map(),
   async picture() { return undefined; } };
+
+test("原档与官服回包保留最高角色等级区间，武器突破仍独立", () => {
+  const cases = [[20, 0, 0, 0], [80, 6, 6, 6], [80, 7, undefined, 5], [90, 6, 6, 6], [90, 7, 7, 7],
+    [90, undefined, undefined, 6], [95, 7, 7, 7], [95, 6, 7, 7], [100, undefined, 7, 7]] as const;
+  for (const [level, promote, storedPromotion, officialPromotion] of cases) {
+    const stored = { ...avatar, level, promote };
+    const raw = { uid, avatars: { [avatar.id]: stored } };
+    for (const legacy of [false, true]) {
+      const retained = readPanel(uid, raw, theme, legacy)?.avatars[avatar.id];
+      expect(retained).toMatchObject({ level, promote: storedPromotion, weapon: avatar.weapon });
+    }
+    const fromMys = officialPanel(uid, [{ base: { id: avatar.id, level, promote_level: promote },
+      weapon: { name: avatar.weapon!.name, level: 90, promote_level: 6, affix_level: 1 } }], theme, 1).avatars[avatar.id];
+    expect(fromMys).toMatchObject({ level, promote: officialPromotion, weapon: avatar.weapon });
+    expect(stored.promote).toBe(promote);
+  }
+});
 
 test("角色等级沿原区间与命令语序，原命名武器指令照常解析", () => {
   expect(matchCharacterLevelChange(`#UID:${uid}芙芙伤害2换等级 95 档案2`)).toMatchObject({
