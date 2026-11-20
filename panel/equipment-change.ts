@@ -56,11 +56,14 @@ async function namedWeapon(avatar: PanelAvatar, type: string, input: Extract<Equ
 }
 
 export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: PanelAvatar, change: EquipmentChangeSelection,
-  theme: PanelTheme, { constellation, displayedTalent }: { constellation?: number; displayedTalent?: DisplayedTalentLevels } = {}): Promise<TemporaryChange> {
+  theme: PanelTheme, { constellation, displayedTalent, characterLevel }: {
+    constellation?: number; displayedTalent?: DisplayedTalentLevels; characterLevel?: number;
+  } = {}): Promise<TemporaryChange> {
   if (transient.has(avatar._source)) return { message: "临时换装需要本人已保存的原神角色面板。" };
   const meta = object(theme.characters[avatar.id]);
-  const characterChange = displayedTalent ? buildTalentChange(avatar, displayedTalent, theme, constellation) :
-    constellation === undefined ? undefined : buildConstellationChange(avatar, constellation, theme);
+  const characterChange = characterLevel !== undefined ? buildCharacterLevelChange(avatar, characterLevel, theme, { constellation, displayedTalent }) :
+    displayedTalent ? buildTalentChange(avatar, displayedTalent, theme, constellation) :
+      constellation === undefined ? undefined : buildConstellationChange(avatar, constellation, theme);
   if (characterChange && "message" in characterChange) return characterChange;
   const replacement = characterChange?.avatar ?? temporaryAvatar(avatar, meta);
   const parts: [string, PanelArtifact][] = [];

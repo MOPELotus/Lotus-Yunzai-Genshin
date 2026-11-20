@@ -228,9 +228,12 @@ export function matchCharacterLevelCombination(message: string): PanelCommand | 
   const commands = splitChanges(message, 2);
   if (!commands) return;
   const level = commands.map(matchCharacterLevelChange).find(command => command !== undefined);
+  if (!level) return;
   const additional = commands.map(part => matchConstellationChange(part) ?? matchTalentChange(part))
     .find(command => command !== undefined);
-  if (level && additional) return { ...additional, characterLevelChange: level.characterLevelChange };
+  if (additional) return { ...additional, characterLevelChange: level.characterLevelChange };
+  const equipmentChange = matchArtifactSource(commands);
+  if (equipmentChange) return { ...level, equipmentChange };
 }
 
 export function matchConstellationTalent(message: string): PanelCommand | undefined {

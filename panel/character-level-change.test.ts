@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ProfileRequestContext } from "@lotus-yunzai/account";
-import { buildCharacterLevelChange } from "./equipment-change.ts";
+import { buildCharacterLevelChange, buildEquipmentChange } from "./equipment-change.ts";
 import { matchCharacterLevelChange, matchCharacterLevelCombination, matchGenshinPanel, type PanelAvatar } from "./model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
@@ -12,8 +12,11 @@ import type { PanelTheme } from "./theme.ts";
 const uid = "100123456";
 const avatar: PanelAvatar = { id: 10000046, name: "胡桃", elem: "pyro", level: 80, promote: 6, cons: 1,
   talent: { a: 10, e: 9, q: 9 }, _source: "enka", weapon: { name: "护摩之杖", level: 90, promote: 6, affix: 1 }, artis: {} };
+const cup = { name: "遍结寒霜的傲骨", set: "冰风迷途的勇士", star: 5, level: 20, mainId: 15001, attrIds: ["501204"] };
+const ayaka: PanelAvatar = { id: 10000002, name: "神里绫华", elem: "cryo", level: 90, _source: "enka", talent: {}, artis: { 4: cup } };
 const meta = { name: avatar.name, weapon: "polearm", talentCons: { e: 3, q: 5 } };
-const theme: PanelTheme = { characters: { [avatar.id]: meta }, artifacts: new Map(), artifactSets: new Map(),
+const theme: PanelTheme = { characters: { [avatar.id]: meta, [ayaka.id]: { name: ayaka.name, abbr: "绫华" } },
+  artifacts: new Map(), artifactSets: new Map(),
   async picture() { return undefined; } };
 
 test("角色等级沿原区间与命令语序，原命名武器指令照常解析", () => {
@@ -65,6 +68,33 @@ test("等级和显示天赋只各接一段，六命也直接取所填显示等�
     { level: 9, original: 9 }, { level: 13, original: 10 }, { level: 12, original: 9 },
   ]);
   expect(source).toEqual({ ...avatar, cons: 6 });
+});
+
+test("角色等级与同档圣遗物单来源双段，武器不变且来源验证失败整条停止", async () => {
+  const start = `#UID:${uid}芙芙伤害2换`;
+  const command = matchCharacterLevelCombination(start + `等级 95换${uid}绫华杯 档案2`);
+  expect(command).toMatchObject({ uid, profileId: 2, damageRow: 2, characterLevelChange: 95,
+    equipmentChange: { donor: "绫华", donorUid: uid, slot: "4" } });
+  expect(matchCharacterLevelCombination(start + `${uid}绫华杯换等级 95 档案2`)).toEqual(command);
+  for (const input of ["95级换绫华武器", "95级换绫华杯+武器", "95级换90级精1灭辰",
+    "95级换绫华杯换胡桃花", "95级换绫华杯+空之杯"]) {
+    expect(matchCharacterLevelCombination(start + input)).toBeUndefined();
+  }
+  const snapshot = { uid, avatars: { [avatar.id]: avatar, [ayaka.id]: ayaka } };
+  const original = JSON.stringify(snapshot);
+  const options = { characterLevel: command!.characterLevelChange };
+  const result = await buildEquipmentChange(snapshot, avatar, command!.equipmentChange!, theme, options);
+  expect(result).toMatchObject({
+    avatar: { level: 95, promote: 7, cons: avatar.cons, talent: avatar.talent, weapon: avatar.weapon, artis: { 4: cup } },
+    equipped: "Lv.80 → Lv.95、遍结寒霜的傲骨",
+  });
+  if (!("avatar" in result)) throw Error(result.message);
+  expect(result.avatar.artis[4]).not.toBe(cup);
+  expect(await buildEquipmentChange(snapshot, avatar, { donor: "绫华", slot: "4", extraSlots: ["5"] }, theme, options))
+    .toMatchObject({ message: expect.stringContaining("指定位置") });
+  expect(await buildEquipmentChange(snapshot, avatar, { donor: "绫华", slot: "4", donorUid: "100999999" }, theme, options))
+    .toMatchObject({ message: expect.stringContaining("所选档案") });
+  expect(JSON.stringify(snapshot)).toBe(original);
 });
 
 test("同级沿用档案突破，换级按旧边界推导且装备和命座不动", () => {

@@ -283,11 +283,11 @@ export function createGenshinPanelQuery(
         const constellation = command.constellationChange;
         const displayedTalent = command.talentChange;
         const characterLevel = command.characterLevelChange;
-        const replacement = characterLevel !== undefined
-          ? buildCharacterLevelChange(original, characterLevel, assets, { constellation, displayedTalent }) : command.equipmentChange
-          ? await buildEquipmentChange(snapshot, original, command.equipmentChange, assets, { constellation, displayedTalent })
-          : displayedTalent ? buildTalentChange(original, displayedTalent, assets, constellation)
-            : constellation !== undefined && buildConstellationChange(original, constellation, assets);
+        const replacement = command.equipmentChange
+          ? await buildEquipmentChange(snapshot, original, command.equipmentChange, assets, { constellation, displayedTalent, characterLevel })
+          : characterLevel !== undefined ? buildCharacterLevelChange(original, characterLevel, assets, { constellation, displayedTalent })
+            : displayedTalent ? buildTalentChange(original, displayedTalent, assets, constellation)
+              : constellation !== undefined && buildConstellationChange(original, constellation, assets);
         if (!replacement) return;
         await verify();
         if ("message" in replacement) return replacement.message;
