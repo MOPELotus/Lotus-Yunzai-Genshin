@@ -105,7 +105,7 @@ export interface PanelCommand {
   readonly name?: string;
   readonly mode?: "profile" | "artifacts" | "weapon" | "damage";
   readonly damageRow?: number;
-  readonly weaponDamageAlias?: true;
+  readonly knownCharacterOnly?: true;
   readonly talentStatistics?: TalentStatisticsSelection;
   readonly materialDay?: TalentStatisticsSelection["day"];
   readonly equipmentChange?: EquipmentChangeSelection;
@@ -428,19 +428,23 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
     return;
   }
 
-  const damage = /^#(?:原神)?\s*([^#]{1,24}?)\s*(伤害|武器(?=[1-7](?!\d)))(?:\s*([1-9]\d{8,9})|([1-9]\d{0,2})?)(?:\s+(?:档案\s*([1-9]\d{0,2})|([1-9]\d{8,9})))?$/u.exec(message);
+  const leading = /^#((?:原神)?\s*)((?:18|[1-9])\d{8})(?!\d)\s*(?=\p{L})/u.exec(message);
+  const leadingUid = leading?.[2];
+  const detailMessage = leading ? `#${leading[1]}${message.slice(leading[0].length)}` : message;
+  const damage = /^#(?:原神)?\s*([^#]{1,24}?)\s*(伤害|武器(?=[1-7](?!\d)))(?:\s*([1-9]\d{8,9})|([1-9]\d{0,2})?)(?:\s+(?:档案\s*([1-9]\d{0,2})|([1-9]\d{8,9})))?$/u.exec(detailMessage);
   if (damage && !/星铁|崩坏|绝区零|攻略|图鉴|^(?:更新|删除|加载|修复|重设|清空|群内|最强|排行)/u.test(damage[1]!)) {
     const [, name, operation, firstUid, row, archive, lastUid] = damage;
     const profileId = Number(archive ?? 1);
-    if (profileId <= MAX_PROFILE_ID && !(firstUid && lastUid)) {
-      return { type: "detail", profileId, uid: firstUid ?? lastUid, name: name!.trim(), mode: "damage",
-        damageRow: row ? Number(row) : undefined, ...(operation === "武器" && { weaponDamageAlias: true }) };
+    const trailingUid = firstUid ?? lastUid;
+    if (profileId <= MAX_PROFILE_ID && !(firstUid && lastUid) && !(leadingUid && trailingUid)) {
+      return { type: "detail", profileId, uid: leadingUid ?? trailingUid, name: name!.trim(), mode: "damage",
+        damageRow: row ? Number(row) : undefined, ...((operation === "武器" || leadingUid) && { knownCharacterOnly: true }) };
     }
     return;
   }
 
   const root = /^#?(?:米游社|mys)?\s*(?:原神)?\s*(全部面板更新|更新全部面板|获取游戏角色详情|更新面板|面板更新|面[板版](?:列表)?|角色面板(?:列表)?|面板角色(?:列表)?)\s*([1-9]\d{8,9}|[1-9]\d{0,2})?$/iu.exec(message);
-  const detail = /^#(?:原神)?\s*([^#]{1,24}?)\s*(面[板版]|详细|详情|圣遗物|武器)\s*(?:([1-9]\d{8,9})|(?:档案\s*)?([1-9]\d{0,2}))?$/u.exec(message);
+  const detail = /^#(?:原神)?\s*([^#]{1,24}?)\s*(面[板版]|详细|详情|圣遗物|武器)\s*(?:([1-9]\d{8,9})|(?:档案\s*)?([1-9]\d{0,2}))?$/u.exec(detailMessage);
   const suffix = (value?: string) => value && value.length >= 9 ? { profileId: 1, uid: value } : { profileId: Number(value ?? 1) };
   if (root) {
     const opts = suffix(root[2]);
@@ -451,9 +455,10 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
   }
   if (detail?.[1] && !/星铁|崩坏|绝区零|攻略|图鉴|^(?:更新|删除|加载|修复|重设|清空|群内|最强|排行)/u.test(detail[1])) {
     const opts = suffix(detail[3] ?? detail[4]);
-    if (opts.profileId > MAX_PROFILE_ID) return;
+    if (opts.profileId > MAX_PROFILE_ID || (leadingUid && opts.uid)) return;
     const mode = detail[2] === "圣遗物" ? "artifacts" : detail[2] === "武器" ? "weapon" : "profile";
-    return { type: "detail", name: detail[1].trim(), mode, ...opts };
+    return { type: "detail", name: detail[1].trim(), mode, ...opts,
+      ...(leadingUid && { uid: leadingUid, knownCharacterOnly: true }) };
   }
 }
 

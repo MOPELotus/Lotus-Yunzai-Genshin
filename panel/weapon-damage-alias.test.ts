@@ -21,7 +21,7 @@ const theme: PanelTheme = { characters: { [avatar.id]: character }, artifacts: n
   async picture() { return undefined; } };
 
 test("旧武器 1–7 选伤害序号，显式档案号和旧长 UID 仍分开", () => {
-  expect(matchGenshinPanel("#胡桃武器2")).toMatchObject({ mode: "damage", weaponDamageAlias: true, damageRow: 2, profileId: 1 });
+  expect(matchGenshinPanel("#胡桃武器2")).toMatchObject({ mode: "damage", knownCharacterOnly: true, damageRow: 2, profileId: 1 });
   expect(matchGenshinPanel("#原神胡桃武器7 档案2")).toMatchObject({ mode: "damage", damageRow: 7, profileId: 2 });
   expect(matchGenshinPanel(`#胡桃武器2 ${uid}`)).toMatchObject({ mode: "damage", damageRow: 2, uid });
   expect(matchGenshinPanel(`#胡桃武器${uid}`)).toMatchObject({ mode: "weapon", uid });
@@ -29,6 +29,21 @@ test("旧武器 1–7 选伤害序号，显式档案号和旧长 UID 仍分开",
   expect(matchGenshinPanel("#胡桃武器20")).toMatchObject({ mode: "weapon", profileId: 20 });
   expect(matchGenshinPanel("#星铁胡桃武器2")).toBeUndefined();
   expect(matchGenshinPanel("#胡桃武器2 档案256")).toBeUndefined();
+});
+
+test("旧前置 UID 单独占字段，保留原详情、伤害数字及档案选择", () => {
+  expect(matchGenshinPanel(`#${uid}胡桃伤害2 档案2`)).toMatchObject({
+    uid, name: "胡桃", mode: "damage", damageRow: 2, profileId: 2, knownCharacterOnly: true,
+  });
+  expect(matchGenshinPanel("#原神1801234567 芙芙详情 档案2")).toMatchObject({
+    uid: "1801234567", name: "芙芙", mode: "profile", profileId: 2,
+  });
+  expect(matchGenshinPanel(`#原神${uid} 胡桃武器2`)).toMatchObject({ uid, name: "胡桃", mode: "damage", damageRow: 2 });
+  expect(matchGenshinPanel(`#${uid}胡桃圣遗物`)).toMatchObject({ uid, name: "胡桃", mode: "artifacts" });
+  expect(matchGenshinPanel(`#${uid}`)).toBeUndefined();
+  expect(matchGenshinPanel(`#${uid}胡桃伤害2 ${uid}`)).toBeUndefined();
+  expect(matchGenshinPanel(`#${uid}胡桃详情 ${uid}`)).toBeUndefined();
+  expect(matchGenshinPanel(`#${uid}星铁胡桃伤害2`)).toBeUndefined();
 });
 
 test("编号武器命令实际复用同档伤害矩阵，裸命令仍发武器资料", async () => {
@@ -64,13 +79,18 @@ test("编号武器命令实际复用同档伤害矩阵，裸命令仍发武器�
     });
     const message = { user_id: 42 };
     expect(await query("#虚构角色武器2 档案2", message)).toBeUndefined();
+    expect(await query(`#${uid}虚构角色伤害2 档案2`, message)).toBeUndefined();
     expect(reads).toEqual([]);
     expect(await query("#胡桃武器2 100999999", message)).toContain("当前档案绑定");
+    expect(await query("#100999999胡桃伤害2 档案2", message)).toContain("当前档案绑定");
     expect(await query("#胡桃武器2 档案2", message)).toEqual({ type: "image", file: damageCard });
     expect(await query("#胡桃伤害2 档案2", message)).toEqual({ type: "image", file: damageCard });
+    expect(await query(`#${uid}胡桃武器2 档案2`, message)).toEqual({ type: "image", file: damageCard });
+    expect(await query(`#${uid}胡桃伤害2 档案2`, message)).toEqual({ type: "image", file: damageCard });
     expect(await query("#胡桃武器 档案2", message)).toEqual({ type: "image", file: weaponCard });
+    expect(await query(`#${uid}胡桃武器 档案2`, message)).toEqual({ type: "image", file: weaponCard });
     expect(await query("#胡桃武器7 档案2", message)).toContain("只支持3种");
-    expect([selected, detail]).toEqual([[1, 1], [2]]);
+    expect([selected, detail]).toEqual([[1, 1, 1, 1], [2, 2]]);
     await expect(stat(archiveDirectory)).rejects.toMatchObject({ code: "ENOENT" });
     expect(await readFile(file, "utf8")).toBe(original);
   } finally {
