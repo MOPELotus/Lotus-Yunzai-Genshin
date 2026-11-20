@@ -1,5 +1,6 @@
 import { lockFile } from "../../../lib/file-lock.ts";
 import { importLegacyWishes } from "./legacy-import.ts";
+import { wishLegacyDirectory } from "./pools.ts";
 
 const args = Bun.argv.slice(2);
 const apply = args[0] === "--apply";
@@ -14,7 +15,7 @@ if (!authorizationFile || !destinationDirectory || extra.length || !sourceUrl ||
   try {
     const result = await importLegacyWishes({
       sourceUrl, authorizationFile, destinationDirectory, apply,
-      legacyDirectory: Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim(),
+      legacyDirectory: wishLegacyDirectory(),
     }, lockFile);
     console.log(JSON.stringify({ mode: apply ? "apply" : "preview", ...result }, null, 2));
   } catch (error) {

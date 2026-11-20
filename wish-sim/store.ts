@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { emptySession, type Pity, type WishSession } from "./draw.ts";
-import { readOptionalWishYaml, readWishYaml, record } from "./pools.ts";
+import { readOptionalWishYaml, readWishYaml, record, wishLegacyDirectory } from "./pools.ts";
 
 const hour = 3_600_000;
 export const wishDayMs = 24 * hour;
@@ -68,7 +68,7 @@ function readData(value: unknown): SimulationData {
 }
 
 async function allowance(group: string, file: string | undefined) {
-  const legacyDirectory = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim();
+  const legacyDirectory = wishLegacyDirectory();
   const builtIn = new URL("./flower/coin.yaml", import.meta.url);
   const config = file ? await readWishYaml(file) : legacyDirectory ? {
     ...(await readOptionalWishYaml(join(legacyDirectory, "def", "coin.yaml")) ?? await readWishYaml(builtIn)),

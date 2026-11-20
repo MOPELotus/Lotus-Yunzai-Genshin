@@ -35,6 +35,10 @@ interface Banner {
 
 const defaults = new URL("./flower/", import.meta.url);
 
+export function wishLegacyDirectory() {
+  return Bun.env.LOTUS_GENSHIN_WISH_LEGACY_DIR?.trim() || Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim();
+}
+
 export function record(value: unknown): Record<string, unknown> | undefined {
   if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
 }
@@ -114,7 +118,7 @@ async function readLegacyBanner(directory: string, qq: string | undefined, confi
 export function createWishPoolSource({
   bannerFile = Bun.env.LOTUS_GENSHIN_WISH_POOL_FILE?.trim(),
   themeDirectory = genshinGachaThemeDirectory(),
-  legacyDirectory = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim(),
+  legacyDirectory = wishLegacyDirectory(),
 }: { readonly bannerFile?: string; readonly themeDirectory?: string; readonly legacyDirectory?: string } = {}) {
   return async (kind: PoolKind, now: number, qq?: string): Promise<WishPool | undefined> => {
     const config = legacyDirectory ? await readOptionalWishYaml(join(legacyDirectory, "config", "gacha.yaml")) : undefined;

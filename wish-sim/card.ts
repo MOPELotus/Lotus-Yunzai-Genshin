@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { renderPng } from "@lotus-yunzai/skia";
 import { loadImage, Path2D } from "skia-canvas";
 import type { WishPull } from "./draw.ts";
-import { readWishYaml } from "./pools.ts";
+import { readWishYaml, wishLegacyDirectory } from "./pools.ts";
 
 type Picture = Awaited<ReturnType<typeof loadImage>>;
 type Context = Parameters<Parameters<typeof renderPng>[2]>[0];
@@ -122,16 +122,16 @@ function banner(ctx: Context, pull: WishPull, art: PullArt, x: number, y: number
 
 export async function renderWishCard({
   title, name, pity, target, fate, pulls, page = 1,
-  themeDirectory = Bun.env.LOTUS_GENSHIN_WISH_THEME_DIR?.trim() || (Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim()
-    ? join(Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR.trim(), "resources") : undefined), mode = "auto",
+  themeDirectory = Bun.env.LOTUS_GENSHIN_WISH_THEME_DIR?.trim() || undefined, mode = "auto",
 }: WishCardOptions) {
   if (!pulls.length || pulls.length > 10) throw new RangeError("模拟祈愿每页须包含 1 至 10 抽。");
   const single = pulls.length === 1;
   const variant = single ? "single" : "torrent";
   const visible = [...pulls].sort((left, right) => right.star - left.star ||
     left.type.localeCompare(right.type, "en") || left.at - right.at);
-  const assets = (...parts: string[]) => picture(themeDirectory, variant, ...parts);
-  const legacyDirectory = Bun.env.LOTUS_GENSHIN_WISH_FLOWER_DIR?.trim();
+  const legacyDirectory = wishLegacyDirectory();
+  const resourceDirectory = themeDirectory ?? (legacyDirectory ? join(legacyDirectory, "resources") : undefined);
+  const assets = (...parts: string[]) => picture(resourceDirectory, variant, ...parts);
   const elementsDir = Bun.env.LOTUS_GENSHIN_WISH_ELEMENTS_DIR?.trim() ||
     (legacyDirectory ? join(legacyDirectory, "../../..", "genshin", "defSet", "element") : undefined);
   const elements = async (type: WishPull["type"]) => elementsDir

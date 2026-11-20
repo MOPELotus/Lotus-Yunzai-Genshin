@@ -9,7 +9,7 @@
 | 环境变量 | 用途 |
 | --- | --- |
 | `LOTUS_GENSHIN_WISH_POOL_FILE` | 按 Flower 的 `def/pool.yaml` 指定模拟用卡池，优先于旧目录和 Miao 数据。 |
-| `LOTUS_GENSHIN_WISH_FLOWER_DIR` | 直接读取旧 Flower 的 `GachaMOD/Genshin/`。可复用旧卡池、常驻名单、球数配置和结果资源。 |
+| `LOTUS_GENSHIN_WISH_LEGACY_DIR` | 指向旧模拟祈愿的 `GachaMOD/Genshin/`。可复用旧卡池、常驻名单、球数配置和结果资源。 |
 | `LOTUS_GENSHIN_WISH_COIN_FILE` | 按 Flower 的 `def/coin.yaml` 设置默认及分群发放的球数。 |
 | `LOTUS_GENSHIN_WISH_THEME_DIR` | 指向有权使用的旧 Flower `GachaMOD/Genshin/resources/`，读取结果背景、祈愿图框与道具图。留空时优先从旧 Flower 目录读取，资源缺失时使用内置绘制。 |
 | `LOTUS_GENSHIN_WISH_ELEMENTS_DIR` | 指向已有的原 genshin `defSet/element/`，为使用 Flower 图包的卡片匹配角色元素或武器类别图标。 |
@@ -19,7 +19,7 @@
 
 ## 沿用旧卡池文件
 
-设置 `LOTUS_GENSHIN_WISH_FLOWER_DIR` 后，每次查询都会重新读取卡池。旧 Flower 优先使用 `data/<QQ>/pool.yaml`。没有个人卡池时，`config/gacha.yaml` 的 `sync: false` 选用 `config/pool.yaml`，开启同步时选用 `def/pool.yaml`。旧 Flower 的 `#抽卡插件更新` 更新原仓，默认卡池文件随原仓提交变化。Lotus-Yunzai 在下一次查询读取新版文件。未设 Flower 目录或独立卡池时，从 Miao 主题目录读取当期有效数据，缺少有效期次时使用随附 Flower 卡池。已经结束的卡池在结果图标注「历史卡池」。
+设置 `LOTUS_GENSHIN_WISH_LEGACY_DIR` 后，每次查询都会重新读取卡池，优先使用 `data/<QQ>/pool.yaml`。没有个人卡池时，`config/gacha.yaml` 的 `sync: false` 选用 `config/pool.yaml`，开启同步时选用 `def/pool.yaml`。未设旧目录或独立卡池时，从原神主题目录读取当期有效数据，缺少有效期次时使用随附卡池。已经结束的卡池在结果图标注「历史卡池」。已有的 `LOTUS_GENSHIN_WISH_FLOWER_DIR` 仍可读取，新键优先。
 
 ## 导入旧 Flower 模拟数据
 
@@ -41,4 +41,4 @@ bun plugins/genshin/wish-sim/import-legacy-cli.ts --apply 授权.json data/gensh
 
 第一条预检并统计将导入的球数和会话。第二条逐 QQ 保存，留存已有的当日球数和保底。每个 QQ 的数据和完成记录一起提交，重复运行会跳过已完成的 QQ。旧来源保持只读。当天已过期的球数按新版发放规则处理，旧保底保留原 TTL。
 
-若要保留武器定轨，在预检和导入时将 `LOTUS_GENSHIN_WISH_FLOWER_DIR` 指向旧副本对应的 Flower 模块目录。以旧卡池核对武器档位，武器换期后保底仍然有效，定轨和命定值按新版换期规则重置。
+若要保留武器定轨，在预检和导入时将 `LOTUS_GENSHIN_WISH_LEGACY_DIR` 指向旧副本对应的模拟祈愿模块目录。以旧卡池核对武器档位，武器换期后保底仍然有效，定轨和命定值按新版换期规则重置。
