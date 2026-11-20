@@ -224,6 +224,14 @@ function splitChanges(message: string, maxParts: 2 | 3 | 4) {
   return parts.map(part => `${target}换${part}${suffix}`);
 }
 
+export function matchCharacterLevelConstellation(message: string): PanelCommand | undefined {
+  const commands = splitChanges(message, 2);
+  if (!commands) return;
+  const level = commands.map(matchCharacterLevelChange).find(command => command !== undefined);
+  const constellation = commands.map(matchConstellationChange).find(command => command !== undefined);
+  if (level && constellation) return { ...level, constellationChange: constellation.constellationChange };
+}
+
 export function matchConstellationTalent(message: string): PanelCommand | undefined {
   const commands = splitChanges(message, 2);
   if (!commands) return;

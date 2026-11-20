@@ -135,12 +135,15 @@ export function buildTalentChange(avatar: PanelAvatar, levels: DisplayedTalentLe
     { avatar: { ...projected, cons: constellation }, equipped: `${avatar.cons} 命 → ${constellation} 命、${talent}` };
 }
 
-export function buildCharacterLevelChange(avatar: PanelAvatar, level: number, theme: PanelTheme): TemporaryChange {
+export function buildCharacterLevelChange(avatar: PanelAvatar, level: number, theme: PanelTheme, constellation?: number): TemporaryChange {
   if (transient.has(avatar._source)) return { message: "等级试算需要本档案已保存的实际角色面板。" };
   // The old Avatar retains a recorded ascension only when the target level matches the archive.
   const minimum = characterLevelBreakpoints.slice(1).findIndex(cap => level <= cap);
   if (!Number.isSafeInteger(level) || level < 1 || minimum < 0) return { message: "本地资料无法确认指定的角色等级。" };
   const promote = level === avatar.level ? Math.max(avatar.promote ?? 0, minimum) : minimum;
-  return { avatar: { ...temporaryAvatar(avatar, object(theme.characters[avatar.id])), level, promote },
-    equipped: `Lv.${avatar.level} → Lv.${level}` };
+  const cons = constellation === undefined ? undefined : buildConstellationChange(avatar, constellation, theme);
+  if (cons && "message" in cons) return cons;
+  const projection = cons?.avatar ?? temporaryAvatar(avatar, object(theme.characters[avatar.id]));
+  const description = `Lv.${avatar.level} → Lv.${level}`;
+  return { avatar: { ...projection, level, promote }, equipped: cons ? `${description}、${cons.equipped}` : description };
 }

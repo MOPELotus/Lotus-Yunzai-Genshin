@@ -9,7 +9,7 @@ import { buildArtifactList } from "./artifact-list.ts";
 import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
 import { matchBareEquipment, matchCharacterLevelChange, matchConstellationChange, matchConstellationEquipment, matchEquipmentChain, matchGenshinPanel, object, officialPanel, propertyLabels, readPanel,
-  matchConstellationTalent, matchNamedWeaponArtifacts, matchTalentArtifacts, matchTalentChange, matchTalentWeapon, selectAvatar, text,
+  matchCharacterLevelConstellation, matchConstellationTalent, matchNamedWeaponArtifacts, matchTalentArtifacts, matchTalentChange, matchTalentWeapon, selectAvatar, text,
   type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
@@ -106,7 +106,8 @@ export function createGenshinPanelQuery(
     let command = matchGenshinPanel(message);
     let preflight: PanelTheme | undefined;
     if (!command) {
-      const candidate = matchCharacterLevelChange(message) ?? matchConstellationChange(message) ?? matchTalentChange(message) ?? matchConstellationTalent(message) ??
+      const candidate = matchCharacterLevelChange(message) ?? matchCharacterLevelConstellation(message) ??
+        matchConstellationChange(message) ?? matchTalentChange(message) ?? matchConstellationTalent(message) ??
         matchConstellationEquipment(message) ?? matchTalentWeapon(message) ?? matchTalentArtifacts(message) ??
         matchNamedWeaponArtifacts(message) ?? matchEquipmentChain(message) ?? matchBareEquipment(message);
       const target = candidate?.name && findRankCharacter(candidate.name);
@@ -282,7 +283,7 @@ export function createGenshinPanelQuery(
         const constellation = command.constellationChange;
         const displayedTalent = command.talentChange;
         const characterLevel = command.characterLevelChange;
-        const replacement = characterLevel !== undefined ? buildCharacterLevelChange(original, characterLevel, assets) : command.equipmentChange
+        const replacement = characterLevel !== undefined ? buildCharacterLevelChange(original, characterLevel, assets, constellation) : command.equipmentChange
           ? await buildEquipmentChange(snapshot, original, command.equipmentChange, assets, { constellation, displayedTalent })
           : displayedTalent ? buildTalentChange(original, displayedTalent, assets, constellation)
             : constellation !== undefined && buildConstellationChange(original, constellation, assets);
