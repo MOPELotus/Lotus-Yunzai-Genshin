@@ -9,7 +9,8 @@ import { buildArtifactList } from "./artifact-list.ts";
 import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
 import { matchBareEquipment, matchConstellationChange, matchConstellationEquipment, matchEquipmentChain, matchGenshinPanel, object, officialPanel, propertyLabels, readPanel,
-  matchConstellationTalent, matchTalentArtifacts, matchTalentChange, selectAvatar, text, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
+  matchConstellationTalent, matchTalentArtifacts, matchTalentChange, matchTalentWeapon, selectAvatar, text,
+  type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
 import { buildDailyMaterials, paginateDailyMaterials } from "./daily-materials.ts";
@@ -106,7 +107,8 @@ export function createGenshinPanelQuery(
     let preflight: PanelTheme | undefined;
     if (!command) {
       const candidate = matchConstellationChange(message) ?? matchTalentChange(message) ?? matchConstellationTalent(message) ??
-        matchConstellationEquipment(message) ?? matchTalentArtifacts(message) ?? matchEquipmentChain(message) ?? matchBareEquipment(message);
+        matchConstellationEquipment(message) ?? matchTalentWeapon(message) ?? matchTalentArtifacts(message) ??
+        matchEquipmentChain(message) ?? matchBareEquipment(message);
       const target = candidate?.name && findRankCharacter(candidate.name);
       const change = candidate?.equipmentChange;
       if (candidate && target && !change && (candidate.constellationChange !== undefined || candidate.talentChange)) {

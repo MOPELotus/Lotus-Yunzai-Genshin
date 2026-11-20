@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { ProfileError } from "@lotus-yunzai/account";
 import { buildEquipmentChange } from "./equipment-change.ts";
-import { matchBareEquipment, matchConstellationEquipment, matchGenshinPanel, type PanelAvatar } from "./model.ts";
+import { matchBareEquipment, matchConstellationEquipment, matchGenshinPanel, matchTalentWeapon, type PanelAvatar } from "./model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -103,4 +103,29 @@ test("裸名先确认原角色与同类唯一武器，未匹配时不读取档�
   expect(reads).toBe(0);
   expect(await query("#胡桃换灭辰", { user_id: 42 })).toContain("请先登录");
   expect(reads).toBe(1);
+});
+
+test("显式武器与显示天赋双换段可调换顺序，保留命座和圣遗物", async () => {
+  const start = `#UID:${uid}胡桃伤害2换`;
+  const trial = matchTalentWeapon(start + "90级精1灭辰换技能13 12 10 档案2");
+  expect(trial).toMatchObject({ uid, profileId: 2, damageRow: 2, talentChange: [13, 12, 10],
+    equipmentChange: { weaponName: "灭辰", level: 90, affix: 1 } });
+  expect(matchTalentWeapon(start + "技能13 12 10换90级精1灭辰 档案2")).toEqual(trial);
+  for (const value of ["天赋91312换灭辰", "天赋91312换绫华武器", "天赋91312换90级精1灭辰换满命",
+    "天赋91312换90级精6灭辰", "天赋0 13 12换90级精1灭辰", "天赋91312换天赋999"]) {
+    expect(matchTalentWeapon(start + value)).toBeUndefined();
+  }
+  expect(matchTalentWeapon("#星铁胡桃换天赋91312换精2武器")).toBeUndefined();
+  const original = JSON.stringify(snapshot);
+  const change = (command: string) => {
+    const parsed = matchTalentWeapon(command)!;
+    return buildEquipmentChange(snapshot, avatar, parsed.equipmentChange!, theme, { displayedTalent: parsed.talentChange });
+  };
+  expect(await change("#胡桃换90级精1灭辰换技能13 12 10")).toMatchObject({
+    equipped: "显示等级 13 / 12 / 10、匣里灭辰 Lv.90 精1",
+    avatar: { cons: avatar.cons, artis: avatar.artis, weapon: { name: "匣里灭辰", level: 90, promote: 6, affix: 1 } },
+  });
+  expect(await change("#胡桃换天赋91312换精2武器")).toMatchObject({ equipped: "显示等级 9 / 13 / 12、护摩之杖 Lv.80 精2" });
+  expect(await change("#胡桃换天赋91312换满精雾切")).toMatchObject({ message: expect.stringContaining("适配种类") });
+  expect(JSON.stringify(snapshot)).toBe(original);
 });

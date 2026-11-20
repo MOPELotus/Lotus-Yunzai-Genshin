@@ -208,6 +208,16 @@ export function matchConstellationTalent(message: string): PanelCommand | undefi
   if (constellation && talent) return { ...constellation, talentChange: talent.talentChange };
 }
 
+export function matchTalentWeapon(message: string): PanelCommand | undefined {
+  const commands = splitChanges(message, 2);
+  if (!commands) return;
+  const talent = commands.map(matchTalentChange).find(command => command !== undefined);
+  if (!talent) return;
+  const equipmentChange = commands.map(part => matchNamedEquipment(part))
+    .find(command => command !== undefined)?.equipmentChange;
+  if (equipmentChange) return { ...talent, equipmentChange };
+}
+
 function matchTemporaryEquipment(message: string): PanelCommand | undefined {
   if (/星铁|绝区零|崩坏|换.*换/u.test(message)) return;
   const named = matchNamedEquipment(message);
