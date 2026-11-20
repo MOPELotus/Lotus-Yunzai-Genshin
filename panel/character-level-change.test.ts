@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ProfileRequestContext } from "@lotus-yunzai/account";
 import { buildCharacterLevelChange } from "./equipment-change.ts";
-import { matchCharacterLevelChange, matchCharacterLevelConstellation, matchGenshinPanel, type PanelAvatar } from "./model.ts";
+import { matchCharacterLevelChange, matchCharacterLevelCombination, matchGenshinPanel, type PanelAvatar } from "./model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
@@ -32,19 +32,39 @@ test("角色等级沿原区间与命令语序，原命名武器指令照常解�
 
 test("等级和命座两段保留零命、两种顺序和原装，按指定命座重算天赋", () => {
   const start = `#UID:${uid}芙芙伤害2换`;
-  const command = matchCharacterLevelConstellation(start + "0命换等级 95 档案2");
+  const command = matchCharacterLevelCombination(start + "0命换等级 95 档案2");
   expect(command).toMatchObject({ uid, profileId: 2, damageRow: 2, characterLevelChange: 95, constellationChange: 0 });
-  expect(matchCharacterLevelConstellation(start + "等级 95换0命 档案2")).toEqual(command);
+  expect(matchCharacterLevelCombination(start + "等级 95换0命 档案2")).toEqual(command);
   for (const input of ["80级换95级", "0命换六命", "80级换精2武器", "0命换", "91级换六命", "80级换六命换技能999"]) {
-    expect(matchCharacterLevelConstellation(start + input)).toBeUndefined();
+    expect(matchCharacterLevelCombination(start + input)).toBeUndefined();
   }
-  const trial = buildCharacterLevelChange(avatar, 80, theme, 6);
+  const trial = buildCharacterLevelChange(avatar, 80, theme, { constellation: 6 });
   expect(trial).toMatchObject({ avatar: { level: 80, promote: 6, cons: 6, weapon: avatar.weapon, artis: avatar.artis },
     equipped: "Lv.80 → Lv.80、1 命 → 6 命" });
   if (!("avatar" in trial)) throw Error(trial.message);
   expect(panelTalentLevels(trial.avatar, meta).map(talent => talent?.level)).toEqual([10, 12, 12]);
-  expect(buildCharacterLevelChange({ ...avatar, cons: undefined }, 80, theme, 0)).toHaveProperty("message");
+  expect(buildCharacterLevelChange({ ...avatar, cons: undefined }, 80, theme, { constellation: 0 })).toHaveProperty("message");
   expect(avatar.cons).toBe(1);
+});
+
+test("等级和显示天赋只各接一段，六命也直接取所填显示等级", () => {
+  const start = `#UID:${uid}芙芙伤害2换`;
+  const command = matchCharacterLevelCombination(start + "等级 95换天赋91312 档案2");
+  expect(command).toMatchObject({ uid, profileId: 2, damageRow: 2, characterLevelChange: 95, talentChange: [9, 13, 12] });
+  expect(matchCharacterLevelCombination(start + "天赋91312换等级 95 档案2")).toEqual(command);
+  for (const input of ["等级 95换技能9,13,12", "80级换天赋91312换6命", "80级换精1护摩", "技能9 13 12换技能999"]) {
+    expect(matchCharacterLevelCombination(start + input)).toBeUndefined();
+  }
+  const source = { ...avatar, cons: 6 };
+  const displayedTalent = [9, 13, 12] as const;
+  const trial = buildCharacterLevelChange(source, 95, theme, { displayedTalent });
+  expect(trial).toMatchObject({ avatar: { level: 95, promote: 7, cons: 6, weapon: source.weapon, artis: source.artis },
+    equipped: "Lv.80 → Lv.95、显示等级 9 / 13 / 12" });
+  if (!("avatar" in trial)) throw Error(trial.message);
+  expect(panelTalentLevels(trial.avatar, meta, meta, displayedTalent)).toEqual([
+    { level: 9, original: 9 }, { level: 13, original: 10 }, { level: 12, original: 9 },
+  ]);
+  expect(source).toEqual({ ...avatar, cons: 6 });
 });
 
 test("同级沿用档案突破，换级按旧边界推导且装备和命座不动", () => {
@@ -81,9 +101,10 @@ test("等级试算依本人当前绑定，渲染中换绑时停止，保留原�
         renders++;
         expect(trial.level).toBe(95);
         expect(trial.promote).toBe(7);
-        expect(trial.cons).toBe(0);
+        expect(trial.cons).toBe(avatar.cons);
         expect(options?.change?.characterLevel).toBe(true);
-        expect(options?.change?.equipped).toBe("Lv.80 → Lv.95、1 命 → 0 命");
+        expect(options?.change?.displayedTalent).toEqual([9, 13, 12]);
+        expect(options?.change?.equipped).toBe("Lv.80 → Lv.95、显示等级 9 / 13 / 12");
         expect(options?.change?.reason).toContain("圣遗物词条");
         revision = "after";
         return { png: new Uint8Array([1]) };
@@ -91,7 +112,7 @@ test("等级试算依本人当前绑定，渲染中换绑时停止，保留原�
     });
     expect(await query("#未知角色换95级", { user_id: 42 })).toBeUndefined();
     expect(await query("#100999999胡桃换95级 档案2", { user_id: 42 })).toContain("当前档案绑定");
-    expect(await query("#胡桃换95级换0命 档案2", { user_id: 42, group_id: 77 })).toContain("档案已变化");
+    expect(await query("#胡桃换95级换天赋91312 档案2", { user_id: 42, group_id: 77 })).toContain("档案已变化");
     expect([renders, records]).toEqual([1, 0]);
     await expect(stat(archiveDirectory)).rejects.toMatchObject({ code: "ENOENT" });
     expect(await readFile(file, "utf8")).toBe(original);
