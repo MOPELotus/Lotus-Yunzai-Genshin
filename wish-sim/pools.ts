@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readMiaoArrayExport } from "@lotus-yunzai/gacha/miao-data";
+import { readLiteralArrayExport } from "@lotus-yunzai/gacha/literal-exports";
 import { parseDocument } from "yaml";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
 
@@ -136,7 +136,7 @@ export function createWishPoolSource({
             if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
             return "";
           });
-        banner = scheduleBanner(readMiaoArrayExport(calendar, "poolDetail"), now)
+        banner = scheduleBanner(readLiteralArrayExport(calendar, "poolDetail"), now)
           ?? configuredBanner(await readWishYaml(new URL("pool.yaml", defaults)));
       }
     }

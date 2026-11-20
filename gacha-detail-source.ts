@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readMiaoArrayExport, readMiaoObjectExport } from "@lotus-yunzai/gacha/miao-data";
+import { readLiteralArrayExport, readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
 import { resolveGenshinDetailPool, type GenshinGachaDetailOptions, type GenshinGachaDetailPeriod } from "./gacha-detail.ts";
 import type { GenshinPreviousGacha } from "./gacha-history.ts";
 import type { GenshinUigfItem, GenshinUigfItemResolver } from "./gacha-uigf.ts";
@@ -104,7 +104,7 @@ export async function readGenshinGachaCatalogue(root: string) {
     readCharacters(root), readPublicWeapons(root),
     readOptional(join(root, "meta-gs", "character", "alias.js")), readOptional(join(root, "meta-gs", "weapon", "alias.js")),
   ]);
-  const weaponAbbr = readMiaoObjectExport(weaponNames, "abbr");
+  const weaponAbbr = readLiteralObjectExport(weaponNames, "abbr");
   for (const [name, abbr] of Object.entries(weaponAbbr ?? {})) {
     const item = weapons.get(name);
     if (item && abbr) weapons.set(name, { ...item, abbr });
@@ -112,15 +112,15 @@ export async function readGenshinGachaCatalogue(root: string) {
   return {
     characters,
     weapons,
-    characterAliases: readMiaoObjectExport(charNames, "alias"),
-    weaponAliases: readMiaoObjectExport(weaponNames, "alias"),
+    characterAliases: readLiteralObjectExport(charNames, "alias"),
+    weaponAliases: readLiteralObjectExport(weaponNames, "alias"),
   };
 }
 
 export async function readGenshinPublicPoolSources(root: string) {
   const [catalogue, calendar] = await Promise.all([readGenshinGachaCatalogue(root), readOptional(join(root, "meta-gs", "info", "pool.js"))]);
   return {
-    ...catalogue, regular: readMiaoArrayExport(calendar, "poolDetail"), mixed: readMiaoArrayExport(calendar, "mixPoolDetail"),
+    ...catalogue, regular: readLiteralArrayExport(calendar, "poolDetail"), mixed: readLiteralArrayExport(calendar, "mixPoolDetail"),
   };
 }
 
@@ -157,8 +157,8 @@ export async function readGenshinGachaSources(root: string, records: GenshinPrev
   const named = (entry: GenshinGachaVersionPeriod): GenshinGachaVersionPeriod => ({
     ...entry, name: entry.char5.map((name) => characters.get(name)?.abbr ?? name).join(" / "),
   });
-  const regular = readMiaoArrayExport(calendar, "poolDetail").filter(period);
-  const mixed = readMiaoArrayExport(calendar, "mixPoolDetail").filter(period);
+  const regular = readLiteralArrayExport(calendar, "poolDetail").filter(period);
+  const mixed = readLiteralArrayExport(calendar, "mixPoolDetail").filter(period);
   return {
     resolveItem,
     schedule: regular.filter(versionPeriod).map(named),

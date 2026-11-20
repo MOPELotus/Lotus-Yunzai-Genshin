@@ -1,7 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { loadImage } from "skia-canvas";
-import { readMiaoObjectExport } from "@lotus-yunzai/gacha/miao-data";
+import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
 import { avatarId, object, text, type Json, type PanelCatalog } from "./model.ts";
 
@@ -53,7 +53,7 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
       try {
         if ((await stat(file)).size <= metadataLimit) {
           const source = await readFile(file, "utf8");
-          return [readMiaoObjectExport(source, "alias") ?? {}, readMiaoObjectExport(source, "abbr") ?? {}];
+          return [readLiteralObjectExport(source, "alias") ?? {}, readLiteralObjectExport(source, "abbr") ?? {}];
         }
       } catch {}
       return [];
