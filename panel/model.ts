@@ -116,7 +116,14 @@ type DonorEquipment = {
   readonly extraSlots?: readonly DonorEquipment["slot"][];
   readonly moreDonors?: readonly DonorEquipment[];
 };
-type NamedEquipment = { readonly slot: "weapon"; readonly weaponName: string; readonly affix?: number; readonly level?: number; readonly bare?: true };
+type NamedEquipment = {
+  readonly slot: "weapon";
+  readonly weaponName: string;
+  readonly affix?: number;
+  readonly level?: number;
+  readonly bare?: true;
+  readonly artifactSource?: DonorEquipment;
+};
 export type EquipmentChangeSelection = DonorEquipment | NamedEquipment;
 const equipmentSlots: Readonly<Record<string, EquipmentChangeSelection["slot"]>> = {
   武器: "weapon", 生之花: "1", 花: "1", 死之羽: "2", 羽毛: "2", 羽: "2", 毛: "2",
@@ -239,6 +246,26 @@ function matchTemporaryEquipment(message: string): PanelCommand | undefined {
   };
 }
 
+function matchArtifactSource(commands: readonly string[]): DonorEquipment | undefined {
+  for (const command of commands) {
+    const equipment = matchTemporaryEquipment(command)?.equipmentChange;
+    if (equipment && !("weaponName" in equipment) && equipment.slot !== "weapon" &&
+      !equipment.extraSlots?.includes("weapon")) return equipment;
+  }
+}
+
+export function matchNamedWeaponArtifacts(message: string): PanelCommand | undefined {
+  if (/星铁|绝区零|崩坏/u.test(message)) return;
+  const commands = splitChanges(message, 2);
+  if (!commands) return;
+  const weapon = commands.map(part => matchNamedEquipment(part)).find(command => command !== undefined);
+  const equipment = weapon?.equipmentChange;
+  const artifactSource = matchArtifactSource(commands);
+  if (weapon && equipment && "weaponName" in equipment && artifactSource) {
+    return { ...weapon, equipmentChange: { ...equipment, artifactSource } };
+  }
+}
+
 export function matchTalentArtifacts(message: string): PanelCommand | undefined {
   const commands = splitChanges(message, 3);
   if (!commands) return;
@@ -248,9 +275,8 @@ export function matchTalentArtifacts(message: string): PanelCommand | undefined 
     ? commands.map(matchConstellationChange).find(command => command !== undefined)?.constellationChange
     : undefined;
   if (commands.length === 3 && constellationChange === undefined) return;
-  const equipmentChange = commands.map(matchTemporaryEquipment).find(command => command !== undefined)?.equipmentChange;
-  if (equipmentChange && !("weaponName" in equipmentChange) && equipmentChange.slot !== "weapon" &&
-    !equipmentChange.extraSlots?.includes("weapon")) {
+  const equipmentChange = matchArtifactSource(commands);
+  if (equipmentChange) {
     return { ...talent, equipmentChange, ...(constellationChange !== undefined && { constellationChange }) };
   }
 }

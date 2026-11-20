@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { ProfileError } from "@lotus-yunzai/account";
 import { buildEquipmentChange } from "./equipment-change.ts";
-import { matchBareEquipment, matchConstellationEquipment, matchGenshinPanel, matchTalentWeapon, type PanelAvatar } from "./model.ts";
+import { matchBareEquipment, matchConstellationEquipment, matchGenshinPanel, matchNamedWeaponArtifacts, matchTalentWeapon, type PanelAvatar } from "./model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -128,4 +128,33 @@ test("显式武器与显示天赋双换段可调换顺序，保留命座和圣�
   expect(await change("#胡桃换天赋91312换精2武器")).toMatchObject({ equipped: "显示等级 9 / 13 / 12、护摩之杖 Lv.80 精2" });
   expect(await change("#胡桃换天赋91312换满精雾切")).toMatchObject({ message: expect.stringContaining("适配种类") });
   expect(JSON.stringify(snapshot)).toBe(original);
+});
+
+test("显式武器与同一来源的圣遗物合并且缺一件整条停止", async () => {
+  const start = `#UID:${uid}胡桃伤害2换`;
+  const artifactSource = `${uid}绫华杯子+头`;
+  const command = matchNamedWeaponArtifacts(start + `90级精1灭辰换${artifactSource} 档案2`);
+  expect(command).toMatchObject({ uid, profileId: 2, damageRow: 2, equipmentChange: {
+    weaponName: "灭辰", level: 90, affix: 1, artifactSource: { donor: "绫华", donorUid: uid, slot: "4", extraSlots: ["5"] },
+  } });
+  expect(matchNamedWeaponArtifacts(start + `${artifactSource}换90级精1灭辰 档案2`)).toEqual(command);
+  for (const parts of ["灭辰换绫华杯", "精1灭辰换绫华杯+武器", "精1灭辰换绫华杯+空之杯", "精1灭辰换绫华杯换满命", "精1灭辰换"]) {
+    expect(matchNamedWeaponArtifacts(start + parts)).toBeUndefined();
+  }
+  expect(matchNamedWeaponArtifacts("#星铁胡桃换绫华杯换精1灭辰")).toBeUndefined();
+  const cup = { name: "遍结寒霜的傲骨", star: 5, level: 20, attrIds: ["501204"] };
+  const donor: PanelAvatar = { id: 10000002, name: "神里绫华", elem: "cryo", level: 90, _source: "enka", talent: {}, artis: { 4: cup } };
+  const data = { ...snapshot, avatars: { ...snapshot.avatars, [donor.id]: donor } };
+  const before = JSON.stringify(data);
+  const change = (message: string) => buildEquipmentChange(data, avatar, matchNamedWeaponArtifacts(message)!.equipmentChange!, theme);
+  const result = await change("#胡桃换精1灭辰换神里绫华杯");
+  expect(result).toMatchObject({ equipped: "匣里灭辰 Lv.80 精1、遍结寒霜的傲骨",
+    avatar: { cons: avatar.cons, artis: { 4: cup }, weapon: { name: "匣里灭辰", level: 80, promote: 6, affix: 1 } },
+  });
+  if (!("avatar" in result)) throw Error(result.message);
+  expect(result.avatar.artis[4]).not.toBe(cup);
+  expect(await change("#胡桃换精1灭辰换神里绫华杯+头")).toMatchObject({ message: expect.stringContaining("指定位置") });
+  expect(await change("#胡桃换精1灭辰换100999999神里绫华杯")).toMatchObject({ message: expect.stringContaining("所选档案") });
+  expect(await change("#胡桃换精1雾切换神里绫华杯")).toMatchObject({ message: expect.stringContaining("适配种类") });
+  expect(JSON.stringify(data)).toBe(before);
 });

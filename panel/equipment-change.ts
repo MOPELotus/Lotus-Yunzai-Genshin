@@ -62,18 +62,21 @@ export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: Pane
     constellation === undefined ? undefined : buildConstellationChange(avatar, constellation, theme);
   if (characterChange && "message" in characterChange) return characterChange;
   const replacement = characterChange?.avatar ?? temporaryAvatar(avatar, meta);
-  if ("weaponName" in change) {
-    const weapon = await namedWeapon(avatar, text(meta?.weapon), change, theme);
-    if (weapon && "message" in weapon) return { message: weapon.message };
-    return weapon ? { avatar: { ...replacement, weapon },
-      equipped: characterChange ? `${characterChange.equipped}、${weapon.name} Lv.${weapon.level} 精${weapon.affix}` : weapon.name } :
-      { message: "本地资料无法确认这件原神武器、别名或适配种类。" };
-  }
-  const changes = [change, ...(change.moreDonors ?? [])];
   const parts: [string, PanelArtifact][] = [];
   let weapon = avatar.weapon;
   let weaponLabel: string | undefined;
-  for (const change of changes) {
+  let donors: readonly Extract<EquipmentChangeSelection, { donor: string }>[];
+  if ("weaponName" in change) {
+    const selected = await namedWeapon(avatar, text(meta?.weapon), change, theme);
+    if (!selected) return { message: "本地资料无法确认这件原神武器、别名或适配种类。" };
+    if ("message" in selected) return selected;
+    weapon = selected;
+    weaponLabel = characterChange || change.artifactSource ? `${weapon.name} Lv.${weapon.level} 精${weapon.affix}` : weapon.name;
+    donors = change.artifactSource ? [change.artifactSource] : [];
+  } else {
+    donors = [change, ...(change.moreDonors ?? [])];
+  }
+  for (const change of donors) {
     if (change.donorUid !== undefined && change.donorUid !== snapshot.uid) {
       return { message: "装备来源必须属于本次所选档案绑定的原神 UID。" };
     }

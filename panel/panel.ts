@@ -9,7 +9,7 @@ import { buildArtifactList } from "./artifact-list.ts";
 import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
 import { matchBareEquipment, matchConstellationChange, matchConstellationEquipment, matchEquipmentChain, matchGenshinPanel, object, officialPanel, propertyLabels, readPanel,
-  matchConstellationTalent, matchTalentArtifacts, matchTalentChange, matchTalentWeapon, selectAvatar, text,
+  matchConstellationTalent, matchNamedWeaponArtifacts, matchTalentArtifacts, matchTalentChange, matchTalentWeapon, selectAvatar, text,
   type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
@@ -108,14 +108,16 @@ export function createGenshinPanelQuery(
     if (!command) {
       const candidate = matchConstellationChange(message) ?? matchTalentChange(message) ?? matchConstellationTalent(message) ??
         matchConstellationEquipment(message) ?? matchTalentWeapon(message) ?? matchTalentArtifacts(message) ??
-        matchEquipmentChain(message) ?? matchBareEquipment(message);
+        matchNamedWeaponArtifacts(message) ?? matchEquipmentChain(message) ?? matchBareEquipment(message);
       const target = candidate?.name && findRankCharacter(candidate.name);
       const change = candidate?.equipmentChange;
       if (candidate && target && !change && (candidate.constellationChange !== undefined || candidate.talentChange)) {
         command = { ...candidate, name: target.name };
       } else if (candidate && target && change) {
         if ("weaponName" in change) {
-          if (!change.bare) command = { ...candidate, name: target.name };
+          if (!change.bare) {
+            if (!change.artifactSource || findRankCharacter(change.artifactSource.donor)) command = { ...candidate, name: target.name };
+          }
           else {
             try {
               preflight = await theme();
