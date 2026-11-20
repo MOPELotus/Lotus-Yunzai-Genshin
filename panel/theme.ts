@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { loadImage } from "skia-canvas";
 import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
-import { avatarId, object, text, type Json, type PanelCatalog } from "./model.ts";
+import { avatarId, object, text, type Json, type PanelAvatar, type PanelCatalog } from "./model.ts";
 
 const imageLimit = 12 * 1024 * 1024;
 const metadataLimit = 5 * 1024 * 1024;
@@ -14,6 +14,16 @@ export interface PanelTheme extends PanelCatalog {
   readonly metadata?: (...parts: string[]) => Promise<Json>;
   readonly weaponNames?: () => Promise<readonly Readonly<Record<string, string>>[]>;
   readonly picture: (...parts: string[]) => Promise<Picture | undefined>;
+}
+
+export async function panelPortrait(theme: PanelTheme, avatar: Pick<PanelAvatar, "name" | "costume">) {
+  const files = avatar.costume
+    ? ["splash2.webp", "splash.webp", "gacha.webp", "face2.webp", "face.webp"]
+    : ["splash.webp", "gacha.webp", "face.webp"];
+  for (const file of files) {
+    const image = await theme.picture("meta-gs", "character", avatar.name, "imgs", file);
+    if (image) return image;
+  }
 }
 
 async function json(path: string): Promise<Json> {

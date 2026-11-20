@@ -10,7 +10,7 @@ import { panelTalentLevels } from "./talent-levels.ts";
 import {
   artifactProperties, object, propertyLabels, talentKeys, text, whole, type DisplayedTalentLevels, type PanelAvatar, type PanelSnapshot,
 } from "./model.ts";
-import type { PanelTheme, Picture } from "./theme.ts";
+import { panelPortrait, type PanelTheme, type Picture } from "./theme.ts";
 
 type Context = Parameters<Parameters<typeof renderPng>[2]>[0];
 type RenderMode = Parameters<typeof renderPng>[3];
@@ -562,8 +562,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
   const summary = pane === "profile" && damage?.rows.length ? damage : undefined;
   const [backdrop, splash, badge, crown, icons, talents, constellations, equip, relicArt, summaryTexture] = await Promise.all([
     theme.picture("common", "bg", `bg-${element}.webp`),
-    await character(theme, avatar.name, "imgs", avatar.costume ? "splash2.webp" : "splash.webp") ??
-      await character(theme, avatar.name, "imgs", "splash.webp"),
+    panelPortrait(theme, avatar),
     theme.picture("common", "bg", `talent-${element}.webp`),
     theme.picture("character", "imgs", "crown.png"), theme.picture("character", "imgs", "icon.png"),
     Promise.all(talentKeys.map(key => {
@@ -685,8 +684,7 @@ export async function renderArtifactCard(snapshot: PanelSnapshot, avatar: PanelA
   const { rating, missing } = scoreArtifacts(avatar);
   const [backdrop, splash, ...artifacts] = await Promise.all([
     theme.picture("common", "bg", `bg-${element}.webp`),
-    await character(theme, avatar.name, "imgs", avatar.costume ? "splash2.webp" : "splash.webp") ??
-      await character(theme, avatar.name, "imgs", "splash.webp"),
+    panelPortrait(theme, avatar),
     ...Array.from({ length: 5 }, (_, index) => {
       const item = avatar.artis[String(index + 1)];
       return item ? theme.picture("meta-gs", "artifact", "imgs", item.set ?? "", `${index + 1}.webp`) : undefined;
@@ -782,8 +780,7 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
   const element = elements[avatar.elem] ? avatar.elem : "hydro";
   const [background, splash] = await Promise.all([
     theme.picture("common", "bg", `bg-${element}.webp`),
-    await character(theme, avatar.name, "imgs", avatar.costume ? "splash2.webp" : "splash.webp") ??
-      await character(theme, avatar.name, "imgs", "splash.webp"),
+    panelPortrait(theme, avatar),
   ]);
   const selected = model.rows[model.selected];
   const buffs = [...new Set(selected?.buffs ?? [])];
