@@ -55,7 +55,9 @@ export function matchGrowthCommand(message: string): GrowthRequest | "help" | un
   const profileId = Number(profile?.[1] ?? 1);
   if (profileId > MAX_PROFILE_ID) return "help";
   if (profile) body = body.slice(0, profile.index).trimEnd();
-  const givenUid = /(?:^|\s)([1-9]\d{8,9})(?=\s|$)/u.exec(body);
+  const uidPattern = /(?<!\d)([1-9]\d{8,9})(?!\d)/gu;
+  const givenUid = uidPattern.exec(body);
+  if (givenUid && uidPattern.exec(body)) return "help";
   if (givenUid) body = `${body.slice(0, givenUid.index)} ${body.slice(givenUid.index + givenUid[0].length)}`.trim();
   const subject = /^(.+?)\s*(?=等级|天赋|\d|$)/u.exec(body);
   const name = subject?.[1]?.trim();
