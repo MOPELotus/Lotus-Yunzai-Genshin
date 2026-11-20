@@ -19,6 +19,7 @@ import { findRankCharacter } from "../rank-statistics/stats.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
 import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
 import { readPanelTheme, type PanelTheme } from "./theme.ts";
+import { readTheaterStatisticsMonth, selectTheaterStatistics } from "./theater-statistics.ts";
 
 const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
 const previousDirectory = fileURLToPath(new URL("../../../data/PlayerData/gs/", import.meta.url));
@@ -229,7 +230,18 @@ export function createGenshinPanelQuery(
       }
       if (type === "statistics") {
         const talent = command.talentStatistics;
-        const statistics = await buildPanelStatistics(snapshot, assets, signal, !talent);
+        let theaterSelection;
+        let monthTitle;
+        if (command.theaterMonth) {
+          monthTitle = `${command.theaterMonth.slice(0, 4)}-${command.theaterMonth.slice(4)} 幻想真境剧诗 · 角色练度统计`;
+          const theater = await readTheaterStatisticsMonth(command.theaterMonth, signal);
+          await verify();
+          if (!theater) return `${monthTitle}\n本地暂无可核对的轮换资料。`;
+          theaterSelection = selectTheaterStatistics(snapshot, assets, theater);
+          if (!theaterSelection) return `${monthTitle}\n本地资料缺少已核实的限制元素、开幕或特邀角色。`;
+          if (!theaterSelection.avatars.length) return `${monthTitle}\n${theaterSelection.text}\n本档案暂无符合入门条件的角色。`;
+        }
+        const statistics = await buildPanelStatistics(snapshot, assets, signal, !talent, theaterSelection);
         const schedule = talent && await buildTalentStatistics(statistics, assets, talent, now(), signal);
         const rows: readonly PanelStatisticRow[] = schedule?.rows ?? statistics;
         await verify();
@@ -260,6 +272,7 @@ export function createGenshinPanelQuery(
           }
         }
         await verify();
+        if (theaterSelection) return { type: "forward", nodes: [`${monthTitle}\n${theaterSelection.text}`, ...pages] };
         if (pages.length === 1) {
           const result = pages[0]!;
           return typeof result === "string" ? `${title}\n${result}` : result;

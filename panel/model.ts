@@ -106,6 +106,7 @@ export interface PanelCommand {
   readonly mode?: "profile" | "artifacts" | "weapon" | "damage";
   readonly damageRow?: number;
   readonly knownCharacterOnly?: true;
+  readonly theaterMonth?: string;
   readonly talentStatistics?: TalentStatisticsSelection;
   readonly materialDay?: TalentStatisticsSelection["day"];
   readonly equipmentChange?: EquipmentChangeSelection;
@@ -408,6 +409,12 @@ function profileQueryName(raw: string, knownOnly = false) {
 
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
   if (message.includes("换")) return matchTemporaryEquipment(message);
+  const theater = /^#(?:原神)?(20\d{2}(?:0[1-9]|1[0-2]))(?:幻想真境剧诗|幻想真境|剧诗|幻想)练度统计\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
+  if (theater) {
+    const selection = statisticsCommand(theater[2]);
+    if (selection) return { ...selection, theaterMonth: theater[1] };
+    return;
+  }
   const materials = /^#(?:原神)?((?:每日|我的|今日|今天|明日|明天|周[1-7一二三四五六日天])*)(?:素材|材料)\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
   if (materials) {
     const selection = statisticsCommand(materials[2]);

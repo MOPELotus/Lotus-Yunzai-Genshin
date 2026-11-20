@@ -15,7 +15,8 @@ function completeSets(avatar: PanelAvatar) {
   return [...counts].filter(([, count]) => count >= 2).map(([name]) => name);
 }
 
-export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: PanelTheme, signal?: AbortSignal, includeRating = true) {
+export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: PanelTheme, signal?: AbortSignal, includeRating = true,
+  theaterRoster?: { readonly avatars: readonly PanelAvatar[]; readonly trials: readonly PanelAvatar[] }) {
   const weaponData = new Map<string, { type: string; star: number | undefined; abbr: string }>();
   const weapons = await Promise.all(types.map(type => theme.metadata?.("meta-gs", "weapon", type, "data.json")));
   for (const [index, catalog] of weapons.entries()) {
@@ -26,7 +27,10 @@ export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: Panel
     }
   }
   const result = [];
-  for (const avatar of Object.values(snapshot.avatars)) {
+  const selected = theaterRoster && new Set(theaterRoster.avatars.map(({ id }) => id));
+  const trials = new Set(theaterRoster?.trials.filter(avatar => selected?.has(avatar.id)));
+  const originals = Object.values(snapshot.avatars).filter(({ id }) => !selected || selected.has(id));
+  for (const avatar of [...originals, ...trials]) {
     signal?.throwIfAborted();
     if (["change", "customize", "share"].includes(avatar._source)) continue;
     const meta = object(theme.characters[avatar.id]);
@@ -48,11 +52,23 @@ export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: Panel
     talents.every(talent => talent) ? talents.reduce((total, talent) => total + talent!.original, 0) : 3;
   const optional = (left: number | undefined, right: number | undefined) =>
     left === right ? 0 : (right ?? Number.POSITIVE_INFINITY) - (left ?? Number.POSITIVE_INFINITY);
-  return result.sort((a, b) => b.avatar.level - a.avatar.level || optional(a.star, b.star) ||
-    sum(b.talents) - sum(a.talents) || (b.avatar.cons ?? 0) - (a.avatar.cons ?? 0) ||
+  type Row = typeof result[number];
+  const compare = (a: Row, b: Row) => b.avatar.level - a.avatar.level || optional(a.star, b.star) ||
+    optional(trials.has(a.avatar) ? undefined : sum(a.talents), trials.has(b.avatar) ? undefined : sum(b.talents)) ||
+    (b.avatar.cons ?? 0) - (a.avatar.cons ?? 0) ||
     optional(a.weapon?.level, b.weapon?.level) || optional(a.weapon?.star, b.weapon?.star) ||
-    optional(a.weapon?.affix, b.weapon?.affix) || (b.avatar.fetter ?? 0) - (a.avatar.fetter ?? 0) ||
-    b.avatar.id - a.avatar.id);
+    optional(a.weapon?.affix, b.weapon?.affix) || (b.avatar.fetter ?? 0) - (a.avatar.fetter ?? 0);
+  const compareOwned = (a: Row, b: Row) => compare(a, b) || b.avatar.id - a.avatar.id;
+  if (!theaterRoster) return result.sort(compareOwned);
+  const owned = result.filter(row => !trials.has(row.avatar)).sort(compareOwned);
+  // The original app inserts trial rows into the already sorted roster, then
+  // sorts by element and training again, reversing the order of equal rows.
+  const roster = new Map(owned.map(row => [row.avatar.id, row]));
+  for (const row of result.filter(row => trials.has(row.avatar))) roster.set(row.avatar.id, row);
+  return [...roster.values()].reverse().sort((a, b) => {
+    const left = a.avatar.elem, right = b.avatar.elem;
+    return left === right ? compare(a, b) : left < right ? 1 : -1;
+  });
 }
 
 export type PanelStatistic = Awaited<ReturnType<typeof buildPanelStatistics>>[number];
