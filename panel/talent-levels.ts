@@ -3,10 +3,15 @@ import { object, talentKeys, whole, type DisplayedTalentLevels, type Json, type 
 export const travelerIds = new Set([10000005, 10000007, 20000000]);
 
 // miao-plugin 2860761, models/character/CharTalent.js and models/Character.js (MIT).
+export function panelTalentThresholds(avatar: PanelAvatar, meta: Json | undefined) {
+  if (!travelerIds.has(avatar.id)) return object(meta?.talentCons);
+  const swapped = ["dendro", "hydro", "pyro"].includes(avatar.elem);
+  return { e: swapped ? 3 : 5, q: swapped ? 5 : 3 };
+}
+
 export function panelTalentLevels(avatar: PanelAvatar, meta: Json | undefined, archiveMeta = meta, displayed?: DisplayedTalentLevels) {
   const archivedThresholds = object(archiveMeta?.talentCons);
-  const swapped = ["dendro", "hydro", "pyro"].includes(avatar.elem);
-  const thresholds = travelerIds.has(avatar.id) ? { e: swapped ? 3 : 5, q: swapped ? 5 : 3 } : object(meta?.talentCons);
+  const thresholds = panelTalentThresholds(avatar, meta);
   const fromAccountPanel = avatar._source === "mysPanel" && !!avatar._lotus;
   return talentKeys.map((key, index) => {
     const original = avatar.talent[key];

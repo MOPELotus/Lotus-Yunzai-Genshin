@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { panelDetailIcons } from "./card.ts";
 import { panelPortrait, readPanelTheme, type PanelTheme, type Picture } from "./theme.ts";
 
 const images = [
@@ -92,5 +93,32 @@ test("已筛图库优先，坏图依次回落到原安装图库和同角色内�
     expect((await panelPortrait(theme, boy))?.width).toBe(1);
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("原神面板显示武器类别普攻图与旅行者当前元素命座和加成天赋图", async () => {
+  const assets = new Map<Picture, string>();
+  const theme: PanelTheme = {
+    characters: { 10000046: { name: "胡桃", weapon: "polearm", talentCons: { e: 5, q: 3 } } },
+    artifacts: new Map(), artifactSets: new Map(),
+    async picture(...path) {
+      const image = { width: 1 } as Picture;
+      assets.set(image, path.join("/"));
+      return image;
+    },
+  };
+  for (const [id, name, elem, e, q, weapon] of [
+    [10000005, "空", "dendro", 3, 5, "sword"], [10000007, "荧", "electro", 5, 3, "sword"],
+    [10000046, "胡桃", "pyro", 5, 3, "polearm"],
+  ] as const) {
+    const [talents, constellations] = await panelDetailIcons({
+      id, name, elem, level: 80, talent: {}, artis: {}, _source: "miao",
+    }, theme, elem);
+    const directory = id === 10000046 ? "胡桃" : `旅行者/${elem}`;
+    expect(constellations.map(icon => assets.get(icon!))).toEqual(
+      Array.from({ length: 6 }, (_, index) => `meta-gs/character/${directory}/icons/cons-${index + 1}.webp`));
+    expect(talents.map(icon => assets.get(icon!))).toEqual([
+      `common/item/atk-${weapon}.webp`, ...[e, q].map(slot => `meta-gs/character/${directory}/icons/cons-${slot}.webp`),
+    ]);
   }
 });

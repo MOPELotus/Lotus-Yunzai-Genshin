@@ -6,7 +6,7 @@ import type { DailyMaterialGroup } from "./daily-materials.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { scoreArtifacts } from "./artifact-score.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
-import { panelTalentLevels } from "./talent-levels.ts";
+import { panelTalentLevels, panelTalentThresholds, travelerIds } from "./talent-levels.ts";
 import {
   artifactProperties, object, propertyLabels, talentKeys, text, whole, type DisplayedTalentLevels, type PanelAvatar, type PanelSnapshot,
 } from "./model.ts";
@@ -24,6 +24,7 @@ const gold = "#ffdfa0";
 const elements: Readonly<Record<string, string>> = {
   anemo: "#377b77", geo: "#906735", electro: "#625483", dendro: "#4c7135", hydro: "#315579", pyro: "#7c3b38", cryo: "#427080",
 };
+const weaponTypes = ["sword", "claymore", "polearm", "bow", "catalyst"];
 const tableKeys = ["hp", "atk", "def", "mastery", "cpct", "cdmg", "recharge", "dmg"];
 const sourceLabels: Readonly<Record<string, string>> = {
   mysPanel: "米游社", enka: "第三方面板", miao: "第三方面板", mgg: "第三方面板", hutao: "第三方面板", homo: "第三方面板",
@@ -378,7 +379,6 @@ async function weaponPicture(theme: PanelTheme, avatar: Pick<PanelAvatar, "id" |
   const name = avatar.weapon.name;
   const meta = object(theme.characters[avatar.id]);
   const type = text(meta?.weapon);
-  const weaponTypes = ["sword", "claymore", "polearm", "bow", "catalyst"];
   for (const candidate of weaponTypes.includes(type) ? [type, ...weaponTypes.filter(item => item !== type)] : weaponTypes) {
     const image = await theme.picture("meta-gs", "weapon", candidate, name, "icon.webp");
     if (image) return image;
@@ -547,29 +547,47 @@ function drawEquipmentChange(ctx: Context, width: number, y: number, change: Equ
   if (change.reason) label(ctx, change.reason, 24, y + 53, 12, "#ffe0b8", width - 48);
 }
 
+export async function panelDetailIcons(avatar: PanelAvatar, theme: PanelTheme, element: string) {
+  const traveler = travelerIds.has(avatar.id);
+  const meta = object(theme.characters[avatar.id]);
+  const talentCons = panelTalentThresholds(avatar, meta);
+  const weaponType = traveler ? "sword" : text(meta?.weapon);
+  const constellation = (level: number) => traveler
+    ? character(theme, "旅行者", element, "icons", `cons-${level}.webp`)
+    : character(theme, avatar.name, "icons", `cons-${level}.webp`);
+  const constellations = Array.from({ length: 6 }, (_, index) => constellation(index + 1));
+  return Promise.all([
+    Promise.all(talentKeys.map(async key => {
+      if (key === "a" && weaponTypes.includes(weaponType)) {
+        const attack = await theme.picture("common", "item", `atk-${weaponType}.webp`);
+        if (attack) return attack;
+      }
+      const cons = whole(talentCons?.[key], 6);
+      return cons ? constellations[cons - 1] : character(theme, avatar.name, "icons", `talent-${key}.webp`);
+    })),
+    Promise.all(constellations),
+  ]);
+}
+
 export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme, {
   pane = "profile", mode = "auto", damage, profileId = 1, change,
 }: { readonly pane?: "profile" | "artifacts" | "weapon"; readonly mode?: RenderMode;
   readonly damage?: DamageSummary; readonly profileId?: number; readonly change?: EquipmentNotice } = {}) {
   if (pane === "artifacts") return renderArtifactCard(snapshot, avatar, theme, mode);
-  const element = elements[avatar.elem] ? avatar.elem : "hydro";
+  const traveler = travelerIds.has(avatar.id);
+  const element = Object.hasOwn(elements, avatar.elem) ? avatar.elem : traveler ? "anemo" : "hydro";
   const equipment = Object.entries(avatar.artis).sort(([left], [right]) => Number(left) - Number(right));
   const showRelics = pane !== "weapon";
   const showWeapon = !!avatar.weapon;
   const meta = object(theme.characters[avatar.id]);
-  const talentCons = object(meta?.talentCons);
   const levels = panelTalentLevels(avatar, meta, meta, change?.displayedTalent);
   const summary = pane === "profile" && damage?.rows.length ? damage : undefined;
-  const [backdrop, splash, badge, crown, icons, talents, constellations, equip, relicArt, summaryTexture] = await Promise.all([
+  const [backdrop, splash, badge, crown, icons, [talents, constellations], equip, relicArt, summaryTexture] = await Promise.all([
     theme.picture("common", "bg", `bg-${element}.webp`),
     panelPortrait(theme, avatar),
     theme.picture("common", "bg", `talent-${element}.webp`),
     theme.picture("character", "imgs", "crown.png"), theme.picture("character", "imgs", "icon.png"),
-    Promise.all(talentKeys.map(key => {
-      const cons = whole(talentCons?.[key], 6);
-      return character(theme, avatar.name, "icons", cons ? `cons-${cons}.webp` : `talent-${key}.webp`);
-    })),
-    Promise.all(Array.from({ length: 6 }, (_, index) => character(theme, avatar.name, "icons", `cons-${index + 1}.webp`))),
+    panelDetailIcons(avatar, theme, element),
     showWeapon ? weaponPicture(theme, avatar) : undefined,
     showRelics ? Promise.all(equipment.map(([slot, relic]) =>
       theme.picture("meta-gs", "artifact", "imgs", relic.set ?? "", `${slot}.webp`))) : [],
