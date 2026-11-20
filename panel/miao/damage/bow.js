@@ -127,16 +127,15 @@ export default function (step, staticStep) {
 
     掠食者: [{
       check: ({ element }) => element === '冰',
-      title: '满Buff普攻与重击伤害提高[aDmg]%',
+      title: '掠食者：仅 PlayStation Network 生效，满层普攻与重击伤害提高[aDmg]%',
       refine: {
-        aDmg: [20]
+        aDmg: [20],
+        a2Dmg: [20]
       }
     }, {
       check: ({ characterName }) => characterName === '埃洛伊',
-      title: '攻击力提升66点',
-      refine: {
-        atkPlus: 66
-      }
+      title: '掠食者：仅 PlayStation Network 生效，埃洛伊攻击力提升66点',
+      data: { atkPlus: 66 }
     }],
 
     曚云之月: {
