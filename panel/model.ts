@@ -232,7 +232,8 @@ export function matchCharacterLevelCombination(message: string): PanelCommand | 
   const additional = commands.map(part => matchConstellationChange(part) ?? matchTalentChange(part))
     .find(command => command !== undefined);
   if (additional) return { ...additional, characterLevelChange: level.characterLevelChange };
-  const equipmentChange = matchArtifactSource(commands);
+  const equipmentChange = commands.map(part => matchNamedEquipment(part)).find(command => command !== undefined)?.equipmentChange
+    ?? matchArtifactSource(commands);
   if (equipmentChange) return { ...level, equipmentChange };
 }
 

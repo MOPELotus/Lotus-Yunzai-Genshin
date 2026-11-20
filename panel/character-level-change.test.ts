@@ -38,7 +38,7 @@ test("等级和命座两段保留零命、两种顺序和原装，按指定命�
   const command = matchCharacterLevelCombination(start + "0命换等级 95 档案2");
   expect(command).toMatchObject({ uid, profileId: 2, damageRow: 2, characterLevelChange: 95, constellationChange: 0 });
   expect(matchCharacterLevelCombination(start + "等级 95换0命 档案2")).toEqual(command);
-  for (const input of ["80级换95级", "0命换六命", "80级换精2武器", "0命换", "91级换六命", "80级换六命换技能999"]) {
+  for (const input of ["80级换95级", "0命换六命", "80级换武器", "0命换", "91级换六命", "80级换六命换技能999"]) {
     expect(matchCharacterLevelCombination(start + input)).toBeUndefined();
   }
   const trial = buildCharacterLevelChange(avatar, 80, theme, { constellation: 6 });
@@ -55,7 +55,7 @@ test("等级和显示天赋只各接一段，六命也直接取所填显示等�
   const command = matchCharacterLevelCombination(start + "等级 95换天赋91312 档案2");
   expect(command).toMatchObject({ uid, profileId: 2, damageRow: 2, characterLevelChange: 95, talentChange: [9, 13, 12] });
   expect(matchCharacterLevelCombination(start + "天赋91312换等级 95 档案2")).toEqual(command);
-  for (const input of ["等级 95换技能9,13,12", "80级换天赋91312换6命", "80级换精1护摩", "技能9 13 12换技能999"]) {
+  for (const input of ["等级 95换技能9,13,12", "80级换天赋91312换6命", "80级换护摩", "技能9 13 12换技能999"]) {
     expect(matchCharacterLevelCombination(start + input)).toBeUndefined();
   }
   const source = { ...avatar, cons: 6 };
@@ -76,7 +76,7 @@ test("角色等级与同档圣遗物单来源双段，武器不变且来源验�
   expect(command).toMatchObject({ uid, profileId: 2, damageRow: 2, characterLevelChange: 95,
     equipmentChange: { donor: "绫华", donorUid: uid, slot: "4" } });
   expect(matchCharacterLevelCombination(start + `${uid}绫华杯换等级 95 档案2`)).toEqual(command);
-  for (const input of ["95级换绫华武器", "95级换绫华杯+武器", "95级换90级精1灭辰",
+  for (const input of ["95级换绫华武器", "95级换绫华杯+武器", "95级换灭辰",
     "95级换绫华杯换胡桃花", "95级换绫华杯+空之杯"]) {
     expect(matchCharacterLevelCombination(start + input)).toBeUndefined();
   }

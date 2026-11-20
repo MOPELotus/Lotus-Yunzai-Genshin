@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import { ProfileError } from "@lotus-yunzai/account";
 import { buildEquipmentChange } from "./equipment-change.ts";
-import { matchBareEquipment, matchConstellationEquipment, matchGenshinPanel, matchNamedWeaponArtifacts, matchTalentWeapon, type PanelAvatar } from "./model.ts";
+import { matchBareEquipment, matchCharacterLevelCombination, matchConstellationEquipment, matchGenshinPanel, matchNamedWeaponArtifacts,
+  matchTalentWeapon, type PanelAvatar } from "./model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -201,4 +202,30 @@ test("显式武器与同一来源的圣遗物合并且缺一件整条停止", as
   expect(await change("#胡桃换精1灭辰换100999999神里绫华杯")).toMatchObject({ message: expect.stringContaining("所选档案") });
   expect(await change("#胡桃换精1雾切换神里绫华杯")).toMatchObject({ message: expect.stringContaining("适配种类") });
   expect(JSON.stringify(data)).toBe(before);
+});
+
+test("角色和武器等级及突破按各自的档案和上限独立计算", async () => {
+  const start = `#UID:${uid}胡桃伤害2换`;
+  const command = matchCharacterLevelCombination(start + "80级换90级精1灭辰 档案2");
+  expect(command).toMatchObject({ uid, profileId: 2, damageRow: 2, characterLevelChange: 80,
+    equipmentChange: { weaponName: "灭辰", level: 90, affix: 1 } });
+  expect(matchCharacterLevelCombination(start + "90级精1灭辰换80级 档案2")).toEqual(command);
+  for (const tail of ["80级换灭辰", "80级换绫华武器", "80级换90级精6灭辰", "80级换90级精1灭辰换95级"]) {
+    expect(matchCharacterLevelCombination(start + tail)).toBeUndefined();
+  }
+  const before = JSON.stringify(snapshot);
+  const project = (tail: string) => {
+    const parsed = matchCharacterLevelCombination(start + tail)!;
+    return buildEquipmentChange(snapshot, avatar, parsed.equipmentChange!, theme, { characterLevel: parsed.characterLevelChange });
+  };
+  expect(await project("80级换精3武器")).toMatchObject({
+    equipped: "Lv.90 → Lv.80、护摩之杖 Lv.80 精3",
+    avatar: { level: 80, promote: 5, cons: avatar.cons, talent: avatar.talent, artis: avatar.artis,
+      weapon: { name: "护摩之杖", level: 80, promote: 6, affix: 3 } },
+  });
+  expect(await project("等级 95换等级70护摩")).toMatchObject({
+    avatar: { level: 95, promote: 7, weapon: { name: "护摩之杖", level: 70, promote: 4, affix: 2 } },
+  });
+  expect(await project("80级换90级精1雾切")).toMatchObject({ message: expect.stringContaining("适配种类") });
+  expect(JSON.stringify(snapshot)).toBe(before);
 });
