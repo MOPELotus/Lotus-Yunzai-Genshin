@@ -112,9 +112,10 @@ export default function (step, staticStep) {
     },
     盈满之实: {
       title: '满层提高元素精通[mastery]，攻击力降低25%',
+      // The five stacks each reduce ATK by 5%, independently of refinement.
+      data: { atkPct: -25 },
       refine: {
-        mastery: step(24 * 5, 3 * 5),
-        atkPct: -25
+        mastery: step(24 * 5, 3 * 5)
       }
     },
     流浪的晚星: {
