@@ -38,7 +38,7 @@ test("等级和命座两段保留零命、两种顺序和原装，按指定命�
   const command = matchCharacterLevelCombination(start + "0命换等级 95 档案2");
   expect(command).toMatchObject({ uid, profileId: 2, damageRow: 2, characterLevelChange: 95, constellationChange: 0 });
   expect(matchCharacterLevelCombination(start + "等级 95换0命 档案2")).toEqual(command);
-  for (const input of ["80级换95级", "0命换六命", "80级换武器", "0命换", "91级换六命", "80级换六命换技能999"]) {
+  for (const input of ["80级换95级", "0命换六命", "80级换武器", "0命换", "91级换六命", "80级换六命换五命"]) {
     expect(matchCharacterLevelCombination(start + input)).toBeUndefined();
   }
   const trial = buildCharacterLevelChange(avatar, 80, theme, { constellation: 6 });
@@ -55,7 +55,7 @@ test("等级和显示天赋只各接一段，六命也直接取所填显示等�
   const command = matchCharacterLevelCombination(start + "等级 95换天赋91312 档案2");
   expect(command).toMatchObject({ uid, profileId: 2, damageRow: 2, characterLevelChange: 95, talentChange: [9, 13, 12] });
   expect(matchCharacterLevelCombination(start + "天赋91312换等级 95 档案2")).toEqual(command);
-  for (const input of ["等级 95换技能9,13,12", "80级换天赋91312换6命", "80级换护摩", "技能9 13 12换技能999"]) {
+  for (const input of ["等级 95换技能9,13,12", "80级换天赋91312换天赋999", "80级换护摩", "技能9 13 12换技能999"]) {
     expect(matchCharacterLevelCombination(start + input)).toBeUndefined();
   }
   const source = { ...avatar, cons: 6 };
@@ -95,6 +95,30 @@ test("角色等级与同档圣遗物单来源双段，武器不变且来源验�
   expect(await buildEquipmentChange(snapshot, avatar, { donor: "绫华", slot: "4", donorUid: "100999999" }, theme, options))
     .toMatchObject({ message: expect.stringContaining("所选档案") });
   expect(JSON.stringify(snapshot)).toBe(original);
+});
+
+test("等级组合每个字段只接一段，五个字段的 120 种顺序给出相同试算", () => {
+  const permute = (parts: readonly string[]): string[][] => parts.length < 2 ? [[...parts]] :
+    parts.flatMap(part => permute(parts.filter(other => other !== part)).map(tail => [part, ...tail]));
+  const start = `#UID:${uid}芙芙伤害2换`;
+  const parts = ["等级 95", "0命", "天赋91312", "80级精2武器", `${uid}绫华杯子+头`];
+  for (const order of permute(parts)) {
+    expect(matchCharacterLevelCombination(start + order.join("换") + " 档案2")).toMatchObject({
+      uid, profileId: 2, damageRow: 2, characterLevelChange: 95, constellationChange: 0, talentChange: [9, 13, 12],
+      equipmentChange: { weaponName: "武器", level: 80, affix: 2,
+        artifactSource: { donor: "绫华", donorUid: uid, slot: "4", extraSlots: ["5"] } },
+    });
+  }
+  for (let mask = 1; mask < 16; mask++) {
+    const combination = parts.filter((_, index) => index === 0 || (mask & (1 << (index - 1))) !== 0);
+    expect(matchCharacterLevelCombination(start + combination.join("换"))).toBeDefined();
+  }
+  for (const extra of ["满命", "天赋999", "70级护摩", "绫华武器", "不明操作", ""]) {
+    expect(matchCharacterLevelCombination(start + `95级换0命换天赋91312换80级精2武器换${extra}`)).toBeUndefined();
+  }
+  expect(matchCharacterLevelCombination(start + "95级换0命换天赋91312换绫华杯换刻晴头")).toBeUndefined();
+  expect(matchCharacterLevelCombination(start + "95级换80级")).toBeUndefined();
+  expect(matchCharacterLevelCombination(start + parts.slice(1).join("换"))).toBeUndefined();
 });
 
 test("同级沿用档案突破，换级按旧边界推导且装备和命座不动", () => {

@@ -215,7 +215,7 @@ export function matchCharacterLevelChange(message: string): PanelCommand | undef
     mode: damage ? "damage" : "profile", damageRow: row ? Number(row) : undefined, characterLevelChange };
 }
 
-function splitChanges(message: string, maxParts: 2 | 3 | 4) {
+function splitChanges(message: string, maxParts: 2 | 3 | 4 | 5) {
   if (!/换.*换/u.test(message)) return;
   const profile = /\s+档案\s*[1-9]\d{0,2}$/u.exec(message);
   const [target, ...parts] = (profile ? message.slice(0, profile.index) : message).split("换");
@@ -225,16 +225,29 @@ function splitChanges(message: string, maxParts: 2 | 3 | 4) {
 }
 
 export function matchCharacterLevelCombination(message: string): PanelCommand | undefined {
-  const commands = splitChanges(message, 2);
+  const commands = splitChanges(message, 5);
   if (!commands) return;
-  const level = commands.map(matchCharacterLevelChange).find(command => command !== undefined);
+  let level: PanelCommand | undefined;
+  let constellationChange: number | undefined;
+  let talentChange: DisplayedTalentLevels | undefined;
+  let weapon: NamedEquipment | undefined;
+  let artifacts: DonorEquipment | undefined;
+  for (const part of commands) {
+    const command = matchCharacterLevelChange(part) ?? matchConstellationChange(part) ?? matchTalentChange(part) ??
+      matchTemporaryEquipment(part);
+    const equipment = command?.equipmentChange;
+    const artifactSource = onlyArtifactSource(equipment);
+    if (command?.characterLevelChange !== undefined && !level) level = command;
+    else if (command?.constellationChange !== undefined && constellationChange === undefined) constellationChange = command.constellationChange;
+    else if (command?.talentChange && !talentChange) talentChange = command.talentChange;
+    else if (equipment && "weaponName" in equipment && !weapon) weapon = equipment;
+    else if (artifactSource && !artifacts) artifacts = artifactSource;
+    else return;
+  }
   if (!level) return;
-  const additional = commands.map(part => matchConstellationChange(part) ?? matchTalentChange(part))
-    .find(command => command !== undefined);
-  if (additional) return { ...additional, characterLevelChange: level.characterLevelChange };
-  const equipmentChange = commands.map(part => matchNamedEquipment(part)).find(command => command !== undefined)?.equipmentChange
-    ?? matchArtifactSource(commands);
-  if (equipmentChange) return { ...level, equipmentChange };
+  const equipmentChange = weapon && artifacts ? { ...weapon, artifactSource: artifacts } : weapon ?? artifacts;
+  return { ...level, ...(constellationChange !== undefined && { constellationChange }), ...(talentChange && { talentChange }),
+    ...(equipmentChange && { equipmentChange }) };
 }
 
 export function matchConstellationTalent(message: string): PanelCommand | undefined {
@@ -284,11 +297,16 @@ function matchTemporaryEquipment(message: string): PanelCommand | undefined {
   };
 }
 
+function onlyArtifactSource(equipment: EquipmentChangeSelection | undefined): DonorEquipment | undefined {
+  if (equipment && !("weaponName" in equipment) && equipment.slot !== "weapon" && !equipment.extraSlots?.includes("weapon")) {
+    return equipment;
+  }
+}
+
 function matchArtifactSource(commands: readonly string[]): DonorEquipment | undefined {
   for (const command of commands) {
-    const equipment = matchTemporaryEquipment(command)?.equipmentChange;
-    if (equipment && !("weaponName" in equipment) && equipment.slot !== "weapon" &&
-      !equipment.extraSlots?.includes("weapon")) return equipment;
+    const source = onlyArtifactSource(matchTemporaryEquipment(command)?.equipmentChange);
+    if (source) return source;
   }
 }
 
