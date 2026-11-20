@@ -198,7 +198,7 @@ export function matchTalentChange(message: string): PanelCommand | undefined {
     talentChange: [Number(levels[1]), Number(levels[2]), Number(levels[3])] };
 }
 
-function splitChanges(message: string, maxParts: 2 | 3) {
+function splitChanges(message: string, maxParts: 2 | 3 | 4) {
   if (!/换.*换/u.test(message)) return;
   const profile = /\s+档案\s*[1-9]\d{0,2}$/u.exec(message);
   const [target, ...parts] = (profile ? message.slice(0, profile.index) : message).split("换");
@@ -216,19 +216,21 @@ export function matchConstellationTalent(message: string): PanelCommand | undefi
 }
 
 export function matchTalentWeapon(message: string): PanelCommand | undefined {
-  const commands = splitChanges(message, 3);
+  const commands = splitChanges(message, 4);
   if (!commands) return;
   const talent = commands.map(matchTalentChange).find(command => command !== undefined);
   if (!talent) return;
-  const constellationChange = commands.length === 3
+  const constellationChange = commands.length >= 3
     ? commands.map(matchConstellationChange).find(command => command !== undefined)?.constellationChange
     : undefined;
-  if (commands.length === 3 && constellationChange === undefined) return;
+  if (commands.length >= 3 && constellationChange === undefined) return;
   const equipmentChange = commands.map(part => matchNamedEquipment(part))
     .find(command => command !== undefined)?.equipmentChange;
-  if (equipmentChange) {
-    return { ...talent, equipmentChange, ...(constellationChange !== undefined && { constellationChange }) };
-  }
+  if (!equipmentChange || !("weaponName" in equipmentChange)) return;
+  const artifactSource = commands.length === 4 ? matchArtifactSource(commands) : undefined;
+  if (commands.length === 4 && !artifactSource) return;
+  return { ...talent, equipmentChange: artifactSource ? { ...equipmentChange, artifactSource } : equipmentChange,
+    ...(constellationChange !== undefined && { constellationChange }) };
 }
 
 function matchTemporaryEquipment(message: string): PanelCommand | undefined {

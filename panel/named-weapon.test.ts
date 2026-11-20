@@ -111,7 +111,7 @@ test("显式武器与显示天赋双换段可调换顺序，保留命座和圣�
   expect(trial).toMatchObject({ uid, profileId: 2, damageRow: 2, talentChange: [13, 12, 10],
     equipmentChange: { weaponName: "灭辰", level: 90, affix: 1 } });
   expect(matchTalentWeapon(start + "技能13 12 10换90级精1灭辰 档案2")).toEqual(trial);
-  for (const value of ["天赋91312换灭辰", "天赋91312换绫华武器", "天赋91312换90级精1灭辰换满命换绫华花",
+  for (const value of ["天赋91312换灭辰", "天赋91312换绫华武器", "天赋91312换90级精1灭辰换绫华花",
     "天赋91312换90级精6灭辰", "天赋0 13 12换90级精1灭辰", "天赋91312换天赋999"]) {
     expect(matchTalentWeapon(start + value)).toBeUndefined();
   }
@@ -141,7 +141,7 @@ test("三段显式武器、命座及天赋顺序独立，显式零命与武器�
     });
   }
   for (const value of ["0命换天赋91312换雾切", "0命换天赋91312换绫华杯", "0命换天赋91312换满命",
-    "0命换精1灭辰换满精护摩", "0命换天赋91312换精1灭辰换绫华杯"]) {
+    "0命换精1灭辰换满精护摩", "0命换天赋91312换精1灭辰换绫华杯换胡桃花"]) {
     expect(matchTalentWeapon(start + value)).toBeUndefined();
   }
   const command = matchTalentWeapon(start + "精2武器换满命换天赋91312")!;
@@ -152,6 +152,26 @@ test("三段显式武器、命座及天赋顺序独立，显式零命与武器�
   });
   expect(snapshot.avatars[avatar.id]).toBe(avatar);
   expect(avatar.cons).toBe(0);
+});
+
+test("四段各一项可任意排序，只应用确定的命座、天赋、显式武器和本档圣遗物", () => {
+  const source = `${uid}绫华杯子+头`;
+  const parts = ["0命", "技能13 12 10", "90级精1灭辰", source];
+  for (const first of parts) {
+    for (const second of parts.filter(part => part !== first)) {
+      const [third, fourth] = parts.filter(part => part !== first && part !== second);
+      for (const tail of [[third, fourth], [fourth, third]]) {
+        const command = `#UID:${uid}胡桃伤害2换${[first, second, ...tail].join("换")} 档案2`;
+        expect(matchTalentWeapon(command)).toMatchObject({ uid, profileId: 2, damageRow: 2, constellationChange: 0,
+          talentChange: [13, 12, 10], equipmentChange: { weaponName: "灭辰", level: 90, affix: 1,
+            artifactSource: { donor: "绫华", donorUid: uid, slot: "4", extraSlots: ["5"] } } });
+      }
+    }
+  }
+  const start = "#芙芙换0命换天赋91312换精2武器换";
+  for (const tail of ["满命", "天赋999", "满精雾切", "绫华杯+武器", "绫华杯+空之杯", "绫华杯换胡桃花", ""]) {
+    expect(matchTalentWeapon(start + tail)).toBeUndefined();
+  }
 });
 
 test("显式武器与同一来源的圣遗物合并且缺一件整条停止", async () => {
