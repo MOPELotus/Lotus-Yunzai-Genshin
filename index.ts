@@ -26,11 +26,11 @@ import { createGenshinWorldBossRanking } from "./world-boss-ranking.ts";
 import { createWorldBossQuery, createWorldBossRankingQuery, worldBossCommand, worldBossRankingCommand } from "./world-boss.ts";
 
 const updateCommand = /^#(?:原神)?更新抽卡记录([1-9]\d{0,2})?$/u;
-const miniappCommand = /^#?(?:获取|更新)(?:提瓦特)?小助手(?:抽卡|祈愿)?(?:记录|历史)([1-9]\d{0,2})?$/u;
+const externalGachaCommand = /^#(?:原神)?同步外部抽卡记录([1-9]\d{0,2})?$/u;
 const exportCommand = /^#?(?:原神)?(强制)?导出记录(?:json)?(v2|v4)?([1-9]\d{0,2})?$/u;
-const poolCommand = /^#(?:原神)?(?:喵喵)?(全部)?(抽卡|抽奖|角色|武器|常驻|集录|up)池?(全部)?(记录|祈愿|分析|统计)([1-9]\d{0,2})?$/u;
-const versionCommand = /^#(?:原神)?(?:喵喵)?(版本(?:全部)?|全部)统计([1-9]\d{0,2})?$/u;
-const specialCommand = /^#(?:原神)?(?:喵喵)?(?:(新手|全部新手)池?(?:全部)?(?:记录|祈愿|分析|统计)|全部(?:记录|祈愿|分析))([1-9]\d{0,2})?$/u;
+const poolCommand = /^#(?:原神)?(全部)?(抽卡|抽奖|角色|武器|常驻|集录|up)池?(全部)?(记录|祈愿|分析|统计)([1-9]\d{0,2})?$/u;
+const versionCommand = /^#(?:原神)?(版本(?:全部)?|全部)统计([1-9]\d{0,2})?$/u;
+const specialCommand = /^#(?:原神)?(?:(新手|全部新手)池?(?:全部)?(?:记录|祈愿|分析|统计)|全部(?:记录|祈愿|分析))([1-9]\d{0,2})?$/u;
 const helpCommand = /^#(?:原神)?(?:抽卡|记录)帮助$/u;
 const detailPools = new Map<string, GenshinGachaPool>([["武器", 302], ["常驻", 200], ["集录", 500]]);
 type VersionPool = NonNullable<GenshinGachaVersionOptions["type"]>;
@@ -44,7 +44,7 @@ const help = [
   "原神抽卡记录",
   "#登录列表 可查看档案，#同步角色 可同步原神角色。",
   "#更新抽卡记录 可补齐官方可查询范围内的记录。",
-  "#更新小助手抽卡记录 可从提瓦特小助手导入历史。",
+  "#同步外部抽卡记录 可从外部服务同步历史，开始时会说明服务及发送的信息。",
   "#抽卡记录、#武器记录、#常驻记录、#集录记录 可查看对应卡池。",
   "#新手记录 查看旧新手池记录，#全部记录 查看各池详情。",
   "私聊 #导出记录 发送 UIGF 文件，可用 #导出记录jsonv2 选择旧格式。",
@@ -101,7 +101,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const worldBossRankingQuery = createWorldBossRankingQuery(worldBossRanking, signal);
   const backpackQuery = createGenshinBackpackQuery(profiles, client, signal);
   const gachaUpdate = createGachaUpdater((qq, profileId) => sync.sync(qq, profileId, { signal }));
-  const miniappUpdate = createGachaUpdater((qq, profileId) => sync.syncMiniapp(qq, profileId, { signal }));
+  const externalUpdate = createGachaUpdater((qq, profileId) => sync.syncExternal(qq, profileId, { signal }));
   const importGacha = createGenshinGachaImport(profiles, history, signal);
   const publicPool = createGenshinPublicPoolQuery(signal);
   const grow = createGenshinGrowQuery(profiles, lockFile, signal, { client });
@@ -136,15 +136,15 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     }
   }
 
-  async function importMiniapp(qq: string, profileId: number, context: GachaContext) {
+  async function syncExternalHistory(qq: string, profileId: number, context: GachaContext) {
     try {
-      const result = await miniappUpdate(qq, profileId, () =>
-        context.reply(`[genshin] 正在同步 profile ${profileId} 的提瓦特小助手抽卡记录。`));
+      const result = await externalUpdate(qq, profileId, () =>
+        context.reply(`[genshin] 正在同步档案 ${profileId} 的外部抽卡记录。将向提瓦特小助手（www.lelaer.com）发送原神 UID 和临时抽卡授权链接。`));
       if (signal.aborted) return;
-      if (!result) return "该档案的小助手抽卡记录正在同步，请稍后再试。";
+      if (!result) return "该档案的外部抽卡记录正在同步，请稍后再试。";
       const title = `[genshin] profile ${profileId} · UID ${result.uid}`;
       const imported = result.pools.filter(({ received }) => received > 0);
-      if (!imported.length) return `${title}\n提瓦特小助手抽卡记录为空，本地记录已保留。`;
+      if (!imported.length) return `${title}\n外部抽卡记录为空，本地记录已保留。`;
       const lines = imported.map(({ name, received, added, total }) => `${name}记录：收到 ${received} 条，新增 ${added} 条，共 ${total} 条`);
       return [title, ...lines, `导入成功，可使用 #抽卡记录${profileId === 1 ? "" : profileId} 查看。`].join("\n");
     } catch (error) {
@@ -157,7 +157,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       } else if (error instanceof HoyoRequestError) {
         message = error.status === 429 ? "访问过于频繁，请稍后再试。" : error.message;
       }
-      return `[genshin] 小助手抽卡记录同步失败：${message}`;
+      return `[genshin] 外部抽卡记录同步失败：${message}`;
     }
   }
 
@@ -228,7 +228,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (genshinBackpackCommand.test(message)) return ["[genshin] 背包"];
       if (worldBossCommand.test(message) || worldBossRankingCommand.test(message)) return ["[genshin] 世界 BOSS"];
       const gacha = gachaImportCommand.test(message) || helpCommand.test(message) || updateCommand.test(message) ||
-        miniappCommand.test(message) || exportCommand.test(message) || matchGachaQuery(message) ||
+        externalGachaCommand.test(message) || exportCommand.test(message) || matchGachaQuery(message) ||
         (!message.trim() && attachment && /\.json$/iu.test(attachment.name));
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
@@ -258,11 +258,11 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       }
       if (helpCommand.test(context.normalizedMessage)) return help;
       const matched = updateCommand.exec(context.normalizedMessage);
-      const miniapp = miniappCommand.exec(context.normalizedMessage);
+      const external = externalGachaCommand.exec(context.normalizedMessage);
       const exportMatch = exportCommand.exec(context.normalizedMessage);
-      const query = matched || miniapp || exportMatch ? undefined : matchGachaQuery(context.normalizedMessage);
-      if (!matched && !miniapp && !exportMatch && !query) return;
-      const profileId = query?.profileId ?? Number(matched?.[1] ?? miniapp?.[1] ?? exportMatch?.[3] ?? 1);
+      const query = matched || external || exportMatch ? undefined : matchGachaQuery(context.normalizedMessage);
+      if (!matched && !external && !exportMatch && !query) return;
+      const profileId = query?.profileId ?? Number(matched?.[1] ?? external?.[1] ?? exportMatch?.[3] ?? 1);
       if (profileId > MAX_PROFILE_ID) return;
       const { user_id } = context;
       if (typeof user_id !== "number" || !Number.isSafeInteger(user_id) || user_id < 1) {
@@ -277,7 +277,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
         }
         return exportHistory(qq, profileId, version, context);
       }
-      if (miniapp) return importMiniapp(qq, profileId, context);
+      if (external) return syncExternalHistory(qq, profileId, context);
       if (query) return view(qq, profileId, query.view, query.all);
       try {
         const result = await gachaUpdate(qq, profileId, () =>

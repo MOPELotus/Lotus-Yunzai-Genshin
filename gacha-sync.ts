@@ -33,7 +33,7 @@ export function createGenshinGachaSync(
     sync(qq: string, profileId = 1, options: GenshinGachaOptions = {}) {
       return update(qq, profileId, options, client.fetchGenshinGacha);
     },
-    syncMiniapp(qq: string, profileId = 1, options: Pick<GenshinGachaOptions, "signal"> = {}) {
+    syncExternal(qq: string, profileId = 1, options: Pick<GenshinGachaOptions, "signal"> = {}) {
       return update(qq, profileId, options, client.fetchGenshinMiniapp);
     },
   };
