@@ -1,17 +1,16 @@
-import { renderPng } from "@lotus-yunzai/skia";
+import { renderGenshinCard } from "../card-render.ts";
 import type { PanelTheme, Picture } from "../panel/theme.ts";
 import type { GrowthShortfall } from "./inventory.ts";
 import type { GrowthResult, GrowthStar } from "./model.ts";
 
-type Context = Parameters<Parameters<typeof renderPng>[2]>[0];
-type Mode = Parameters<typeof renderPng>[3];
+type Context = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
+type Mode = Parameters<typeof renderGenshinCard>[3];
 export type GrowthCard = GrowthResult & { readonly title: string; readonly star: GrowthStar; readonly icon: string;
   readonly elem?: string; readonly isWeapon: boolean; readonly uid?: string; readonly notice: readonly string[];
   readonly shortfall?: GrowthShortfall; readonly inventoryMora?: number };
 
 const width = 600;
 const columns = 6;
-const scale = 1.4;
 const font = '"Noto Sans CJK SC", sans-serif';
 const gold = "#d3bc8e";
 const textNumber = (num: number) => num.toLocaleString("zh-CN");
@@ -73,8 +72,7 @@ export async function renderGrowthCard(model: GrowthCard, theme: PanelTheme, mod
     Promise.all(groups.map(group => Promise.all(group.items.map(item => item.icon ? local(item.icon) : undefined)))),
   ]);
   const starColors = ["#535854", "#34644d", "#3b5677", "#584478", "#996e41"];
-  return renderPng(Math.round(width * scale), Math.round(height * scale), ctx => {
-    ctx.scale(scale, scale);
+  return renderGenshinCard(width, height, ctx => {
     ctx.fillStyle = "#202632";
     ctx.fillRect(0, 0, width, height);
     picture(ctx, background, 0, 0, width, height, true);

@@ -1,14 +1,14 @@
 import { randomInt } from "node:crypto";
 import { loadOfficialArtwork } from "@lotus-yunzai/account";
-import { renderPng } from "@lotus-yunzai/skia";
+import { renderGenshinCard } from "../card-render.ts";
 import { loadImage } from "skia-canvas";
 import { nativeGenshinResourcesDirectory, originalFonts } from "./personal-record-card.ts";
 import type { PersonalExploration } from "./personal-exploration-model.ts";
 import { readPanelTheme, type Picture } from "./theme.ts";
 
 const width = 470;
-type Drawing = Parameters<Parameters<typeof renderPng>[2]>[0];
-type Mode = Parameters<typeof renderPng>[3];
+type Drawing = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
+type Mode = Parameters<typeof renderGenshinCard>[3];
 
 function image(ctx: Drawing, art: Picture | undefined, x: number, y: number, width: number, height: number) {
   if (art) ctx.drawImage(art, x, y, width, height);
@@ -35,9 +35,7 @@ export async function renderPersonalExploration(model: PersonalExploration, { si
   const rows = Math.ceil(model.regions.length / 2);
   const regionHeight = rows ? rows * 95 + 30 : 0;
   const height = 137 + dataHeight + (model.gcg ? 118 : 0) + regionHeight;
-  const scale = 1.5;
-  return renderPng(Math.round(width * scale), Math.round(height * scale), ctx => {
-    ctx.scale(scale, scale);
+  return renderGenshinCard(width, height, ctx => {
     function box(x: number, y: number, w: number, h: number, radius: number, color: string) {
       ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.fill();
     }

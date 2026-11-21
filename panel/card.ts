@@ -1,4 +1,4 @@
-import { renderPng } from "@lotus-yunzai/skia";
+import { renderGenshinCard } from "../card-render.ts";
 import type { ArtifactListEntry } from "./artifact-list.ts";
 import { attrPct, basicNum } from "./miao/artifact-tables.js";
 import type { DamageEstimate, DamageRow, DamageSummary } from "./damage.ts";
@@ -12,8 +12,8 @@ import {
 } from "./model.ts";
 import { panelPortrait, type PanelTheme, type Picture } from "./theme.ts";
 
-type Context = Parameters<Parameters<typeof renderPng>[2]>[0];
-type RenderMode = Parameters<typeof renderPng>[3];
+type Context = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
+type RenderMode = Parameters<typeof renderGenshinCard>[3];
 type Position = readonly [x: number, y: number, width: number, height: number];
 
 const listWidth = 650;
@@ -78,13 +78,6 @@ function footer(ctx: Context, width: number, height: number) {
   label(ctx, "Lotus-Yunzai", width / 2, height - 14, 12, "#f0e7d9", 550, "center");
 }
 
-function canvas(width: number, height: number, draw: (ctx: Context) => void, mode: RenderMode, scale = 2) {
-  return renderPng(Math.round(width * scale), Math.round(height * scale), ctx => {
-    ctx.scale(scale, scale);
-    draw(ctx);
-  }, mode);
-}
-
 const character = (theme: PanelTheme, name: string, ...rest: string[]) => theme.picture("meta-gs", "character", name, ...rest);
 
 export function panelPages(snapshot: PanelSnapshot) {
@@ -117,7 +110,7 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
     }))),
   ]);
   const ink = "#504c49", muted = "#6d655d";
-  return canvas(width, height, ctx => {
+  return renderGenshinCard(width, height, ctx => {
     ctx.fillStyle = "#f5f1eb";
     ctx.fillRect(0, 0, width, height);
     ctx.fillStyle = "#d3bc8d";
@@ -190,7 +183,7 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
     });
     label(ctx, "仅显示已装备的武器 · 资料来自当前档案", 16, height - 23, 12, muted, 532);
     label(ctx, "Lotus-Yunzai", 683, height - 23, 11, muted, 100, "right");
-  }, mode, 1.1);
+  }, mode);
 }
 
 export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: readonly PanelStatisticRow[], theme: PanelTheme, {
@@ -214,7 +207,7 @@ export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: reado
   const columns = [0, 30, 135, 170, 210, 250, 285, 320, 355, talentTitle ? 465 : 515, width];
   const levelColors = ["#ececec", "#c0c1c1", "#8cdc9c", "#8ac0ea", "#bc9ef8", "#f9928a"];
   const levels = [0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 5];
-  return canvas(width, height, ctx => {
+  return renderGenshinCard(width, height, ctx => {
     frame(ctx, undefined, "hydro", width, height);
     if (backdrop) {
       const tileHeight = (width / backdrop.width) * backdrop.height;
@@ -313,7 +306,7 @@ export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: reado
     ctx.fillRect(0, height - 51, width, 51);
     label(ctx, talentTitle ? `金色标示今日开放 · ${notice}` : notice, 17, height - 31, 12, "#f3e7ca");
     footer(ctx, width, height);
-  }, mode, 1.4);
+  }, mode);
 }
 
 export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly PanelAvatar[], theme: PanelTheme, {
@@ -331,7 +324,7 @@ export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly
   const currentSource = Object.values(snapshot.avatars).find(avatar => avatar._time === snapshot._profile)?._source ??
     avatars[0]?._source ?? "local";
 
-  return canvas(listWidth, height, ctx => {
+  return renderGenshinCard(listWidth, height, ctx => {
     frame(ctx, backdrop, "hydro", listWidth, height);
     block(ctx, "#162231bb", 16, 13, 618, 90);
     label(ctx, "#面板列表", 29, 43, 27);
@@ -414,7 +407,7 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
   const explain = rankMode === "crit" ? "双暴榜按原规则对暴击、暴伤副词条加权，并计入双暴头部主词条。"
     : rankMode === "valid" ? "有效词条榜按角色评分权重换算全部副词条。"
     : "综合练度按 103 级目标的期望伤害排序，圣遗物榜按角色评分规则排序。";
-  return canvas(width, height, ctx => {
+  return renderGenshinCard(width, height, ctx => {
     frame(ctx, backdrop, element, width, height);
     label(ctx, `#${name}${rankMode === "damage" ? "" : rankModeNames[rankMode]}排行`, 22, 58, 33, "#fff1d2", 770);
     block(ctx, "#202331dd", 12, 82, 796, 122);
@@ -468,7 +461,7 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
       }
     });
     footer(ctx, width, height);
-  }, mode, 1.4);
+  }, mode);
 }
 
 const summaryRowHeight = 40;
@@ -603,7 +596,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
   const stats = tableKeys.map(key => key === "dmg"
     ? raw.get(element) ?? raw.get("phy")
     : raw.get(key));
-  return canvas(width, height, ctx => {
+  return renderGenshinCard(width, height, ctx => {
     frame(ctx, backdrop, element, width, height);
     block(ctx, "#25273555", 8, 118, 584, 382);
     const bgBox: Position = [0, 9, 385, 484];
@@ -714,7 +707,7 @@ export async function renderArtifactCard(snapshot: PanelSnapshot, avatar: PanelA
   const baseHeight = 200 + 3 * (cardHeight + 7);
   const height = baseHeight + (rating ? 136 + rules.length * 23 : 36);
 
-  return canvas(width, height, ctx => {
+  return renderGenshinCard(width, height, ctx => {
     frame(ctx, backdrop, element, width, height);
     art(ctx, splash, "contain", 0, -8, 380, 428);
     label(ctx, avatar.name, 637, 60, 47, "#fff4e0", 310, "right");
@@ -809,7 +802,7 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
   const buffsStart = matrixStart + (comparison ? 86 + comparison.axes.length * 32 : 0);
   const height = buffsStart + (buffs.length ? 67 + buffs.length * 23 : 47);
 
-  return canvas(width, height, ctx => {
+  return renderGenshinCard(width, height, ctx => {
     frame(ctx, background, element, width, height);
     art(ctx, splash, "contain", -4, 0, 380, 270);
     label(ctx, avatar.name, 624, 55, 47, "#fff4e0", 308, "right");
@@ -883,7 +876,7 @@ export async function renderArtifactList(snapshot: PanelSnapshot, entries: reado
   ]);
   const width = 790;
   const height = 76 + Math.ceil(entries.length / 4) * 195;
-  return canvas(width, height, ctx => {
+  return renderGenshinCard(width, height, ctx => {
     frame(ctx, backdrop, "hydro", width, height);
     label(ctx, "圣遗物列表", 15, 33, 22, "#fff0d5");
     label(ctx, `UID ${snapshot.uid}`, width - 16, 32, 15, "#e8effe", 220, "right");
@@ -934,5 +927,5 @@ export async function renderArtifactList(snapshot: PanelSnapshot, entries: reado
       });
     });
     footer(ctx, width, height);
-  }, mode, 1.4);
+  }, mode);
 }

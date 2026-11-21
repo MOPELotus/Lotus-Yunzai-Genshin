@@ -2,15 +2,15 @@ import { createHash, randomInt } from "node:crypto";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FontLibrary } from "skia-canvas";
-import { renderPng } from "@lotus-yunzai/skia";
+import { renderGenshinCard } from "../card-render.ts";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
 import type { PanelAvatar, PanelSnapshot } from "./model.ts";
 import { rosterAreas, type PersonalOverview } from "./personal-record-model.ts";
 import type { PanelStatistic } from "./statistics.ts";
 import { readPanelTheme, type PanelTheme, type Picture } from "./theme.ts";
 
-type Drawing = Parameters<Parameters<typeof renderPng>[2]>[0];
-type Mode = Parameters<typeof renderPng>[3];
+type Drawing = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
+type Mode = Parameters<typeof renderGenshinCard>[3];
 type Box = readonly [x: number, y: number, width: number, height: number];
 const nativeResources = fileURLToPath(new URL("../../../data/genshin/gacha-theme/", import.meta.url));
 const chineseElements: Readonly<Record<string, string>> = {
@@ -23,13 +23,6 @@ const colours: Readonly<Record<string, readonly [string, string]>> = {
 };
 const consColour = ["#0000", "#62a8ea", "#62a8ea", "#45b97c", "#45b97c", "#ff5722", "#ff5722"];
 const pale = "#f4ede4";
-
-function card(width: number, height: number, scale: number, mode: Mode, draw: (ctx: Drawing) => void) {
-  return renderPng(Math.round(width * scale), Math.round(height * scale), ctx => {
-    ctx.scale(scale, scale);
-    draw(ctx);
-  }, mode);
-}
 
 function fill(ctx: Drawing, colour: string, [x, y, w, h]: Box, radius = 0) {
   ctx.fillStyle = colour;
@@ -91,7 +84,7 @@ export async function renderPersonalOverview(model: PersonalOverview, theme: Pan
     Promise.all(model.avatars.map(avatar => picture(theme, avatar.name, "gacha.webp"))),
     originalFonts(source, "font", "HYWenHei-55W.ttf"),
   ]);
-  return card(840, 470, 1.3, mode, ctx => {
+  return renderGenshinCard(840, 470, ctx => {
     const type = typeset(ctx, family);
     fill(ctx, "#56465b", [0, 0, 840, 470]);
     if (background) ctx.drawImage(background, 0, 0, 840, 470);
@@ -137,7 +130,7 @@ export async function renderPersonalOverview(model: PersonalOverview, theme: Pan
       }
     });
     type("Lotus-Yunzai", 812, 454, 11, 100, "#ffefdb", "right");
-  });
+  }, mode);
 }
 
 function activeSince(days: number | undefined) {
@@ -172,7 +165,7 @@ export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readon
     theme.picture("common", "item", "artifact-icon.webp"), Promise.all(rows.map(row => miniAssets(theme, row))),
     originalFonts(Bun.env.LOTUS_GENSHIN_PANEL_THEME_DIR?.trim() || genshinGachaThemeDirectory(), "common/font", "HYWH-65W.ttf"),
   ]);
-  return card(width, height, 1.4, mode, ctx => {
+  return renderGenshinCard(width, height, ctx => {
     const type = typeset(ctx, family);
     fill(ctx, "#27435d", [0, 0, width, height]);
     if (backdrop) {
@@ -271,5 +264,5 @@ export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readon
     const date = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", dateStyle: "short", timeStyle: "short" });
     type(snapshot._profile && Number.isFinite(new Date(snapshot._profile).getTime()) ? `数据更新时间 · ${date.format(snapshot._profile)}` : "本地角色数据", 25, height - 13, 12, 370, pale, "left");
     type("Lotus-Yunzai", width - 20, height - 13, 11, 150, pale, "right");
-  });
+  }, mode);
 }

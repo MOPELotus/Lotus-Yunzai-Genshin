@@ -1,12 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { renderPng } from "@lotus-yunzai/skia";
+import { renderGenshinCard } from "../card-render.ts";
 import { loadImage, Path2D } from "skia-canvas";
 import type { WishPull } from "./draw.ts";
 import { readWishYaml, wishLegacyDirectory } from "./pools.ts";
 
 type Picture = Awaited<ReturnType<typeof loadImage>>;
-type Context = Parameters<Parameters<typeof renderPng>[2]>[0];
+type Context = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
 
 export interface WishCardOptions {
   readonly title: string;
@@ -17,7 +17,7 @@ export interface WishCardOptions {
   readonly pulls: readonly WishPull[];
   readonly page?: number;
   readonly themeDirectory?: string;
-  readonly mode?: Parameters<typeof renderPng>[3];
+  readonly mode?: Parameters<typeof renderGenshinCard>[3];
 }
 
 const colors = { 3: "#6396d6", 4: "#a97ae5", 5: "#ffd388" };
@@ -162,7 +162,7 @@ export async function renderWishCard({
   const count = [...pulls].reverse().find(({ star }) => star === 5);
   const summary = count ? `${count.name}「${count.pity}抽」${count.guaranteed ?? ""}` : `累计「${pity}抽」`;
 
-  return renderPng(width, height, (ctx) => {
+  return renderGenshinCard(width, height, ctx => {
     if (background) ctx.drawImage(background, 0, 0, width, height);
     else {
       const gradient = ctx.createLinearGradient(0, 0, width, height);

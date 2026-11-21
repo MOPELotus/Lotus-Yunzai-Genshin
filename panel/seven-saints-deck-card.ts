@@ -1,12 +1,12 @@
 import { loadOfficialArtwork } from "@lotus-yunzai/account";
 import type { GenshinDeck, GenshinDeckCard, GenshinDeckList, GenshinGcgCollection, GenshinGcgCollectionCard } from "@lotus-yunzai/hoyo-client";
-import { renderPng } from "@lotus-yunzai/skia";
+import { renderGenshinCard } from "../card-render.ts";
 import { loadImage } from "skia-canvas";
 import { nativeGenshinResourcesDirectory, originalFonts } from "./personal-record-card.ts";
 import { readPanelTheme, type Picture } from "./theme.ts";
 
-type Drawing = Parameters<Parameters<typeof renderPng>[2]>[0];
-type Mode = Parameters<typeof renderPng>[3];
+type Drawing = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
+type Mode = Parameters<typeof renderGenshinCard>[3];
 
 export type DeckGroup = {
   readonly title: string;
@@ -105,9 +105,7 @@ export async function renderSevenSaintsDeck(record: Pick<GenshinDeckList, "uid" 
   });
   const collectionSummary = collection?.level ? 116 : 0;
   const height = Math.ceil(122 + collectionSummary + measured.reduce((sum, group) => sum + group.height + 16, 0) + 25);
-  const scale = 2;
-  return renderPng(width * scale, height * scale, ctx => {
-    ctx.scale(scale, scale);
+  return renderGenshinCard(width, height, ctx => {
     function text(value: string | number, x: number, y: number, size: number, ink = levelColor, align: CanvasTextAlign = "left", maxWidth = 395) {
       const normalized = String(value);
       ctx.font = `${size}px ${font}`;

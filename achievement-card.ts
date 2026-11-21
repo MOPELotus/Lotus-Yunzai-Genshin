@@ -1,5 +1,5 @@
 import { Canvas, loadImage, type CanvasRenderingContext2D as Context } from "skia-canvas";
-import { renderPng } from "@lotus-yunzai/skia";
+import { renderGenshinCard } from "./card-render.ts";
 import { readPanelTheme, type Picture } from "./panel/theme.ts";
 
 type Cell = string | { readonly label: string; readonly icon?: Uint8Array };
@@ -54,7 +54,7 @@ function tiledBackground(ctx: Context, image: Picture, height: number) {
   }
 }
 
-export async function renderAchievementCard(card: AchievementCard, { mode = "auto", scale = 2 }: {
+export async function renderAchievementCard(card: AchievementCard, { mode = "auto", scale = 4 }: {
   readonly mode?: "auto" | "gpu" | "cpu"; readonly scale?: number;
 } = {}) {
   const theme = await readPanelTheme();
@@ -82,12 +82,10 @@ export async function renderAchievementCard(card: AchievementCard, { mode = "aut
   metrics.font = `14px ${font}`;
   const notes = (card.notes ?? []).flatMap(note => lines(metrics, note, contentWidth - 60));
   const height = 153 + measured.reduce((sum, table) => sum + table.height + 14, 0) + (notes.length ? notes.length * 22 + 53 : 0);
-  const size = Math.min(scale, height > 2500 ? 1.5 : 2, 16_000 / height);
   const icons = new Map<Uint8Array, Picture | undefined>();
   await Promise.all(measured.flatMap(table => table.rows.flatMap(row => row.cells.flatMap(cell => cell.icon ? [cell.icon] : [])))
     .map(async icon => { icons.set(icon, await loadImage(Buffer.from(icon)).catch(() => undefined)); }));
-  return renderPng(Math.round(width * size), Math.round(height * size), ctx => {
-    ctx.scale(size, size);
+  return renderGenshinCard(width, height, ctx => {
     ctx.textBaseline = "top";
     rectangle(ctx, 0, 0, width, height, "#e8e7e4");
     tiledBackground(ctx, background, height);
@@ -134,5 +132,5 @@ export async function renderAchievementCard(card: AchievementCard, { mode = "aut
     }
     ctx.textAlign = "center";
     text(ctx, ["Lotus-Yunzai"], width / 2, top + 16, 18, 12, white);
-  }, mode);
+  }, mode, { displayWidth: 720, scale });
 }
