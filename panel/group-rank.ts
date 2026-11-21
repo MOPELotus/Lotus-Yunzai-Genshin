@@ -22,6 +22,8 @@ type Scope = { readonly bot: number; readonly group: number; readonly qq: number
 type Role = Pick<GameRole, "uid" | "region" | "gameBiz">;
 type Observation = { readonly profileId: number; readonly observedAt: number; readonly role: Role; readonly avatars: Readonly<Record<string, RankAvatar>> };
 interface Row { readonly qq: number; readonly profileId: number; readonly role: Role; readonly avatar: RankAvatar }
+type BoundObservation = Observation & { readonly qq: number };
+export type PanelRankMarker = { readonly rank: number; readonly mode: "damage" | "artifacts" };
 interface RankProfiles {
   describe(qq: string, id: number): Promise<{
     readonly loggedIn: boolean;
@@ -112,7 +114,69 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
     return sameRole(row.role, publicRole(mostRecent));
   }
 
+  async function boundObservations(scope: Scope, members: ReadonlySet<number>, matches: (record: Observation) => boolean) {
+    const store = archive(scope);
+    const files = await readdir(join(folder(scope), String(scope.group))).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return [];
+      throw error;
+    });
+    const observations: BoundObservation[] = [];
+    for (const file of files) {
+      signal.throwIfAborted();
+      const qq = Number(/^([1-9]\d*)\.json$/u.exec(file)?.[1]);
+      if (!rankId(qq) || !members.has(qq)) continue;
+      const records = await store.read(String(scope.group), String(qq)).then(input => readObservations(input, scope, qq)).catch(() => null);
+      for (const observation of Object.values(records ?? {})) {
+        if (!matches(observation)) continue;
+        const row = { qq, ...observation };
+        if (await stillBound(row)) observations.push(row);
+      }
+    }
+    return observations;
+  }
+
   return {
+    async listMarkers(context: GroupRankContext, profileId: number, selectedRole: Role, characterIds: readonly number[]) {
+      const scope = scopeOf(context), role = publicRole(selectedRole);
+      if (!scope || !role || !isEnabled(scope) || !isRankProfile(profileId) || signal.aborted) return;
+      const owner = { qq: scope.qq, profileId, role };
+      const members = await currentMembers(scope, context);
+      if (!members || !await stillBound(owner)) return;
+      const store = archive(scope);
+      const own = await store.read(String(scope.group), String(scope.qq))
+        .then(input => readObservations(input, scope, scope.qq)[String(profileId)]).catch(() => undefined);
+      const ids = sameRole(role, own?.role)
+        ? characterIds.filter(id => own?.avatars[String(id)]?.damage || own?.avatars[String(id)]?.artifacts) : [];
+      const markers = new Map<number, PanelRankMarker>();
+      const contributors = new Map<string, Pick<Row, "qq" | "profileId" | "role">>();
+      if (ids.length) {
+        const observations = await boundObservations(scope, members, record => ids.some(id => !!record.avatars[String(id)]));
+        const requesting = observations.find(row => row.qq === scope.qq && row.profileId === profileId && sameRole(role, row.role));
+        if (requesting) for (const id of ids) {
+          for (const mode of ["artifacts", "damage"] as const) {
+            if (!requesting.avatars[String(id)]?.[mode]) continue;
+            const candidates = observations.flatMap(observation => {
+              const avatar = observation.avatars[String(id)];
+              return avatar?.[mode] ? [{ ...observation, avatar }] : [];
+            });
+            const sorted = rankRows(candidates, mode);
+            const rank = sorted.findIndex(row => row.qq === scope.qq && row.profileId === profileId && sameRole(role, row.role)) + 1;
+            if (!rank || rank >= limit || rank > (markers.get(id)?.rank ?? limit)) continue;
+            markers.set(id, { rank, mode });
+            for (const candidate of sorted.slice(0, rank)) {
+              contributors.set(`${candidate.qq}:${candidate.profileId}`, candidate);
+            }
+          }
+        }
+      }
+      const validate = async () => {
+        if (signal.aborted) return false;
+        const refreshed = await currentMembers(scope, context);
+        return !signal.aborted && !!refreshed && await stillBound(owner) &&
+          (await Promise.all([...contributors.values()].map(row => refreshed.has(row.qq) && stillBound(row)))).every(Boolean);
+      };
+      return { markers, validate };
+    },
     allows(context: GroupRankContext) {
       const scope = scopeOf(context);
       return !!scope && isEnabled(scope) && context.listCurrentGroupMembers !== undefined && !signal.aborted;
@@ -144,26 +208,8 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       const members = await currentMembers(scope, context);
       if (!members) return "暂时无法核对本群成员，请稍后查询。";
       const { character, mode } = intent;
-      const store = archive(scope);
-      const files = await readdir(join(folder(scope), String(scope.group))).catch((error: NodeJS.ErrnoException) => {
-        if (error.code === "ENOENT") return [];
-        throw error;
-      });
-      const candidates: Row[] = [];
-      for (const file of files) {
-        signal.throwIfAborted();
-        const name = /^([1-9]\d*)\.json$/u.exec(file)?.[1];
-        const qq = Number(name);
-        if (!rankId(qq) || !members.has(qq)) continue;
-        const records = await store.read(String(scope.group), String(qq)).then(input => readObservations(input, scope, qq)).catch(() => null);
-        if (!records) continue;
-        for (const record of Object.values(records)) {
-          const avatar = record.avatars[String(character.id)];
-          if (!avatar?.[mode]) continue;
-          const row = { qq, profileId: record.profileId, role: record.role, avatar };
-          if (await stillBound(row)) candidates.push(row);
-        }
-      }
+      const observations = await boundObservations(scope, members, record => !!record.avatars[String(character.id)]?.[mode]);
+      const candidates = observations.map(record => ({ ...record, avatar: record.avatars[String(character.id)]! }));
       const ranked = rankRows(candidates, mode);
       if (!ranked.length) return `本群暂无${character.name}的${rankModeNames[mode]}排行。可在本群查看自己的角色详情加入。`;
       const rows = ranked.map(row => ({ uid: row.role.uid, avatar: row.avatar }));

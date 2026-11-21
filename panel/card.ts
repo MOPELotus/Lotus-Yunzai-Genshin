@@ -3,6 +3,7 @@ import type { ArtifactListEntry } from "./artifact-list.ts";
 import { attrPct, basicNum } from "./miao/artifact-tables.ts";
 import type { DamageEstimate, DamageRow, DamageSummary } from "./damage.ts";
 import type { DailyMaterialGroup } from "./daily-materials.ts";
+import type { PanelRankMarker } from "./group-rank.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { scorePanelArtifacts } from "./artifact-score.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
@@ -310,15 +311,19 @@ export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: reado
 }
 
 export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly PanelAvatar[], theme: PanelTheme, {
-  updated = false, profileId = 1, page = 1, pageCount = 1, mode = "auto",
-}: { readonly updated?: boolean; readonly profileId?: number; readonly page?: number; readonly pageCount?: number; readonly mode?: RenderMode } = {}) {
-  const [backdrop, portraits] = await Promise.all([
+  updated = false, profileId = 1, page = 1, pageCount = 1, mode = "auto", rankMarkers,
+}: { readonly updated?: boolean; readonly profileId?: number; readonly page?: number; readonly pageCount?: number;
+  readonly mode?: RenderMode; readonly rankMarkers?: ReadonlyMap<number, PanelRankMarker> } = {}) {
+  const rankHeight = rankMarkers ? 26 : 0;
+  const [backdrop, portraits, damageBadges, artifactBadges] = await Promise.all([
     theme.picture("common", "bg", "bg-hydro.webp"),
     Promise.all(avatars.map(async avatar => await character(theme, avatar.name, "imgs", "face-q.webp") ??
       await character(theme, avatar.name, "imgs", "face.webp"))),
+    rankMarkers?.size ? theme.picture("character", "imgs", "dmg-rank-bg.png") : undefined,
+    rankMarkers?.size ? theme.picture("character", "imgs", "mark-rank-bg.png") : undefined,
   ]);
   const rows = Math.ceil(avatars.length / 8);
-  const height = 170 + rows * 94;
+  const height = 170 + rankHeight + rows * 94;
   const suffix = profileId === 1 ? "" : String(profileId);
   const abbr = (avatar: PanelAvatar) => text(object(theme.characters[avatar.id])?.abbr) || avatar.name;
   const currentSource = Object.values(snapshot.avatars).find(avatar => avatar._time === snapshot._profile)?._source ??
@@ -332,10 +337,16 @@ export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly
     if (updated) label(ctx, `获取角色面板数据成功 · ${Object.keys(snapshot.avatars).length} 位角色`, 30, 66, 14, "#b8ef5d");
     const demo = avatars[0] ? abbr(avatars[0]) : "角色名";
     label(ctx, `使用 #${demo}面板${suffix}、#${demo}圣遗物${suffix} 或 #${demo}武器${suffix} 查看详情`, 30, 90, 13, "#ebf2fc", 585);
-    block(ctx, "#191c269c", 16, 110, 618, 94 * rows + 29);
+    if (rankMarkers) {
+      block(ctx, "#191c26d1", 16, 108, 618, 23);
+      label(ctx, "● 综合练度排名", 27, 124, 11, "#ff917d", 107);
+      label(ctx, "● 圣遗物评分排名", 121, 124, 11, "#ffd37b", 117);
+      label(ctx, "本群成员主动展示本人角色后参与排名", 304, 124, 11, "#e2eaf4", 317);
+    }
+    block(ctx, "#191c269c", 16, 110 + rankHeight, 618, 94 * rows + 29);
     avatars.forEach((avatar, index) => {
       const x = 62 + index % 8 * 75;
-      const y = 153 + Math.floor(index / 8) * 94;
+      const y = 153 + rankHeight + Math.floor(index / 8) * 94;
       ctx.save();
       ctx.beginPath();
       ctx.arc(x, y, 31, 0, Math.PI * 2);
@@ -351,6 +362,19 @@ export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly
       ctx.strokeStyle = "#f1eaf0";
       ctx.lineWidth = 1.6;
       ctx.stroke();
+      const marker = rankMarkers?.get(avatar.id);
+      if (marker) {
+        const badge = marker.mode === "damage" ? damageBadges : artifactBadges;
+        const badgeWidth = badge ? badge.width / 5 : 0;
+        if (badge && badgeWidth > 0) {
+          ctx.drawImage(badge, badgeWidth * Math.min(marker.rank, 4), 0, badgeWidth, badge.height,
+            x - 35, y - 35, 70, 70);
+          if (marker.rank > 3) label(ctx, String(marker.rank), x, y + 33, 10, "#fff", 30, "center");
+        } else {
+          block(ctx, marker.mode === "damage" ? "#b84b3d" : "#99712e", x - 15, y + 22, 30, 13);
+          label(ctx, marker.rank === 1 ? "最强" : String(marker.rank), x, y + 32, 9, "#fff", 29, "center");
+        }
+      }
       label(ctx, abbr(avatar), x - 6, y + 48, 13, "#fff", 58, "center");
       if (avatar.cons !== undefined) label(ctx, String(avatar.cons), x + 27, y + 48, 10, gold, 9, "center");
       if (updated && avatar._time === snapshot._profile) {

@@ -108,7 +108,8 @@ export function createGenshinPanelQuery(
     theme = readPanelTheme,
     now = Date.now,
   }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly legacyPreferences?: string; readonly render?: Renderers;
-    readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "observe" | "allows">;
+    readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "observe" | "allows"> &
+      Partial<Pick<ReturnType<typeof createGroupPanelRank>, "listMarkers">>;
     readonly theme?: typeof readPanelTheme; readonly now?: () => number } = {},
 ) {
   const store = createGenshinPanelArchive(lockFile, { archiveDirectory, legacyDirectory });
@@ -482,17 +483,32 @@ export function createGenshinPanelQuery(
           ...Object.values(avatar.artis).map(part => `${part.name} +${part.level}`)].filter(Boolean).join("\n");
       }
 
-      const pages = panelPages(snapshot);
-      const result: Image[] = [];
-      for (const [index, avatars] of pages.entries()) {
-        try {
-          const { png } = await render.list(snapshot, avatars, assets, { updated, profileId, page: index + 1, pageCount: pages.length });
-          result.push({ type: "image", file: png });
-        } catch {
-          await verify();
-          const prefix = updated ? "原神面板已更新" : "原神面板";
-          return `UID ${uid} · ${prefix} · ${Object.keys(snapshot.avatars).length} 位角色\n${Object.values(snapshot.avatars).map(avatar => avatar.name).join("、")}`;
+      const selectedPanel = snapshot;
+      const pages = panelPages(selectedPanel);
+      const ranking = source ? await groupRank?.listMarkers?.(context, profileId, role,
+        pages.flatMap(avatars => avatars.map(avatar => avatar.id))).catch(() => undefined) : undefined;
+      const renderList = async (marks?: typeof ranking) => {
+        const images: Image[] = [];
+        for (const [index, avatars] of pages.entries()) {
+          const { png } = await render.list(selectedPanel, avatars, assets, {
+            updated, profileId, page: index + 1, pageCount: pages.length, rankMarkers: marks?.markers,
+          });
+          images.push({ type: "image", file: png });
         }
+        return images;
+      };
+      let result: Image[];
+      try {
+        result = await renderList(ranking);
+        if (ranking && !await ranking.validate().catch(() => false)) {
+          await verify();
+          result = await renderList();
+        }
+      } catch {
+        await verify();
+        const prefix = updated ? "原神面板已更新" : "原神面板";
+        return `UID ${uid} · ${prefix} · ${Object.keys(snapshot.avatars).length} 位角色
+${Object.values(snapshot.avatars).map(avatar => avatar.name).join("、")}`;
       }
       await verify();
       if (result.length === 1) return result[0]!;
