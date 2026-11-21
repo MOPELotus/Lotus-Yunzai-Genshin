@@ -76,7 +76,7 @@ function requirements(item: PanelArtifact, slot: string): RatingInput {
 
 function selectRule(avatar: PanelAvatar, pieces: Readonly<Record<string, RatingInput>>, abbr: string): RuleResult {
   const weapon = avatar.weapon;
-  if (!weapon || weapon.promote === undefined || !Object.keys(avatar.talent).length) {
+  if (!weapon || weapon.promote === undefined || !Object.keys({ ...avatar.talent, ...avatar.refreshedTalent }).length) {
     throw new Missing("缺少完整武器或天赋，请先更新面板");
   }
   const properties = new Map(avatar._lotus?.properties?.flatMap(property => {

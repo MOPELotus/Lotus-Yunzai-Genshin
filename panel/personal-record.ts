@@ -82,7 +82,7 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
         await verify();
         return { type: "image", file: png };
       }
-      const saved = await archive.readPanel(qq, uid, assets, true).catch(error => {
+      const saved = await archive.readPanel(qq, uid, assets, true, accountId).catch(error => {
         if (!official) throw error;
         return undefined;
       });
@@ -92,8 +92,10 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
         // Retain existing talents when the live character response omits them, within the same UID.
         snapshot = { ...live, avatars: Object.fromEntries(Object.entries(live.avatars).map(([id, avatar]) => {
           const savedRow = saved?.avatars[id];
-          return [id, savedRow && !["change", "customize", "share"].includes(savedRow._source)
-            ? { ...avatar, talent: { ...savedRow.talent, ...avatar.talent } } : avatar];
+          return [id, savedRow && savedRow.elem === avatar.elem && !["change", "customize", "share"].includes(savedRow._source)
+            ? { ...avatar, talent: { ...savedRow.talent, ...avatar.talent },
+              refreshedTalent: Object.fromEntries(Object.entries(savedRow.refreshedTalent ?? {}).filter(([key]) =>
+                !Object.hasOwn(avatar.talent, key))) } : avatar];
         })) };
       } else if (official) {
         return "米游社没有返回原神角色列表。";

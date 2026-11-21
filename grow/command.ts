@@ -3,6 +3,7 @@ import type { createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { genshinGachaThemeDirectory, readGenshinGachaCatalogue } from "../gacha-detail-source.ts";
 import { resolveGenshinCatalogTarget } from "../gacha-pool.ts";
+import { genshinLoginAccount } from "../owned-role.ts";
 import { createGenshinPanelArchive } from "../panel/panel.ts";
 import { readPanelTheme } from "../panel/theme.ts";
 import { renderGrowthCard, type GrowthCard } from "./card.ts";
@@ -75,15 +76,23 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
           });
           if (request.uid && (!role || role.uid !== request.uid)) return "此 UID 与当前档案绑定的原神角色不一致。";
           if (request.explicitProfile && !role) return `profile ${request.profileId} 没有同步原神 UID。`;
-          const saved = qq && role ? (await archive.readPanel(qq, role.uid, theme))?.avatars[String(target.id)] : undefined;
-          const current = saved?.promote !== undefined && currentCharacter({ level: saved.level, promote: saved.promote }, saved.talent);
+          const localSource = qq && role && !isDelegated && await profiles.requestContext?.(qq, request.profileId, "gs").catch(() => undefined);
+          const talentAccount = localSource && role && localSource.role.uid === role.uid ? genshinLoginAccount(localSource) : undefined;
+          const saved = qq && role ? (await archive.readPanel(qq, role.uid, theme, false, talentAccount))?.avatars[String(target.id)]
+            : undefined;
+          const current = saved?.promote !== undefined && currentCharacter({ level: saved.level, promote: saved.promote },
+            { ...saved.talent, ...saved.refreshedTalent });
           if (qq && role && current && !exceedsTarget(current, plan)) {
             start = current;
             uid = role.uid;
             verify = async () => {
               if (signal.aborted) return false;
               const latest = await profiles.savedRole(qq, request.profileId, "gs").catch(() => undefined);
-              return latest?.uid === role.uid && latest.region === role.region && latest.gameBiz === role.gameBiz;
+              if (latest?.uid !== role.uid || latest.region !== role.region || latest.gameBiz !== role.gameBiz) return false;
+              if (!talentAccount || !saved?.refreshedTalent) return true;
+              const source = await profiles.requestContext?.(qq, request.profileId, "gs").catch(() => undefined);
+              return !!source && source.role.uid === role.uid && source.role.region === role.region &&
+                source.role.gameBiz === role.gameBiz && genshinLoginAccount(source) === talentAccount;
             };
           } else if (current && exceedsTarget(current, plan)) {
             notice.push("本地角色练度已超过目标，按公开基线等级1、天赋1/1/1计算。");

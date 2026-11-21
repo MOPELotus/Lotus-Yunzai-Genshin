@@ -16,8 +16,9 @@ import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from
 import { buildDailyMaterials, paginateDailyMaterials } from "./daily-materials.ts";
 import { buildCharacterLevelChange, buildConstellationChange, buildEquipmentChange, buildTalentChange, resolvePanelWeapon } from "./equipment-change.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
-import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
+import { genshinLoginAccount, ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
+import { createRefreshedTalentArchive } from "./refreshed-talents.ts";
 import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
 import { readPanelTheme, type PanelTheme } from "./theme.ts";
 import { readTheaterStatisticsMonth, selectTheaterStatistics } from "./theater-statistics.ts";
@@ -65,11 +66,14 @@ export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
   legacyDirectory = Bun.env.LOTUS_GENSHIN_LEGACY_PANEL_DIR?.trim() || previousDirectory,
 }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string } = {}) {
   const store = createRoleJsonArchive(archiveDirectory, lockFile, { subject: "原神面板", lockSuffix: "panel", maxBytes: limit, rejectNull: true });
+  const talents = createRefreshedTalentArchive(archiveDirectory, lockFile);
   return {
+    talents,
     update: store.update,
     readLegacy: (uid: string, catalog: PanelCatalog) => oldPanel(legacyDirectory, uid, catalog),
-    async readPanel(qq: string, uid: string, catalog: PanelCatalog, includeMysRoster = false) {
-      return readPanel(uid, await store.read(qq, uid), catalog) ?? await oldPanel(legacyDirectory, uid, catalog, includeMysRoster);
+    async readPanel(qq: string, uid: string, catalog: PanelCatalog, includeMysRoster = false, talentAccount?: string) {
+      const snapshot = readPanel(uid, await store.read(qq, uid), catalog) ?? await oldPanel(legacyDirectory, uid, catalog, includeMysRoster);
+      return snapshot && talentAccount ? talents.apply(qq, talentAccount, snapshot) : snapshot;
     },
   };
 }
@@ -157,6 +161,7 @@ export function createGenshinPanelQuery(
       });
       const role = source?.role ?? await profiles.savedRole(qq, profileId, "gs");
       const { uid } = role;
+      const talentAccount = !context.isDelegated && source ? genshinLoginAccount(source) : undefined;
       if (command?.uid && command.uid !== uid) return "此 UID 与当前档案绑定的原神角色不一致。";
       let expected = source?.revision;
       async function verify() {
@@ -192,7 +197,7 @@ export function createGenshinPanelQuery(
       let updated = false;
       if (type === "reload") {
         await verify();
-        snapshot = await store.readPanel(qq, uid, assets);
+        snapshot = await store.readPanel(qq, uid, assets, false, talentAccount);
       }
       if (type === "update" || (type === "reload" && (!snapshot || !Object.keys(snapshot.avatars).length))) {
         if (refreshes.has(key)) return "此原神面板正在更新，请稍后查询。";
@@ -218,7 +223,7 @@ export function createGenshinPanelQuery(
           refreshes.delete(key);
         }
       } else if (type !== "reload") {
-        snapshot = await store.readPanel(qq, uid, assets, type === "statistics" || type === "daily-materials");
+        snapshot = await store.readPanel(qq, uid, assets, type === "statistics" || type === "daily-materials", talentAccount);
       }
 
       const suffix = profileId === 1 ? "" : String(profileId);

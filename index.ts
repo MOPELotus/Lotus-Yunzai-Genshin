@@ -3,8 +3,9 @@ import { createAchievementCommand } from "./achievement-command.ts";
 import { queryRankStats } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
-import { createGenshinPanelQuery } from "./panel/panel.ts";
+import { createGenshinPanelArchive, createGenshinPanelQuery } from "./panel/panel.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
+import { createGenshinTalentRefresh, matchGenshinTalentRefresh } from "./panel/talent-refresh.ts";
 import { readPanelTheme } from "./panel/theme.ts";
 import { fileURLToPath } from "node:url";
 import { createProfileStore, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
@@ -98,6 +99,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const achievements = createAchievementCommand(profiles, lockFile, signal);
   const client = createProfileHoyoClient(profiles);
+  const refreshTalent = createGenshinTalentRefresh(profiles, client, createGenshinPanelArchive(lockFile), signal);
   const panelImages = createPanelImageCommands(lockFile, signal);
   const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal);
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal);
@@ -233,6 +235,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     gachaUpdate,
     fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
       if (matchPersonalRecord(message)) return ["[genshin] 角色查询"];
       if (achievements.explicit(context)) return [];
@@ -244,6 +247,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
+      const talent = matchGenshinTalentRefresh(context.normalizedMessage);
+      if (talent) return refreshTalent(talent, context);
       if (panelImageCommand(context.normalizedMessage)) return panelImages(context);
       const record = matchPersonalRecord(context.normalizedMessage);
       if (record) return personalRecord(record, context);

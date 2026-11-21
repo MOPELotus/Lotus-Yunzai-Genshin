@@ -41,6 +41,7 @@ const rows = (value: unknown): Json[] => Array.isArray(value)
   ? value.map(object).filter((entry): entry is Json => entry !== undefined) : [];
 export const text = (value: unknown) => typeof value === "string" && value.isWellFormed() ?
   value.replace(/[\p{Cc}\p{Cf}]/gu, " ").trim().slice(0, 90) : "";
+export const panelElement = (value: unknown) => elements[text(value).toLowerCase()] ?? "";
 export const whole = (value: unknown, max: number) => {
   const n = typeof value === "string" && /^\d{1,13}$/u.test(value) ? Number(value) : value;
   return typeof n === "number" && Number.isSafeInteger(n) && n >= 0 && n <= max ? n : undefined;
@@ -80,6 +81,7 @@ export interface PanelAvatar {
   readonly costume?: number;
   readonly cons?: number;
   readonly talent: Partial<Record<TalentKey, number>>;
+  readonly refreshedTalent?: Readonly<Partial<Record<TalentKey, number>>>;
   readonly weapon?: PanelWeapon;
   readonly artis: Readonly<Record<string, PanelArtifact>>;
   readonly _source: string;
@@ -577,7 +579,7 @@ export function officialPanel(uid: string, raw: readonly Json[], catalog: PanelC
     const meta = object(catalog.characters[id]);
     const name = text(meta?.name) || text(base?.name);
     if (!name) throw new TypeError("原神面板角色名称缺失。");
-    const elem = elements[text(base?.element ?? meta?.elem).toLowerCase()] ?? "";
+    const elem = panelElement(base?.element ?? meta?.elem);
     const cons = whole(base?.actived_constellation_num, 6);
     const talents: Partial<Record<TalentKey, number>> = {};
     const talentIds = object(meta?.talentId);
@@ -659,7 +661,7 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
     }
     const storedDetails = object(row._lotus);
     avatars[id] = {
-      name, id, elem: elements[text(row.elem ?? meta?.elem).toLowerCase()] ?? "", level,
+      name, id, elem: panelElement(row.elem ?? meta?.elem), level,
       star: whole(row.star ?? meta?.star, 5), cons: whole(row.cons, 6), promote: readCharacterPromotion(level, row.promote),
       costume: whole(row.costume, 999_999), fetter: whole(row.fetter, 10), talent: talent(object(row.talent)),
       weapon: weapon(object(row.weapon)), artis, _source: basicRosterEntry || archiveSources.has(source) ? source : "local",
