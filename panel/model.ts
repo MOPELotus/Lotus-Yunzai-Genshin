@@ -93,6 +93,7 @@ export interface PanelSnapshot {
   readonly uid: string;
   readonly _profile?: number;
   readonly _mys?: number;
+  readonly rosterFace?: number | string;
   readonly avatars: Readonly<Record<string, PanelAvatar>>;
 }
 
@@ -677,8 +678,10 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
       _lotus: storedDetails && { properties: storedProperties(storedDetails.properties) },
     };
   }
+  const face = root?.rosterFace ?? root?.face;
   return { uid, _profile: whole(root?._profile, Number.MAX_SAFE_INTEGER),
-    ...(includeMysRoster && { _mys: whole(root?._mys, Number.MAX_SAFE_INTEGER) }), avatars };
+    ...(includeMysRoster && { _mys: whole(root?._mys, Number.MAX_SAFE_INTEGER), rosterFace: avatarId(face) ?? (text(face) || undefined) }),
+    avatars };
 }
 
 export function artifactStatRecord(item: PanelArtifact) {

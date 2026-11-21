@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createProfileStore, loadPublicQqAvatar } from "@lotus-yunzai/account";
 import { createHoyoClient, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
+import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { lockFile } from "../../../lib/file-lock.ts";
 import { buildPersonalOverview } from "./personal-record-model.ts";
 import { buildPersonalExploration } from "./personal-exploration-model.ts";
@@ -107,7 +108,7 @@ test("only same login and profile can render, same-UID archive fallback stays re
     await writeFile(file, profile());
     await writeFile(join(profilesDir, "42.yaml"), profile(other.uid, 1));
     const archival = join(oldDir, `${role.uid}.json`);
-    const contents = JSON.stringify({ uid: role.uid, _profile: 1_700_000_000_000,
+    const contents = JSON.stringify({ uid: role.uid, face: furina.id, _profile: 1_700_000_000_000,
       avatars: { [furina.id]: { id: furina.id, name: furina.name, level: 81, _source: "enka" } } });
     await writeFile(archival, contents);
     const store = createProfileStore(profilesDir);
@@ -122,9 +123,14 @@ test("only same login and profile can render, same-UID archive fallback stays re
       if (local) throw new HoyoRequestError("transport", "模拟离线");
       return { overview: data, revision: source.revision, avatars: options.includeRoster ? [{ base: furina }] : [] };
     } }, lockFile, new AbortController().signal, {
-      archive, theme: async () => assets, overview: renderer, async roster(_snapshot, rows, _theme, options) {
+      archive, theme: async () => assets, overview: renderer, async roster(snapshot, rows, _theme, options) {
         names = rows.map(row => `${row.avatar.name}:${row.avatar.level}`);
         expect(!!options.overview).toBe(!local);
+        expect(snapshot.rosterFace).toBe(furina.id);
+        expect(snapshot._profile).toBe(1_700_000_000_000);
+        if (local) expect(snapshot._mys).toBeUndefined();
+        else expect(snapshot._mys).toBeGreaterThan(1_700_000_000_000);
+        expect(options.firstName).toBe(furina.name);
         if (change) await writeFile(file, profile(other.uid));
         return renderer();
       },
@@ -149,6 +155,51 @@ test("only same login and profile can render, same-UID archive fallback stays re
     change = true;
     expect(await query(selection, context)).toContain("档案已变化");
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("roster sends one full image where possible and requires a delivery receipt between oversized slices", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "lotus-gs-roster-delivery-"));
+  try {
+    await writeFile(join(directory, "42-3.yaml"), profile());
+    const avatars = Array.from({ length: 13 }, (_, i) => ({ base: { ...furina, id: furina.id + i, name: `测试${i}` } }));
+    const attempted: [number, number, number, number | undefined][] = [];
+    let fits = true;
+    let accepted = true;
+    let confirmed = true;
+    const sent: number[] = [];
+    const query = createPersonalRecordQuery(createProfileStore(directory), { async fetchGenshinPersonalRecord(source) {
+      return { overview: data, revision: source.revision, avatars };
+    } }, lockFile, new AbortController().signal, {
+      archive: { async readPanel() { return undefined; } }, theme: async () => assets,
+      async roster(_snapshot, rows, _theme, options) {
+        attempted.push([rows.length, options.page, options.pages, options.scale]);
+        if (options.pages === 1 && !fits) throw new ImageSizeLimitError("夹具模拟整张四倍和二倍均超限");
+        return { png: Buffer.from([options.page]), engine: {} as never };
+      },
+    });
+    const selected = matchPersonalRecord("#角色3")!;
+    const sendContext = { ...context, inlineImageByteLimit: 8,
+      async reply(image: { readonly file: Uint8Array }, _quote?: boolean, options?: { onDelivered?: (id: number) => void }) {
+        sent.push(image.file[0]!);
+        if (confirmed) options?.onDelivered?.(123);
+        return accepted;
+      } };
+    expect(await query(selected, sendContext)).toEqual({ type: "image", file: Buffer.from([1]) });
+    expect(attempted.splice(0)).toEqual([[13, 1, 1, undefined]]);
+    expect(sent).toEqual([]);
+    fits = false;
+    expect(await query(selected, sendContext)).toBeUndefined();
+    expect(attempted.splice(0)).toEqual([[13, 1, 1, undefined], [12, 1, 2, 2], [1, 2, 2, 2]]);
+    expect(sent.splice(0)).toEqual([1, 2]);
+    confirmed = false;
+    expect(await query(selected, sendContext)).toBeUndefined();
+    expect(sent.splice(0)).toEqual([1]);
+    confirmed = true;
+    accepted = false;
+    expect(await query(selected, sendContext)).toBeUndefined();
+    expect(sent).toEqual([1]);
+    expect(await query(selected, context)).toContain("超过当前会话的单图大小上限");
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
 const gcg = { uid: role.uid, level: 8, avatar_card_num_gained: 8, avatar_card_num_total: 99,

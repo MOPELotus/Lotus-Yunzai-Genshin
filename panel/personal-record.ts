@@ -1,13 +1,15 @@
 import { MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type GenshinGcgSummary } from "@lotus-yunzai/hoyo-client";
+import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
+import type { ReplyOptions } from "../../../lib/messages.ts";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { officialPanel, text, type Json, type PanelSnapshot } from "./model.ts";
 import { createGenshinPanelArchive } from "./panel.ts";
 import { renderPersonalExploration } from "./personal-exploration-card.ts";
 import { buildPersonalExploration } from "./personal-exploration-model.ts";
 import { buildPersonalOverview } from "./personal-record-model.ts";
-import { renderPersonalOverview, renderPersonalRoster } from "./personal-record-card.ts";
+import { personalRosterColumns, renderPersonalOverview, renderPersonalRoster } from "./personal-record-card.ts";
 import { buildPanelStatistics } from "./statistics.ts";
 import { readPanelTheme } from "./theme.ts";
 
@@ -35,10 +37,11 @@ interface MessageContext {
   readonly isDelegated?: boolean;
   readonly privateCredentialSignal?: AbortSignal;
   readonly inlineImageByteLimit?: number;
+  readonly reply?: (image: Image, quote?: boolean, options?: ReplyOptions) => unknown;
   readonly sender?: Readonly<Record<string, unknown>>;
 }
 type Image = { readonly type: "image"; readonly file: Uint8Array };
-type Reply = string | Image | { readonly type: "forward"; readonly nodes: readonly (string | Image)[]; readonly batchSize: number };
+type Reply = string | Image;
 
 export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client: Client, lockFile: AcquireRoleArchiveLock,
   lifecycle: AbortSignal, {
@@ -108,15 +111,18 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
       });
       let snapshot: PanelSnapshot | undefined = saved;
       if (official?.avatars.length) {
-        const live = officialPanel(uid, official.avatars, assets, Date.now());
+        const observedAt = Date.now();
+        const live = officialPanel(uid, official.avatars, assets, observedAt);
         // Retain existing talents when the live character response omits them, within the same UID.
-        snapshot = { ...live, avatars: Object.fromEntries(Object.entries(live.avatars).map(([id, avatar]) => {
-          const savedRow = saved?.avatars[id];
-          return [id, savedRow && savedRow.elem === avatar.elem && !["change", "customize", "share"].includes(savedRow._source)
-            ? { ...avatar, talent: { ...savedRow.talent, ...avatar.talent },
-              refreshedTalent: Object.fromEntries(Object.entries(savedRow.refreshedTalent ?? {}).filter(([key]) =>
-                !Object.hasOwn(avatar.talent, key))) } : avatar];
-        })) };
+        snapshot = { ...live, _profile: saved?._profile, _mys: observedAt, rosterFace: saved?.rosterFace,
+          avatars: Object.fromEntries(Object.entries(live.avatars).map(([id, avatar]) => {
+            const savedRow = saved?.avatars[id];
+            return [id, savedRow && savedRow.elem === avatar.elem && !["change", "customize", "share"].includes(savedRow._source)
+              ? { ...avatar, talent: { ...savedRow.talent, ...avatar.talent },
+                refreshedTalent: Object.fromEntries(Object.entries(savedRow.refreshedTalent ?? {}).filter(([key]) =>
+                  !Object.hasOwn(avatar.talent, key))) } : avatar];
+          })),
+        };
       } else if (official) {
         return "米游社没有返回原神角色列表。";
       }
@@ -126,18 +132,44 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
         (star === 5 && avatar.id !== 10000005 && avatar.id !== 10000007 ? (avatar.cons ?? 0) + 1 : 0) +
         (weapon?.star === 5 ? weapon.affix ?? 0 : 0), 0);
       const fiveStars = rows.filter(row => row.star === 5).length;
-      const perPage = 30;
-      const pages = Math.ceil(rows.length / perPage);
-      const images: Image[] = [];
-      for (let page = 0; page < pages; page++) {
+      const options = { overview: summary, count: rows.length, fiveStars, gold,
+        firstName: rows[0]?.avatar.name, inlineImageByteLimit: context.inlineImageByteLimit, signal };
+      try {
+        const { png } = await roster(snapshot, rows, assets, { ...options, page: 1, pages: 1 });
         await verify();
-        const { png } = await roster(snapshot, rows.slice(page * perPage, (page + 1) * perPage), assets, {
-          overview: summary, count: rows.length, fiveStars, gold, page: page + 1, pages,
-        });
-        images.push({ type: "image", file: png });
+        return { type: "image", file: png };
+      } catch (error) {
+        if (!(error instanceof ImageSizeLimitError)) throw error;
+      }
+      const rowCount = Math.ceil(rows.length / personalRosterColumns);
+      if (context.reply) for (let pages = 2; pages <= rowCount; pages++) {
+        const images: Image[] = [];
+        try {
+          for (let page = 0; page < pages; page++) {
+            await verify();
+            const start = Math.ceil(page * rowCount / pages) * personalRosterColumns;
+            const end = Math.ceil((page + 1) * rowCount / pages) * personalRosterColumns;
+            const { png } = await roster(snapshot, rows.slice(start, end), assets, { ...options, page: page + 1, pages, scale: 2 });
+            images.push({ type: "image", file: png });
+          }
+        } catch (error) {
+          if (error instanceof ImageSizeLimitError) continue;
+          throw error;
+        }
+        for (const image of images) {
+          await verify();
+          let delivered = false;
+          try {
+            const accepted = await context.reply(image, false, { onDelivered() { delivered = true; } });
+            if (accepted !== true || !delivered) return;
+          } catch {
+            return;
+          }
+        }
+        return;
       }
       await verify();
-      return images.length === 1 ? images[0] : { type: "forward", nodes: images, batchSize: 1 };
+      return "原神角色名单超过当前会话的单图大小上限。";
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {

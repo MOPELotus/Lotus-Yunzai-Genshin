@@ -1,13 +1,14 @@
 import { createHash, randomInt } from "node:crypto";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { FontLibrary } from "skia-canvas";
-import { renderGenshinCard } from "../card-render.ts";
+import { renderGenshinCard, renderGenshinCardForChat } from "../card-render.ts";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
-import type { PanelAvatar, PanelSnapshot } from "./model.ts";
+import { object, text, type PanelSnapshot } from "./model.ts";
 import { rosterAreas, type PersonalOverview } from "./personal-record-model.ts";
 import type { PanelStatistic } from "./statistics.ts";
-import { readPanelTheme, type PanelTheme, type Picture } from "./theme.ts";
+import { panelWeaponPicture, readPanelTheme, type PanelTheme, type Picture } from "./theme.ts";
 
 type Drawing = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
 type Mode = Parameters<typeof renderGenshinCard>[3];
@@ -22,6 +23,8 @@ const colours: Readonly<Record<string, readonly [string, string]>> = {
   dendro: ["#e2ecc9", "#8ca35b"],
 };
 const consColour = ["#0000", "#62a8ea", "#62a8ea", "#45b97c", "#45b97c", "#ff5722", "#ff5722"];
+const rosterBadge = ["#0000", "#5cbac2", "#339d61", "#3e95b9", "#3955b7", "#531ba9cf", "#ff5722"];
+export const personalRosterColumns = 6;
 const pale = "#f4ede4";
 
 function fill(ctx: Drawing, colour: string, [x, y, w, h]: Box, radius = 0) {
@@ -140,130 +143,231 @@ function activeSince(days: number | undefined) {
   return [y && `${y}年`, m && `${m}个月`, d && `${d}天`].filter(Boolean).join("");
 }
 
+function rosterPortraitName(theme: PanelTheme, hint: PanelSnapshot["rosterFace"]) {
+  if (typeof hint === "number") return text(object(theme.characters[hint])?.name);
+  if (hint) {
+    for (const value of Object.values(theme.characters)) {
+      const row = object(value);
+      if (row?.name === hint || row?.abbr === hint) return text(row.name);
+    }
+  }
+  return "";
+}
+
+function contain(ctx: Drawing, picture: Picture | undefined, [x, y, w, h]: Box) {
+  if (!picture) return;
+  const ratio = Math.min(w / picture.width, h / picture.height);
+  const iw = picture.width * ratio, ih = picture.height * ratio;
+  ctx.drawImage(picture, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+}
+
 async function miniAssets(theme: PanelTheme, row: PanelStatistic) {
-  const avatar = row.avatar;
+  const { avatar } = row;
+  const portrait = async () => {
+    if (avatar.costume) {
+      const costume = await picture(theme, avatar.name, "face2.webp");
+      if (costume) return costume;
+    }
+    return picture(theme, avatar.name, "face.webp");
+  };
   return Promise.all([
-    face(theme, avatar.name),
-    theme.picture("common", "item", `bg${row.star === 4 ? 4 : 5}.png`),
-    row.weapon && row.weapon.type && theme.picture("meta-gs", "weapon", row.weapon.type, row.weapon.name, "icon.webp"),
-    Promise.all(row.sets.slice(0, 2).map(set => theme.picture("meta-gs", "artifact", "imgs", set, "1.webp"))),
+    portrait(), panelWeaponPicture(theme, avatar, row.weapon?.type),
+    Promise.all(row.sets.slice(0, 2).map(async set => await theme.picture("meta-gs", "artifact", "imgs", set, "1.webp") ??
+      await theme.picture("meta-gs", "artifact", "imgs", set, "5.webp"))),
   ]);
 }
 
+function rosterTime(stamp: number | undefined) {
+  if (!stamp || !Number.isFinite(new Date(stamp).getTime())) return "";
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai", dateStyle: "short", timeStyle: "short" }).format(stamp).slice(5);
+}
+
 export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readonly PanelStatistic[], theme: PanelTheme, {
-  overview, count, fiveStars, gold, page, pages, mode = "auto",
+  overview, count, fiveStars, gold, page, pages, mode = "auto", firstName, inlineImageByteLimit, signal, scale,
 }: { readonly overview?: PersonalOverview; readonly count: number; readonly fiveStars: number;
-  readonly gold: number; readonly page: number; readonly pages: number; readonly mode?: Mode }) {
-  const width = 740, columns = 6, box = 105, hasAreas = !!overview?.areasByName.has("蒙德"),
-    hasChests = !!overview?.chests.some(chest => chest.value !== undefined);
-  const height = 185 + (hasAreas ? 112 : 0) + (hasChests ? 64 : 0) + Math.ceil(rows.length / columns) * 197;
-  const first = overview?.avatars[0] ?? rows[0]?.avatar;
-  const [backdrop, userBanner, userFace, cities, chests, unknownRelic, mini, family] = await Promise.all([
+  readonly gold: number; readonly page: number; readonly pages: number; readonly mode?: Mode; readonly firstName?: string;
+  readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal; readonly scale?: 2 }) {
+  const width = 740, columns = personalRosterColumns, box = 105;
+  const hasAreas = !!overview?.areasByName.has("蒙德"), hasChests = !!overview?.chests.some(chest => chest.value !== undefined);
+  const alias = rosterPortraitName(theme, snapshot.rosterFace) || firstName || rows[0]?.avatar.name;
+  const [backdrop, userBanner, userFace, cities, chests, unknownRelic, stars, mini, family] = await Promise.all([
     theme.picture("common", "bg", "bg-hydro.webp"),
-    first && picture(theme, first.name, "banner.webp"), first && face(theme, first.name),
+    alias && picture(theme, alias, "banner.webp"),
+    (async () => alias ? await face(theme, alias) ?? await theme.picture("common", "item", "face.webp") :
+      theme.picture("common", "item", "face.webp"))(),
     hasAreas && theme.picture("character", "imgs", "exploration.webp"),
     hasChests && theme.picture("character", "imgs", "chest.webp"),
-    theme.picture("common", "item", "artifact-icon.webp"), Promise.all(rows.map(row => miniAssets(theme, row))),
-    originalFonts(Bun.env.LOTUS_GENSHIN_PANEL_THEME_DIR?.trim() || genshinGachaThemeDirectory(), "common/font", "HYWH-65W.ttf"),
+    theme.picture("common", "item", "artifact-icon.webp"),
+    Promise.all(Array.from({ length: 5 }, (_, i) => theme.picture("common", "item", `bg${i + 1}.png`))),
+    Promise.all(rows.map(row => miniAssets(theme, row))),
+    originalFonts(theme.resourceRoot || Bun.env.LOTUS_GENSHIN_PANEL_THEME_DIR?.trim() || genshinGachaThemeDirectory(),
+      "common/font", "HYWH-65W.ttf"),
   ]);
-  return renderGenshinCard(width, height, ctx => {
+  const rowHeight = 197.5, gridHeight = Math.ceil(rows.length / columns) * rowHeight + 16;
+  const gridTop = 125 + (overview ? 0 : 24) + (hasAreas ? 118.5 : 0) + (hasChests ? 80 : 0);
+  const noticeTop = gridTop + 36 + gridHeight;
+  const height = noticeTop + 82;
+  const profile = rosterTime(snapshot._profile), mys = rosterTime(snapshot._mys);
+  const rarityImage = (rating: number | undefined) => stars[(rating ?? 0) - 1];
+
+  const draw = (ctx: Drawing) => {
     const type = typeset(ctx, family);
     fill(ctx, "#27435d", [0, 0, width, height]);
     if (backdrop) {
-      const ratio = Math.max(width / backdrop.width, height / backdrop.height);
-      const w = backdrop.width * ratio, h = backdrop.height * ratio;
-      ctx.drawImage(backdrop, (width - w) / 2, (height - h) / 2, w, h);
+      const scale = Math.max(width / backdrop.width, height / backdrop.height);
+      ctx.drawImage(backdrop, 0, 0, backdrop.width * scale, backdrop.height * scale);
     }
-    const header: Box = [10, 10, 720, 90];
+    const header: Box = [15, 25, 710, 90];
     fill(ctx, "#f0ece4", header, 45);
     ctx.save();
     crop(ctx, 45, header);
     if (userBanner) {
       const w = userBanner.width / userBanner.height * 90;
-      ctx.drawImage(userBanner, 730 - w, 10, w, 90);
+      ctx.drawImage(userBanner, 725 - w, 25, w, 90);
     }
-    fill(ctx, "#fff", [20, 20, 70, 70], 35);
-    crop(ctx, 32, [23, 23, 64, 64]);
-    if (userFace) ctx.drawImage(userFace, 23, 23, 64, 64);
+    fill(ctx, "#fff", [26, 36, 70, 70], 35);
+    crop(ctx, 32, [29, 39, 64, 64]);
+    const faceBackdrop = rarityImage(5);
+    if (faceBackdrop) ctx.drawImage(faceBackdrop, 29, 39, 64, 64);
+    contain(ctx, userFace, [29, 39, 64, 64]);
     ctx.restore();
     const nick = overview?.name ?? `#${snapshot.uid}`;
-    type(`${nick}${overview?.level ? ` Lv.${overview.level}` : ""}`, 102, 48, 23, 240, "#414e64", "left");
-    type(`#${snapshot.uid} ${activeSince(overview?.days)}`, 104, 75, 15, 246, "#414e64", "left");
-    const metrics = [["成就", overview?.achievement], ["锚点", overview?.waypoint], ["角色", Math.max(overview?.avatarCount ?? 0, count)],
-      ["五星角色", fiveStars], ["金卡总数", gold]].filter(([, value]) => value !== undefined);
-    const statStart = 710 - metrics.length * 67;
-    fill(ctx, "#fbf6ecc5", [statStart, 26, metrics.length * 67, 58], 28);
-    metrics.forEach(([label, value], i) => {
-      type(value, statStart + 33.5 + i * 67, 52, 20, 60, "#414e64");
-      type(label, statStart + 33.5 + i * 67, 71, 13, 62, "#414e64");
-    });
-    let y = 110;
-    if (!overview) type("当前展示本人本地档案，信息可能不完整", width / 2, 123, 13, 680);
+    type(`${nick}${overview?.level && overview.level > 1 ? ` Lv.${overview.level}` : ""}`, 111, 65, 24, 240, "#414e64", "left");
+    type(`#${snapshot.uid} ${activeSince(overview?.days)}`, 111, 91, 16, 245, "#414e64", "left");
+    const metrics = [["成就", overview?.achievement], ["锚点", overview?.waypoint],
+      ["角色", Math.max(overview?.avatarCount ?? 0, count)], ["五星角色", fiveStars], ["金卡总数", gold]]
+      .filter(([, value]) => value !== undefined && value !== 0);
+    const options = metrics.map((_, i) => i === 0 || i === metrics.length - 1 ? 80 : 70);
+    const statWidth = options.reduce((sum, value) => sum + value, 0);
+    let statX = 709 - statWidth;
+    if (statWidth) {
+      ctx.save();
+      crop(ctx, 29, [statX, 41, statWidth, 58]);
+      metrics.forEach(([label, value], i) => {
+        const tileWidth = options[i]!;
+        fill(ctx, i % 2 ? "#dcdcdc80" : "#ffffffa6", [statX, 41, tileWidth, 58]);
+        const x = statX + tileWidth / 2 + (i === 0 ? 4 : i === metrics.length - 1 ? -4 : 0);
+        type(value, x, 67, 22, 64, "#414e64");
+        type(label, x, 86, 14, 68, "#414e64");
+        statX += tileWidth;
+      });
+      ctx.restore();
+    }
+
+    let y = 125;
+    if (!overview) {
+      type("当前展示本人本地档案，信息可能不完整", width / 2, 136, 13, 680);
+      y += 24;
+    }
     if (overview && hasAreas) {
       rosterAreas.forEach((name, i) => {
-        const x = 21 + i * 87;
-        fill(ctx, "#312d40", [x, y, 82, 102], 4);
+        const x = 21 + i * 88;
+        fill(ctx, "#312d40", [x, y + 3, 82, 102.5], 4);
         if (cities) {
-          // The original 11-column sprite uses background-position 0%, 10%, ... within the full strip.
           const tile = cities.width / 11;
-          ctx.drawImage(cities, i * tile, 0, tile, cities.height, x, y, 82, 102);
+          ctx.drawImage(cities, i * tile, 0, tile, cities.height, x, y + 3, 82, 102.5);
         }
-        type(name, x + 41, y + 67, 13, 78);
-        type(`${(overview.areasByName.get(name) ?? 0) / 10}%`, x + 41, y + 91, 19, 78);
+        type(name, x + 41, y + 68, 13, 78);
+        type(`${(overview.areasByName.get(name) ?? 0) / 10}%`, x + 41, y + 90, 20, 78);
       });
-      y += 112;
+      y += 118.5;
     }
     if (overview && hasChests) {
-      fill(ctx, "#0009", [10, y, 720, 57], 5);
+      fill(ctx, "#0009", [15, y, 710, 70], 5);
       overview.chests.forEach(({ label, value, max }, i) => {
-        const x = 30 + i * 139;
-        type(value, x + 24, y + 37, 22, 60);
+        const x = 30 + i * 136;
+        if (i % 2) fill(ctx, "#32323280", [x, y, 136, 70]);
+        type(value, x + 62, y + 44, 24, 62, pale, "right");
         if (chests) {
           const tile = chests.width / 6;
-          ctx.drawImage(chests, i * tile, 0, tile, chests.height, x + 55, y + 11, 19, 19);
+          ctx.drawImage(chests, i * tile, 0, tile, chests.height, x + 71, y + 17, 18, 18);
         }
-        type(max > (value ?? 0) ? max : "", x + 98, y + 25, 11, 51, "#bbb");
-        type(label, x + 93, y + 43, 13, 69, "#d3bc8e");
+        const observed = value ?? 0;
+        type(Math.max(max, observed), x + 91, y + 31, 13, 42, "#aaa", "left");
+        type(label, x + 70, y + 51, 14, 59, "#d3bc8e", "left");
       });
-      y += 64;
     }
-    y = Math.max(y, 134);
-    fill(ctx, "#0008", [10, y, 720, Math.ceil(rows.length / columns) * 197 + 34], 8);
-    type(pages > 1 ? `角色列表 · ${page}/${pages}` : "角色列表", 25, y + 22, 17, 300, pale, "left");
+
+    ctx.save();
+    crop(ctx, 10, [15, gridTop, 710, noticeTop + 35 - gridTop]);
+    fill(ctx, "#0008", [15, gridTop, 710, noticeTop + 35 - gridTop]);
+    fill(ctx, "#0006", [15, gridTop, 710, 36]);
+    type(pages > 1 ? `角色列表 · ${page}/${pages}` : "角色列表", 30, gridTop + 24, 16, 300, "#d3bc8e", "left");
     rows.forEach((row, index) => {
-      const [portrait, rarity, weapon, relics] = mini[index]!;
-      const x = 25 + index % columns * 116, top = y + 32 + Math.floor(index / columns) * 197;
-      const avatar: PanelAvatar = row.avatar;
-      fill(ctx, "#e7e5d9", [x, top, box, 188], 10);
+      const [portrait, weapon, relics] = mini[index]!;
+      const x = 28 + index % columns * 115, top = gridTop + 49 + Math.floor(index / columns) * rowHeight;
+      const { avatar } = row;
+      fill(ctx, "#e7e5d9", [x, top, box, 187.5], 10.5);
       ctx.save();
-      crop(ctx, 10, [x, top, box, 104]);
+      ctx.beginPath();
+      ctx.roundRect(x, top, box, 105, [10.5, 10.5, 22.5, 0]);
+      ctx.clip();
       fill(ctx, row.star === 4 ? "#806396" : "#b08e59", [x, top, box, box]);
-      if (rarity) ctx.drawImage(rarity, x, top, box, box);
-      if (portrait) ctx.drawImage(portrait, x, top, box, box);
-      ctx.restore();
-      fill(ctx, "#0009", [x, top + 83, box, 21]);
-      type(`Lv${avatar.level} ${row.name}`, x + 52, top + 98, 15, 96);
+      const starsBackdrop = rarityImage(row.star === 4 ? 4 : 5);
+      if (starsBackdrop) ctx.drawImage(starsBackdrop, x, top, box, box);
+      contain(ctx, portrait, [x, top, box, box]);
+      fill(ctx, "#0009", [x, top + 77, box, 28]);
+      type("Lv", x + 4.5, top + 96, 12, 15, pale, "left");
+      type(avatar.level, x + 18, top + 96, 16, 28, pale, "left");
+      type(row.name, x + 42, top + 96, 16, 60, pale, "left");
       if (avatar.cons) {
-        fill(ctx, consColour[avatar.cons]!, [x + 83, top, 22, 23], 4);
-        type(avatar.cons, x + 94, top + 17, 15, 22);
+        fill(ctx, rosterBadge[avatar.cons]!, [x + 81, top, 24, 24], 4);
+        type(avatar.cons, x + 93, top + 18, 15, 24);
       }
-      if (row.talents.some(Boolean)) row.talents.forEach((talent, k) => {
-        const tx = x + 9 + k * 31;
-        fill(ctx, talent?.original === 10 ? "#d3bc8e" : "#d3d1c7", [tx, top + 110, 26, 23], 4);
-        type(talent?.level, tx + 13, top + 127, 15, 25, "#222");
+      ctx.restore();
+      if (row.talents.some(Boolean)) row.talents.forEach((talent, i) => {
+        const tx = x + 10 + i * 29;
+        fill(ctx, talent?.original === 10 ? "#d3bc8e" : "#d3d1c7", [tx, top + 110, 27, 24], 4);
+        type(talent?.level, tx + 13.5, top + 128, 17, 26, talent && talent.level > talent.original ? "#0284b9" : "#222");
       });
-      else type("暂无天赋数据", x + 52, top + 126, 13, 96, "#6c6c66");
-      fill(ctx, "#6f7778", [x + 5, top + 138, 44, 44], 5);
-      fill(ctx, "#6f7778", [x + 55, top + 138, 44, 44], 5);
-      if (weapon) ctx.drawImage(weapon, x + 6, top + 139, 42, 42);
-      if (row.weapon?.affix) type(row.weapon.affix, x + 41, top + 176, 13, 16);
-      if (relics.some(Boolean)) relics.forEach((relic, i) => {
-        if (relic) ctx.drawImage(relic, x + 56 + i * 12, top + 140 + i * 11, relics.length > 1 ? 30 : 42, relics.length > 1 ? 30 : 42);
-      });
-      else if (unknownRelic) ctx.drawImage(unknownRelic, x + 59, top + 141, 36, 36);
+      else type("暂无天赋数据", x + 52, top + 127, 13, 96, "#6c6c66");
+
+      if (row.weapon) {
+        const star = rarityImage(row.weapon.star);
+        ctx.save();
+        crop(ctx, 4.5, [x + 4.5, top + 136.5, 46.5, 46.5]);
+        if (star) ctx.drawImage(star, x + 4.5, top + 136.5, 46.5, 46.5);
+        contain(ctx, weapon, [x + 4.5, top + 136.5, 46.5, 46.5]);
+        if (row.weapon.affix !== undefined) {
+          fill(ctx, rosterBadge[Math.min(6, row.weapon.affix + (row.weapon.affix > 4 ? 1 : 0))]!, [x + 34, top + 165, 17, 18], 4);
+          type(row.weapon.affix, x + 42, top + 180, 14, 16);
+        }
+        ctx.restore();
+      }
+      const setX = x + 54, setY = top + 136.5;
+      fill(ctx, "#0005", [setX, setY, 46.5, 46.5], 4.5);
+      if (relics.some(Boolean)) {
+        const background = rarityImage(Math.max(0, ...Object.values(avatar.artis).map(gear => gear.star)));
+        ctx.save();
+        crop(ctx, 4.5, [setX, setY, 46.5, 46.5]);
+        if (background) ctx.drawImage(background, setX, setY, 46.5, 46.5);
+        relics.forEach((relic, i) => contain(ctx, relic, relics.length > 1
+          ? [setX + 1 + i * 12, setY + 2 + i * 11, 32, 32] : [setX, setY, 46.5, 46.5]));
+        ctx.restore();
+      } else contain(ctx, unknownRelic, [setX + 5, setY + 5, 36.5, 36.5]);
     });
-    const date = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", dateStyle: "short", timeStyle: "short" });
-    type(snapshot._profile && Number.isFinite(new Date(snapshot._profile).getTime()) ? `数据更新时间 · ${date.format(snapshot._profile)}` : "本地角色数据", 25, height - 13, 12, 370, pale, "left");
-    type("Lotus-Yunzai", width - 20, height - 13, 11, 150, pale, "right");
-  }, mode);
+    fill(ctx, "#0008", [15, noticeTop, 710, 35]);
+    if (profile || mys) {
+      const timestamps: [string, string][] = [["数据更新时间", "#d3bc8e"]];
+      if (profile) timestamps.push([`   #更新面板：${profile}`, "#aaa"]);
+      if (mys) timestamps.push([`   米游社：${mys}`, "#aaa"]);
+      ctx.font = `600 12px ${family}`;
+      let x = 710 - timestamps.reduce((sum, [label]) => sum + ctx.measureText(label).width, 0);
+      for (const [label, colour] of timestamps) {
+        type(label, x, noticeTop + 23, 12, 690, colour, "left");
+        x += ctx.measureText(label).width;
+      }
+    } else type("暂无数据更新时间，可使用 #更新面板 刷新角色资料。", 710, noticeTop + 23, 12, 680, "#aaa", "right");
+    ctx.restore();
+    type("Lotus-Yunzai", 375, height - 23, 14, 170);
+  };
+  const displayWidth = 1036;
+  if (scale !== 2) return renderGenshinCardForChat(width, height, draw, mode, { displayWidth, inlineImageByteLimit, signal });
+  signal?.throwIfAborted();
+  const result = await renderGenshinCard(width, height, draw, mode, { displayWidth, scale });
+  signal?.throwIfAborted();
+  if (inlineImageByteLimit !== undefined && result.png.byteLength > inlineImageByteLimit) {
+    throw new ImageSizeLimitError("原神角色名单分片超过当前会话的单图大小上限。");
+  }
+  return result;
 }
