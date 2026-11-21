@@ -8,6 +8,7 @@ import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.
 import { createGenshinTalentRefresh, matchGenshinTalentRefresh } from "./panel/talent-refresh.ts";
 import { createTeamDamageQuery } from "./panel/team-damage.ts";
 import { matchesTeamDamage } from "./panel/team-damage-command.ts";
+import { createSevenSaintsDeckQuery, matchSevenSaintsDecks } from "./panel/seven-saints-decks.ts";
 import { readPanelTheme } from "./panel/theme.ts";
 import { fileURLToPath } from "node:url";
 import { createProfileStore, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
@@ -101,6 +102,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const achievements = createAchievementCommand(profiles, lockFile, signal);
   const client = createProfileHoyoClient(profiles);
+  const sevenSaintsDecks = createSevenSaintsDeckQuery(profiles, client, signal);
   const teamDamage = createTeamDamageQuery(profiles, createGenshinPanelArchive(lockFile), signal);
   const refreshTalent = createGenshinTalentRefresh(profiles, client, createGenshinPanelArchive(lockFile), signal);
   const panelImages = createPanelImageCommands(lockFile, signal);
@@ -238,6 +240,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     gachaUpdate,
     fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      if (matchSevenSaintsDecks(message)) return ["[genshin] 七圣召唤牌组"];
       if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
@@ -251,6 +254,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
+      const deck = matchSevenSaintsDecks(context.normalizedMessage);
+      if (deck) return sevenSaintsDecks(deck, context);
       if (matchesTeamDamage(context.normalizedMessage)) return teamDamage(context.normalizedMessage, context);
       const talent = matchGenshinTalentRefresh(context.normalizedMessage);
       if (talent) return refreshTalent(talent, context);

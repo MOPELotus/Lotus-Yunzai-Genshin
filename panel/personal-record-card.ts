@@ -79,8 +79,10 @@ const picture = (theme: PanelTheme, name: string, file: string) => theme.picture
 const face = async (theme: PanelTheme, name: string) =>
   await picture(theme, name, "face-q.webp") ?? await picture(theme, name, "face.webp");
 
+export const nativeGenshinResourcesDirectory = () => Bun.env.LOTUS_GENSHIN_GACHA_RESOURCES_DIR?.trim() || nativeResources;
+
 export async function renderPersonalOverview(model: PersonalOverview, theme: PanelTheme, mode: Mode = "auto") {
-  const source = Bun.env.LOTUS_GENSHIN_GACHA_RESOURCES_DIR?.trim() || nativeResources;
+  const source = nativeGenshinResourcesDirectory();
   const assets = await readPanelTheme(source, "");
   const number = randomInt(1, 4);
   const [background, logo, badge, portraits, family] = await Promise.all([
