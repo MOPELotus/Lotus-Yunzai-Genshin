@@ -1,3 +1,4 @@
+import { createAchievementCommand } from "./achievement-command.ts";
 import { queryRankStats } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createGenshinPanelQuery } from "./panel/panel.ts";
@@ -92,6 +93,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const wish = createWishCommands({ lockFile, signal });
   const profiles = createProfileStore(Bun.env.LOTUS_PROFILE_DIR || undefined);
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
+  const achievements = createAchievementCommand(profiles, lockFile, signal);
   const client = createProfileHoyoClient(profiles);
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal);
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank });
@@ -224,7 +226,9 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   return {
     commands: {},
     gachaUpdate,
-    fallbackFeatures({ normalizedMessage: message, attachment }: GachaContext) {
+    fallbackFeatures(context: GachaContext) {
+      const { normalizedMessage: message, attachment } = context;
+      if (achievements.explicit(context)) return [];
       if (genshinBackpackCommand.test(message)) return ["[genshin] 背包"];
       if (worldBossCommand.test(message) || worldBossRankingCommand.test(message)) return ["[genshin] 世界 BOSS"];
       const gacha = gachaImportCommand.test(message) || helpCommand.test(message) || updateCommand.test(message) ||
@@ -233,6 +237,10 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
+      if (achievements.explicit(context)) {
+        const achievement = await achievements.main(context);
+        if (achievement !== undefined) return achievement;
+      }
       const growth = await grow(context.normalizedMessage, context);
       if (growth !== undefined) return growth;
       const pool = await publicPool(context.normalizedMessage);
@@ -261,7 +269,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       const external = externalGachaCommand.exec(context.normalizedMessage);
       const exportMatch = exportCommand.exec(context.normalizedMessage);
       const query = matched || external || exportMatch ? undefined : matchGachaQuery(context.normalizedMessage);
-      if (!matched && !external && !exportMatch && !query) return;
+      if (!matched && !external && !exportMatch && !query) return achievements.main(context, true);
       const profileId = query?.profileId ?? Number(matched?.[1] ?? external?.[1] ?? exportMatch?.[3] ?? 1);
       if (profileId > MAX_PROFILE_ID) return;
       const { user_id } = context;
