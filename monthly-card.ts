@@ -56,7 +56,9 @@ export async function renderGenshinMonthly(snapshot: GenshinMonthlySnapshot, uid
       context.fillStyle = color;
       context.textAlign = align;
       context.textBaseline = "middle";
-      context.fillText(value, x, y, max);
+      const measured = context.measureText(value).width;
+      if (measured > max) context.font = `${weight} ${size * max / measured}px ${font}`;
+      context.fillText(value, x, y);
     }
 
     context.drawImage(background, 0, 0, width, height);

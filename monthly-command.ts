@@ -1,6 +1,7 @@
 import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { HoyoRequestError, type createProfileHoyoClient, type GenshinMonthlySnapshot } from "@lotus-yunzai/hoyo-client";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "./owned-role.ts";
+import type { createGenshinMonthlyArchive } from "./monthly-archive.ts";
 import { renderGenshinMonthly } from "./monthly-card.ts";
 
 const monthlyCommand = /^(?:(?:#|＃)(?:原神)?(?:原石(?:札记)?|札记)|札记)([0-9]{1,2}|[一二两三四五六七八九十]{1,3})?月?(?:\s*档案\s*(\d{1,3}))?$/u;
@@ -19,7 +20,8 @@ export function genshinMonthlyPeriod(month: number | undefined, now: number) {
   const current = date.getUTCMonth() + 1;
   const selected = month ?? current;
   if (!Number.isInteger(selected) || selected < 1 || selected > 12 || (current - selected + 12) % 12 > 2) return;
-  return { month: selected, title: `${selected}月${selected === current ? `${date.getUTCDate()}号` : ""}札记` };
+  return { year: date.getUTCFullYear() - Number(selected > current), month: selected, finalized: selected !== current,
+    title: `${selected}月${selected === current ? `${date.getUTCDate()}号` : ""}札记` };
 }
 
 function text(snapshot: GenshinMonthlySnapshot, uid: string, title: string) {
@@ -43,7 +45,11 @@ interface Context {
 
 export function createGenshinMonthlyQuery(profiles: GenshinRoleProfiles,
   client: Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinMonthly">, lifecycle: AbortSignal,
-  { now = Date.now, render = renderGenshinMonthly } = {}) {
+  { now = Date.now, render = renderGenshinMonthly, archive }: {
+    readonly now?: () => number;
+    readonly render?: typeof renderGenshinMonthly;
+    readonly archive?: Pick<ReturnType<typeof createGenshinMonthlyArchive>, "read" | "record">;
+  } = {}) {
   const changed = "原神档案已变化，请重新查询札记。";
   return async ({ month, profileId }: NonNullable<ReturnType<typeof matchGenshinMonthly>>, context: Context) => {
     const { user_id: user, self_id: self, message_type: scene, message } = context;
@@ -54,7 +60,8 @@ export function createGenshinMonthlyQuery(profiles: GenshinRoleProfiles,
       return "请从本人 QQ 会话查询原石札记。";
     }
     if (profileId < 1 || profileId > MAX_PROFILE_ID) return `档案编号须为 1–${MAX_PROFILE_ID}。`;
-    const period = genshinMonthlyPeriod(month, now());
+    const fetchedAt = now();
+    const period = genshinMonthlyPeriod(month, fetchedAt);
     if (!period) return "札记仅支持查询最近三个月的数据。";
     const qq = String(user);
     try {
@@ -69,18 +76,44 @@ export function createGenshinMonthlyQuery(profiles: GenshinRoleProfiles,
         }
         signal.throwIfAborted();
       }
-      const { snapshot, revision } = await client.fetchGenshinMonthly(source, { month: period.month, signal });
+      const live = await client.fetchGenshinMonthly(source, { month: period.month, signal });
+      const { revision } = live;
       await verify(revision);
+      const identity = { qq, accountId, uid, region };
+      let snapshot = live.snapshot;
+      let notice: string | undefined;
+      if (archive && !snapshot) {
+        try {
+          const previous = (await archive.read(identity)).find(entry => entry.year === period.year && entry.snapshot.month === period.month);
+          await verify(revision);
+          snapshot = previous?.snapshot;
+          if (previous) notice = previous.finalized ? "米游社本次未返回该月数据，已显示本地存档。"
+            : "米游社本次未返回该月数据，已显示本地存档，该月数据可能未收录完整。";
+        } catch {
+          await verify(revision);
+          return "米游社本次未返回该月数据，本地札记存档读取失败。";
+        }
+      } else if (archive && snapshot) {
+        try {
+          await archive.record(identity, { year: period.year, finalized: period.finalized, fetchedAt, snapshot }, () => verify(revision));
+        } catch {
+          await verify(revision);
+          notice = "本次札记数据未能保存到本地档案。";
+        }
+      }
       if (!snapshot) return "暂无该月的原石札记数据。";
+      function receipt(message: string | { type: "image"; file: Uint8Array }) {
+        return notice ? [message, notice] as const : message;
+      }
       const limit = context.inlineImageByteLimit;
       const full = await render(snapshot, uid, period.title, signal, { scale: 4 }).catch(() => undefined);
       await verify(revision);
       if (full && limit !== undefined && full.png.byteLength > limit) {
         const reduced = await render(snapshot, uid, period.title, signal, { scale: 2 }).catch(() => undefined);
         await verify(revision);
-        if (reduced && reduced.png.byteLength <= limit) return { type: "image" as const, file: reduced.png };
-      } else if (full) return { type: "image" as const, file: full.png };
-      return text(snapshot, uid, period.title);
+        if (reduced && reduced.png.byteLength <= limit) return receipt({ type: "image", file: reduced.png });
+      } else if (full) return receipt({ type: "image", file: full.png });
+      return receipt(text(snapshot, uid, period.title));
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {

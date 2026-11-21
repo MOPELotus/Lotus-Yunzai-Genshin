@@ -1,3 +1,4 @@
+import { createGenshinMonthlyArchive } from "./monthly-archive.ts";
 import { createGenshinMonthlyQuery, matchGenshinMonthly } from "./monthly-command.ts";
 import { createDamageSettingsCommand, matchDamageSettingsCommand } from "./panel/lolomi/settings-command.ts";
 import { createPanelImageCommands, panelImageCommand } from "./panel/image-commands.ts";
@@ -51,6 +52,8 @@ type VersionPool = NonNullable<GenshinGachaVersionOptions["type"]>;
 const versionPools = new Map<string, VersionPool>([["角色", "char"], ["武器", "weapon"], ["常驻", "normal"], ["集录", "mix"]]);
 type GachaView = { readonly detail: GenshinGachaPool } | { readonly version: VersionPool }
   | { readonly special: "beginner" | "all" };
+const monthlyDirectory = fileURLToPath(new URL("../../data/genshin/monthly/", import.meta.url));
+const legacyMonthlyDirectory = fileURLToPath(new URL("../../data/NoteData/", import.meta.url));
 const historyDirectory = fileURLToPath(new URL("../../data/gachaJson/", import.meta.url));
 const rankingDirectory = fileURLToPath(new URL("../../data/genshinWorldBossRecords/", import.meta.url));
 const groupPanelRankDirectory = fileURLToPath(new URL("../../data/genshin/panel-ranks/", import.meta.url));
@@ -111,7 +114,9 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const achievements = createAchievementCommand(profiles, lockFile, signal);
   const client = createProfileHoyoClient(profiles);
-  const monthly = createGenshinMonthlyQuery(profiles, client, signal);
+  const monthlyArchive = createGenshinMonthlyArchive(Bun.env.LOTUS_GENSHIN_MONTHLY_DIR?.trim() || monthlyDirectory,
+    Bun.env.LOTUS_GENSHIN_LEGACY_MONTHLY_DIR?.trim() || legacyMonthlyDirectory, lockFile);
+  const monthly = createGenshinMonthlyQuery(profiles, client, signal, { archive: monthlyArchive });
   const sevenSaintsDecks = createSevenSaintsDeckQuery(profiles, client, signal);
   const panelArchive = createGenshinPanelArchive(lockFile);
   const teamDamage = createTeamDamageQuery(profiles, panelArchive, signal);
