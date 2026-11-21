@@ -180,7 +180,7 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
 export async function renderOriginalProfile(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme,
   options: Parameters<typeof originalProfileData>[3]) {
   const data = await originalProfileData(snapshot, avatar, theme, options);
-  const images = data && await renderTemplate(data);
+  const images = data && await renderTemplate(data, true);
   if (!images || !images[0]) throw new Error("原神原版面板渲染失败。");
   return { png: markGeneratedImage(images[0]) };
 }
