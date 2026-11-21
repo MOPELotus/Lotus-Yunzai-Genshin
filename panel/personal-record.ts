@@ -1,9 +1,11 @@
 import { MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
-import { GameRecordRequestError, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
+import { GameRecordRequestError, HoyoRequestError, type GenshinGcgSummary } from "@lotus-yunzai/hoyo-client";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { officialPanel, text, type Json, type PanelSnapshot } from "./model.ts";
 import { createGenshinPanelArchive } from "./panel.ts";
+import { renderPersonalExploration } from "./personal-exploration-card.ts";
+import { buildPersonalExploration } from "./personal-exploration-model.ts";
 import { buildPersonalOverview } from "./personal-record-model.ts";
 import { renderPersonalOverview, renderPersonalRoster } from "./personal-record-card.ts";
 import { buildPanelStatistics } from "./statistics.ts";
@@ -11,17 +13,21 @@ import { readPanelTheme } from "./theme.ts";
 
 const suffix = /^(#(?:原神)?(?:角色查询|查询角色|角色|人物|查询)|#?(?:原神)?角色卡片)(?:\s*(?:(?:档案|profile)\s*)?(\d{1,3}))?$/iu;
 
+const exploration = /^#(?:宝箱|尘歌壶|家园|探索|探险|声望|探险度|探索度)(?:\s+(?:档案|profile)\s*(\d{1,3}))?$/iu;
+
 export function matchPersonalRecord(message: string) {
   const command = message.trim().replace(/^＃/u, "#");
   if (command === "角色") return { profileId: 1, type: "overview" } as const;
+  const explore = exploration.exec(command);
+  if (explore) return { profileId: Number(explore[1] ?? 1), type: "exploration" } as const;
   const match = suffix.exec(command);
   if (!match) return;
   return { profileId: Number(match[2] ?? 1), type: match[1]!.endsWith("卡片") ? "overview" as const : "roster" as const };
 }
 
 interface Client {
-  fetchGenshinPersonalRecord(source: ProfileRequestContext, options: { readonly signal: AbortSignal; readonly includeRoster: boolean }):
-    Promise<{ readonly overview: Json; readonly avatars: readonly Json[]; readonly revision: string }>;
+  fetchGenshinPersonalRecord(source: ProfileRequestContext, options: { readonly signal: AbortSignal; readonly includeRoster: boolean; readonly includeExploration?: boolean }):
+    Promise<{ readonly overview: Json; readonly avatars: readonly Json[]; readonly revision: string; readonly gcg?: GenshinGcgSummary }>;
 }
 interface MessageContext {
   readonly user_id?: number;
@@ -39,8 +45,9 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
     theme = readPanelTheme,
     roster = renderPersonalRoster,
     overview = renderPersonalOverview,
+    explore = renderPersonalExploration,
   }: { readonly archive?: Pick<ReturnType<typeof createGenshinPanelArchive>, "readPanel">; readonly theme?: typeof readPanelTheme;
-    readonly roster?: typeof renderPersonalRoster; readonly overview?: typeof renderPersonalOverview } = {},
+    readonly roster?: typeof renderPersonalRoster; readonly overview?: typeof renderPersonalOverview; readonly explore?: typeof renderPersonalExploration } = {},
 ) {
   return async (command: NonNullable<ReturnType<typeof matchPersonalRecord>>, context: MessageContext): Promise<Reply | undefined> => {
     const { user_id: user, message_type: scene } = context;
@@ -53,6 +60,7 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
     if (profileId < 1 || profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
     const signal = context.privateCredentialSignal ? AbortSignal.any([lifecycle, context.privateCredentialSignal]) : lifecycle;
     const includeRoster = type === "roster";
+    const includeExploration = type === "exploration";
     try {
       const { source, accountId } = await ownedGenshinRole(profiles, qq, profileId);
       const { uid, region, gameBiz } = source.role;
@@ -67,13 +75,20 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
         signal.throwIfAborted();
       }
       await verify();
-      const official = await client.fetchGenshinPersonalRecord(source, { signal, includeRoster }).catch(error => {
+      const official = await client.fetchGenshinPersonalRecord(source, { signal, includeRoster, ...(includeExploration && { includeExploration }) }).catch(error => {
         if (includeRoster && error instanceof HoyoRequestError && ["transport", "http", "refresh"].includes(error.code) &&
             !(error instanceof GameRecordRequestError)) return undefined;
         throw error;
       });
       if (official) revision = official.revision;
       await verify();
+      if (includeExploration && official) {
+        const model = buildPersonalExploration(uid, region, official.overview, official.gcg);
+        if (!model) return "米游社未返回原神探索统计。";
+        const { png } = await explore(model, { signal });
+        await verify();
+        return { type: "image", file: png };
+      }
       const assets = await theme();
       const summary = official && buildPersonalOverview(uid, official.overview, assets.characters);
       if (!includeRoster && summary) {

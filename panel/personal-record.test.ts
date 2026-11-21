@@ -6,6 +6,7 @@ import { createProfileStore } from "@lotus-yunzai/account";
 import { createHoyoClient, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { lockFile } from "../../../lib/file-lock.ts";
 import { buildPersonalOverview } from "./personal-record-model.ts";
+import { buildPersonalExploration } from "./personal-exploration-model.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./personal-record.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -146,5 +147,94 @@ test("only same login and profile can render, same-UID archive fallback stays re
     local = false;
     change = true;
     expect(await query(selection, context)).toContain("档案已变化");
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+const gcg = { uid: role.uid, level: 8, avatar_card_num_gained: 8, avatar_card_num_total: 99,
+  action_card_num_gained: 26, action_card_num_total: 290 };
+
+test("旧探索别名保持本人选档并避开现有个人成就和公开牌组指令", () => {
+  for (const alias of ["宝箱", "尘歌壶", "家园", "探索", "探险", "声望", "探险度", "探索度"]) {
+    expect(matchPersonalRecord(`#${alias}`)).toEqual({ profileId: 1, type: "exploration" });
+  }
+  expect(matchPersonalRecord("＃探索 档案3")).toEqual({ profileId: 3, type: "exploration" });
+  for (const command of ["#探索 100000002", "#成就", "#成就目录", "#尘歌壶模数", "#七圣查询角色牌", "*探索", "%探索"]) {
+    expect(matchPersonalRecord(command)).toBeUndefined();
+  }
+});
+
+test("探索模型保留七圣等级、持有计数与区域声望，展开层岩和沉玉谷子区", () => {
+  const raw = { ...data, stats: { ...data.stats, role_combat: { is_unlock: true, has_detail_data: true, max_round_id: 10, tarot_finished_cnt: 4 },
+    hard_challenge: { is_unlock: true, has_data: true, difficulty: 5 }, cryoculus_number: 7 },
+    homes: [{ level: 6, comfort_num: 1000, comfort_level_name: "初露锋芒", item_num: 7, visit_num: 2 }],
+    world_explorations: [{ id: 6, exploration_percentage: 832, offerings: [{ name: "流明石触媒", level: 10 }] },
+      { id: 7, exploration_percentage: 912 }, { id: 10, exploration_percentage: 777 }, { id: 13, exploration_percentage: 887 },
+      { id: 12, exploration_percentage: 900 }, { id: 11, exploration_percentage: 956 },
+      { id: 1, level: 8, exploration_percentage: 991 }, { id: 20, name: "挪德卡莱", offerings: [] }] };
+  const optional = { uid: role.uid, nickname: "", level: 8, characterCount: [8, 99] as const, actionCount: [26, 290] as const };
+  const result = buildPersonalExploration(role.uid, role.region, raw, optional)!;
+  expect(result.gcg).toBe(optional);
+  expect(result.rows[0]?.[2]?.value).toBe("第10幕 圣牌4");
+  expect(result.rows[0]?.[3]?.value).toBe("V");
+  expect(result.rows[2]?.[0]).toEqual({ label: "宝箱总数", total: 9109, value: 15 });
+  expect(result.rows[2]?.[1]?.value).toBe("D");
+  expect(result.rows[4]?.at(-1)).toEqual({ label: "冰神瞳", total: 140, value: 7 });
+  expect(result.rows[5]?.at(-1)?.value).toBe(2);
+  expect(result.regions.map(row => row.id)).toEqual([20, 10, 6, 1]);
+  expect(result.regions[1]?.details.map(row => row.value)).toEqual(["88.7%", "90%", "95.6%"]);
+  expect(result.regions[2]?.details.map(row => row.value)).toEqual(["83.2%", "91.2%", "10级"]);
+  expect(result.regions[3]?.details.map(row => row.value)).toEqual(["99.1%", "8级"]);
+  expect(buildPersonalExploration(role.uid, role.region, raw, { ...optional, level: 0 })?.gcg).toBeUndefined();
+});
+
+test("探索只读同一角色 index 与 basicInfo，续期只重试过期读，拒绝响应换绑", async () => {
+  const root = await mkdtemp(join(tmpdir(), "lotus-gs-exploration-"));
+  try {
+    const file = join(root, "42-3.yaml");
+    await writeFile(file, profile());
+    const store = createProfileStore(root);
+    let exchanges = 0;
+    const original: string[] = [];
+    let summaryMode = "expires";
+    const client = createHoyoClient(async (url, options) => {
+      expect(url.searchParams.toString()).toBe(`role_id=${role.uid}&server=${role.region}`);
+      expect(options?.method).toBe("GET");
+      expect(url.origin).toBe("https://api-takumi-record.mihoyo.com");
+      original.push(url.pathname.split("/").at(-1)!);
+      if (url.pathname.endsWith("/index")) return Response.json({ retcode: 0, data });
+      if (summaryMode === "switch") {
+        await writeFile(file, profile(other.uid));
+        return Response.json({ retcode: 0, data: gcg });
+      }
+      if (summaryMode === "restricted") return Response.json({ retcode: 10102 });
+      if (summaryMode === "null") return Response.json({ retcode: 0, data: null });
+      if (summaryMode === "wrong") return Response.json({ retcode: 0, data: { ...gcg, uid: other.uid } });
+      const headers = new Headers(options?.headers);
+      if (summaryMode === "expires" && headers.get("Cookie")?.includes("cookie_token=old")) return Response.json({ retcode: -100 });
+      return Response.json({ retcode: 0, data: gcg });
+    }, { profiles: store, async exchange() {
+      exchanges++;
+      return { cookie: cookie("900000001").cookie.replace("=old", "=new"), ltuid: "900000001", ltoken: "fixture",
+        stuid: "900000001", stoken: "refresh-seed" };
+    } });
+    const input = await store.requestContext("42", 3, "gs");
+    const options = { includeRoster: false, includeExploration: true };
+    const first = await client.fetchGenshinPersonalRecord(input, options);
+    expect(first.gcg).toMatchObject({ level: 8, characterCount: [8, 99], actionCount: [26, 290] });
+    expect(first.refreshedCookie).toBe(true);
+    expect(original).toEqual(["index", "basicInfo", "basicInfo"]);
+    expect(exchanges).toBe(1);
+    const next = await store.requestContext("42", 3, "gs");
+    for (const [mode, visible] of [["restricted", false], ["null", false]] as const) {
+      summaryMode = String(mode);
+      const reply = await client.fetchGenshinPersonalRecord(next, options);
+      expect(!!reply.gcg?.level).toBe(visible);
+      expect(reply.overview).toMatchObject({ uid: role.uid });
+    }
+    summaryMode = "wrong";
+    await expect(client.fetchGenshinPersonalRecord(next, options)).rejects.toMatchObject({ code: "response" });
+    expect(exchanges).toBe(1);
+    summaryMode = "switch";
+    await expect(client.fetchGenshinPersonalRecord(next, options)).rejects.toMatchObject({ code: "profile-changed" });
   } finally { await rm(root, { recursive: true, force: true }); }
 });
