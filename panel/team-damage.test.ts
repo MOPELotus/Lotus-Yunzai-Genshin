@@ -114,7 +114,7 @@ test("same QQ and selected profile, notice precedes release, third-party data is
     const render = async () => { renders++; return { png: Buffer.from("image"), engine: {} as never }; };
     const query = createTeamDamageQuery(createProfileStore(profiles), createGenshinPanelArchive(lockFile,
       { archiveDirectory: destination, legacyDirectory: legacy }), new AbortController().signal, {
-      theme: async () => theme, render,
+      theme: async () => theme, render, engine: "auto",
       async request(payload) {
         calls.push("provider");
         wire = payload;
@@ -135,6 +135,7 @@ test("same QQ and selected profile, notice precedes release, third-party data is
     expect(await query("#队伍伤害3芙芙", { ...scene, user_id: 43 })).toContain("先登录档案 3");
     expect(await query("#队伍伤害3芙芙", { ...scene, isDelegated: true })).toContain("本人 QQ");
     expect(await query("#队伍伤害3芙芙", { ...scene, reply: () => false })).toContain("提示未能送出");
+    expect(await query("#队伍伤害3芙芙", { ...scene, reply: () => undefined })).toContain("提示未能送出");
     expect(calls).toEqual([]);
     expect(await query("#队伍伤害3芙芙", scene)).toMatchObject({ type: "image" });
     expect(calls).toEqual(["notice", "provider"]);
@@ -156,4 +157,15 @@ test("same QQ and selected profile, notice precedes release, third-party data is
     expect(await readFile(oldFile, "utf8")).toBe(raw);
     expect(await Bun.file(join(destination, "42", `${uid}.json`)).exists()).toBe(false);
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+
+test("explicit legacy local mode stays offline without opening an account or asking to send data", async () => {
+  const fail = async (): Promise<never> => { throw new Error("unexpected access"); };
+  const query = createTeamDamageQuery({ requestContext: fail, savedRole: fail }, { readPanel: fail },
+    new AbortController().signal, { engine: "local", theme: fail, render: fail, request: fail });
+  const unused = { ...context, reply: fail };
+  expect(await query("#原神队伍伤害帮助", unused)).toContain("LOTUS_GENSHIN_GCSIM_MODE=local");
+  expect(await query("#队伍伤害详情3芙芙", unused)).toContain("当前配置要求本地队伍伤害");
+  expect(await query("#星铁队伍伤害详情3", unused)).toBeUndefined();
 });
