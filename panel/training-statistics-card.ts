@@ -18,6 +18,9 @@ const ink = "#333";
 const header = ["#", "角色", "Lv", "命座", "好感", "A", "E", "Q", "武器", "圣遗物"];
 // Measured after the old table lays out its percentage and intrinsic-width columns, before its 1.4 transform.
 const edges = [10, 35.2, 131.2, 161.9, 199.1, 237.2, 266.1, 294.8, 325.2, 477.2, 585];
+const talentEdges = [10, 40, 140, 175, 215, 255, 290, 325, 360, 394.625, 585];
+const talentBookDays: Readonly<Record<string, string>> = { "周一/周四": "1/4", "周二/周五": "2/5", "周三/周六": "3/6" };
+const talentHeader = [...header.slice(0, 8), "周本", "天赋书"];
 const center = (column: number) => (edges[column]! + edges[column + 1]!) / 2;
 const stars = ["#bbbbbb59", "#c8c8c859", "#a8ff8559", "#89a8ff59", "#c386ff59", "#ffd48459"];
 const starInk = [ink, ink, ink, ink, "#720465", "#6f4b00"];
@@ -51,8 +54,8 @@ async function characterFace(theme: PanelTheme, { avatar }: PanelStatisticRow) {
   return theme.picture(...folder, "face.webp");
 }
 
-function rowGrid(ctx: Context, top: number, color: string) {
-  for (const x of edges.slice(1, -1)) fill(ctx, color, [x, top, .6, rowHeight]);
+function rowGrid(ctx: Context, top: number, color: string, columns: readonly number[]) {
+  for (const x of columns.slice(1, -1)) fill(ctx, color, [x, top, .6, rowHeight]);
   fill(ctx, color, [tableX, top, tableWidth, .6]);
 }
 
@@ -105,6 +108,28 @@ function drawRelics(ctx: Context, { write }: Writer, row: PanelStatisticRow, ima
   } else write("暂无面板数据", x + 46, y + 23, 10, { color: "#666" });
 }
 
+async function materialPictures(theme: PanelTheme, materials: PanelStatisticRow["materials"]) {
+  const picture = (material: { readonly icon: string } | undefined) => material && theme.picture(...material.icon.split("/"));
+  return Promise.all([picture(materials?.weekly), picture(materials?.talent)]);
+}
+
+function drawMaterials(ctx: Context, writer: Writer, materials: PanelStatisticRow["materials"],
+  [weekly, book]: readonly [Picture | undefined, Picture | undefined], y: number) {
+  const left = talentEdges[8]!, bookX = talentEdges[9]!, right = talentEdges[10]!;
+  const open = materials?.open;
+  ctx.save();
+  if (!open) ctx.globalAlpha = 0.7;
+  fill(ctx, open ? "#ffd48459" : "#32323233", [left, y, right - left, rowHeight]);
+  contain(ctx, weekly, [(left + bookX - 30) / 2, y + 4, 30, 30]);
+  contain(ctx, book, [bookX + 5, y + 4, 30, 30]);
+  const talent = materials?.talent;
+  const days = talentBookDays[talent?.days ?? ""];
+  const name = talent ? [talent.region, talent.name].filter(Boolean).join("·") : "—";
+  // The weekly drop is an icon in the original; the book keeps its region and schedule next to the icon.
+  leftFit(ctx, writer, `${name} (周${days ?? "—"})`, bookX + 39, y + 23, 14, right - bookX - 43, open ? "#6f4b00" : ink);
+  ctx.restore();
+}
+
 function centeredParts(ctx: Context, { font, write }: Writer, parts: readonly (readonly [text: string, color: string])[], y: number) {
   font(13);
   const measured = parts.map(([label]) => ctx.measureText(label).width);
@@ -116,17 +141,22 @@ function centeredParts(ctx: Context, { font, write }: Writer, parts: readonly (r
 }
 
 export async function renderTrainingStatistics(snapshot: PanelSnapshot, rows: readonly PanelStatisticRow[], theme: PanelTheme, {
-  mode = "auto", offset = 0, total = rows.length, inlineImageByteLimit, signal,
+  mode = "auto", offset = 0, total = rows.length, talent = false, inlineImageByteLimit, signal,
 }: { readonly mode?: Mode; readonly offset?: number; readonly total?: number;
-  readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal } = {}) {
-  const [faces, background, top, fetter, crown, placeholder, starsBackdrop, pictures] = await Promise.all([
+  readonly talent?: boolean; readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal } = {}) {
+  const columns = talent ? talentEdges : edges;
+  const cellCenter = (i: number) => (columns[i]! + columns[i + 1]!) / 2;
+  const [faces, background, top, fetter, crown, portraits, materials, equipment, placeholder, starsBackdrop] = await Promise.all([
     profileFonts(theme.resourceRoot), theme.picture("character", "imgs", "bg-01.jpg"), theme.picture("character", "imgs", "main-01.png"),
     theme.picture("common", "item", "fetter.png"), theme.picture("common", "item", "crown-o.png"),
-    theme.picture("common", "item", "artifact-icon.webp"), theme.picture("common", "item", "bg5.png"),
-    Promise.all(rows.map(async row => Promise.all([characterFace(theme, row), panelWeaponPicture(theme, row.avatar, row.weapon?.type),
+    Promise.all(rows.map(row => characterFace(theme, row))),
+    talent ? Promise.all(rows.map(row => materialPictures(theme, row.materials))) : undefined,
+    talent ? undefined : Promise.all(rows.map(async row => Promise.all([panelWeaponPicture(theme, row.avatar, row.weapon?.type),
       Promise.all(row.sets.map(async set => await theme.picture("meta-gs", "artifact", "imgs", set, "1.webp") ??
         await theme.picture("meta-gs", "artifact", "imgs", set, "5.webp"))),
     ]))),
+    talent ? undefined : theme.picture("common", "item", "artifact-icon.webp"),
+    talent ? undefined : theme.picture("common", "item", "bg5.png"),
   ]);
   const profile = date(snapshot._profile), mys = date(snapshot._mys);
   const noticeY = tableY + (rows.length + 1) * rowHeight;
@@ -151,36 +181,41 @@ export async function renderTrainingStatistics(snapshot: PanelSnapshot, rows: re
 
     panel(ctx, undefined, [tableX, tableY, tableWidth, noticeY - tableY + noticeHeight], () => {
       fill(ctx, "#0008", [tableX, tableY, tableWidth, rowHeight]);
-      rowGrid(ctx, tableY, "#fffb");
-      header.forEach((name, i) => write(name, center(i), tableY + 23, 14, { bold: true, color: gold, align: "center" }));
+      rowGrid(ctx, tableY, "#fffb", columns);
+      const labels = talent ? talentHeader : header;
+      labels.forEach((name, i) => write(name, cellCenter(i), tableY + 23, 14, { bold: true, color: gold, align: "center" }));
       rows.forEach((row, index) => {
         const y = tableY + (index + 1) * rowHeight;
-        const [portrait, weapon, relics] = pictures[index]!;
-        fill(ctx, index % 2 ? "#f0f0f0" : "#fff", [tableX, y, tableWidth, rowHeight]);
-        fill(ctx, stars[row.star ?? 0] ?? stars[0]!, [tableX, y, edges[2]! - tableX, rowHeight]);
-        write(offset + index + 1, center(0), y + 23, 14, { color: ink, align: "center" });
-        contain(ctx, portrait, [edges[1]! + 3, y + 3, 30, 30]);
-        leftFit(ctx, writer, row.name, edges[1]! + 38, y + 23, 14, edges[2]! - edges[1]! - 42, starInk[row.star ?? 0] ?? ink);
-        write(row.avatar.level, center(2), y + 23, 14, { color: ink, align: "center" });
+        fill(ctx, (index + Number(talent)) % 2 ? "#f0f0f0" : "#fff", [tableX, y, tableWidth, rowHeight]);
+        fill(ctx, stars[row.star ?? 0] ?? stars[0]!, [tableX, y, columns[2]! - tableX, rowHeight]);
+        write(offset + index + 1, cellCenter(0), y + 23, 14, { color: ink, align: "center" });
+        contain(ctx, portraits[index], [columns[1]! + 3, y + 3, 30, 30]);
+        leftFit(ctx, writer, row.name, columns[1]! + 38, y + 23, 14, columns[2]! - columns[1]! - 42, starInk[row.star ?? 0] ?? ink);
+        write(row.avatar.level, cellCenter(2), y + 23, 14, { color: ink, align: "center" });
         const cons = row.avatar.cons;
-        if (cons !== undefined) fill(ctx, consColors[cons] ?? "#666", [center(3) - 8, y + 7, 16, 22], 3);
-        write(cons ?? "—", center(3), y + 23, 13, { color: cons === undefined ? ink : "#fff", align: "center" });
+        if (cons !== undefined) fill(ctx, consColors[cons] ?? "#666", [cellCenter(3) - 8, y + 7, 16, 22], 3);
+        write(cons ?? "—", cellCenter(3), y + 23, 13, { color: cons === undefined ? ink : "#fff", align: "center" });
         if (fetter && row.fetter && row.fetter <= 10) {
           const tile = fetter.width / 10;
-          ctx.drawImage(fetter, (row.fetter - 1) * tile, 0, tile, fetter.height, center(4) - 16, y + 3, 32, 32);
-        } else write(row.fetter || "—", center(4), y + 23, 13, { color: ink, align: "center" });
+          ctx.drawImage(fetter, (row.fetter - 1) * tile, 0, tile, fetter.height, cellCenter(4) - 16, y + 3, 32, 32);
+        } else write(row.fetter || "—", cellCenter(4), y + 23, 13, { color: ink, align: "center" });
         row.talents.forEach((talent, i) => {
-          const left = edges[i + 5]!, right = edges[i + 6]!;
+          const left = columns[i + 5]!, right = columns[i + 6]!;
           const band = talent ? talentBands[talent.original] ?? 0 : 1;
           fill(ctx, talentFill[band]!, [left, y, right - left, rowHeight]);
           if (band === 5) contain(ctx, crown, [left, y, right - left, rowHeight]);
           const boosted = talent && talent.level > talent.original;
-          write(talent?.level ?? "—", center(i + 5), y + 23, boosted ? 15 : 14,
+          write(talent?.level ?? "—", cellCenter(i + 5), y + 23, boosted ? 15 : 14,
             { color: boosted ? boostedInk[band] ?? ink : ink, align: "center", bold: boosted });
         });
-        drawWeapon(ctx, writer, row.weapon, weapon, y);
-        drawRelics(ctx, writer, row, relics, placeholder, starsBackdrop, y);
-        rowGrid(ctx, y, "#6464644d");
+        const material = materials?.[index];
+        const gear = equipment?.[index];
+        if (material) drawMaterials(ctx, writer, row.materials, material, y);
+        if (gear) {
+          drawWeapon(ctx, writer, row.weapon, gear[0], y);
+          drawRelics(ctx, writer, row, gear[1], placeholder, starsBackdrop, y);
+        }
+        rowGrid(ctx, y, "#6464644d", columns);
       });
 
       fill(ctx, "#000b", [tableX, noticeY, tableWidth, noticeHeight]);
