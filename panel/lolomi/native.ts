@@ -3,7 +3,7 @@ import { object, text, type Json, type PanelAvatar } from "../model.ts";
 import { nativeRules } from "./sources.ts";
 import nativeAttr from "./engine/DmgAttr.ts";
 import nativeCalc from "./engine/DmgCalc.ts";
-import MiaoCalc from "../miao/damage/DmgCalc.js";
+import MiaoCalc from "../miao/damage/DmgCalc.ts";
 import collection from "./compat.ts";
 import artifactEffects from "./data/artifact/calc.ts";
 import bow from "./data/weapon/bow/calc.ts";
@@ -47,18 +47,21 @@ export function miaoWithNativeRule(data: MiaoDamageArgs) {
   const ordinary = run.dynamic;
   return Object.assign(run, {
     withAttr(overrides: object = {}) {
-      const attr = collection.merge(collection.cloneDeep(data.attr), collection.cloneDeep(overrides));
+      const attr = collection.merge(collection.cloneDeep(data.attr), collection.cloneDeep(overrides)) as MiaoDamageArgs["attr"];
       return miaoWithNativeRule({ ...data, attr, ds: { ...data.ds, attr } });
     },
     dynamic(ratio?: number, talent?: boolean | string, dynamicData?: boolean, element?: boolean, base?: boolean | number) {
-      if (typeof base !== "number") return ordinary(ratio, talent as boolean, dynamicData, element, base);
-      const hit = ordinary(ratio, talent as boolean, dynamicData, element);
+      const skill = talent as Parameters<typeof ordinary>[1];
+      const dynamic = dynamicData as Parameters<typeof ordinary>[2];
+      const reaction = element as Parameters<typeof ordinary>[3];
+      if (typeof base !== "number") return ordinary(ratio, skill, dynamic, reaction, base as Parameters<typeof ordinary>[4]);
+      const hit = ordinary(ratio, skill, dynamic, reaction);
       if (!base) return hit;
       const { attr } = data;
       const multi = 1 + ((attr.multi ?? 0) + String(talent || "").split(",")
-        .reduce((sum, key) => sum + (attr[key.trim()]?.multi ?? 0), 0)) / 100;
-      const extra = run.basic(base / multi, talent as boolean, element, dynamicData) as { dmg: number; avg: number };
-      const zero = run.basic(0, talent as boolean, element, dynamicData) as { dmg: number; avg: number };
+        .reduce((sum, key) => sum + ((attr[key.trim()] as { multi?: number } | undefined)?.multi ?? 0), 0)) / 100;
+      const extra = run.basic(base / multi, skill, reaction, dynamic) as { dmg: number; avg: number };
+      const zero = run.basic(0, skill, reaction, dynamic) as { dmg: number; avg: number };
       const value = hit as { dmg: number; avg: number };
       return { dmg: value.dmg + extra.dmg - zero.dmg, avg: value.avg + extra.avg - zero.avg };
     },

@@ -1,12 +1,13 @@
-import DmgAttr from "./miao/damage/DmgAttr.js";
-import DmgCalc from "./miao/damage/DmgCalc.js";
-import artifactSource from "./miao/damage/artifact-rules.js";
-import swordRules from "./miao/damage/sword.js";
-import bowRules from "./miao/damage/bow.js";
-import catalystRules from "./miao/damage/catalyst.js";
-import claymoreRules from "./miao/damage/claymore.js";
-import polearmRules from "./miao/damage/polearm.js";
-import { characterDamageRules } from "./miao/damage/character-rules.js";
+import DmgAttr from "./miao/damage/DmgAttr.ts";
+import DmgCalc from "./miao/damage/DmgCalc.ts";
+import type { RefinementLevels } from "./miao/damage/rule-types.ts";
+import artifactSource from "./miao/damage/artifact-rules.ts";
+import swordRules from "./miao/damage/sword.ts";
+import bowRules from "./miao/damage/bow.ts";
+import catalystRules from "./miao/damage/catalyst.ts";
+import claymoreRules from "./miao/damage/claymore.ts";
+import polearmRules from "./miao/damage/polearm.ts";
+import { characterDamageRules } from "./miao/damage/character-rules.ts";
 import { artifactStatRecord, characterLevelBreakpoints, object, propertyLabels, talentKeys, text,
   type DisplayedTalentLevels, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
 import { panelTalentLevels, travelerIds } from "./talent-levels.ts";
@@ -91,10 +92,10 @@ export type DamageEstimate =
 class Unavailable extends Error {}
 
 function step(start: number, delta = 0) {
-  return Array.from({ length: 6 }, (_, index) => start + (delta || start / 4) * index);
+  return Array.from({ length: 6 }, (_, index) => start + (delta || start / 4) * index) as unknown as RefinementLevels;
 }
 
-function constant(key: string, start: number, delta: number) {
+function constant(key: string, start: number, delta?: number) {
   return { title: `${key}提高[key]`, isStatic: true, refine: { [key]: step(start, delta) } };
 }
 
@@ -453,7 +454,7 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     const archiveMeta = object(theme.characters[avatar.id]);
     const talent = talents(avatar, talentData, archiveMeta, displayedTalent, !!native);
     const character = { ...tables.detail, elem: avatar.elem, weaponTypeName: weaponClass[tables.weaponType] };
-    const attributes = native ? nativeAttr : DmgAttr;
+    const attributes = native ? nativeAttr as unknown as typeof DmgAttr : DmgAttr;
     const getDamage = native ? nativeCalc.getDmgFn : usesNativeRule ? miaoWithNativeRule : DmgCalc.getDmgFn;
     const originalAttr = attributes.getAttr({ originalAttr: undefined, attr: starting, weapon, char: character, game: "gs" });
     const base = { characterName: avatar.name, level: avatar.level, cons, talent, trees: {}, weapon };

@@ -1,7 +1,7 @@
 import { MAX_PROFILE_ID } from "@lotus-yunzai/account";
-import { alias } from "./miao/character-alias.js";
-import { artifactMainIdMapping, propertyType2attrName } from "./miao/property-mappings.js";
-import { attrIdMap, attrPct, basicNum, mainIdMap } from "./miao/artifact-tables.js";
+import { alias } from "./miao/character-alias.ts";
+import { artifactMainIdMapping, propertyType2attrName } from "./miao/property-mappings.ts";
+import { attrIdMap, attrPct, basicNum, mainIdMap } from "./miao/artifact-tables.ts";
 
 export type Json = Record<string, unknown>;
 type TalentKey = "a" | "e" | "q";

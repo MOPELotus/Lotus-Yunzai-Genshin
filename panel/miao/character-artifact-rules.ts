@@ -131,7 +131,18 @@ export const usefulAttr = {
   安娜丝塔夏: { hp: 0, atk: 85, def: 0, cpct: 100, cdmg: 100, mastery: 60, dmg: 0, phy: 0, recharge: 75, heal: 0 }
 }
 
-export const characterRules = {
+type Weights = Readonly<Record<string, number>>;
+interface ArtifactRuleResult { readonly title: string; readonly attrWeight: Weights }
+interface ArtifactRuleInputs {
+  readonly attr: Readonly<Record<keyof typeof usefulAttr["七七"], number>> & Weights;
+  readonly cons: number;
+  readonly elem: string;
+  readonly artis: { is(check: string, slot?: string | number): boolean };
+  readonly weapon: { readonly name: string; readonly bonusKey: string };
+  def(weight?: Weights, title?: string[]): ArtifactRuleResult;
+  rule(title: string, weight: Weights): ArtifactRuleResult;
+}
+export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs) => ArtifactRuleResult>> = {
   "七七": function ({ attr, def }) {
     let title = []
     let particularAttr = { ...usefulAttr['七七'] }

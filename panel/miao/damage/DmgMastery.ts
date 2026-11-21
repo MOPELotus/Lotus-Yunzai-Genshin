@@ -1,4 +1,5 @@
-import { erType } from './DmgCalcMeta.js'
+import { erType } from './DmgCalcMeta.ts'
+import type { Params } from './rule-types.ts'
 
 const defaultParams = {
   stellarConductCount : 12, // 星超导叠层计数，若相关calc.js未传入参数，则默认为最大12层
@@ -6,8 +7,8 @@ const defaultParams = {
 }
 
 let DmgMastery = {
-  getMultiple (type, mastery = 0) {
-    let typeCfg = erType[type]
+  getMultiple (type: string, mastery = 0) {
+    let typeCfg = erType[type]!
     if (typeCfg.type === 'pct') {
       return (25 / 9) * mastery / (mastery + 1400)
     } else if (typeCfg.type === 'fusion') {
@@ -21,13 +22,10 @@ let DmgMastery = {
     }
     return 0
   },
-  getBasePct (type, element, talent, params = {}) {
+  getBasePct (type: string, element: string, talent: string | false, params: Params | false = {}) {
     let typeCfg = erType[type]
     if (typeCfg) {
-      const args = {};
-      args.element = element;
-      args.talent = talent;
-      args.params = { ...defaultParams, ...params };
+      const args = { element, talent, params: { ...defaultParams, ...params } };
       return typeCfg.num(args) || 1
     }
     return 1

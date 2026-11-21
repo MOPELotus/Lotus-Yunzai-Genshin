@@ -1,5 +1,5 @@
 import { genshinGachaTimestamp } from "./gacha-detail.ts";
-import { alias as knownCharacterAliases } from "./panel/miao/character-alias.js";
+import { alias as knownCharacterAliases } from "./panel/miao/character-alias.ts";
 
 // Historical membership and grouping follow the MIT GachaPool.js baseline at
 // miao-plugin 2860761836069af80bacee5cb85b6dd2e91ea0b0 (license in panel/miao/LICENSE).

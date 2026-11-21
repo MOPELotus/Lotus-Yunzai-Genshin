@@ -4,7 +4,7 @@ import { drawOriginalProfile } from "./original-profile-skia.ts";
 import { scorePanelArtifacts } from "./artifact-score.ts";
 import { readOriginalPanelNumbers, readOriginalWeapon, type DamageSummary } from "./damage.ts";
 import { artifactStatRecord, object, text, whole, type DisplayedTalentLevels, type PanelAvatar, type PanelSnapshot } from "./model.ts";
-import { attrPct, basicNum } from "./miao/artifact-tables.js";
+import { attrPct, basicNum } from "./miao/artifact-tables.ts";
 import { panelTalentLevels, panelTalentThresholds, travelerIds } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 

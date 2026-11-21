@@ -1,5 +1,7 @@
-const attr = function (key, val, elem = '', unit = '%') {
-  const keyMap = {
+import type { RuleBuff } from "./rule-types.ts";
+
+const attr = function (key: string, val: number, elem = '', unit = '%'): RuleBuff {
+  const keyMap: Record<string, string> = {
     hp: '生命值',
     hpPlus: '生命值',
     atk: '攻击力',
@@ -11,19 +13,20 @@ const attr = function (key, val, elem = '', unit = '%') {
     heal: '治疗',
     mastery: '元素精通'
   }
-  let ret = {
+  const data: Record<string, number> = {}
+  let ret: RuleBuff = {
     title: `${keyMap[key]}提高${val}${unit}`,
     isStatic: true,
-    data: {}
+    data
   }
-  ret.data[key] = val
+  data[key] = val
   if (elem) {
     ret.elem = elem
   }
   return ret
 }
 
-const buffs = {
+const buffs: Readonly<Record<string, Partial<Record<number, RuleBuff | readonly RuleBuff[]>>>> = {
 
   行者之心: {
     2: attr('atkPct', 18),

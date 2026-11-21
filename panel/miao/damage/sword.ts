@@ -1,4 +1,6 @@
-export default function (step, staticStep) {
+import type { StaticStep, Step, WeaponEffects } from "./rule-types.ts";
+
+export default function (step: Step, staticStep: StaticStep): WeaponEffects {
   return {
     辰砂之纺锤: {
       title: '元素战技造成的伤害值提高[ePlus]',
@@ -198,7 +200,7 @@ export default function (step, staticStep) {
       title: '释放元素战技攻击力提升[atkPct]%，生命之契提升[atkPlus]点攻击力',
       sort: 9,
       data: {
-        atkPlus: ({ attr, calc, refine }) => Math.min(Math.floor(calc(attr.hp) * 0.25 * step(0.24)[refine] / 10, step(150)))
+        atkPlus: ({ attr, calc, refine }) => Math.min((Math.floor as (value: number, ...previousArguments: unknown[]) => number)(calc(attr.hp) * 0.25 * step(0.24)[refine] / 10, step(150)))
       },
       refine: {
         atkPct: step(12)

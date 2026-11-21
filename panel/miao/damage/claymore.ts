@@ -1,4 +1,6 @@
-export default function (step, staticStep) {
+import type { StaticStep, Step, WeaponEffects } from "./rule-types.ts";
+
+export default function (step: Step, staticStep: StaticStep): WeaponEffects {
   return {
     沐浴龙血的剑: {
       check: ({ element }) => ['火', '雷'].includes(element),

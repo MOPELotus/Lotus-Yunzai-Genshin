@@ -1,4 +1,6 @@
-export default function (step, staticStep) {
+import type { StaticStep, Step, WeaponEffects } from "./rule-types.ts";
+
+export default function (step: Step, staticStep: StaticStep): WeaponEffects {
   return {
     白缨枪: {
       title: '白缨枪普通攻击伤害提高[aDmg]%',
@@ -85,7 +87,7 @@ export default function (step, staticStep) {
       data: {
         atkPlus: ({ attr, refine, calc }) => {
           let totalHp = calc(attr.hp)
-          return totalHp * ([0.8, 1, 1.2, 1.4, 1.6][refine]) / 100
+          return totalHp * (([0.8, 1, 1.2, 1.4, 1.6] as const)[refine]) / 100
         }
       }
     }, {
@@ -95,7 +97,7 @@ export default function (step, staticStep) {
       data: {
         atkPlus: ({ attr, refine, calc }) => {
           let totalHp = calc(attr.hp)
-          return totalHp * ([1, 1.2, 1.4, 1.6, 1.8][refine]) / 100
+          return totalHp * (([1, 1.2, 1.4, 1.6, 1.8] as const)[refine]) / 100
         }
       }
     }],
@@ -111,7 +113,7 @@ export default function (step, staticStep) {
       data: {
         atkPct: ({ attr, refine }) => {
           let recharge = attr.recharge.base + attr.recharge.plus - 100
-          return Math.min(recharge * step(28)[refine] / 100, [80, 90, 100, 110, 120][refine])
+          return Math.min(recharge * step(28)[refine] / 100, ([80, 90, 100, 110, 120] as const)[refine])
         }
       }
     }],

@@ -1,5 +1,5 @@
 import { fetchRankStats as fetchPublicRankStats, rankPercentiles, type RankStatsTransport } from "../../../lib/rank-statistics.ts";
-import { alias } from "../panel/miao/character-alias.js";
+import { alias } from "../panel/miao/character-alias.ts";
 import characterMetadata from "../panel/miao/character-artifact-base.json";
 import { renderRankStats } from "./stats-card.ts";
 

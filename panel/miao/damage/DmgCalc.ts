@@ -1,12 +1,34 @@
 /*
 * 伤害计算 - 计算伤害
 * */
-import { eleBaseDmg, erTitle, breakBaseDmg, cryBaseDmg, elationBaseDmg } from './DmgCalcMeta.js'
-import DmgMastery from './DmgMastery.js'
-import lodash from './compat.js'
+import { eleBaseDmg, erTitle, breakBaseDmg, cryBaseDmg, elationBaseDmg } from './DmgCalcMeta.ts'
+import DmgMastery from './DmgMastery.ts'
+import lodash from './compat.ts'
+import type { AttributeState, CalculateAttribute } from './DmgAttr.ts'
+import type { DamageCalculator, DamageResult, DynamicDamage, Params } from './rule-types.ts'
+
+interface DamageInputs {
+  pctNum: number;
+  talent: string | false;
+  ele: string | false;
+  basicNum: number;
+  mode: string;
+  dynamicData: DynamicDamage | false;
+  params: Params | false;
+}
+export interface DamageFunctionInputs {
+  ds: { calc: CalculateAttribute; [key: string]: unknown };
+  attr: AttributeState;
+  level?: number;
+  enemyLv: number;
+  showDetail?: boolean;
+  game: "gs" | "sr";
+  params?: Params;
+}
+type SkillModifier = Record<"pct" | "dmg" | "enemydmg" | "cpct" | "cdmg" | "def" | "ignore" | "multi" | "plus", number>;
 
 let DmgCalc = {
-  calcRet (fnArgs = {}, data = {}) {
+  calcRet (fnArgs: DamageInputs, data: DamageFunctionInputs): DamageResult {
     let {
       pctNum, // 技能倍率
       talent, // 天赋类型
@@ -23,7 +45,7 @@ let DmgCalc = {
       dynamicCpct = 0, // 动态暴击率
       dynamicCdmg = 0, // 动态暴击伤害
       dynamicEnemydmg = 0 // 动态易伤
-    } = dynamicData
+    } = dynamicData as DynamicDamage
 
     let {
       ds, // 数据集
@@ -74,13 +96,13 @@ let DmgCalc = {
       dmgNum += (coloringDmg.base / 100 + coloringDmg.plus / 100)
     }
 
-    if (/^scene,.*/.test(ele) || /.*,scene$/.test(ele) || ele === 'scene') {
+    if (/^scene,.*/.test(ele as string) || /.*,scene$/.test(ele as string) || ele === 'scene') {
       let dmgPct = attr.staticAttr.dmg.plus / 100
       if (dmgPct > 0) {
         dmgNum = (dmgNum - dmgPct) < 1 ? 1 : (dmgNum - dmgPct)
       }
       if (ele !== 'scene') {
-        ele = ele.replace(/(,)?scene(,)?/g, '')
+        ele = (ele as string).replace(/(,)?scene(,)?/g, '')
       }
     }
 
@@ -105,7 +127,7 @@ let DmgCalc = {
     if (talent) {
       lodash.forEach(talent.split(','), (t) => {
         if (attr[t]) {
-          let ds = attr[t]
+          let ds = attr[t] as SkillModifier
 
           pctNum += ds.pct / 100
           dmgNum += ds.dmg / 100
@@ -126,10 +148,10 @@ let DmgCalc = {
     }
 
     // 防御区
-    let defNum = (level + 100) / ((level + 100) + (enemyLv + 100) * (1 - enemyDef) * (1 - enemyIgnore))
+    let defNum = (level! + 100) / ((level! + 100) + (enemyLv + 100) * (1 - enemyDef) * (1 - enemyIgnore))
     if (game === 'sr') {
       let enemyDefdown = enemyDef + enemyIgnore <= 1 ? enemyDef + enemyIgnore : 1
-      defNum = (200 + level * 10) / ((200 + level * 10) + (200 + enemyLv * 10) * (1 - enemyDefdown))
+      defNum = (200 + level! * 10) / ((200 + level! * 10) + (200 + enemyLv * 10) * (1 - enemyDefdown))
     }
 
     // 抗性区
@@ -169,8 +191,8 @@ let DmgCalc = {
     let eleNum = 1
     let eleBase = 1
     if (game === 'gs') {
-      eleNum = isEle ? DmgMastery.getBasePct(ele, attr.element, talent, params) : 1
-      eleBase = isEle ? 1 + attr[ele] / 100 + DmgMastery.getMultiple(ele, calc(attr.mastery)) : 1
+      eleNum = isEle ? DmgMastery.getBasePct(ele as string, attr.element, talent, params) : 1
+      eleBase = isEle ? 1 + (attr[ele as string] as number) / 100 + DmgMastery.getMultiple(ele as string, calc(attr.mastery)) : 1
     }
 
     let stanceNum = 1
@@ -199,7 +221,7 @@ let DmgCalc = {
     }
 
     let dmgBase = (mode === 'basic') ? basicNum * (1 + multiNum) + plusNum : atkNum * pctNum * (1 + multiNum) + plusNum
-    let ret = {}
+    let ret = {} as DamageResult
 
     switch (ele) {
       case 'vaporize':
@@ -220,7 +242,7 @@ let DmgCalc = {
       case 'bloom':
       case 'burgeon':
       case 'hyperBloom': {
-        ret = { avg: (eleBaseDmg[level] * (1 + fypct) * eleBase * eleNum + fyplus) * kNum }
+        ret = { avg: (eleBaseDmg[level!]! * (1 + fypct) * eleBase * eleNum + fyplus) * kNum }
         break
       }
 
@@ -229,7 +251,7 @@ let DmgCalc = {
       case 'lunarCrystallize':
       case 'stellarConduct':
       case 'stellarSwirl': {
-        let base = dmgBase ? dmgBase : eleBaseDmg[level]
+        let base = dmgBase ? dmgBase : eleBaseDmg[level!]!
         ret = {
           avg: (base * (1 + fypct) * eleBase * eleNum + fyplus) * (1 + elevatedNum) * kNum * (1 + cpctNum * cdmgNum),
           dmg: (base * (1 + fypct) * eleBase * eleNum + fyplus) * (1 + elevatedNum) * kNum * (1 + cdmgNum)
@@ -238,14 +260,14 @@ let DmgCalc = {
       }
 
       case 'crystallize': {
-        eleBase *= cryBaseDmg[level]
+        eleBase *= cryBaseDmg[level!]!
         ret = { avg: eleBase * (calc(attr.shield) / 100) * (attr.shield.inc / 100) }
         break
       }
 
       case 'aggravate':
       case 'spread': {
-        eleBase *= eleBaseDmg[level]
+        eleBase *= eleBaseDmg[level!]!
         dmgBase += eleBase * eleNum
         ret = {
           dmg: dmgBase * dmgNum * (1 + cdmgNum) * defNum * kNum,
@@ -283,14 +305,14 @@ let DmgCalc = {
       case 'iceBreak':
       case 'superBreak': {
         let breakBase = 1
-        breakBase *= breakBaseDmg[level]
+        breakBase *= breakBaseDmg[level!]!
         ret = {
           avg: breakBase * eleNum * stanceNum * enemydmgNum * defNum * kNum * dmgReduceNum
         }
         break
       }
       case 'elation': {
-        let elationBase = 1 * elationBaseDmg[level]
+        let elationBase = 1 * elationBaseDmg[level!]!
         pctNum += multiNum
         let punchlineCals = 1 + punchlineNum * 5 / (punchlineNum + 240)
         ret = {
@@ -316,11 +338,12 @@ let DmgCalc = {
 
     return ret
   },
-  getDmgFn (data) {
+  getDmgFn (data: DamageFunctionInputs): DamageCalculator {
     let { showDetail, attr, ds, game } = data
     let { calc } = ds
 
-    let dmgFn = function (pctNum = 0, talent = false, ele = false, basicNum = 0, mode = 'talent', dynamicData = false, params= false) {
+    const dmgFn = function (pctNum = 0, talent: string | false = false, ele: string | false = false, basicNum = 0, mode = 'talent',
+      dynamicData: DynamicDamage | false = false, params: Params | false = false) {
       if (ele) {
         ele = erTitle[ele] || ele
       }
@@ -329,7 +352,7 @@ let DmgCalc = {
         pctNum = pctNum * 100
       }
       return DmgCalc.calcRet({ pctNum, talent, ele, basicNum, mode, dynamicData, params }, data)
-    }
+    } as DamageCalculator
 
     dmgFn.basic = function (basicNum = 0, talent = false, ele = false, dynamicData = false, params= false) {
       return dmgFn(0, talent, ele, basicNum, 'basic', dynamicData, params)

@@ -5,7 +5,7 @@
 import { eleBaseDmg } from './DmgCalcMeta.ts'
 import lodash from '../compat.ts'
 import DmgMastery from './DmgMastery.ts'
-import { Format, Meta } from '../../miao/damage/compat.js'
+import { Format, Meta } from '../../miao/damage/compat.ts'
 import AttrItem from './AttrItem.ts'
 
 let DmgAttr = {

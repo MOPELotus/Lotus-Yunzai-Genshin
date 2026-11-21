@@ -1,4 +1,6 @@
-export default function (step, staticStep) {
+import type { StaticStep, Step, WeaponEffects } from "./rule-types.ts";
+
+export default function (step: Step, staticStep: StaticStep): WeaponEffects {
   return {
     猎弓: false,
 

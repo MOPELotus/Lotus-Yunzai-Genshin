@@ -1,4 +1,4 @@
-import collection from "../miao/damage/compat.js";
+import collection from "../miao/damage/compat.ts";
 
 function cloneDeep<T>(value: T): T {
   if (Array.isArray(value)) return value.map(cloneDeep) as T;

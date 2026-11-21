@@ -1,9 +1,10 @@
 // Original character rule bodies from resources/meta-gs/character/**/calc.js.
-import lodash, { Format } from './compat.js'
+import lodash, { Format } from './compat.ts'
+import type { CharacterRule, DamageResult, RuleBuff, RuleContext, RuleDetail } from './rule-types.ts'
 
-export const characterDamageRules = {
+export const characterDamageRules: Readonly<Record<string, () => CharacterRule>> = {
   "七七": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: 'E每跳治疗',
         dmg: ({ talent, attr, calc }, { heal }) =>
@@ -27,7 +28,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg,mastery,heal'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         title: '双冰共鸣：攻击冰元素附着或冻结状态下的敌人时，暴击率提高[cpct]%',
         data: {
@@ -51,7 +52,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "丝柯克": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '七相一闪普攻首段伤害',
       params: { cons_2 : true },
       dmg: ({ talent, attr }, dmg) => dmg(talent.e['一段伤害'], 'a')
@@ -91,7 +92,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '双冰共鸣：攻击冰元素附着或冻结状态下的敌人时，暴击率提高[cpct]%',
       data: {
         cpct: 15
@@ -135,7 +136,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "丽莎": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E短按伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['点按伤害'], 'e')
     }, {
@@ -150,7 +151,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '丽莎被动：敌人受到蔷薇的雷光攻击后，降低15%防御力',
       data: {
         enemyDef: ({ params }) => params.q ? 15 : 0
@@ -159,7 +160,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "久岐忍": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '超绽放伤害',
       dmg: ({ calc, attr }, { reaction }) => {
         return reaction('hyperBloom')
@@ -181,7 +182,7 @@ export const characterDamageRules = {
     const defDmgIdx = 0
     const mainAttr = 'hp,atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '久岐忍被动：生命低于50%时提高治疗加成15%',
       data: {
         heal: 15
@@ -197,7 +198,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "九条裟罗": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E提升攻击力',
       dmg: ({ talent, attr }) => {
         return {
@@ -215,7 +216,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '九条E技能：提升攻击力[atkPlus]',
       data: {
         atkPlus: ({ attr, talent }) => talent.e['攻击力加成比例'] * attr.atk.base / 100
@@ -230,7 +231,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "云堇": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'Q提供普攻基础伤害',
       dmg: ({ talent, attr }) => {
         return {
@@ -247,7 +248,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,def,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '云堇被动：队伍存在4元素类型角色时，Q提供的普攻伤害提高[_q]',
       sort: 9,
       data: {
@@ -259,7 +260,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "五郎": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '三岩E伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -282,7 +283,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,def,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '五郎天赋：释放E或Q后防御力提高[defPlus]，岩伤提高15%',
       data: {
         defPlus: ({ talent }) => talent.e['防御力提升'] * 1,
@@ -313,7 +314,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "伊安珊": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '雷霆飞缒伤害',
       dmg: ({ talent, attr }, dmg) => dmg(talent.a['雷霆飞缒伤害'], 'a2,nightsoul')
     },{
@@ -344,7 +345,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.Precise_Movement === true,
       title: '伊安珊天赋：「雷霆飞缒」命中敌人后，伊安珊的攻击力提升[atkPct]%',
       data: {
@@ -362,7 +363,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "伊法": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E秘药弹伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['秘药弹伤害'], 'e,nightsoul')
     }, {
@@ -389,7 +390,7 @@ export const characterDamageRules = {
     const defDmgIdx = 0
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '伊法4命：施放元素爆发后，伊法的元素精通提升[mastery]点',
       cons: 4,
       data: {
@@ -401,7 +402,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "伊涅芙": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: `E伤害`,
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -436,7 +437,7 @@ export const characterDamageRules = {
     const defDmgIdx = 4
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '伊涅芙天赋：施放元素爆发后元素精通提升[mastery]',
       sort: 9,
       data: {
@@ -463,9 +464,9 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "优菈": () => {
-    let tmpDmg = false
+    let tmpDmg: false | DamageResult = false
 
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '普攻尾段2次伤害',
       params: { e: false },
       dmg: ({ talent }, dmg) => dmg(talent.a['五段伤害'], 'a', 'phy')
@@ -480,11 +481,11 @@ export const characterDamageRules = {
       title: 'E2层长按伤害',
       params: { gj: true },
       dmg: ({ talent }, dmg) => {
-        let e = tmpDmg
+        let e = tmpDmg as DamageResult
         let g = dmg(talent.e['冰涡之剑伤害'], 'e')
         let j = dmg(talent.q['光降之剑基础伤害'], 'e', 'phy')
         return {
-          dmg: e.dmg * 1 + g.dmg * 2 + j.dmg * 0.5,
+          dmg: e.dmg! * 1 + g.dmg! * 2 + j.dmg! * 0.5,
           avg: e.avg * 1 + g.avg * 2 + j.avg * 0.5
         }
       }
@@ -510,7 +511,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,cpct,cdmg'
     const enemyName = '魔偶/女士/雷神'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '优菈天赋：E消耗冰涡之剑后降低抗性[kx]%',
       check: ({ params }) => params.gj !== false,
       data: {
@@ -535,7 +536,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, enemyName, buffs }
   },
   "克洛琳德": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
         title: 'E后普通攻击',
         params: { BondOfLifeGet: 3 },
         dmg: ({ talent }, dmg) => dmg(talent.e['驰猎伤害2'][0], 'a')
@@ -565,17 +566,17 @@ export const characterDamageRules = {
         dmg: ({ talent }, dmg) => {
         let q1 = dmg(talent.q['技能伤害2'][0], 'q')
         return {
-          dmg: q1.dmg * 5,
+          dmg: q1.dmg! * 5,
           avg: q1.avg * 5
         }
       }
     }]
 
-    const defParams = ({ weapon }) => weapon.name === '海渊终曲' ? { BondOfLife: 35 * 3 + 25, blPct: 1 } : { BondOfLife: 35 * 3, blPct: 1 }// 生命之契在此调整,请勿超过200,默认生命之契未计入队友治疗转化
+    const defParams = ({ weapon }: Pick<RuleContext, "weapon">) => weapon.name === '海渊终曲' ? { BondOfLife: 35 * 3 + 25, blPct: 1 } : { BondOfLife: 35 * 3, blPct: 1 }// 生命之契在此调整,请勿超过200,默认生命之契未计入队友治疗转化
     const defDmgIdx = 4
     const mainAttr = 'atk,cpct,cdmg,mastery,dmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
         title: '克洛琳德天赋：触发雷元素反应普通攻击与残光将终造成的伤害提升[aPlus]',
         data: {
           aPlus: ({ attr, cons }) => Math.min((attr.atk * (cons >= 2 ? 30 : 20) / 100 * 3), (cons >= 2 ? 2700 : 1800)),
@@ -606,7 +607,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "八重神子": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       check: ({ cons }) => cons < 2,
       dmgKey: 'e',
       title: '叄阶杀生樱伤害',
@@ -656,7 +657,7 @@ export const characterDamageRules = {
         let q1j = dmg(talent.q['技能伤害'], 'q', 'aggravate')
         let q2j = dmg(talent.q['天狐霆雷伤害'], 'q', 'aggravate')
         return {
-          dmg: q1j.dmg + q2j.dmg * 3,
+          dmg: q1j.dmg! + q2j.dmg! * 3,
           avg: q1j.avg + q2j.avg * 3
         }
       }
@@ -665,7 +666,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,cpct,cdmg,mastery,dmg'
     const defDmgKey = 'e'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '被动天赋：基于元素精通提高杀生樱伤害[eDmg]%',
       sort: 9,
       data: {
@@ -714,7 +715,7 @@ export const characterDamageRules = {
     return { details, mainAttr, defDmgKey, buffs }
   },
   "兹白": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: '「月转时隙」普攻首段伤害',
         dmg: ({ attr, calc, talent } , { basic }) => basic(calc(attr.def) * talent.e['月转时隙一段伤害'] / 100, 'a')
@@ -754,7 +755,7 @@ export const characterDamageRules = {
     const mainAttr = 'def,cpct,cdmg,mastery'
     const defParams = { Moonsign: 2 }
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         check: ({ params }) => params.skills_1 === true,
         title: '兹白天赋：施放元素战技或触发月笼谐奏时，灵驹飞踏第二段攻击造成的伤害提升，提升值相当于兹白防御力的60%',
@@ -809,7 +810,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, defParams, buffs, createdBy }
   },
   "凝光": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '重击伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['重击伤害'], 'a2')
     }, {
@@ -822,7 +823,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '凝光被动：穿过璇玑屏获得12%岩伤加成',
       data: {
         dmg: 12
@@ -831,7 +832,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "凯亚": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '霜袭E伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -841,11 +842,11 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = []
+    const buffs: (RuleBuff | string)[] = []
     return { details, mainAttr, buffs }
   },
   "刻晴": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E后重击伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['重击伤害'], 'a2')
     }, {
@@ -864,7 +865,7 @@ export const characterDamageRules = {
         let t2 = dmg(talent.q['连斩伤害'] / 8, 'q')
         let t3j = dmg(talent.q['最后一击伤害'], 'q', '超激化')
         return {
-          dmg: t1j.dmg + t2j.dmg * 2 + t2.dmg * 6 + t3j.dmg,
+          dmg: t1j.dmg! + t2j.dmg! * 2 + t2.dmg! * 6 + t3j.dmg!,
           avg: t1j.avg + t2j.avg * 2 + t2.avg * 6 + t3j.avg
         }
       }
@@ -873,7 +874,7 @@ export const characterDamageRules = {
     const defDmgIdx = 3
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '刻晴被动：释放Q获得15%暴击率',
       data: {
         qCpct: 15
@@ -894,7 +895,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "北斗": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['基础伤害'], 'e')
     }, {
@@ -923,7 +924,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '北斗6命：Q持续期间，周围敌人的雷元素抗性降低15%',
       cons: 6,
       data: {
@@ -933,7 +934,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "千织": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E后普攻一段',
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a')
     },{
@@ -954,7 +955,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,def,cpct,cdmg,dmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '千织天赋：队伍中角色创造岩造物时，获得[dmg]%岩伤加成',
       data: {
         dmg: 20
@@ -972,7 +973,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "卡维": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '画则巧施伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -985,7 +986,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '繁绘隅穹：草原核迸发伤害提升[bloom]%',
       data: {
         bloom: ({ talent }) => talent.q['草原核迸发伤害加成']
@@ -1000,7 +1001,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "卡齐娜": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '冲天转转主动伤害',
       dmg: ({ talent, calc, attr }, { basic }) => basic(calc(attr.def) * talent.e['冲天转转搭乘伤害'] / 100, 'e,nightsoul')
     }, {
@@ -1018,7 +1019,7 @@ export const characterDamageRules = {
     const defParams = { Nightsoul: true }
     const mainAttr = 'def,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '卡齐娜天赋：附近的角色触发「夜魂迸发」,岩元素伤害提升[dmg]%。',
       data: {
         dmg: 20
@@ -1042,7 +1043,7 @@ export const characterDamageRules = {
     return { details, defParams, mainAttr, buffs, createdBy }
   },
   "可莉": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '【魔导·秘仪】「嘭嘭轰击」伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['重击伤害'], 'a2')
     }, {
@@ -1071,7 +1072,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '可莉天赋：特殊重击「嘭嘭轰击」对比重击伤害提升50%',
       data: {
         a2Dmg: 50
@@ -1113,7 +1114,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "叶洛亚": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: 'E点按伤害',
         dmg: ({ attr, calc, talent }, { basic }) => basic((calc(attr.mastery) * talent.e['点按伤害2'][0] + calc(attr.def) * talent.e['点按伤害2'][1]) / 100, 'e')
@@ -1153,13 +1154,13 @@ export const characterDamageRules = {
     const mainAttr = 'def,cpct,cdmg,mastery'
     const defParams = { Moonsign: 2 }
 
-    const buffs = []
+    const buffs: (RuleBuff | string)[] = []
 
     const createdBy = '冰翼'
     return { details, defDmgIdx, mainAttr, defParams, buffs, createdBy }
   },
   "哥伦比娅": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         params: { Gravity_Interference: true, cons_2: true },
         title: '满buff 特殊重击「月露涤荡」三段总伤害',
@@ -1213,7 +1214,7 @@ export const characterDamageRules = {
     const mainAttr = 'hp,cpct,cdmg,mastery'
     const defParams = { Moonsign: 2 }
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         check: ({ params }) => params.q === true,
         title: '哥伦比娅元素爆发：施放元素爆发后，月曜反应伤害将会提升[lunarBloom]%',
@@ -1305,7 +1306,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, defParams, buffs, createdBy }
   },
   "嘉明": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '下落攻击·踏云献瑞伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['下落攻击·踏云献瑞伤害'], 'a3')
     }, {
@@ -1322,7 +1323,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '嘉明天赋：生命值低于50%时,获得[heal]%受治疗加成。生命值高于或等于50%时,下落攻击·踏云献瑞造成的伤害提升[a3Dmg]%。',
       data: {
         heal: 20,
@@ -1347,7 +1348,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "坎蒂丝": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E护盾吸收',
       dmg: ({ attr, calc, talent }, { shield }) =>
         shield(calc(attr.hp) * talent.e['护盾吸收量2'][0] / 100 + talent.e['护盾吸收量2'][1])
@@ -1366,7 +1367,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'hp,atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '坎蒂丝2命：E命中敌人提升20%生命值',
       cons: 2,
       data: {
@@ -1382,7 +1383,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "埃洛伊": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '附魔普攻第四段',
       dmg: ({ talent }, dmg) => dmg(talent.a['四段伤害'], 'a')
     }, {
@@ -1396,7 +1397,7 @@ export const characterDamageRules = {
       dmg: ({ talent }, dmg) => dmg(talent.q['技能伤害'], 'q')
     }]
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '埃洛伊天赋：冰驰状态提高普攻伤害',
       data: {
         aDmg: ({ talent }) => talent.e['冰驰普通攻击伤害提升']
@@ -1405,7 +1406,7 @@ export const characterDamageRules = {
     return { details, buffs }
   },
   "基尼奇": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '迴猎贯鳞炮伤害',
       params: { Scalespiker: true },
       dmg: ({ talent }, dmg) => dmg(talent.e['迴猎贯鳞炮伤害'], 'e,nightsoul')
@@ -1428,7 +1429,7 @@ export const characterDamageRules = {
     const defParams = { Nightsoul: true }
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.Scalespiker === true,
       title: '焰灵的契约：2层buff使迴猎贯鳞炮造成的伤害提高[ePlus]',
       data: {
@@ -1460,7 +1461,7 @@ export const characterDamageRules = {
     return { details, defParams, mainAttr, buffs, createdBy }
   },
   "塔利雅": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E技能伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -1483,7 +1484,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,hp,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '塔利雅2命：处于「祝颂」效果唤出的圣眷护盾庇佑下时，场上角色的护盾强效提升[shield]%',
       cons: 2,
       data: {
@@ -1495,7 +1496,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "夏沃蕾": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E点按伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['点按伤害'], 'e')
     }, {
@@ -1526,7 +1527,7 @@ export const characterDamageRules = {
     const defDmgIdx = 4
     const mainAttr = 'atk,hp,cpct,cdmg,heal'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '夏沃蕾天赋：火元素与雷元素抗性降低[kx]%',
       data: {
         kx: 40
@@ -1548,7 +1549,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "夏洛蒂": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E点按拍照伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['点按拍照伤害'], 'e')
     }, {
@@ -1572,7 +1573,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,cpct,cdmg,heal'
     const defDmgIdx = 3
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '天赋-多样性调查：按队伍存在2位枫丹角色，2位非枫丹角色计算，自身获得[heal]%治疗加成，[dmg]%冰元素伤害加成',
       data: {
         heal: 5,
@@ -1599,7 +1600,7 @@ export const characterDamageRules = {
     return { details, mainAttr, defDmgIdx, buffs, createdBy }
   },
   "多莉": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '断除烦恼炮总伤害',
       dmg: ({ talent, cons }, dmg) => dmg(talent.e['断除烦恼炮伤害'] + talent.e['售后服务弹伤害'] * (cons >= 1 ? 3 : 2), 'e')
     }, {
@@ -1612,7 +1613,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,hp,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '多莉1命：断除烦恼炮命中后增加一枚炮弹',
       cons: 1
     }, {
@@ -1625,7 +1626,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "夜兰": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '破局矢伤害',
       dmg: ({ talent, attr, calc }, { basic }) => basic(calc(attr.hp) * talent.a['破局矢伤害'] / 100, 'a2')
 
@@ -1654,7 +1655,7 @@ export const characterDamageRules = {
     const defDmgIdx = 4
     const mainAttr = 'hp,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '夜兰被动：有4个不同元素类型角色时，夜兰生命值上限提高30%',
       data: {
         hpPct: 30
@@ -1674,7 +1675,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "奇偶·女性": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
         title: 'E伤害',
         dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
       },
@@ -1697,7 +1698,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr }
   },
   "奇偶·男性": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
         title: 'E伤害',
         dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
       },
@@ -1720,7 +1721,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr }
   },
   "奈芙尔": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: '满层满辉E后幻戏自身一段',
         params: { Phantasm_Performance: true },
@@ -1771,7 +1772,7 @@ export const characterDamageRules = {
     const defDmgIdx = 4
     const mainAttr = 'atk,cpct,cdmg,mastery'
     const defParams = { Moonsign: 3 }
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         title: '奈芙尔天赋：处于满辉时，[buff]层「伪秘之帷」使元素精通提升[mastery]',
         data: {
@@ -1829,7 +1830,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, defParams, buffs, createdBy }
   },
   "奥黛塔": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: 'EE破晓终奏星超导伤害',
         params: { skills_1: true },
@@ -1877,7 +1878,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         title: '双冰共鸣：攻击冰元素附着或冻结状态下的敌人时，暴击率提高[cpct]%',
         data: {
@@ -1949,7 +1950,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "妮露": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '水月伤害',
       params: { sy: true },
       dmg: ({ talent, calc, attr }, { basic }) => basic(calc(attr.hp) * talent.e['水月/水轮伤害2'][0] / 100, 'e')
@@ -1968,7 +1969,7 @@ export const characterDamageRules = {
         }
         let ret2 = basic(calc(attr.hp) * talent.e['水月/水轮伤害2'][0] / 100, 'e', false, { dynamicDmg })
         return {
-          dmg: ret1.dmg + ret2.dmg,
+          dmg: ret1.dmg! + ret2.dmg!,
           avg: ret2.avg + ret2.avg
         }
       }
@@ -1988,7 +1989,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'hp,atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '天赋-折旋落英之庭：元素精通提升100点',
       data: {
         mastery: ({ params }) => params.bloom ? 100 : 0
@@ -2029,7 +2030,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "娜维娅": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E后普通攻击一段',
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a')
     },{
@@ -2054,7 +2055,7 @@ export const characterDamageRules = {
     const defDmgIdx = 3
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.jp > 3 ,
       title: '典仪式晶火：消耗[_count]枚弹片将使本次射击造成的伤害额外提升[eDmg]%',
       data: {
@@ -2100,7 +2101,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "安柏": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '重击伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['满蓄力瞄准射击'], 'a2')
     }, {
@@ -2126,7 +2127,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,cpct,cdmg,mastery'
     const defDmgKey = 'e'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '安柏天赋：命中弱点后攻击力提升15%',
       data: {
         atkPct: 15
@@ -2146,7 +2147,7 @@ export const characterDamageRules = {
     return { details, mainAttr, defDmgKey, buffs }
   },
   "宵宫": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '开E后首段普攻',
       params: { num: 1 },
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a')
@@ -2163,7 +2164,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '焰硝庭火舞：开启E后额外提升普通[aMulti]%伤害',
       data: {
         aMulti: ({ talent }) => talent.e['炽焰箭伤害'] - 100
@@ -2183,7 +2184,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "尼可": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: "E释放伤害",
       dmg: ({ talent }, dmg) => dmg(talent.e["技能伤害"], "e")
     }, {
@@ -2213,7 +2214,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = "atk,cpct,cdmg,dmg"
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params["圣祝之引"] === true,
       title: "尼可技能：获得虚己之赐效果，提升[atkPlus]点攻击力",
       data: {
@@ -2254,7 +2255,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "布伦妮": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: "「狩灾誓锤」提升队友伤害",
       dmg: ({ calc, attr }) => {
         return {
@@ -2280,7 +2281,7 @@ export const characterDamageRules = {
     const mainAttr = "atk,cpct,cdmg,mastery,dmg"
     const defParams = { Hexenzirkel: true }
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: "布伦妮天赋：队伍中魔导角色触发扩散反应，攻击力提升[atkPct]%",
       data: {
         atkPct: 90
@@ -2303,7 +2304,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, defParams, buffs, createdBy }
   },
   "希格雯": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
         title: '后台队友E伤害提升值',
       dmg: ({ attr, cons }) => {
         let cons1 = cons >= 1 ? 100 : 80
@@ -2336,7 +2337,7 @@ export const characterDamageRules = {
         let cons4 = cons >= 4 ? 13 : 6
         return {
         avg: q1.avg * cons4,
-        dmg: q1.dmg * cons4
+        dmg: q1.dmg! * cons4
         }
       }
     }]
@@ -2344,7 +2345,7 @@ export const characterDamageRules = {
     const defDmgIdx = 3
     const mainAttr = 'hp,cpct,cdmg,mastery,dmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
         title: '希格雯天赋：长按E使弹跳伤害提升[eDmg]%,治疗量提升10%',
         data: {
           eDmg: 5 * 2
@@ -2376,7 +2377,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "希诺宁": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '刃轮巡猎首段伤害',
       params: { NightsoulStatus: true },
       dmg: ({ talent, attr }, { basic }) => basic(talent.a['刃轮巡猎一段伤害']*  attr.def / 100 , 'a,nightsoul')
@@ -2405,7 +2406,7 @@ export const characterDamageRules = {
     const defDmgIdx = 3
     const mainAttr = 'def,cpct,cdmg,heal'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.NightsoulStatus === true,
       title: '希诺宁元素战技：处于夜魂加持状态下时，岩元素「源音采样」将始终保持激活状态，且激活后敌人的岩元素抗性降低',
       data: {
@@ -2458,7 +2459,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "恰斯卡": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E追影弹伤害',
       params: { AllShadowhuntShell: true },
       dmg: ({ talent }, dmg) => dmg(talent.e['追影弹伤害'], 'a2,nightsoul')
@@ -2479,7 +2480,7 @@ export const characterDamageRules = {
       dmg: ({ talent }, dmg) => {
         let ret = dmg(talent.e['焕光追影弹伤害'], 'a2,nightsoul', 'scene,vaporize')
         return {
-          dmg: ret.dmg * 2 / 1.5,
+          dmg: ret.dmg! * 2 / 1.5,
           avg: ret.avg * 2 / 1.5
         }
       }
@@ -2509,7 +2510,7 @@ export const characterDamageRules = {
     const defDmgIdx = 3
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.ShadowSpirit === true,
       title: '恰斯卡天赋：3层「焕影之灵」效果时，焕光追影弹造成的伤害提升[a2Dmg]%',
       data: {
@@ -2528,7 +2529,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "托马": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E基础护盾量',
       dmg: ({ attr, calc, talent }, { shield }) =>
         shield(talent.e['护盾吸收量2'][0] * calc(attr.hp) / 100 + talent.e['护盾吸收量2'][1] * 1)
@@ -2544,7 +2545,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '托马被动：5层Buff提高护盾强效25%',
       data: {
         shieldPlus: ({ params }) => params.e ? 25 : 0
@@ -2559,7 +2560,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "提纳里": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '花筥箭激化伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['花筥箭伤害'], 'a2', 'spread')
     }, {
@@ -2571,7 +2572,7 @@ export const characterDamageRules = {
         let d2c6 = dmg(talentc6a2, 'a2')
         let count = cons >= 6 ? 1 : 0
         return {
-          dmg: d1.dmg + d2.dmg * 4 + d2c6.dmg * count,
+          dmg: d1.dmg! + d2.dmg! * 4 + d2c6.dmg! * count,
           avg: d1.avg + d2.avg * 4 + d2c6.avg * count
         }
       }
@@ -2586,8 +2587,8 @@ export const characterDamageRules = {
         let d2jc6 = dmg(talentc6a2, 'a2', 'spread')
         let count = cons >= 6 ? 1 : 0
         return {
-          dmg: d1j.dmg + d2.dmg * 3 + d2j.dmg + d2jc6.dmg * count,
-          avg: d1j.avg + d2.avg * 3 + d2j.dmg + d2jc6.dmg * count
+          dmg: d1j.dmg! + d2.dmg! * 3 + d2j.dmg! + d2jc6.dmg! * count,
+          avg: d1j.avg + d2.avg * 3 + d2j.dmg! + d2jc6.dmg! * count
         }
       }
     }, {
@@ -2605,7 +2606,7 @@ export const characterDamageRules = {
         let q2 = dmg(talent.q['次级缠藤箭伤害'], 'q')
         let q2j = dmg(talent.q['次级缠藤箭伤害'], 'q', 'spread')
         return {
-          dmg: q1.dmg * 4 + q1j.dmg * 2 + q2.dmg * 4 + q2j.dmg * 2,
+          dmg: q1.dmg! * 4 + q1j.dmg! * 2 + q2.dmg! * 4 + q2j.dmg! * 2,
           avg: q1.avg * 4 + q1j.avg * 2 + q2.avg * 4 + q2j.avg * 2
         }
       }
@@ -2615,7 +2616,7 @@ export const characterDamageRules = {
     const defDmgKey = 'a2_j'
     const defParams = { mArtisDiffCount: 2 }
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '提纳里被动：发射花筥箭后，元素精通提升50点',
       data: {
         mastery: 50
@@ -2652,7 +2653,7 @@ export const characterDamageRules = {
     return { details, mainAttr, defDmgKey, defParams, buffs }
   },
   "旅行者/anemo": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '短按E伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['初始爆风伤害'], 'e')
     }, {
@@ -2677,7 +2678,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '风主2命：元素充能效率提高[recharge]%',
       cons: 2,
       data: {
@@ -2697,7 +2698,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "旅行者/cryo": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: '【辉映·星超导】E后普攻首段伤害',
         dmg: ({ attr, calc, talent }, dmg) => dmg(talent.a['一段伤害'] + 80, 'a')
@@ -2725,7 +2726,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         check: ({ params }) => params.q === true,
         title: '冰主元素爆发：消耗8层寒辉层数，提升本次元素爆发造成的伤害',
@@ -2761,7 +2762,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "旅行者/dendro": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -2781,7 +2782,7 @@ export const characterDamageRules = {
     const defDmgIdx = 3
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '天赋-蔓生的埜草：提升元素精通[mastery]点',
       data: {
         mastery: 60
@@ -2805,7 +2806,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "旅行者/electro": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -2827,7 +2828,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '天赋-回响的轰雷：基于自身元素充能效率的10%，提升E的勾玉提供的元素充能效率[_eRecharge]%',
       data: {
         _eRecharge: ({ attr }) => attr.recharge * 0.1
@@ -2844,7 +2845,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "旅行者/geo": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E荒星伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -2854,7 +2855,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg,dmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '岩主1命：处于Q岩造物范围内时，暴击率提高[cpct]%',
       cons: 1,
       data: {
@@ -2866,7 +2867,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs, createdBy }
   },
   "旅行者/hydro": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E点按伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['喷发激流伤害'], 'e')
     }, {
@@ -2895,7 +2896,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery,dmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '天赋E-水纹剑：长按E释放时，基于自身生命值上限的[_hpPct]%，提高伤害值[ePlus]',
       check: ({ params }) => params.talentE1 === true,
       data: {
@@ -2914,7 +2915,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "旅行者/pyro": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '6命夜魂加持普通攻击·一段伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a,nightsoul')
     }, {
@@ -2944,7 +2945,7 @@ export const characterDamageRules = {
     const defDmgIdx = 6
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '火主1命：焰烈之槛或灼火之槛存在期间，且旅行者处于夜魂加持状态下时，造成的伤害提升[dmg]%',
       cons: 1,
       data: {
@@ -2970,7 +2971,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "早柚": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'Q每跳治疗量',
       dmg: ({ attr, calc, talent, cons }, { heal }) => {
         let num = talent.q['不倒貉貉治疗量2'][0] * calc(attr.atk) / 100 + talent.q['不倒貉貉治疗量2'][1] * 1
@@ -2986,7 +2987,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '早柚6命：基于精通提升Q [qPct]伤害，[_heal]治疗量',
       cons: 6,
       sort: 9,
@@ -2998,7 +2999,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "杜林": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'Q白化法·如光流变总伤害',
       params: { LightShifts : true },
       dmg: ({ talent, attr }, dmg) => dmg(talent.q['白化法·如光流变伤害'], 'q')
@@ -3028,7 +3029,7 @@ export const characterDamageRules = {
     const defDmgIdx = 5
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.LightShifts === true,
       title: '杜林天赋：获得【魔导·秘仪】效果时，队伍中附近的角色对敌人触发燃烧、超载、火元素扩散、火元素结晶反应后，或对处于燃烧状态下的敌人造成火元素伤害或草元素伤害时，' +
         '该敌人的火元素抗性与参与反应的对应元素抗性降低[kx]%',
@@ -3094,7 +3095,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "林尼": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '满蓄力重击伤害',
       params: { a2: true },
       dmg: ({ talent }, dmg) => dmg(talent.a['隐具魔术箭伤害'], 'a2')
@@ -3112,7 +3113,7 @@ export const characterDamageRules = {
         let eDmg = dmg(talent.e['技能伤害'], 'e')
         let ePlusDmg = dmg(talent.e['技能伤害加成'] * 5, 'e')
         return {
-          dmg: eDmg.dmg + ePlusDmg.dmg,
+          dmg: eDmg.dmg! + ePlusDmg.dmg!,
           avg: eDmg.avg + ePlusDmg.avg
         }
       }
@@ -3124,7 +3125,7 @@ export const characterDamageRules = {
     const defDmgIdx = 0
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.catcathat === true,
       title: '天赋-惊险演出：基于攻击力的80%，提高怪笑猫猫帽造成的伤害'
     }, {
@@ -3163,7 +3164,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "枫原万叶": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E长按伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['长按技能伤害'], 'e')
     }, {
@@ -3179,7 +3180,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '万叶2命：开Q后精通提高200',
       cons: 2,
       data: {
@@ -3189,7 +3190,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "柯莱": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E单次伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -3202,11 +3203,11 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = []
+    const buffs: (RuleBuff | string)[] = []
     return { details, mainAttr, buffs }
   },
   "桑多涅": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: '重击扫射伤害',
         dmg: ({ attr, calc, talent }, dmg) => dmg(talent.a['重击扫射伤害'], 'a2')
@@ -3251,7 +3252,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         title: '双冰共鸣：攻击冰元素附着或冻结状态下的敌人时，暴击率提高[cpct]%',
         data: {
@@ -3301,7 +3302,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "梦见月瑞希": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E持续攻击伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['持续攻击伤害'], 'e')
     }, {
@@ -3363,7 +3364,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.Nights === true,
       title: '1命效果：二十三夜待状态下的扩散反应的伤害提升[fyplus]',
       cons: 1,
@@ -3423,7 +3424,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "欧洛伦": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E宿灵球伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['宿灵球伤害'], 'e,nightsoul')
     },{
@@ -3446,7 +3447,7 @@ export const characterDamageRules = {
     const defDmgIdx = 0
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.Hypersense === true,
       title: '欧洛伦1命：宿灵球命中敌人后，天赋「显象超感」造成的伤害提升[dmg]%',
       cons: 1,
@@ -3471,7 +3472,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "沃雅妮莎": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: 'E唤春角笛后台伤害',
         dmg: ({ attr, calc, talent }, { basic }) => basic(calc(attr.hp) * talent.e['唤春角笛伤害'] / 100, 'e')
@@ -3521,7 +3522,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'hp,cpct,cdmg'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         title: '沃雅妮莎战技：敌人的水元素抗性与冰元素抗性降低[kx]%',
         data: {
@@ -3564,7 +3565,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "法尔伽": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: 'E「狂飙突进」尾段总伤害',
         params: { skills_1: true, skills_2: true, cons_6: true },
@@ -3572,7 +3573,7 @@ export const characterDamageRules = {
           let dmg1 = dmg(talent.e['狂飙突进·五段伤害2'][0], 'a', 'coloringDmg')
           let dmg2 = dmg(talent.e['狂飙突进·五段伤害2'][1], 'a')
           return {
-            dmg: dmg1.dmg + dmg2.dmg,
+            dmg: dmg1.dmg! + dmg2.dmg!,
             avg: dmg1.avg + dmg2.avg
           }
         }
@@ -3584,7 +3585,7 @@ export const characterDamageRules = {
           let dmg1 = dmg(talent.e['四风将起伤害2'][0], 'e', 'coloringDmg')
           let dmg2 = dmg(talent.e['四风将起伤害2'][1], 'e')
           return {
-            dmg: dmg1.dmg + dmg2.dmg,
+            dmg: dmg1.dmg! + dmg2.dmg!,
             avg: dmg1.avg + dmg2.avg
           }
         }
@@ -3596,7 +3597,7 @@ export const characterDamageRules = {
           let dmg1 = dmg(talent.e['苍噬伤害'][0], 'a2', 'coloringDmg')
           let dmg2 = dmg(talent.e['苍噬伤害'][1], 'a2')
           return {
-            dmg: dmg1.dmg + dmg2.dmg,
+            dmg: dmg1.dmg! + dmg2.dmg!,
             avg: dmg1.avg + dmg2.avg
           }
         }
@@ -3607,7 +3608,7 @@ export const characterDamageRules = {
           let dmg1 = dmg(talent.q['技能第一段伤害'], 'q', 'coloringDmg')
           let dmg2 = dmg(talent.q['技能第二段伤害'], 'q')
           return {
-            dmg: dmg1.dmg + dmg2.dmg,
+            dmg: dmg1.dmg! + dmg2.dmg!,
             avg: dmg1.avg + dmg2.avg
           }
         }
@@ -3620,7 +3621,7 @@ export const characterDamageRules = {
           let dmg1 = dmg(talent.e['四风将起伤害2'][0], 'e', 'coloringDmg')
           let dmg2 = dmg(talent.e['四风将起伤害2'][1], 'e')
           return {
-            dmg: dmg1.dmg + dmg2.dmg,
+            dmg: dmg1.dmg! + dmg2.dmg!,
             avg: dmg1.avg + dmg2.avg
           }
         }
@@ -3633,7 +3634,7 @@ export const characterDamageRules = {
           let dmg1 = dmg(talent.e['苍噬伤害'][0], 'a2', 'coloringDmg')
           let dmg2 = dmg(talent.e['苍噬伤害'][1], 'a2')
           return {
-            dmg: dmg1.dmg + dmg2.dmg,
+            dmg: dmg1.dmg! + dmg2.dmg!,
             avg: dmg1.avg + dmg2.avg
           }
         }
@@ -3649,7 +3650,7 @@ export const characterDamageRules = {
     const defDmgIdx = 0
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         check: ({ params }) => params.skills_1 === true,
         title: '法尔伽天赋：队伍中同时存在至少2名风元素角色与至少2名元素类型相同的火/水/雷/冰元素角色，则会使狂飙突进模式下进行的普通攻击、重击、苍噬、四风将起将造成原本[multi]%的伤害',
@@ -3700,7 +3701,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "洛恩": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: "满buff EQ后普攻首段伤害",
         dmg: ({ talent }, dmg) => dmg(talent.e["一段伤害"], "a")
@@ -3711,7 +3712,7 @@ export const characterDamageRules = {
           let a = dmg(talent.a["五段伤害2"][0], "a")
           let a2 = dmg(talent.a["五段伤害2"][1], "a")
           return {
-            dmg: a.dmg + a2.dmg,
+            dmg: a.dmg! + a2.dmg!,
             avg: a.avg + a2.avg
           }
         }
@@ -3721,7 +3722,7 @@ export const characterDamageRules = {
         dmg: ({ talent }, dmg) => {
           let a = dmg(talent.a["重击伤害2"][0], "a2")
           return {
-            dmg: a.dmg * 2,
+            dmg: a.dmg! * 2,
             avg: a.avg * 2
           }
         }
@@ -3732,7 +3733,7 @@ export const characterDamageRules = {
         dmg: ({ talent }, dmg) => {
           let e = dmg(talent.e["镂骨彻心伤害2"][0], "e")
           return {
-            dmg: e.dmg * 4,
+            dmg: e.dmg! * 4,
             avg: e.avg * 4
           }
         }
@@ -3742,7 +3743,7 @@ export const characterDamageRules = {
         dmg: ({ cons, talent }, dmg) => {
           let e = dmg(talent.e["镂骨彻心伤害2"][0] * (1 + 0.004 * (cons >= 1 ? 300 : 100)), "e")
           return {
-            dmg: e.dmg * 4,
+            dmg: e.dmg! * 4,
             avg: e.avg * 4
           }
         }
@@ -3753,7 +3754,7 @@ export const characterDamageRules = {
         dmg: ({ talent }, dmg) => {
           let q = dmg(talent.q["技能伤害2"][0], "q")
           return {
-            dmg: q.dmg * 4,
+            dmg: q.dmg! * 4,
             avg: q.avg * 4
           }
         }
@@ -3763,7 +3764,7 @@ export const characterDamageRules = {
         dmg: ({ cons, talent }, dmg) => {
           let q = dmg(talent.q["技能伤害2"][0] * (1 + 0.004 * (cons >= 1 ? 300 : 100)), "q")
           return {
-            dmg: q.dmg * 4,
+            dmg: q.dmg! * 4,
             avg: q.avg * 4
           }
         }
@@ -3778,7 +3779,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,cpct,cdmg'
     const defDmgIdx = 6
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         title: "洛恩技能：当前拥有[buff]层争胜，元素战技镂骨彻心造成原本[_eDmg]%的伤害,元素爆发造成原本[_qDmg]%的伤害",
         data: {
@@ -3813,7 +3814,7 @@ export const characterDamageRules = {
     return { details, defParams, mainAttr, defDmgIdx, buffs, createdBy }
   },
   "流浪者": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '开E后首段普攻',
       params: { pyro: false, cryo: false },
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a')
@@ -3834,7 +3835,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '羽画·风姿华歌：开启E后额外提升普通[aMulti]%伤害,重击[a2Multi]%伤害',
       data: {
         aMulti: ({ talent }) => talent.e['空居·不生断伤害'] - 100,
@@ -3856,7 +3857,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "温迪": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '【魔导·秘仪】飓风箭首段总伤害',
       params: { WindsunderArrow : true, cons_6: true },
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a')
@@ -3884,7 +3885,7 @@ export const characterDamageRules = {
         // 暂时以物伤近似计算
         let fj = dmg(talent.q['附加元素伤害'], 'q', 'phy')
         return {
-          dmg: basic.dmg + fj.dmg,
+          dmg: basic.dmg! + fj.dmg!,
           avg: basic.avg + fj.avg
         }
       }
@@ -3897,7 +3898,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.WindsunderArrow === true,
       title: '温迪被动：飓风箭造成原本[_aMulti]%的普通攻击伤害',
       data: {
@@ -3938,7 +3939,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "烟绯": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '开Q满丹火印重击',
       params: { dhy: 15 },
       dmg: ({ talent, cons }, dmg) => dmg(talent.a['重击伤害2'][cons * 1 === 6 ? 4 : 3], 'a2')
@@ -3958,7 +3959,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '烟绯被动：重击消耗4枚丹火印增加20%火伤',
       cons: 6,
       data: {
@@ -3979,7 +3980,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "爱可菲": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E技能伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -4003,7 +4004,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '双冰共鸣：攻击冰元素附着或冻结状态下的敌人时，暴击率提高[cpct]%',
       data: {
         cpct: 15
@@ -4025,7 +4026,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "爱诺": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: 'E一段伤害',
         dmg: ({ talent }, dmg) => dmg(talent.e['一段伤害'], 'e')
@@ -4054,7 +4055,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         title: '爱诺天赋：[结构化功率提升] 元素爆发造成的伤害提升[qPlus]',
         sort: 9,
@@ -4083,7 +4084,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "玛拉妮": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '巨浪鲨鲨撕咬伤害',
       dmg: ({ talent, calc, attr }, { basic }) => basic(calc(attr.hp) * ( talent.e['鲨鲨撕咬基础伤害'] + talent.e['巨浪鲨鲨撕咬伤害额外提升'] ) / 100, 'a,nightsoul')
     }, {
@@ -4109,7 +4110,7 @@ export const characterDamageRules = {
     const defDmgKey = 'e'
     const mainAttr = 'hp,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '踏鲨破浪：3层浪势充能使鲨鲨撕咬造成的伤害提升[aPlus]巨浪鲨鲨撕咬伤害额外提升[_aPlus]',
       sort: 9,
       data: {
@@ -4153,7 +4154,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgKey, mainAttr, buffs, createdBy }
   },
   "玛薇卡": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '满战意E焚曜之环伤害',
       params: { Ring: true },
       dmg: ({ talent, attr }, dmg) => dmg(talent.e['焚曜之环伤害'], 'e,nightsoul')
@@ -4191,7 +4192,7 @@ export const characterDamageRules = {
     const defDmgIdx = 6
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.Flamestrider === true,
       title: '玛薇卡元素爆发：满战意施放元素爆发后，坠日斩伤害提升[qPlus]，驰轮车普通攻击伤害提升[aPlus]，驰轮车重击伤害提升[a2Plus]',
       sort: 9,
@@ -4278,7 +4279,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "珊瑚宫心海": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       check: ({ cons }) => cons < 2,
       title: '半血水母每跳治疗',
       dmgKey: 'q',
@@ -4308,12 +4309,12 @@ export const characterDamageRules = {
         let ret = { dmg: 0, avg: 0 }
         lodash.forEach('一二三'.split(''), (num) => {
           let dmgRet = dmg(talent.a[`${num}段伤害`], 'a')
-          ret.dmg += dmgRet.dmg
+          ret.dmg += dmgRet.dmg!
           ret.avg += dmgRet.avg
         })
         if (cons > 0) {
           let dmgRet = dmg.basic(calc(attr.hp) * 0.3)
-          ret.dmg += dmgRet.dmg
+          ret.dmg += dmgRet.dmg!
           ret.avg += dmgRet.avg
         }
         return ret
@@ -4323,7 +4324,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'hp,atk'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '心海被动：暴击率降低100%，治疗加成提高25%',
       isStatic: true,
       data: {
@@ -4363,7 +4364,7 @@ export const characterDamageRules = {
     return { details, defDmgKey, defDmgIdx, mainAttr, buffs }
   },
   "珐露珊": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '开Q提供风系伤害',
       dmg: ({ attr }) => {
         return {
@@ -4385,7 +4386,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '珐露珊6命：Q提升暴击伤害40%',
       cons: 6,
       data: {
@@ -4414,7 +4415,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "班尼特": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '点赞攻击力提升',
       dmg: ({ attr, talent, cons }) => {
         let baseAtk = attr.atk.base
@@ -4433,7 +4434,7 @@ export const characterDamageRules = {
         let qDmg = dmg(talent.q['技能伤害'], 'q')
         return {
           avg: eDmg.avg + qDmg.avg,
-          dmg: eDmg.dmg + qDmg.dmg
+          dmg: eDmg.dmg! + qDmg.dmg!
         }
       }
     }, {
@@ -4444,7 +4445,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,hp,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       cons: 1,
       title: '班尼特1命：Q攻击力提升比例提高20%'
     }, {
@@ -4457,7 +4458,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "琳妮特": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E技能伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['谜影突刺伤害'], 'e')
     }, {
@@ -4474,7 +4475,7 @@ export const characterDamageRules = {
     const defDmgIdx = 0
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '天赋-巧施协同：开Q后，队伍中所有角色攻击力提升20%（按四色队计算）',
       data: {
         atkPct: 20
@@ -4496,7 +4497,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "琴": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '风压剑伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -4516,7 +4517,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,cpct,cdmg'
     const defDmgIdx = 2
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       cons: 1,
       title: '琴1命：长按1秒后风压剑伤害提升40%',
       data: {
@@ -4532,7 +4533,7 @@ export const characterDamageRules = {
     return { details, mainAttr, defDmgIdx, buffs }
   },
   "瑶瑶": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E每跳治疗',
       dmg: ({ talent, calc, attr }, { heal }) =>
         heal(talent.e['白玉萝卜治疗量2'][0] * calc(attr.hp) / 100 + talent.e['白玉萝卜治疗量2'][1])
@@ -4554,7 +4555,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,hp,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '瑶瑶1命：萝卜炸裂获得15%草伤加成',
       cons: 1,
       data: {
@@ -4571,7 +4572,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "瓦列里": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: '特殊重击 臼炮直射·抵近轰击',
         params: { cons_6: true },
@@ -4602,7 +4603,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         cons: 6,
         check: ({ params }) => params.cons_6 === true,
@@ -4617,7 +4618,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "瓦雷莎": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '重击伤害',
       dmg: ({ talent, attr }, dmg) => dmg(talent.a['重击伤害'], 'a2,nightsoul')
     }, {
@@ -4659,7 +4660,7 @@ export const characterDamageRules = {
     const defDmgIdx = 9
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.Rainbow_Crash === true,
       title: '瓦雷莎天赋：施放元素战技后的5秒内，坠地冲击能额外造成[a3Pct]%攻击力的伤害。',
       data: {
@@ -4713,7 +4714,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "甘雨": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '霜华绽发伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['霜华矢·霜华绽发伤害'], 'a2')
     }, {
@@ -4733,7 +4734,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       cons: 0,
       title: '甘雨被动：霜华矢发射后的5秒内霜华矢暴击率提高20%',
       data: {
@@ -4755,7 +4756,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "申鹤": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E基础伤害提升值',
       dmg: ({ talent, calc, attr }) => {
         return {
@@ -4773,7 +4774,7 @@ export const characterDamageRules = {
       dmg: ({ talent }, dmg) => dmg(talent.q['持续伤害'], 'q')
     }]
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '天赋-大洞弥罗尊法：Q范围内冰伤提高15%',
       data: {
         dmg: 15
@@ -4804,7 +4805,7 @@ export const characterDamageRules = {
     return { details, buffs }
   },
   "白术": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E每跳治疗量',
       dmg: ({ talent, calc, attr }, { heal }) => heal(calc(attr.hp) * talent.e['治疗量2'][0] / 100 + talent.e['治疗量2'][1])
     }, {
@@ -4828,7 +4829,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,hp,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       cons: 4,
       title: '白术4命：释放Q之后，队伍中附近所有角色元素精通提升80点',
       data: {
@@ -4845,7 +4846,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "砂糖": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -4866,11 +4867,11 @@ export const characterDamageRules = {
     const defParams = { Hexenzirkel: true } // 魔女会成员
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = ['swirl']
+    const buffs: (RuleBuff | string)[] = ['swirl']
     return { details, defParams, mainAttr, buffs }
   },
   "神里绫人": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E后瞬水剑三段伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['三段瞬水剑伤害'], 'a')
     }, {
@@ -4885,7 +4886,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'hp,atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       cons: 2,
       title: '绫人2命：3层浪闪以上时提高50%生命值',
       data: {
@@ -4915,7 +4916,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "神里绫华": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '霰步E后重击总伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['重击伤害'], 'a2')
     }, {
@@ -4929,7 +4930,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,cpct,cdmg'
     const defDmgIdx = 2
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       passive: 1,
       title: '神里被动：释放E后普攻与重击伤害提高30%',
       data: {
@@ -4963,7 +4964,7 @@ export const characterDamageRules = {
     return { details, mainAttr, defDmgIdx, buffs }
   },
   "米卡": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'Q施放治疗量',
       dmg: ({ talent, calc, attr }, { heal }) => heal(talent.q['施放治疗量2'][0] * calc(attr.hp) / 100 + talent.q['施放治疗量2'][1])
     }, {
@@ -4973,11 +4974,11 @@ export const characterDamageRules = {
 
     const mainAttr = 'hp,cpct,cdmg'
 
-    const buffs = []
+    const buffs: (RuleBuff | string)[] = []
     return { details, mainAttr, buffs }
   },
   "米提亚": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: '特殊重击·递变聚爆星超导伤害',
         params: { cons_1: true, cons_2_2: true, Starsealed_Edict: true },
@@ -5020,7 +5021,7 @@ export const characterDamageRules = {
     const defDmgIdx = 0
     const mainAttr = 'mastery,cpct,cdmg'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         check: ({ params }) => params.skills_1 === true,
         title: '天赋[基准承压测验]：稳态炉心存在，且递变信标携带数量达到上限时，元素精通提升[mastery]点',
@@ -5094,7 +5095,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "纳西妲": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E长按伤害',
       params: { e: true, q: false },
       dmg: ({ talent }, dmg) => dmg(talent.e['长按伤害'], 'e')
@@ -5148,7 +5149,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,mastery,cpct,cdmg'
     const defParams = { mArtisDiffCount: 2 }
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '草神1命：火元素队友额外计入1位',
       cons: 1
     }, {
@@ -5186,7 +5187,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, defParams, buffs }
   },
   "绮良良": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '秘法·惊喜特派伤害',
       talent: 'q',
       dmg: ({ talent }, dmg) => dmg(talent.q['技能伤害'], 'q')
@@ -5198,7 +5199,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,hp,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '绮良良被动：基于绮良良的生命上限，秘法·惊喜特派伤害提升[qDmg]%',
       sort: 9,
       data: {
@@ -5208,7 +5209,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "罗莎莉亚": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E两段伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -5221,7 +5222,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '修女被动：从背后攻击时，暴击率提升12%',
       data: {
         cpct: 12
@@ -5230,7 +5231,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "胡桃": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '半血开E重击',
       dmg: ({ talent }, dmg) => dmg(talent.a['重击伤害'], 'a2')
     }, {
@@ -5244,7 +5245,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'hp,atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '蝶引来生：开E获得[atkPlus]点攻击力加成',
       sort: 9,
       data: {
@@ -5261,7 +5262,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "艾尔海森": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E普攻第一段激化',
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a', '蔓激化')
     }, {
@@ -5299,7 +5300,7 @@ export const characterDamageRules = {
         let q = basic(td[0] * atk / 100 + td[1] * em / 100, 'q', 'spread')
         let q_spread = basic(td[0] * atk / 100 + td[1] * em / 100, 'q')
         return {
-          dmg: q.dmg * 2 + q_spread.dmg * 2,
+          dmg: q.dmg! * 2 + q_spread.dmg! * 2,
           avg: q.avg * 2 + q_spread.avg * 2
         }
       }
@@ -5313,7 +5314,7 @@ export const characterDamageRules = {
         let q_spread = basic(td[0] * atk / 100 + td[1] * em / 100, 'q', 'spread')
         let q = basic(td[0] * atk / 100 + td[1] * em / 100, 'q')
         return {
-          dmg: q.dmg * 6 + q_spread.dmg * 4,
+          dmg: q.dmg! * 6 + q_spread.dmg! * 4,
           avg: q.avg * 6 + q_spread.avg * 4
         }
       }
@@ -5328,7 +5329,7 @@ export const characterDamageRules = {
       mArtisDiffCount: 2
     }
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '艾尔海森被动：基于元素精通提升EQ伤害[eDmg]%',
       sort: 9,
       data: {
@@ -5360,7 +5361,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, defParams, buffs }
   },
   "艾梅莉埃": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '柔灯之匣一阶伤害',
       params: { e: true },
       dmg: ({ talent }, dmg) => dmg(talent.e['柔灯之匣·一阶攻击伤害'], 'e')
@@ -5386,7 +5387,7 @@ export const characterDamageRules = {
         let q1 = dmg(talent.q['柔灯之匣·三阶攻击伤害'], 'q')
         let cons4 = cons >= 4 ? 12 : 4
         return {
-          dmg: q1.dmg * cons4,
+          dmg: q1.dmg! * cons4,
           avg: q1.avg * cons4
         }
       }
@@ -5402,7 +5403,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '艾梅莉埃天赋：基于攻击力，对处于燃烧状态下的敌人造成的伤害提升[dmg]%',
       data: {
         dmg: ({ attr }) => Math.min(36, attr.atk / 1000 * 15)
@@ -5433,7 +5434,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "芙宁娜": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E众水歌者治疗',
       dmg: ({ talent, attr }, { heal }) =>
         heal(talent.e['众水的歌者治疗量2'][0] * attr.hp / 100 + talent.e['众水的歌者治疗量2'][1] * 1)
@@ -5488,7 +5489,7 @@ export const characterDamageRules = {
     const mainAttr = 'hp,mastery,cpct,cdmg,dmg'
     const defDmgIdx = 3
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '芙宁娜天赋：消耗4队友生命值，E伤害提升140%'
     }, {
       title: '天赋Q·万众狂欢：300层气氛值提升[dmg]%伤害，[healInc]%受治疗加成',
@@ -5520,7 +5521,7 @@ export const characterDamageRules = {
     return { details, mainAttr, defDmgIdx, buffs }
   },
   "芭芭拉": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '重击伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['重击伤害'], 'a2')
     }, {
@@ -5540,7 +5541,7 @@ export const characterDamageRules = {
     const defDmgKey = 'qHeal'
     const mainAttr = 'atk,hp,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '芭芭拉2命：开E水环持续期间获得15%水伤加成',
       cons: 2,
       data: {
@@ -5550,7 +5551,7 @@ export const characterDamageRules = {
     return { details, defDmgKey, mainAttr, buffs }
   },
   "茜特菈莉": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E释放伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['黑曜星魔伤害'], 'e,nightsoul')
     }, {
@@ -5586,7 +5587,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.windstorm === true,
       title: '茜特菈莉天赋：伊兹帕帕的霜陨风暴造成的伤害提升[ePlus],元素爆发冰风暴造成的伤害提升[qPlus]',
       sort: 9,
@@ -5620,7 +5621,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "荒泷一斗": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '开大后每段重击',
       dmg: ({ talent }, dmg) => dmg(talent.a['荒泷逆袈裟连斩伤害'], 'a2')
     }, {
@@ -5635,7 +5636,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,def,cpct,cdmg'
     const enemyName = '魔偶/女士/雷神'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '一斗被动：荒泷逆袈裟造成的伤害基于防御值提高[a2Plus]',
       sort: 9,
       data: {
@@ -5657,7 +5658,7 @@ export const characterDamageRules = {
     return { details, mainAttr, enemyName, buffs }
   },
   "莉奈娅": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: '满辉·露米捶捶乱打伤害（后台）',
         dmg: ({ attr, calc, talent } , { basic }) => basic(calc(attr.def) * talent.e['露米捶捶乱打伤害'] / 100, 'e')
@@ -5690,7 +5691,7 @@ export const characterDamageRules = {
     const mainAttr = 'def,cpct,cdmg,mastery'
     const defParams = { Moonsign: 2 }
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         check: ({ params }) => params.Moonsign_Benediction === true,
         title: '莉奈娅天赋：基于莉奈娅的防御力，对队伍中角色造成的月结晶反应提升[fypct]%的基础伤害',
@@ -5760,7 +5761,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, defParams, buffs, createdBy }
   },
   "莫娜": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '重击伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['重击伤害'], 'a2')
     }, {
@@ -5784,7 +5785,7 @@ export const characterDamageRules = {
     const defDmgIdx = 3
     const mainAttr = 'atk,cpct,cdmg,recharge'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.q === true,
       title: '莫娜元素爆发：开Q获得[dmg]%伤害加成',
       data: {
@@ -5834,7 +5835,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "莱依拉": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '满层E护盾量',
       dmg: ({ attr, calc, talent, cons }, { shield }) => {
         const sheildPlus = cons >= 1 ? 1.2 : 1
@@ -5850,7 +5851,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'hp,atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '莱依拉1命：安眠帷幕护盾的伤害吸收量提高20%',
       cons: 1,
       data: {
@@ -5878,7 +5879,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "莱欧斯利": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E后普攻首段',
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a')
     }, {
@@ -5899,7 +5900,7 @@ export const characterDamageRules = {
         let normalDmg = dmg(td, 'q')
         let meltDmg = dmg(td, 'q', 'melt')
         return {
-          dmg: normalDmg.dmg * 3 + meltDmg.dmg * 2,
+          dmg: normalDmg.dmg! * 3 + meltDmg.dmg! * 2,
           avg: normalDmg.avg * 3 + meltDmg.avg * 2
         }
       }
@@ -5914,7 +5915,7 @@ export const characterDamageRules = {
         let azDmg = dmg(talent.a['重击伤害'], 'a2')
         let azCount = cons < 6 ? 1 : 2
         return {
-          dmg: a1Dmg.dmg + a2Dmg.dmg + a3Dmg.dmg + a4Dmg.dmg + a5Dmg.dmg + azDmg.dmg * azCount,
+          dmg: a1Dmg.dmg! + a2Dmg.dmg! + a3Dmg.dmg! + a4Dmg.dmg! + a5Dmg.dmg! + azDmg.dmg! * azCount,
           avg: a1Dmg.avg + a2Dmg.avg + a3Dmg.avg + a4Dmg.avg + a5Dmg.avg + azDmg.avg * azCount
         }
       }
@@ -5931,7 +5932,7 @@ export const characterDamageRules = {
         let azDmg = dmg(talent.a['重击伤害'], 'a2', 'melt')
         let azMeltCount = cons < 6 ? 1 : 2
         return {
-          dmg: a1Dmg.dmg + a2Dmg.dmg + a3Dmg.dmg + a41Dmg.dmg + a42Dmg.dmg + a5Dmg.dmg + azDmg.dmg * azMeltCount,
+          dmg: a1Dmg.dmg! + a2Dmg.dmg! + a3Dmg.dmg! + a41Dmg.dmg! + a42Dmg.dmg! + a5Dmg.dmg! + azDmg.dmg! * azMeltCount,
           avg: a1Dmg.avg + a2Dmg.avg + a3Dmg.avg + a41Dmg.avg + a42Dmg.avg + a5Dmg.avg + azDmg.avg * azMeltCount
         }
       }
@@ -5957,17 +5958,17 @@ export const characterDamageRules = {
         let s3Dmg = dmg(talent.a['三段伤害'] * stellarPct3 / 100, 'a', 'stellarConduct')
         let s5Dmg = dmg(talent.a['五段伤害'] * stellarPct5 * c1Mult / 100, 'a', 'stellarConduct')
         let szDmg = dmg(talent.a['重击伤害'] * stellarPctZ * c1Mult / 100, 'a2', 'stellarConduct')
-        let sDmg = s3Dmg.dmg + s5Dmg.dmg + szDmg.dmg
+        let sDmg = s3Dmg.dmg! + s5Dmg.dmg! + szDmg.dmg!
         let sAvg = s3Dmg.avg + s5Dmg.avg + szDmg.avg
         // 6命：第五段斥逐拳与天辉·凌跃拳额外生成冰锥，造成原本20%的星超导反应伤害（同样受1命加成）
         if (cons >= 6) {
           let s5Extra = dmg(talent.a['五段伤害'] * 20 * c1Mult / 100, 'a', 'stellarConduct')
           let szExtra = dmg(talent.a['重击伤害'] * 20 * c1Mult / 100, 'a2', 'stellarConduct')
-          sDmg += s5Extra.dmg + szExtra.dmg
+          sDmg += s5Extra.dmg! + szExtra.dmg!
           sAvg += s5Extra.avg + szExtra.avg
         }
         return {
-          dmg: a1Dmg.dmg + a2Dmg.dmg + a3Dmg.dmg + a4Dmg.dmg + a5Dmg.dmg + sDmg,
+          dmg: a1Dmg.dmg! + a2Dmg.dmg! + a3Dmg.dmg! + a4Dmg.dmg! + a5Dmg.dmg! + sDmg,
           avg: a1Dmg.avg + a2Dmg.avg + a3Dmg.avg + a4Dmg.avg + a5Dmg.avg + sAvg
         }
       }
@@ -5976,7 +5977,7 @@ export const characterDamageRules = {
     const defDmgIdx = 7
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '冰牙突驰：强化普攻，使其造成的伤害提升至[_aMulti]%',
       data: {
         _aMulti: ({ talent }) => talent.e['强化斥逐拳伤害'],
@@ -6063,7 +6064,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "菈乌玛": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
         title: '重击伤害',
         dmg: ({ talent }, dmg) => dmg(talent.a['唤灵之祷伤害'], 'a2')
       },
@@ -6117,7 +6118,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,dmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
         check: ({ params }) => (params.Moonsign || 0) >= 2,
         title: '菈乌玛天赋：处于满辉时月绽放反应暴击率提升[cpct]%,暴击伤害提升[cdmg]%',
         data: {
@@ -6178,7 +6179,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "菲林斯": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
         title: '二段E伤害',
         dmgKey: 'e',
         dmg: ({ talent }, dmg) => dmg(talent.e['北国枪阵伤害'], 'e')
@@ -6222,7 +6223,7 @@ export const characterDamageRules = {
     const defDmgIdx = 3
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         check: ({ params }) => params.Lunar === true,
         title: '菲林斯天赋：处于满辉时月感电伤害提升[lunarCharged]%',
@@ -6272,7 +6273,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "菲米尼": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '普攻首段伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a', 'phy')
     }, {
@@ -6296,7 +6297,7 @@ export const characterDamageRules = {
         let e2Dmg = dmg.dynamic(talent.e['零阶高压粉碎伤害'], 'e', { dynamicDmg: 40, dynamicCpct: 15 })
         let a1Dmg = dmg(talent.a['一段伤害'], 'a', 'phy')
         return {
-          dmg: (normalEDmg.dmg + e2Dmg.dmg + a1Dmg.dmg) * 4,
+          dmg: (normalEDmg.dmg! + e2Dmg.dmg! + a1Dmg.dmg!) * 4,
           avg: (normalEDmg.avg + e2Dmg.avg + a1Dmg.avg) * 4
         }
       }
@@ -6310,7 +6311,7 @@ export const characterDamageRules = {
         let a2Dmg = dmg(talent.a['二段伤害'], 'a', 'phy')
         let e2Dmg = dmg.dynamic(talent.e['四阶高压粉碎伤害'], 'e', { dynamicPhy: 40, dynamicCpct: 15 }, 'phy')
         return {
-          dmg: (normalEDmg.dmg + a1Dmg.dmg * 2 + a2Dmg.dmg + e2Dmg.dmg) * 3,
+          dmg: (normalEDmg.dmg! + a1Dmg.dmg! * 2 + a2Dmg.dmg! + e2Dmg.dmg!) * 3,
           avg: (normalEDmg.avg + a1Dmg.avg * 2 + a2Dmg.avg + e2Dmg.avg) * 3
         }
       }
@@ -6319,7 +6320,7 @@ export const characterDamageRules = {
     const defDmgKey = 'q'
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '天赋-并流式冷凝机关：触发碎冰反应后，使浮冰增压·高压粉碎造成的伤害提高40%'
     }, {
       title: '菲米尼1命：浮冰增压·高压粉碎的暴击率提高15%',
@@ -6342,7 +6343,7 @@ export const characterDamageRules = {
     return { details, defDmgKey, mainAttr, buffs, createdBy }
   },
   "菲谢尔": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '奥兹攻击激化伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['奥兹攻击伤害'], 'e', 'aggravate')
     }, {
@@ -6360,7 +6361,7 @@ export const characterDamageRules = {
     const defParams = { Hexenzirkel: true } // 魔女会成员
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '皇女2命：施放夜巡影翼时，能额外造成200%攻击力的伤害',
       data: {
         ePct: ({ params }) => params.e ? 200 : 0
@@ -6374,7 +6375,7 @@ export const characterDamageRules = {
     return { details, defParams, mainAttr, buffs }
   },
   "蓝砚": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E翦月环伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['翦月环伤害'], 'e')
     },{
@@ -6389,7 +6390,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '蓝砚天赋：元素战技与元素爆发造成的伤害值提升，提升值分别相当于蓝砚元素精通的[ePlus]和[qPlus]。',
       sort: 9,
       data: {
@@ -6408,7 +6409,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "薇斯纳": () => {
-    const details = [
+    const details: RuleDetail[] = [
       {
         title: 'E后普攻首段伤害',
         dmg: ({ attr, talent }, dmg) => dmg(talent.a['一段伤害'], 'a')
@@ -6456,7 +6457,7 @@ export const characterDamageRules = {
     const defDmgIdx = 5
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [
+    const buffs: (RuleBuff | string)[] = [
       {
         title: '薇斯纳天赋：每有一位元素类型为冰元素或风元素的角色，薇斯纳的攻击力提升6%（默认3位）；' +
           '每有一位不为上述元素类型的角色，薇斯纳的元素精通提升25点。（默认1位）',
@@ -6501,7 +6502,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "行秋": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '先QA后E两段伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -6514,7 +6515,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '行秋被动：获得20%水伤加成',
       isStatic: true,
       data: {
@@ -6536,7 +6537,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "诺艾尔": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '护心铠盾量',
       dmg: ({ talent, calc, attr }, { shield }) =>
         shield((talent.e['吸收量2'][0] * calc(attr.def) / 100 + talent.e['吸收量2'][1] * 1) * 1.5)
@@ -6556,7 +6557,7 @@ export const characterDamageRules = {
     const defDmgIdx = 2
     const mainAttr = 'atk,def,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '元素爆发：诺艾尔开Q基于防御力提高攻击力[atkPlus]',
       sort: 9,
       data: {
@@ -6573,7 +6574,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "赛索斯": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
         title: '贯影箭伤害',
         dmg: ({ talent, attr }, { basic }) => basic(talent.a['贯影箭伤害2'][0] * attr.atk / 100 + talent.a['贯影箭伤害2'][1] * attr.mastery / 100, 'a2')
     }, {
@@ -6606,7 +6607,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
         check: ({ params }) => params.q === true,
         title: '赛索斯技能：暝弦矢造成的伤害提升[a2Plus]',
         data: {
@@ -6643,7 +6644,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "赛诺": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'Q状态·普攻首段',
       dmg: ({ talent }, dmg) => dmg(talent.q['一段伤害'], 'a')
     }, {
@@ -6667,7 +6668,7 @@ export const characterDamageRules = {
         let eDmg = dynamic(talent.e['冥祭伤害'], 'e', { dynamicDmg: 35 })
         let ePlusDmg = basic(ePlustd, 'e')
         return {
-          dmg: eDmg.dmg + ePlusDmg.dmg * 3,
+          dmg: eDmg.dmg! + ePlusDmg.dmg! * 3,
           avg: eDmg.avg + ePlusDmg.avg * 3
         }
       }
@@ -6682,7 +6683,7 @@ export const characterDamageRules = {
         let ePlusDmg = basic(ePlustd, 'e')
         let ePlusAggrDmg = basic(ePlustd, 'e', 'aggravate')
         return {
-          dmg: eAggrDmg.dmg + ePlusAggrDmg.dmg + ePlusDmg.dmg * 2,
+          dmg: eAggrDmg.dmg! + ePlusAggrDmg.dmg! + ePlusDmg.dmg! * 2,
           avg: eAggrDmg.avg + ePlusAggrDmg.avg + ePlusDmg.avg * 2
         }
       }
@@ -6699,7 +6700,7 @@ export const characterDamageRules = {
         let ePlusDmg = dmg.basic(ePlustd, 'e')
         let ePlusAggrDmg = dmg.basic(ePlustd, 'e', 'aggravate')
         let eAllDmg = {
-          dmg: eAggrDmg.dmg + ePlusAggrDmg.dmg + ePlusDmg.dmg * 2,
+          dmg: eAggrDmg.dmg! + ePlusAggrDmg.dmg! + ePlusDmg.dmg! * 2,
           avg: eAggrDmg.avg + ePlusAggrDmg.avg + ePlusDmg.avg * 2
         }
 
@@ -6710,7 +6711,7 @@ export const characterDamageRules = {
         let a4dmg = dmg(talent.q['四段伤害2'][1], 'a')
         let a5dmg = dmg(talent.q['五段伤害'], 'a')
         return {
-          dmg: eAllDmg.dmg + a1Aggrdmg.dmg + a2dmg.dmg + a3dmg.dmg + a4Aggrdmg.dmg + a4dmg.dmg + a5dmg.dmg,
+          dmg: eAllDmg.dmg + a1Aggrdmg.dmg! + a2dmg.dmg! + a3dmg.dmg! + a4Aggrdmg.dmg! + a4dmg.dmg! + a5dmg.dmg!,
           avg: eAllDmg.avg + a1Aggrdmg.avg + a2dmg.avg + a3dmg.avg + a4Aggrdmg.avg + a4dmg.avg + a5dmg.avg
         }
       }
@@ -6727,7 +6728,7 @@ export const characterDamageRules = {
         let ePlusDmg = dmg.basic(ePlustd, 'e')
         let ePlusAggrDmg = dmg.basic(ePlustd, 'e', 'aggravate')
         let eAllDmg = {
-          dmg: eAggrDmg.dmg + ePlusAggrDmg.dmg + ePlusDmg.dmg * 2,
+          dmg: eAggrDmg.dmg! + ePlusAggrDmg.dmg! + ePlusDmg.dmg! * 2,
           avg: eAggrDmg.avg + ePlusAggrDmg.avg + ePlusDmg.avg * 2
         }
 
@@ -6738,7 +6739,7 @@ export const characterDamageRules = {
         let a4dmg = dmg(talent.q['四段伤害2'][1], 'a')
         let a5dmg = dmg(talent.q['五段伤害'], 'a')
         return {
-          dmg: eAllDmg.dmg + a1Aggrdmg.dmg + a2dmg.dmg + a3dmg.dmg + a4Aggrdmg.dmg + a4dmg.dmg + a5dmg.dmg + ePlusDmg.dmg * 3 + ePlusAggrDmg.dmg,
+          dmg: eAllDmg.dmg + a1Aggrdmg.dmg! + a2dmg.dmg! + a3dmg.dmg! + a4Aggrdmg.dmg! + a4dmg.dmg! + a5dmg.dmg! + ePlusDmg.dmg! * 3 + ePlusAggrDmg.dmg!,
           avg: eAllDmg.avg + a1Aggrdmg.avg + a2dmg.avg + a3dmg.avg + a4Aggrdmg.avg + a4dmg.avg + a5dmg.avg + ePlusDmg.avg * 3 + ePlusAggrDmg.avg
         }
       }
@@ -6760,7 +6761,7 @@ export const characterDamageRules = {
         let a4dmg2 = dmg(talent.q['四段伤害2'][1], 'a')
         let a5dmg = dmg(talent.q['五段伤害'], 'a')
         return {
-          dmg: eDmg.dmg + stellarDmg.dmg * 3 + a1dmg.dmg + a2dmg.dmg + a3dmg.dmg + a4dmg1.dmg + a4dmg2.dmg + a5dmg.dmg,
+          dmg: eDmg.dmg! + stellarDmg.dmg! * 3 + a1dmg.dmg! + a2dmg.dmg! + a3dmg.dmg! + a4dmg1.dmg! + a4dmg2.dmg! + a5dmg.dmg!,
           avg: eDmg.avg + stellarDmg.avg * 3 + a1dmg.avg + a2dmg.avg + a3dmg.avg + a4dmg1.avg + a4dmg2.avg + a5dmg.avg
         }
       }
@@ -6782,7 +6783,7 @@ export const characterDamageRules = {
         let a4dmg2 = dmg(talent.q['四段伤害2'][1], 'a')
         let a5dmg = dmg(talent.q['五段伤害'], 'a')
         return {
-          dmg: eDmg.dmg + stellarDmg.dmg * 3 + a1dmg.dmg + a2dmg.dmg + a3dmg.dmg + a4dmg1.dmg + a4dmg2.dmg + a5dmg.dmg + stellarDmg.dmg * 4,
+          dmg: eDmg.dmg! + stellarDmg.dmg! * 3 + a1dmg.dmg! + a2dmg.dmg! + a3dmg.dmg! + a4dmg1.dmg! + a4dmg2.dmg! + a5dmg.dmg! + stellarDmg.dmg! * 4,
           avg: eDmg.avg + stellarDmg.avg * 3 + a1dmg.avg + a2dmg.avg + a3dmg.avg + a4dmg1.avg + a4dmg2.avg + a5dmg.avg + stellarDmg.avg * 4
         }
       }
@@ -6792,7 +6793,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,cpct,cdmg,mastery'
     const defParams = { mArtisDiffCount: 2 }
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '圣仪·煟煌随狼行：Q状态下提升元素精通100点',
       data: {
         mastery: 100
@@ -6837,7 +6838,7 @@ export const characterDamageRules = {
     return { details, defDmgKey, mainAttr, defParams, buffs, createdBy }
   },
   "辛焱": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['挥舞伤害'], 'e')
     }, {
@@ -6857,7 +6858,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,def,cpct,cdmg'
     const enemyName = '魔偶/女士/雷神/丘丘'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '辛焱被动：处于护盾下物理伤害提高15%',
       data: {
         phy: 15
@@ -6887,7 +6888,7 @@ export const characterDamageRules = {
     return { details, mainAttr, enemyName, buffs }
   },
   "达达利亚": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '开E后重击',
       dmg: ({ talent }, dmg) => dmg(talent.e['重击伤害'], 'a2')
     }, {
@@ -6903,11 +6904,11 @@ export const characterDamageRules = {
 
     const mainAttr = 'atk,cpct,cdmg,mastery'
 
-    const buffs = ['vaporize']
+    const buffs: (RuleBuff | string)[] = ['vaporize']
     return { details, mainAttr, buffs }
   },
   "迪卢克": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E三段伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['三段伤害'], 'e')
     }, {
@@ -6927,7 +6928,7 @@ export const characterDamageRules = {
     const mainAttr = 'atk,cpct,cdmg,mastery'
     const defDmgIdx = 1
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '迪卢克天赋：释放元素爆发后获得20%火伤加成',
       data: {
         dmg: ({ params }) => params.q ? 20 : 0
@@ -6954,7 +6955,7 @@ export const characterDamageRules = {
     return { details, defParams, mainAttr, defDmgIdx, buffs }
   },
   "迪奥娜": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '长按E总伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['猫爪伤害'] * 5, 'e')
     }, {
@@ -6975,7 +6976,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,hp,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '迪奥娜天赋：长按E获得75%护盾吸收量加成',
       data: {
         _shield: 75
@@ -6997,7 +6998,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "迪希雅": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E释放伤害',
       params: { e2: false },
       dmg: ({ talent }, dmg) => dmg(talent.e['净焰昂藏伤害'], 'e')
@@ -7035,7 +7036,7 @@ export const characterDamageRules = {
       e2: true
     }
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '迪希雅1命：生命值上限提升20%',
       cons: 1,
       data: {
@@ -7067,7 +7068,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, defParams, buffs }
   },
   "那维莱特": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '重击伤害',
       dmg: ({ talent, attr, calc, cons }, { basic }) => {
         const a2Multi = cons >= 1 ? 1.6 : 1.25
@@ -7099,7 +7100,7 @@ export const characterDamageRules = {
     const defDmgIdx = 4
     const mainAttr = 'hp,dmg,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '天赋-古海孑遗：按两层计算，重击·衡平推裁造成原本125%的伤害',
       check: ({ cons }) => cons < 1
     }, {
@@ -7130,7 +7131,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "重云": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '重云E伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, ({ cons }) => {
@@ -7144,7 +7145,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '重云6命：对于生命百分比低于重云的敌人伤害提升15%，同时额外多一柄灵刃',
       cons: 6,
       data: {
@@ -7154,7 +7155,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "钟离": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '玉璋护盾量',
       talent: 'e',
       dmg: ({ attr, calc, talent }, { shield }) => shield(talent.e['护盾基础吸收量'] + calc(attr.hp) * talent.e['护盾附加吸收量'] / 100)
@@ -7170,7 +7171,7 @@ export const characterDamageRules = {
 
     const mainAttr = 'hp,atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '钟离被动：满层Buff下护盾强效提高25%',
       data: {
         shield: 25
@@ -7196,7 +7197,7 @@ export const characterDamageRules = {
     return { details, mainAttr, buffs }
   },
   "闲云": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '仙力助推下落攻击伤害提升值',
       dmg: ({ attr, cons }) => {
         return {
@@ -7232,7 +7233,7 @@ export const characterDamageRules = {
     const defDmgIdx = 0
     const mainAttr = 'atk,cpct,cdmg,heal'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '闲云天赋：Q后下落攻击坠地冲击造成的伤害提升[a3Plus]',
       sort: 9,
       data: {
@@ -7258,9 +7259,9 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "阿罗夏": () => {
-    const getHunterAimStacks = ({ cons }) => cons >= 6 ? 2 : 1
+    const getHunterAimStacks = ({ cons }: Pick<RuleContext, "cons">) => cons >= 6 ? 2 : 1
 
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '点按E伤害',
       params: { HunterAim: true },
       dmg: ({ talent }, dmg) => dmg(talent.e['点按伤害'], 'e')
@@ -7285,7 +7286,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,recharge,cpct,cdmg,heal'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       check: ({ params }) => params.HunterAim === true,
       title: '猎者之准：当前场上角色攻击力提升[atkPct]%',
       data: {
@@ -7304,7 +7305,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "阿蕾奇诺": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E后普攻首段伤害',
       params: { BondOfLifeGet: 1, DecreasedBondOfLife: 1 },
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a')
@@ -7329,9 +7330,9 @@ export const characterDamageRules = {
 
     const defDmgIdx = 0
     const mainAttr = 'atk,cpct,cdmg,mastery,dmg'
-    const defParams = ({ weapon }) => weapon.name === '赤月之形' ? { BondOfLife: 155 } : { BondOfLife: 130 }// 生命之契在此调整,请勿超过200
+    const defParams = ({ weapon }: Pick<RuleContext, "weapon">) => weapon.name === '赤月之形' ? { BondOfLife: 155 } : { BondOfLife: 130 }// 生命之契在此调整,请勿超过200
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '阿蕾奇诺天赋：[buffCount]%最大生命值的生命之契,普通攻击伤害提升[aPlus]',
       data: {
         buffCount: ({ params }) => Math.min(params.BondOfLife, 200),
@@ -7358,7 +7359,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, defParams, buffs, createdBy }
   },
   "阿贝多": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E刹那之花伤害',
       dmg: ({ talent, attr }, { basic }) => {
         let ret = talent.e['刹那之花伤害'] * attr.def / 100
@@ -7392,7 +7393,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'def,atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '阿贝多被动：刹那之花对生命值低于50%的敌人造成的伤害提高25%',
       data: {
         eDmg: ({ params }) => params.half ? 25 : 0
@@ -7430,7 +7431,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "雅珂达": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: 'E秘藏瓶装满伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['秘藏瓶装满伤害'], 'e')
     }, {
@@ -7451,7 +7452,7 @@ export const characterDamageRules = {
     const defDmgIdx = 3
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '雅珂达6命：月兆·满辉情况下，秘藏瓶装满后，暴击率提升[cpct]%，暴击伤害提升[cdmg]%',
       cons: 6,
       data: {
@@ -7464,7 +7465,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs, createdBy }
   },
   "雷泽": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '普攻首段伤害',
       dmg: ({ talent }, dmg) => dmg(talent.a['一段伤害'], 'a', 'phy')
     }, {
@@ -7488,7 +7489,7 @@ export const characterDamageRules = {
     const defParams = { Hexenzirkel: true } // 魔女会成员
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '雷泽1命：获得元素球后8秒伤害提高10%',
       cons: 1,
       data: {
@@ -7512,7 +7513,7 @@ export const characterDamageRules = {
     return { details, defParams, mainAttr, buffs }
   },
   "雷电将军": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '零愿力Q首刀',
       params: {
         type: 1,
@@ -7543,7 +7544,7 @@ export const characterDamageRules = {
     const defDmgIdx = 1
     const mainAttr = 'atk,cpct,cdmg,recharge,dmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '恶曜开眼：开E元素爆发伤害提升[qDmg]%',
       data: {
         qDmg: ({ talent }) => talent.e['元素爆发伤害提高'] * 90
@@ -7569,7 +7570,7 @@ export const characterDamageRules = {
     return { details, defParams, defDmgIdx, mainAttr, buffs }
   },
   "香菱": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '锅巴单口伤害',
       dmg: ({ talent }, dmg) => dmg(talent.e['喷火伤害'], 'e')
     }, {
@@ -7588,7 +7589,7 @@ export const characterDamageRules = {
     const defDmgIdx = 3
     const mainAttr = 'atk,cpct,cdmg'
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       cons: 1,
       title: '香菱1命：锅巴降低敌人火抗15',
       data: {
@@ -7605,7 +7606,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, buffs }
   },
   "魈": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '风轮两立',
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
     }, {
@@ -7633,7 +7634,7 @@ export const characterDamageRules = {
       layer: 0
     }
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '靖妖傩舞：下落攻击伤害提升[a3Dmg]%',
       data: {
         a3Dmg: ({ talent }) => talent.q['普通攻击/重击/下落攻击伤害提升']
@@ -7652,7 +7653,7 @@ export const characterDamageRules = {
     return { details, defDmgIdx, mainAttr, defParams, buffs }
   },
   "鹿野院平藏": () => {
-    const details = [{
+    const details: RuleDetail[] = [{
       title: '勠心拳伤害',
       params: { e: 0 },
       dmg: ({ talent }, dmg) => dmg(talent.e['技能伤害'], 'e')
@@ -7669,7 +7670,7 @@ export const characterDamageRules = {
 
     const defDmgIdx = 1
 
-    const buffs = [{
+    const buffs: (RuleBuff | string)[] = [{
       title: '平藏6命：每层「变格」提高E 4%暴击率,「正论」提高E 32%暴击伤害',
       cons: 6,
       data: {

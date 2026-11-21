@@ -2,8 +2,8 @@ import characterMetadata from "./miao/character-artifact-base.json";
 import { readLegacyArtifactRuleProperties } from "./damage.ts";
 import type { PanelTheme } from "./theme.ts";
 import weaponMetadata from "./miao/weapon-artifact-bonus.json";
-import { characterRules, usefulAttr } from "./miao/character-artifact-rules.js";
-import { attrPct, basicNum } from "./miao/artifact-tables.js";
+import { characterRules, usefulAttr } from "./miao/character-artifact-rules.ts";
+import { attrPct, basicNum } from "./miao/artifact-tables.ts";
 import { artifactStatRecord, propertyLabels, type PanelArtifact, type PanelAvatar } from "./model.ts";
 
 const elements = new Set(["pyro", "electro", "hydro", "cryo", "geo", "anemo", "dendro"]);

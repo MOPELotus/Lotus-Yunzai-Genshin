@@ -1,7 +1,15 @@
-import lodash from './compat.js'
+import lodash from './compat.ts'
 
 // 元素反应类型及基数
-export const erType = {
+type ReactionContext = { readonly element: string; readonly talent: string | false; readonly params: {
+  readonly stellarConductCount: number; readonly stellarVortexCount: number;
+} };
+interface Reaction {
+  readonly type: "pct" | "shield" | "fusion" | "bonus" | "lunar" | "stellar" | "breakDot" | "breakPlus" | "break" | "elation";
+  readonly num: (context: ReactionContext) => number | undefined;
+  readonly title: string;
+}
+export const erType: Readonly<Record<string, Reaction>> = {
   // 增幅反应
   vaporize: { type: 'pct', num: ({ element }) => element === '水' ? 2 : 1.5, title: '蒸发' },
   melt: { type: 'pct', num: ({ element }) => element === '火' ? 2 : 1.5, title: '融化' },
@@ -49,7 +57,7 @@ export const erType = {
   elationDmg: { type: 'elation', num: () => 1.0, title: '欢愉' }
 }
 
-let erTmp = {}
+let erTmp: Record<string, string> = {}
 lodash.forEach(erType, (er, key) => {
   erTmp[er.title] = key
 })
@@ -60,7 +68,7 @@ export const erTitle = erTmp
 export const stellarConductFactor = [1, 1.45, 1.5, 1.55, 1.6, 1.65, 1.7, 1.75, 1.8, 1.85, 1.9, 1.95, 2.0]
 
 // 各等级精通基础伤害
-export const eleBaseDmg = {
+export const eleBaseDmg: Readonly<Record<number, number>> = {
   1: 4.291,
   2: 4.634,
   3: 4.976,
@@ -156,7 +164,7 @@ export const eleBaseDmg = {
 }
 
 // 各等级结晶护盾基础吸收量
-export const cryBaseDmg = {
+export const cryBaseDmg: Readonly<Record<number, number>> = {
   1: 91.18,
   2: 98.71,
   3: 106.24,
@@ -250,7 +258,7 @@ export const cryBaseDmg = {
 }
 
 // 各等级击破基础伤害
-export const breakBaseDmg = {
+export const breakBaseDmg: Readonly<Record<number, number>> = {
   1: 54.00,
   2: 58.00,
   3: 62.00,
@@ -333,7 +341,7 @@ export const breakBaseDmg = {
   80: 3767.55
 }
 
-export const elationBaseDmg = {
+export const elationBaseDmg: Readonly<Record<number, number>> = {
   1: 108.00,
   2: 116.00,
   3: 124.00,
