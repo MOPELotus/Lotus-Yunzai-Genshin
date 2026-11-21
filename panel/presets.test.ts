@@ -11,7 +11,7 @@ test("旧四种缩写定位各自公开预设和原角色别名", async () => {
     expect(Object.keys(snapshot.avatars)).toHaveLength(size);
   }
   expect(matchPanelPreset("#雷神by面板")?.command.name).toBe("雷电将军");
-  expect(matchPanelPreset("#jx绫华武器")?.command.mode).toBe("weapon");
+  expect(matchPanelPreset("#jx绫华武器")?.command.mode).toBe("damage");
   expect(matchPanelPreset("#胡桃hb伤害2")?.command.damageRow).toBe(2);
   expect(matchPanelPreset("#fz申鹤圣遗物")?.command.mode).toBe("artifacts");
   expect(matchPanelPreset("#绫华换hb甘雨花 档案3")?.command.profileId).toBe(3);

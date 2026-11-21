@@ -108,7 +108,7 @@ export interface PanelCommand {
   readonly profileId: number;
   readonly uid?: string;
   readonly name?: string;
-  readonly mode?: "profile" | "artifacts" | "weapon" | "damage";
+  readonly mode?: "profile" | "artifacts" | "damage";
   readonly damageRow?: number;
   readonly knownCharacterOnly?: true;
   readonly theaterMonth?: string;
@@ -482,10 +482,10 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
     return;
   }
   if (detail?.[1]) {
-    const target = profileQueryName(detail[1], leadingUid !== undefined);
+    const target = profileQueryName(detail[1], detail[2] === "武器" || leadingUid !== undefined);
     const opts = suffix(detail[3] ?? detail[4]);
     if (!target || opts.profileId > MAX_PROFILE_ID || (leadingUid && opts.uid)) return;
-    const mode = detail[2] === "圣遗物" ? "artifacts" : detail[2] === "武器" ? "weapon" : "profile";
+    const mode = detail[2] === "圣遗物" ? "artifacts" : detail[2] === "武器" ? "damage" : "profile";
     return { type: "detail", ...target, mode, ...opts, ...(leadingUid && { uid: leadingUid }) };
   }
 }

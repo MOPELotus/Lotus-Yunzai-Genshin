@@ -21,12 +21,15 @@ const theme: PanelTheme = { characters: { [avatar.id]: character }, artifacts: n
   async picture() { return undefined; } };
 
 test("旧武器 1–7 选伤害序号，显式档案号和旧长 UID 仍分开", () => {
+  expect(matchGenshinPanel("#胡桃武器")).toEqual({ type: "detail", name: "胡桃", mode: "damage", profileId: 1,
+    knownCharacterOnly: true });
+  expect(matchGenshinPanel("#武器")).toBeUndefined();
   expect(matchGenshinPanel("#胡桃武器2")).toMatchObject({ mode: "damage", knownCharacterOnly: true, damageRow: 2, profileId: 1 });
   expect(matchGenshinPanel("#原神胡桃武器7 档案2")).toMatchObject({ mode: "damage", damageRow: 7, profileId: 2 });
   expect(matchGenshinPanel(`#胡桃武器2 ${uid}`)).toMatchObject({ mode: "damage", damageRow: 2, uid });
-  expect(matchGenshinPanel(`#胡桃武器${uid}`)).toMatchObject({ mode: "weapon", uid });
-  expect(matchGenshinPanel("#胡桃武器 档案2")).toMatchObject({ mode: "weapon", profileId: 2 });
-  expect(matchGenshinPanel("#胡桃武器20")).toMatchObject({ mode: "weapon", profileId: 20 });
+  expect(matchGenshinPanel(`#胡桃武器${uid}`)).toMatchObject({ mode: "damage", uid });
+  expect(matchGenshinPanel("#胡桃武器 档案2")).toMatchObject({ mode: "damage", profileId: 2 });
+  expect(matchGenshinPanel("#胡桃武器20")).toMatchObject({ mode: "damage", profileId: 20 });
   expect(matchGenshinPanel("#星铁胡桃武器2")).toBeUndefined();
   expect(matchGenshinPanel("#胡桃武器2 档案256")).toBeUndefined();
 });
@@ -60,15 +63,15 @@ test("旧老婆老公称呼只修饰可识别的角色详情和伤害入口", ()
   }
 });
 
-test("编号武器命令实际复用同档伤害矩阵，裸命令仍发武器资料", async () => {
+test("未编号武器和伤害使用同档默认伤害矩阵，编号继续选行", async () => {
   const directory = await mkdtemp(join(tmpdir(), "lotus-genshin-weapon-damage-"));
   const archiveDirectory = join(directory, "archive");
   const file = join(directory, uid + ".json");
   const original = JSON.stringify({ uid, avatars: { [avatar.id]: avatar } });
   await writeFile(file, original);
   const role = { uid, region: "cn_gf01", nickname: "", gameBiz: "hk4e_cn", chosen: true };
-  const damageCard = Uint8Array.of(1), weaponCard = Uint8Array.of(2);
-  const selected: number[] = [], detail: number[] = [], reads: number[] = [];
+  const damageCard = Uint8Array.of(1);
+  const selected: number[] = [], reads: number[] = [];
   try {
     const query = createGenshinPanelQuery({
       async savedRole() { return role; },
@@ -79,10 +82,8 @@ test("编号武器命令实际复用同档伤害矩阵，裸命令仍发武器�
     }, { async fetchGenshinPanel() { throw Error("unexpected network request"); } },
     async () => ({ close() {} }), new AbortController().signal, {
       archiveDirectory, legacyDirectory: directory, theme: async () => theme,
-      render: { async list() { throw Error("unexpected list"); }, async detail(_snapshot, _actor, _theme, options) {
-        expect(options?.pane).toBe("weapon");
-        detail.push(options!.profileId!);
-        return { png: weaponCard };
+      render: { async list() { throw Error("unexpected list"); }, async detail() {
+        throw Error("weapon must follow the damage route");
       }, async damage(_snapshot, _actor, _theme, model, options) {
         if (!("selected" in model)) throw Error("no numerical damage");
         selected.push(model.selected);
@@ -93,6 +94,7 @@ test("编号武器命令实际复用同档伤害矩阵，裸命令仍发武器�
     });
     const message = { user_id: 42 };
     expect(await query("#虚构角色武器2 档案2", message)).toBeUndefined();
+    expect(await query("#虚构角色武器 档案2", message)).toBeUndefined();
     expect(await query(`#${uid}虚构角色伤害2 档案2`, message)).toBeUndefined();
     expect(await query("#老婆虚构角色详情 档案2", message)).toBeUndefined();
     expect(reads).toEqual([]);
@@ -104,11 +106,14 @@ test("编号武器命令实际复用同档伤害矩阵，裸命令仍发武器�
     expect(await query(`#${uid}胡桃武器2 档案2`, message)).toEqual({ type: "image", file: damageCard });
     expect(await query(`#${uid}胡桃伤害2 档案2`, message)).toEqual({ type: "image", file: damageCard });
     expect(await query("#老公胡桃伤害2 档案2", message)).toEqual({ type: "image", file: damageCard });
-    expect(await query("#胡桃武器 档案2", message)).toEqual({ type: "image", file: weaponCard });
-    expect(await query(`#${uid}胡桃武器 档案2`, message)).toEqual({ type: "image", file: weaponCard });
-    expect(await query("#胡桃老婆武器 档案2", message)).toEqual({ type: "image", file: weaponCard });
+    expect(await query("#胡桃武器 档案2", message)).toEqual({ type: "image", file: damageCard });
+    expect(await query(`#${uid}胡桃武器 档案2`, message)).toEqual({ type: "image", file: damageCard });
+    expect(await query("#胡桃老婆武器 档案2", message)).toEqual({ type: "image", file: damageCard });
     expect(await query("#胡桃武器7 档案2", message)).toEqual({ type: "image", file: damageCard });
-    expect([selected, detail]).toEqual([[1, 1, 1, 1, 1, 6], [2, 2, 2]]);
+    expect(await query("#胡桃伤害 档案2", message)).toEqual({ type: "image", file: damageCard });
+    expect(selected.slice(0, 5)).toEqual([1, 1, 1, 1, 1]);
+    expect(selected.slice(5, 8)).toEqual(Array(3).fill(selected.at(-1)));
+    expect(selected[8]).toBe(6);
     await expect(stat(archiveDirectory)).rejects.toMatchObject({ code: "ENOENT" });
     expect(await readFile(file, "utf8")).toBe(original);
   } finally {
