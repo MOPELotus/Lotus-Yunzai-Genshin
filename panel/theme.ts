@@ -2,7 +2,6 @@ import { randomInt } from "node:crypto";
 import { constants } from "node:fs";
 import { open, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 import { loadImage } from "skia-canvas";
 import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
@@ -19,10 +18,9 @@ export type Picture = Awaited<ReturnType<typeof loadImage>>;
 type PortraitAvatar = Pick<PanelAvatar, "id" | "name" | "costume">;
 export interface PanelTheme extends PanelCatalog {
   readonly resourceRoot?: string;
-  readonly galleryPortraitUrl?: (avatar: PortraitAvatar, special?: boolean) => Promise<string | undefined>;
   readonly metadata?: (...parts: string[]) => Promise<Json>;
   readonly weaponNames?: () => Promise<readonly Readonly<Record<string, string>>[]>;
-  readonly galleryPortrait?: (avatar: PortraitAvatar) => Promise<Picture | undefined>;
+  readonly galleryPortrait?: (avatar: PortraitAvatar, special?: boolean) => Promise<Picture | undefined>;
   readonly picture: (...parts: string[]) => Promise<Picture | undefined>;
 }
 
@@ -135,17 +133,13 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
       while (candidates.length) {
         const [file] = candidates.splice(randomInt(candidates.length), 1);
         const image = await galleryImage(file!);
-        if (image) return { image, file: file! };
+        if (image) return image;
       }
     }
   }
   return {
     characters, artifacts, artifactSets, resourceRoot: installed,
-    async galleryPortrait(avatar) { return (await gallery(avatar))?.image; },
-    async galleryPortraitUrl(avatar, special) {
-      const verified = await gallery(avatar, special);
-      return verified && pathToFileURL(verified.file).href.replaceAll("(", "%28").replaceAll(")", "%29");
-    },
+    galleryPortrait: gallery,
     async weaponNames() {
       const file = join(root, "meta-gs", "weapon", "alias.js");
       try {

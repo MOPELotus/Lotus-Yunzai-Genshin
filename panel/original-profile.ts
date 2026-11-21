@@ -1,8 +1,6 @@
 import { access } from "node:fs/promises";
-import { join, sep } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { markGeneratedImage } from "@lotus-yunzai/skia/generated-image";
-import { renderTemplate } from "../../../lib/renderer/shotium.ts";
+import { join } from "node:path";
+import { drawOriginalProfile } from "./original-profile-skia.ts";
 import { scorePanelArtifacts } from "./artifact-score.ts";
 import { readOriginalPanelNumbers, readOriginalWeapon, type DamageSummary } from "./damage.ts";
 import { artifactStatRecord, object, text, whole, type DisplayedTalentLevels, type PanelAvatar, type PanelSnapshot } from "./model.ts";
@@ -10,8 +8,6 @@ import { attrPct, basicNum } from "./miao/artifact-tables.js";
 import { panelTalentLevels, panelTalentThresholds, travelerIds } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 
-const template = fileURLToPath(new URL("./original/profile-detail.html", import.meta.url));
-const layout = fileURLToPath(new URL("./original/elem.html", import.meta.url));
 const percent = new Set(["hp", "atk", "def", "cpct", "cdmg", "recharge", "heal", "dmg",
   "pyro", "hydro", "electro", "cryo", "anemo", "geo", "dendro", "phy"]);
 const keys = ["hp", "atk", "def", "mastery", "cpct", "cdmg", "recharge", "dmg"] as const;
@@ -61,7 +57,7 @@ function formatStats(avatar: PanelAvatar, stats: Awaited<ReturnType<typeof readO
 }
 function formatWeapon(avatar: PanelAvatar, displayWeapon: Awaited<ReturnType<typeof readOriginalWeapon>>, alias?: string) {
   const gear = avatar.weapon;
-  if (!gear) return { attrs: {} };
+  if (!gear) return;
   const data = displayWeapon?.weapon;
   const affix = object(data?.affixData);
   const datas = object(affix?.datas);
@@ -115,7 +111,7 @@ function formatArtifacts(avatar: PanelAvatar, { rating, missing }: Awaited<Retur
     .map(([key, value]) => ({ ...roll({ key, value }), eff: number(efficiency(key, value) / 0.85) }));
   return {
     artis: artifacts, mark: rating ? number(rating.total) : "—", markClass: rating?.rank ?? "",
-    classTitle: rating?.title ?? missing, allAttr: [...allAttr, ...Array.from({ length: 9 - allAttr.length }, () => ({}))],
+    classTitle: rating?.title ?? missing, allAttr,
     charWeight: Object.fromEntries(Object.entries(rating?.weights ?? {}).map(([key, weight]) => [key, weight.weight])),
   };
 }
@@ -125,9 +121,6 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
 }: { readonly damage?: DamageSummary; readonly change?: string; readonly displayedTalent?: DisplayedTalentLevels } = {}) {
   if (!theme.resourceRoot) return;
   const root = theme.resourceRoot;
-  await access(join(root, "character", "profile-detail.css"));
-  await access(join(root, "common", "common.css"));
-  const url = pathToFileURL(root + sep).href;
   const traveler = travelerIds.has(avatar.id);
   const meta = object(theme.characters[avatar.id]);
   const paths = ["meta-gs", "character", traveler ? "旅行者" : avatar.name];
@@ -142,12 +135,13 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
     [a, e, q].every(level => level?.original === 10);
   const candidates = [...(superBuild ? ["splash0.webp"] : []), ...(avatar.costume ? ["splash2.webp"] : []), "splash.webp", "gacha.webp"];
   const splashRoot = ["meta-gs", "character", avatar.name, "imgs"];
-  let costumeSplash = await theme.galleryPortraitUrl?.(avatar, superBuild);
-  if (!costumeSplash) {
+  const gallerySplash = await theme.galleryPortrait?.(avatar, superBuild);
+  let costumeSplash: string | undefined;
+  if (!gallerySplash) {
     for (const file of candidates) {
       const path = resource(...splashRoot, file);
       if (path && await access(join(root, ...splashRoot, file)).then(() => true, () => false)) {
-        costumeSplash = url + path;
+        costumeSplash = path;
         break;
       }
     }
@@ -159,17 +153,13 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
   };
   const gameWeapon = weapon?.weaponType || text(meta?.weapon);
   return {
-    tplFile: template, scale: 4, imgType: "png" as const, sys: { scale: "" }, elemLayout: layout,
-    _res_path: url, copyright: "Lotus-Yunzai",
-    _imgUrl: (path: string | undefined) => path ?? "",
-    uid: snapshot.uid, game: "gs", elem: avatar.elem, mode: "profile", bodyClass: `char-${avatar.name}`, changeProfile: change,
-    data: { name: avatar.name, abbr: text(meta?.abbr) || avatar.name, cons: avatar.cons,
+    scale: 4, uid: snapshot.uid, elem: avatar.elem, changeProfile: change,
+    data: { name: avatar.name, abbr: text(meta?.abbr) || avatar.name, cons: avatar.cons ?? 0,
       level: avatar.level, talent: { a, e, q }, dataSource: sourceNames[avatar._source] ?? avatar._source,
       updateTime: avatar._time ? new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai", dateStyle: "short", timeStyle: "short" }).format(avatar._time) : "",
-      costumeSplash, imgs: { a: gameWeapon ? resource("common", "item", `atk-${gameWeapon}.webp`) : "",
+      costumeSplash, gallerySplash, imgs: { a: gameWeapon ? resource("common", "item", `atk-${gameWeapon}.webp`) : "",
         e: talentIcon("e"), q: talentIcon("q"),
-        ...Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`cons${i + 1}`, consIcon(i + 1)])),
-      },
+      }, constellations: Array.from({ length: 6 }, (_, i) => consIcon(i + 1)),
       weapon: formatWeapon(avatar, weapon, avatar.weapon ? aliases?.[1]?.[avatar.weapon.name] : undefined),
     },
     attr: formatStats(avatar, stats), artisDetail: formatArtifacts(avatar, rating, allArtifacts),
@@ -180,7 +170,6 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
 export async function renderOriginalProfile(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme,
   options: Parameters<typeof originalProfileData>[3]) {
   const data = await originalProfileData(snapshot, avatar, theme, options);
-  const images = data && await renderTemplate(data, true);
-  if (!images || !images[0]) throw new Error("原神原版面板渲染失败。");
-  return { png: markGeneratedImage(images[0]) };
+  if (!data) throw new Error("原神原版面板资源不可用。");
+  return drawOriginalProfile(data, theme);
 }

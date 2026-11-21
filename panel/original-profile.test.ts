@@ -1,18 +1,14 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PanelAvatar } from "./model.ts";
 import { originalProfileData } from "./original-profile.ts";
 import type { PanelTheme } from "./theme.ts";
 
-test("原角色模板还原展柜旧档的基础属性、武器精炼和圣遗物评分", async () => {
+test("原角色面板从展柜旧档恢复基础属性、武器精炼和圣遗物评分", async () => {
   const root = await mkdtemp(join(tmpdir(), "lotus-profile-template-"));
   try {
-    for (const [dir, file] of [["character", "profile-detail.css"], ["common", "common.css"]]) {
-      await mkdir(join(root, dir!));
-      await writeFile(join(root, dir!, file!), "");
-    }
     const id = 10000002, uid = "100000001", name = "神里绫华", weapon = "雾切之回光";
     const role = { name, abbr: "绫华", weapon: "sword", talentCons: { e: 5, q: 3 },
       attr: { keys: ["hp", "atk", "def", "cdmg"], details: {
