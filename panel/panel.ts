@@ -284,11 +284,15 @@ export function createGenshinPanelQuery(
     if (materialDay?.selected === 7) return "周日全部天赋与武器突破素材均开放。";
     const { profileId } = selection;
     const reload = command?.type === "reload";
-    const training = command?.type === "statistics" && !command.theaterMonth && !command.talentStatistics &&
+    const canReadRoster = command?.type === "statistics" && !command.theaterMonth &&
       typeof client.fetchGenshinPersonalRecord === "function";
+    const talentRoster = canReadRoster && !!command?.talentStatistics;
+    const training = canReadRoster && !talentRoster;
+    const ownConversation = !context.isDelegated && (context.message_type === "group" || context.message_type === "private");
+    const readRoster = training || talentRoster && ownConversation;
     if (reload && profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
-    if ((materialDay || training) && context.privateCredentialSignal?.aborted) return;
-    if (training && (context.isDelegated || (context.message_type !== "group" && context.message_type !== "private"))) {
+    if ((materialDay || readRoster) && context.privateCredentialSignal?.aborted) return;
+    if (training && !ownConversation) {
       return "请在本人 QQ 会话查看原神练度。";
     }
     if (materialDay && context.isDelegated) return "请在本人 QQ 会话查看原神素材。";
@@ -303,7 +307,11 @@ export function createGenshinPanelQuery(
       const publicOnly = explicit && (!selected || selected.uid !== explicit);
       const publicUid = publicOnly ? explicit : undefined;
       let publicGeneration: Awaited<ReturnType<typeof showcase.baseline>> | undefined;
-      const owned = reload || materialDay || training ? await ownedGenshinRole(profiles, qq, profileId) : undefined;
+      const owned = reload || materialDay || readRoster ? await ownedGenshinRole(profiles, qq, profileId).catch(error => {
+        if (talentRoster && error instanceof ProfileError && (error.code === "login-required" || error.code === "role-missing" ||
+          error.code === "invalid")) return undefined;
+        throw error;
+      }) : undefined;
       const source = publicUid ? undefined : owned?.source ?? await profiles.requestContext(qq, profileId, "gs").catch(error => {
         if (command?.type !== "update" && error instanceof ProfileError && error.code === "login-required") return undefined;
         throw error;
@@ -318,7 +326,7 @@ export function createGenshinPanelQuery(
       async function check(revision?: string) {
         if (revision !== undefined) expected = revision;
         signal.throwIfAborted();
-        if (materialDay || publicRead || training) context.privateCredentialSignal?.throwIfAborted();
+        if (materialDay || publicRead || readRoster) context.privateCredentialSignal?.throwIfAborted();
         if (trainingDiscardedAt !== undefined && await store.discardedAt(qq, uid) !== trainingDiscardedAt) {
           throw new ProfileError("changed", "原神面板已删除。");
         }
@@ -395,7 +403,7 @@ export function createGenshinPanelQuery(
           refreshes.delete(key);
         }
       } else if (type !== "reload") {
-        if (training) trainingDiscardedAt = await store.discardedAt(qq, uid);
+        if (readRoster && owned) trainingDiscardedAt = await store.discardedAt(qq, uid);
         snapshot = publicUid ? undefined : await store.readPanel(qq, uid, assets, type === "statistics" || type === "daily-materials", talentAccount);
         if (publicRead) {
           const disclosed = await (async () => {
@@ -409,7 +417,7 @@ export function createGenshinPanelQuery(
           });
           snapshot = mergeGenshinShowcase(snapshot, disclosed);
         }
-        if (training && owned && trainingDiscardedAt !== undefined) {
+        if (owned && trainingDiscardedAt !== undefined) {
           const credentialSignal = context.privateCredentialSignal
             ? AbortSignal.any([signal, context.privateCredentialSignal]) : signal;
           snapshot = await trainingRoster(owned.source, owned.accountId, assets, snapshot, trainingDiscardedAt,
@@ -678,7 +686,7 @@ ${avatars.map(avatar => avatar.name).join("、")}`;
       }
       return [];
     } catch (error) {
-      if (signal.aborted || (materialDay || training || command?.type === "list" || command?.type === "detail") && context.privateCredentialSignal?.aborted) return;
+      if (signal.aborted || (materialDay || readRoster || command?.type === "list" || command?.type === "detail") && context.privateCredentialSignal?.aborted) return;
       if (error instanceof ProfileError) {
         if (error.code === "changed") return "原神面板档案已变化，请重新查询。";
         if (error.code === "missing" || error.code === "login-required") return `请先登录 profile ${profileId}。`;

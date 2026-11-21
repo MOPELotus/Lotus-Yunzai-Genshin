@@ -145,8 +145,8 @@ test("正在读取时换绑或删除面板不会写入自动名册或输出旧�
   });
   expect(await query("#练度统计3", context)).toContain("档案已变化");
   switchAccount = false;
-  expect(await query("#练度统计3", context)).toContain("档案已变化");
-  expect(await query("#练度统计3", context)).toContain("本地暂无");
+  expect(await query("#四星天赋列表 档案3", context)).toContain("档案已变化");
+  expect(await query("#四星天赋列表 档案3", context)).toContain("本地暂无");
   expect(renders).toBe(0);
   expect(records).toBe(2);
 }));
@@ -178,4 +178,55 @@ test("失败后仅允许读取同一登录账户的旧自动名册", async () =>
   await writeFile(profilePath, Bun.YAML.stringify(login("900000002","fresh")));
   expect(typeof await query("#练度统计3", context)).toBe("string");
   expect(renders).toBe(2);
+}));
+
+test("天赋列表首次读取同档名册，续接过期 Cookie 后按稀有度筛选", async () => fixture(async root => {
+  const profiles = join(root, "profiles");
+  const archive = join(root, "panels");
+  await mkdir(profiles);
+  const profilePath = join(profiles, "42-3.yaml");
+  await writeFile(profilePath, Bun.YAML.stringify(login()));
+  const store = createProfileStore(profiles);
+  const trace: string[] = [];
+  let exchanges = 0;
+  const client = createHoyoClient(async (input, options) => {
+    const url = new URL(input);
+    const part = url.pathname.split("/").at(-1)!;
+    const query = options?.body ? JSON.parse(String(options.body)) : undefined;
+    trace.push(part);
+    expect(url.searchParams.get("role_id") ?? query?.role_id).toBe(uid);
+    if (part === "index") return Response.json({ retcode: 0, data: { uid } });
+    if (part === "list") return Response.json({ retcode: 0, data: { list: [{ id: amber.id }, { id: furina.id }] } });
+    if (new Headers(options?.headers).get("Cookie")?.includes("cookie_token=old")) return Response.json({ retcode: -100 });
+    return Response.json({ retcode: 0, data: { list: [amber, furina].filter(row => query.character_ids.includes(row.id)).map(base => ({
+      base, skills: [1, 2, 3].map(skill_id => ({ skill_id, skill_type: 1, level_original: 5 })),
+    })) } });
+  }, { profiles: store, async exchange() {
+    exchanges++;
+    return { ...login(accountId, "fresh").account, ltuid: accountId, ltoken: "isolated-test" };
+  } });
+  const query = createGenshinPanelQuery(store, client, lockFile, new AbortController().signal, {
+    archiveDirectory: archive, legacyDirectory: join(root, "legacy"), theme: async () => themes,
+    render: { async list() { throw Error("天赋应单独出图"); }, async detail() { throw Error("天赋应单独出图"); },
+      async statistics(_snapshot, rows, _theme, options) {
+        expect(rows.map(row => [row.avatar.id, row.talents.map(t => t?.original)])).toEqual([[amber.id, [5, 5, 5]]]);
+        expect(options?.talentTitle).toContain("四星");
+        return { png: Uint8Array.of(1) };
+      } },
+  });
+  const message = "#四星天赋列表 档案3";
+  const localReply = `UID ${uid} 本地暂无原神角色面板，请先使用 #更新面板3。`;
+  expect(await query(message, { ...context, isDelegated: true })).toBe(localReply);
+  expect(await query(message, { ...context, privateCredentialSignal: AbortSignal.abort() })).toBeUndefined();
+  expect(trace).toEqual([]);
+  expect(await query(message, context)).toEqual({ type: "image", file: Uint8Array.of(1) });
+  expect(trace.splice(0)).toEqual(["index", "list", "detail", "detail"]);
+  expect(exchanges).toBe(1);
+  const stored = await Bun.file(join(archive, "statistics-roster", "42", uid + ".json")).json();
+  expect(stored.accountId).toBe(accountId);
+  expect(stored.snapshot.avatars[String(amber.id)].talent).toEqual({ a: 5, e: 5, q: 5 });
+  expect(await Bun.file(join(archive, "42", uid + ".json")).exists()).toBe(false);
+  await writeFile(profilePath, Bun.YAML.stringify({ ...login(), account: { ...login().account, cookie: "", stoken: "" } }));
+  expect(await query(message, context)).toBe(localReply);
+  expect(trace).toEqual([]);
 }));
