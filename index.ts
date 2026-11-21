@@ -1,4 +1,5 @@
 import { createGenshinMonthlyArchive } from "./monthly-archive.ts";
+import { createGenshinStatisticsQuery, matchGenshinStatistics } from "./monthly-statistics-command.ts";
 import { createGenshinMonthlyQuery, matchGenshinMonthly } from "./monthly-command.ts";
 import { createDamageSettingsCommand, matchDamageSettingsCommand } from "./panel/lolomi/settings-command.ts";
 import { createPanelImageCommands, panelImageCommand } from "./panel/image-commands.ts";
@@ -118,6 +119,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const monthlyArchive = createGenshinMonthlyArchive(Bun.env.LOTUS_GENSHIN_MONTHLY_DIR?.trim() || monthlyDirectory,
     Bun.env.LOTUS_GENSHIN_LEGACY_MONTHLY_DIR?.trim() || legacyMonthlyDirectory, lockFile);
   const monthly = createGenshinMonthlyQuery(profiles, client, signal, { archive: monthlyArchive });
+  const monthlyStatistics = createGenshinStatisticsQuery(profiles, client, monthlyArchive, signal);
   const sevenSaintsDecks = createSevenSaintsDeckQuery(profiles, client, signal);
   const panelArchive = createGenshinPanelArchive(lockFile);
   const teamDamage = createTeamDamageQuery(profiles, panelArchive, signal);
@@ -264,6 +266,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     gachaUpdate,
     fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      if (matchGenshinStatistics(message)) return ["[genshin] 原石统计"];
       if (matchGenshinMonthly(message)) return ["[genshin] 原石札记"];
       if (matchSevenSaintsCollection(message)) return ["[genshin] 七圣召唤收藏"];
       if (matchSevenSaintsDecks(message)) return ["[genshin] 七圣召唤牌组"];
@@ -287,6 +290,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     },
     async fallback(_message: string, context: GachaContext) {
       if (matchGenshinPanelDiscard(context.normalizedMessage)) return panel(context.normalizedMessage, context);
+      const statistics = matchGenshinStatistics(context.normalizedMessage);
+      if (statistics) return monthlyStatistics(statistics, context);
       const diary = matchGenshinMonthly(context.normalizedMessage);
       if (diary) return monthly(diary, context);
       const sevenSaints = matchSevenSaintsDecks(context.normalizedMessage) ?? matchSevenSaintsCollection(context.normalizedMessage);
