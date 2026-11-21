@@ -9,6 +9,9 @@ const versionPattern = "\\d{1,6}(?:\\.\\d{1,6}){1,5}";
 const versionCommand = new RegExp(`^#(?:原神)?(${versionPattern})(上半|下半)?卡池$`, "u");
 const versionToken = new RegExp(`^${versionPattern}$`, "u");
 const itemCommand = /^#(原神)?([^#]{1,64}?)卡池(详情|详细)?$/u;
+const reprintCommand = /^#(原神)?([^\s#]{1,64}?)复刻$/u;
+const permanentCharacters = new Set(["安柏", "凯亚", "丽莎", "刻晴", "莫娜", "七七", "迪卢克", "琴", "提纳里", "迪希雅", "梦见月瑞希"]);
+const mixedNames = new Map([["2024-03-13", "晨风之诗"], ["2025-01-21", "玉岩之忆"]]);
 const halfOrder = { 下半: 1, 上半: 0, 中场: 0, "": 0 } as const;
 const groups = [
   { key: "char5", type: "character", star: 5, title: "五星角色" },
@@ -24,8 +27,8 @@ type Half = keyof typeof halfOrder;
 type ItemType = typeof groups[number]["type"];
 type PoolGroups = Readonly<Record<typeof groups[number]["key"], readonly string[]>>;
 type PoolTimes = { readonly from: string; readonly to: string; readonly startedAt?: number; readonly endedAt?: number };
-type Period = PoolTimes & { readonly version: string; readonly half: Half; readonly membership: PoolGroups; readonly isMix: boolean };
-type Item = { readonly name: string; readonly abbr?: string; readonly img?: string; readonly star?: 4 | 5 };
+type Period = PoolTimes & { readonly version: string; readonly half: Half; readonly membership: PoolGroups; readonly isMix: boolean; readonly name?: string };
+type Item = { readonly name: string; readonly id?: number | string; readonly abbr?: string; readonly img?: string; readonly star?: 4 | 5 };
 type CardGroup = { readonly title: string; readonly star: 4 | 5; readonly rows: readonly (readonly Item[])[] };
 type CardPool = { readonly version: string; readonly half: Half; readonly from: string; readonly to: string;
   readonly isMix: boolean; readonly groups: readonly CardGroup[] };
@@ -58,6 +61,13 @@ export function matchGenshinPublicPool(input: string): GenshinPoolQuery | undefi
   return { type: "item", name, explicitlyGenshin: !!item[1], full: !!item[3] };
 }
 
+export function matchGenshinReprint(input: string) {
+  const match = reprintCommand.exec(input.trim());
+  const name = match?.[2];
+  if (!safeName(name) || /^(?:原神|星铁|星穹铁道|绝区零|崩坏)/u.test(name)) return;
+  return { name, explicit: !!match?.[1] };
+}
+
 function timestamp(raw: string): number | undefined {
   const direct = genshinGachaTimestamp(raw);
   if (direct !== undefined) return direct;
@@ -86,7 +96,9 @@ function period(input: unknown, isMix: boolean, names: (name: string, type: Item
     weapon5: roster(row.weapon5, "weapon"), weapon4: roster(row.weapon4, "weapon"),
   };
   if (groups.some(({ key }) => membership[key].length > 0)) {
-    return { version: row.version, half: (row.half ?? "") as Half, membership, isMix, ...times(row.from, row.to) };
+    const schedule = times(row.from, row.to);
+    const name = safeName(row.name) ? row.name : isMix ? mixedNames.get(schedule.from.slice(0, 10)) : undefined;
+    return { version: row.version, half: (row.half ?? "") as Half, membership, isMix, ...schedule, name };
   }
 }
 
@@ -154,11 +166,50 @@ export function resolveGenshinCatalogTarget(query: string, sources: GenshinCatal
   return matched[0];
 }
 
+function poolHistory(sources: PublicPoolSources) {
+  const names = canonicalPoolNames(sources);
+  return [...sources.regular.map(row => period(row, false, names)), ...sources.mixed.map(row => period(row, true, names))]
+    .filter((row): row is Period => row !== undefined);
+}
+
+function legacyReprintStatus(period: Period, now: number) {
+  const { startedAt, endedAt } = period;
+  if (startedAt === undefined || endedAt === undefined) return "暂无法确认复刻时间。";
+  const chinaDay = (time: number) => Math.floor((time + 8 * 3_600_000) / dayMs);
+  const today = chinaDay(now);
+  const until = chinaDay(endedAt) - today;
+  if (until < 0) return `${-until}天未复刻`;
+  const before = chinaDay(startedAt) - today;
+  if (before > 0) return `下期UP，还有${before}天开启卡池`;
+  return `当期UP，${until ? `还有${until}天` : "今天"}结束卡池`;
+}
+
+export function buildGenshinReprint(query: NonNullable<ReturnType<typeof matchGenshinReprint>>, sources: PublicPoolSources, now: number) {
+  const history = poolHistory(sources);
+  const roleAlias = query.name.replace(/老婆|老公|(18|[1-9])[0-9]{8}/gu, "");
+  const roleID = /^\d{8}$/u.test(roleAlias) ? [...sources.characters.values()].find(item => String(item.id) === roleAlias)?.name : undefined;
+  const role = roleAlias && resolveGenshinCatalogTarget(roleID ?? roleAlias, sources, history);
+  const item = role && role !== "ambiguous" && role.type === "character" ? role : resolveGenshinCatalogTarget(query.name, sources, history);
+  if (item === "ambiguous") return "有多个原神角色或武器匹配，请使用完整名称查询复刻。";
+  if (!item) return query.explicit ? `未找到 ${query.name} 的复刻信息。` : undefined;
+  if (item.type === "character" && permanentCharacters.has(item.name)) return "常驻角色不支持查询";
+  const matched = history.filter(pool => groups.some(group => group.type === item.type && pool.membership[group.key].includes(item.name)))
+    .sort((a, b) => (b.startedAt ?? -Infinity) - (a.startedAt ?? -Infinity) || (a.endedAt ?? Infinity) - (b.endedAt ?? Infinity));
+  if (!matched.length) return query.explicit ? `未找到 ${item.name} 的复刻信息。` : undefined;
+  const pools = matched.map(({ version, half, name, from, to, membership, isMix }) => {
+    const featured = (star: 4 | 5) => groups.filter(group => group.star === star && (isMix || group.type === item.type))
+      .flatMap(({ key }) => membership[key]).join("，");
+    const five = featured(5), four = featured(4);
+    return [`所属版本：${version}${half ? ` ${half}` : ""}${isMix ? " · 集录" : ""}`,
+      name && `卡池名称：${name.replaceAll("|", "，")}`, five && `五星UP：${five}`, four && `四星UP：${four}`,
+      `开始时间：${from}`, `结束时间：${to}`].filter(Boolean).join("\n");
+  });
+  return { type: "forward" as const, nodes: [`${item.name}卡池详情`, legacyReprintStatus(matched[0]!, now), ...pools] };
+}
+
 export function buildGenshinPublicPool(query: Exclude<GenshinPoolQuery, { type: "help" }>, sources: PublicPoolSources,
   now: number): GenshinPoolModel | { readonly message: string } | undefined {
-  const names = canonicalPoolNames(sources);
-  const history = [...sources.regular.map(row => period(row, false, names)), ...sources.mixed.map(row => period(row, true, names))]
-    .filter((row): row is Period => row !== undefined);
+  const history = poolHistory(sources);
   const item = query.type === "item" ? resolveGenshinCatalogTarget(query.name, sources, history) : undefined;
   if (item === "ambiguous") return { message: "有多个原神角色或武器匹配，请使用完整名称查询卡池。" };
   if (query.type === "item" && !item && !query.explicitlyGenshin) return;

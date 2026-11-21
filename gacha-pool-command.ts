@@ -1,6 +1,7 @@
 import { renderGachaPoolCard } from "@lotus-yunzai/skia/gacha-pool";
 import { genshinGachaThemeDirectory, readGenshinPublicPoolSources } from "./gacha-detail-source.ts";
-import { buildGenshinPublicPool, matchGenshinPublicPool, pageGenshinPublicPools, type PublicPoolSources } from "./gacha-pool.ts";
+import { buildGenshinPublicPool, buildGenshinReprint, matchGenshinPublicPool, matchGenshinReprint, pageGenshinPublicPools,
+  type PublicPoolSources } from "./gacha-pool.ts";
 
 const help = [
   "历史卡池查询",
@@ -18,8 +19,16 @@ export function createGenshinPublicPoolQuery(signal: AbortSignal, {
 }: { readonly loadSources?: (directory: string) => Promise<PublicPoolSources>; readonly render?: Render;
   readonly now?: () => number } = {}) {
   return async (message: string) => {
+    if (signal.aborted) return;
+    const reprint = matchGenshinReprint(message);
+    if (reprint) {
+      const sources = await loadSources(genshinGachaThemeDirectory()).catch(() => undefined);
+      if (signal.aborted) return;
+      if (!sources) return reprint.explicit ? "当前无法读取原神历史卡池资料。" : undefined;
+      return buildGenshinReprint(reprint, sources, now());
+    }
     const query = matchGenshinPublicPool(message);
-    if (!query || signal.aborted) return;
+    if (!query) return;
     if (query.type === "help") return help;
     const themeDirectory = genshinGachaThemeDirectory();
     const model = await loadSources(themeDirectory).then(sources => buildGenshinPublicPool(query, sources, now())).catch(() =>
