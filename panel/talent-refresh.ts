@@ -13,7 +13,7 @@ export function matchGenshinTalentRefresh(message: string) {
   return match ? { profileId: Number(match[1] ?? 1) } : undefined;
 }
 
-function skills(row: Json, avatar: PanelAvatar, meta: Json) {
+export function fetchedTalentLevels(row: Json, avatar: PanelAvatar, meta: Json) {
   const base = object(row.base);
   const id = avatarId(base?.id);
   const inferredElement = !travelerIds.has(avatar.id) ? panelElement(meta.elem) : "";
@@ -99,7 +99,7 @@ export function createGenshinTalentRefresh(profiles: GenshinRoleProfiles, client
           const meta = id && object(assets.characters[id]);
           if (!avatar || !meta || !characterIds.includes(avatar.id) || !canRefreshTalent(avatar) ||
             avatar.elem !== before?.avatars[avatar.id]?.elem || (avatar._time ?? latest?._profile ?? 0) > observedAt) return [];
-          const levels = skills(row, avatar, meta);
+          const levels = fetchedTalentLevels(row, avatar, meta);
           if (!Object.keys(levels).length) return [];
           return [[avatar.id, { element: avatar.elem,
             levels: Object.fromEntries(Object.entries(levels).map(([k, value]) => [k, { value, observedAt }])) }]];

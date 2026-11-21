@@ -20,6 +20,9 @@ export interface DailyMaterialGroup {
   readonly items: readonly DailyMaterialItem[];
 }
 const talentCaps = [1, 2, 4, 6, 8, 10];
+export function dailyMaterialTalentCap(promotion?: number) {
+  return promotion === undefined ? undefined : talentCaps[promotion - 1] ?? 10;
+}
 const styles = { talent: talentSchedule, weapon: weaponSchedule };
 
 export async function buildDailyMaterials(snapshot: PanelSnapshot, theme: PanelTheme, day: number, signal?: AbortSignal) {
@@ -64,7 +67,7 @@ export async function buildDailyMaterials(snapshot: PanelSnapshot, theme: PanelT
       theme.metadata?.("meta-gs", "character", ...path, "data.json"), details,
     ]);
     if (character?.name === (travelerIds.has(avatar.id) ? "旅行者" : avatar.name)) {
-      const cap = avatar.promote === undefined ? undefined : talentCaps[avatar.promote - 1] ?? 10;
+      const cap = dailyMaterialTalentCap(avatar.promote);
       const max = cap !== undefined && talents.every(talent => talent && talent.original >= cap);
       const score = avatar.level * 10 ** 6 + (star ?? 0) * 10 ** 4 + (avatar.cons ?? 0) * 100 + (avatar.id - 10000000);
       add("talent", text(object(character.materials)?.talent), { owner, max, score: score - (max ? 10 ** 8 : 0) });

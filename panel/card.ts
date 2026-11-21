@@ -188,7 +188,7 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
       });
       y += groupHeight + 14;
     });
-    label(ctx, "仅显示已装备的武器 · 使用 #更新面板 更新本地资料", 16, height - 23, 12, muted, 532);
+    label(ctx, "仅显示已装备的武器 · 资料来自当前档案", 16, height - 23, 12, muted, 532);
     label(ctx, "Lotus-Yunzai", 683, height - 23, 11, muted, 100, "right");
   }, mode, 1.1);
 }

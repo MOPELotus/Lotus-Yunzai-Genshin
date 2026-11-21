@@ -86,11 +86,13 @@ export interface PanelAvatar {
   readonly artis: Readonly<Record<string, PanelArtifact>>;
   readonly _source: string;
   readonly _time?: number;
+  readonly _talent?: number;
   readonly _lotus?: { readonly properties?: readonly PanelProperty[] };
 }
 export interface PanelSnapshot {
   readonly uid: string;
   readonly _profile?: number;
+  readonly _mys?: number;
   readonly avatars: Readonly<Record<string, PanelAvatar>>;
 }
 
@@ -420,10 +422,10 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
     if (selection) return { ...selection, theaterMonth: theater[1] };
     return;
   }
-  const materials = /^#(?:原神)?((?:每日|我的|今日|今天|明日|明天|周[1-7一二三四五六日天])*)(?:素材|材料)\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
-  if (materials) {
-    const selection = statisticsCommand(materials[2]);
-    const markers = materials[1] ?? "";
+  const materials = /^#(?:原神)?((?:每日|我的|今日|今天|明日|明天|周[1-7一二三四五六日天])*)(素材|材料|天赋)\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
+  if (materials && (materials[2] !== "天赋" || materials[1]?.includes("每日"))) {
+    const [, markers = "", , target] = materials;
+    const selection = statisticsCommand(target);
     const day = /周[1-7一二三四五六日天]/u.exec(markers)?.[0] ?? /明日|明天/u.exec(markers)?.[0];
     if (selection) return { ...selection, type: "daily-materials", materialDay: statisticsDay(day) ?? "today" };
     return;
@@ -665,10 +667,13 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
       star: whole(row.star ?? meta?.star, 5), cons: whole(row.cons, 6), promote: readCharacterPromotion(level, row.promote),
       costume: whole(row.costume, 999_999), fetter: whole(row.fetter, 10), talent: talent(object(row.talent)),
       weapon: weapon(object(row.weapon)), artis, _source: basicRosterEntry || archiveSources.has(source) ? source : "local",
-      _time: whole(row._time, Number.MAX_SAFE_INTEGER), _lotus: storedDetails && { properties: storedProperties(storedDetails.properties) },
+      _time: whole(row._time, Number.MAX_SAFE_INTEGER),
+      ...(isLegacy && includeMysRoster && { _talent: whole(row._talent, Number.MAX_SAFE_INTEGER) }),
+      _lotus: storedDetails && { properties: storedProperties(storedDetails.properties) },
     };
   }
-  return { uid, _profile: whole(root?._profile, Number.MAX_SAFE_INTEGER), avatars };
+  return { uid, _profile: whole(root?._profile, Number.MAX_SAFE_INTEGER),
+    ...(isLegacy && includeMysRoster && { _mys: whole(root?._mys, Number.MAX_SAFE_INTEGER) }), avatars };
 }
 
 export function artifactStatRecord(item: PanelArtifact) {
