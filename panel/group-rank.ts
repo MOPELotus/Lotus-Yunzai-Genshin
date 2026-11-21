@@ -21,8 +21,9 @@ export interface GroupRankContext {
 type Scope = { readonly bot: number; readonly group: number; readonly qq: number; readonly adapter: "milky" | "onebot" };
 type Role = Pick<GameRole, "uid" | "region" | "gameBiz">;
 type Observation = { readonly profileId: number; readonly observedAt: number; readonly role: Role; readonly avatars: Readonly<Record<string, RankAvatar>> };
-interface Row { readonly qq: number; readonly profileId: number; readonly role: Role; readonly avatar: RankAvatar }
 type BoundObservation = Observation & { readonly qq: number };
+type ObservedRole = Pick<BoundObservation, "qq" | "profileId" | "role" | "observedAt">;
+type Row = ObservedRole & { readonly avatar: RankAvatar };
 export type PanelRankMarker = { readonly rank: number; readonly mode: "damage" | "artifacts" };
 interface RankProfiles {
   describe(qq: string, id: number): Promise<{
@@ -98,7 +99,8 @@ function rankRows(rows: readonly Row[], mode: RankMode): Row[] {
 
 export function createGroupPanelRank(directory: string, profiles: RankProfiles, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
   groups = Bun.env.LOTUS_GENSHIN_PANEL_RANK_GROUPS ?? "", render = renderGroupPanelRank,
-}: { readonly groups?: string; readonly render?: Renderer } = {}) {
+  discardedAt,
+}: { readonly groups?: string; readonly render?: Renderer; readonly discardedAt?: (qq: string, uid: string) => Promise<number> } = {}) {
   const enabled = new Set(groups.split(/[\s,]+/u).filter(group => /^[1-9]\d*$/u.test(group)));
   const folder = (scope: Scope) => join(directory, scope.adapter, String(scope.bot));
   const archive = (scope: Scope) => createRoleJsonArchive(folder(scope), lockFile, {
@@ -112,6 +114,12 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
     const roles = profile.roles.gs;
     const mostRecent = roles.find(role => role.uid === profile.activeRoles.gs) ?? roles.find(role => role.chosen) ?? roles[0];
     return sameRole(row.role, publicRole(mostRecent));
+  }
+
+  async function stillCurrent(row: ObservedRole) {
+    if (!await stillBound(row)) return false;
+    const boundary = await discardedAt?.(String(row.qq), row.role.uid).catch(() => Number.POSITIVE_INFINITY);
+    return boundary === undefined || row.observedAt > boundary;
   }
 
   async function boundObservations(scope: Scope, members: ReadonlySet<number>, matches: (record: Observation) => boolean) {
@@ -129,7 +137,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       for (const observation of Object.values(records ?? {})) {
         if (!matches(observation)) continue;
         const row = { qq, ...observation };
-        if (await stillBound(row)) observations.push(row);
+        if (await stillCurrent(row)) observations.push(row);
       }
     }
     return observations;
@@ -145,10 +153,10 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       const store = archive(scope);
       const own = await store.read(String(scope.group), String(scope.qq))
         .then(input => readObservations(input, scope, scope.qq)[String(profileId)]).catch(() => undefined);
-      const ids = sameRole(role, own?.role)
-        ? characterIds.filter(id => own?.avatars[String(id)]?.damage || own?.avatars[String(id)]?.artifacts) : [];
+      const ids = own && sameRole(role, own.role) && await stillCurrent({ qq: scope.qq, ...own })
+        ? characterIds.filter(id => own.avatars[String(id)]?.damage || own.avatars[String(id)]?.artifacts) : [];
       const markers = new Map<number, PanelRankMarker>();
-      const contributors = new Map<string, Pick<Row, "qq" | "profileId" | "role">>();
+      const contributors = new Map<string, ObservedRole>();
       if (ids.length) {
         const observations = await boundObservations(scope, members, record => ids.some(id => !!record.avatars[String(id)]));
         const requesting = observations.find(row => row.qq === scope.qq && row.profileId === profileId && sameRole(role, row.role));
@@ -173,7 +181,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         if (signal.aborted) return false;
         const refreshed = await currentMembers(scope, context);
         return !signal.aborted && !!refreshed && await stillBound(owner) &&
-          (await Promise.all([...contributors.values()].map(row => refreshed.has(row.qq) && stillBound(row)))).every(Boolean);
+          (await Promise.all([...contributors.values()].map(row => refreshed.has(row.qq) && stillCurrent(row)))).every(Boolean);
       };
       return { markers, validate };
     },
@@ -187,11 +195,13 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       if (!scope || !isEnabled(scope) || !role || !isRankProfile(profileId) || !rankId(observedAt) || signal.aborted) return;
       if (!(await currentMembers(scope, context)) || !(await stillBound({ qq: scope.qq, profileId, role }))) return;
       const ranked = await projectRankAvatar(avatar, theme);
-      await archive(scope).update({ qq: String(scope.group), uid: String(scope.qq) }, verifyProfile, input => {
+      await archive(scope).update({ qq: String(scope.group), uid: String(scope.qq) }, verifyProfile, async input => {
+        const boundary = await discardedAt?.(String(scope.qq), role.uid) ?? 0;
+        if (observedAt <= boundary) return { result: undefined };
         const existing = readObservations(input, scope, scope.qq);
         const previous = existing[String(profileId)];
         if (previous && previous.observedAt > observedAt) return { result: undefined };
-        const avatars = previous && sameRole(previous.role, role) ? { ...previous.avatars } : {};
+        const avatars = previous && previous.observedAt > boundary && sameRole(previous.role, role) ? { ...previous.avatars } : {};
         if (ranked) avatars[String(avatar.id)] = ranked;
         else delete avatars[String(avatar.id)];
         if (!previous && !ranked) return { result: undefined };
@@ -217,7 +227,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       try { ({ png } = await render(character.name, mode, rows, await loadTheme())); } catch {}
       const refreshed = await currentMembers(scope, context);
       if (signal.aborted) return;
-      if (!refreshed || ranked.some(row => !refreshed.has(row.qq)) || !(await Promise.all(ranked.map(stillBound))).every(Boolean)) {
+      if (!refreshed || ranked.some(row => !refreshed.has(row.qq)) || !(await Promise.all(ranked.map(stillCurrent))).every(Boolean)) {
         return "群成员或档案已变化，请重新查询排行。";
       }
       if (signal.aborted) return;

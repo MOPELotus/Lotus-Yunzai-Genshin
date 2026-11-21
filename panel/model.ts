@@ -411,6 +411,11 @@ function profileQueryName(raw: string, knownOnly = false) {
   return { name, ...((knownOnly || name !== plain) && { knownCharacterOnly: true as const }) };
 }
 
+export function matchGenshinPanelDiscard(message: string) {
+  const match = /^#(?:原神)?(?:删除全部面板|删除面板(?:数据)?)\s*(?:([1-9]\d{8,9})(?:\s+档案\s*([1-9]\d{0,2}))?|(?:档案\s*)?([1-9]\d{0,2}))?$/u.exec(message);
+  if (match) return { uid: match[1], profileId: Number(match[2] ?? match[3] ?? 1) };
+}
+
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
   const reload = /^#(?:原神)?(?:加载|重新加载|重载)面板\s*(?:([1-9]\d{8,9})(?:\s+档案\s*([1-9]\d{0,2}))?|(?:档案\s*)?([1-9]\d{0,2}))?$/u.exec(message);
   if (reload) return { type: "reload", profileId: Number(reload[2] ?? reload[3] ?? 1), ...(reload[1] && { uid: reload[1] }) };

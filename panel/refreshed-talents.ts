@@ -42,7 +42,7 @@ export function createRefreshedTalentArchive(directory: string, lockFile: Acquir
     subject: "原神天赋", lockSuffix: "talents", maxBytes: 128 * 1024, rejectNull: true,
   });
   return {
-    async apply(qq: string, accountId: string, snapshot: PanelSnapshot): Promise<PanelSnapshot> {
+    async apply(qq: string, accountId: string, snapshot: PanelSnapshot, discardedAt = 0): Promise<PanelSnapshot> {
       const entries = await archive.read(qq, snapshot.uid).then(raw => readDocument(raw, snapshot.uid, accountId)).catch(() => ({} as Entries));
       if (!Object.keys(entries).length) return snapshot;
       const avatars = Object.fromEntries(Object.entries(snapshot.avatars).map(([id, avatar]) => {
@@ -51,7 +51,7 @@ export function createRefreshedTalentArchive(directory: string, lockFile: Acquir
         const latestPanel = avatar._time ?? snapshot._profile ?? 0;
         const refreshedTalent = Object.fromEntries(talentKeys.flatMap(key => {
           const skill = entry.levels[key];
-          return skill && skill.observedAt >= latestPanel ? [[key, skill.value]] : [];
+          return skill && skill.observedAt >= latestPanel && skill.observedAt > discardedAt ? [[key, skill.value]] : [];
         }));
         return [id, Object.keys(refreshedTalent).length ? { ...avatar, refreshedTalent } : avatar];
       }));

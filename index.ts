@@ -6,6 +6,7 @@ import { createWishCommands } from "./wish-sim/commands.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
 import { createGenshinPanelArchive, createGenshinPanelQuery } from "./panel/panel.ts";
+import { matchGenshinPanelDiscard } from "./panel/model.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
 import { createGenshinTalentRefresh, matchGenshinTalentRefresh } from "./panel/talent-refresh.ts";
 import { createTeamDamageQuery } from "./panel/team-damage.ts";
@@ -105,13 +106,15 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const achievements = createAchievementCommand(profiles, lockFile, signal);
   const client = createProfileHoyoClient(profiles);
   const sevenSaintsDecks = createSevenSaintsDeckQuery(profiles, client, signal);
-  const teamDamage = createTeamDamageQuery(profiles, createGenshinPanelArchive(lockFile), signal);
-  const refreshTalent = createGenshinTalentRefresh(profiles, client, createGenshinPanelArchive(lockFile), signal);
+  const panelArchive = createGenshinPanelArchive(lockFile);
+  const teamDamage = createTeamDamageQuery(profiles, panelArchive, signal);
+  const refreshTalent = createGenshinTalentRefresh(profiles, client, panelArchive, signal);
   const panelImages = createPanelImageCommands(lockFile, signal);
   const changeDamageSettings = createDamageSettingsCommand(signal);
   const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal);
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
-  const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal);
+  const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
+    { discardedAt: panelArchive.discardedAt });
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank });
   const sync = createGenshinGachaSync(profiles, client, history);
   const worldBossRanking = createGenshinWorldBossRanking(rankingDirectory, lockFile);
@@ -249,6 +252,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
+      if (matchGenshinPanelDiscard(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
@@ -261,6 +265,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
+      if (matchGenshinPanelDiscard(context.normalizedMessage)) return panel(context.normalizedMessage, context);
       const sevenSaints = matchSevenSaintsDecks(context.normalizedMessage) ?? matchSevenSaintsCollection(context.normalizedMessage);
       if (sevenSaints) return sevenSaintsDecks(sevenSaints, context);
       if (matchesTeamDamage(context.normalizedMessage)) return teamDamage(context.normalizedMessage, context);

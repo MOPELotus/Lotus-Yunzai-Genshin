@@ -8,7 +8,8 @@ import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunza
 import { buildArtifactList } from "./artifact-list.ts";
 import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
-import { matchBareEquipment, matchCharacterLevelChange, matchConstellationChange, matchConstellationEquipment, matchEquipmentChain, matchGenshinPanel, object, officialPanel, propertyLabels, readPanel,
+import { matchBareEquipment, matchCharacterLevelChange, matchConstellationChange, matchConstellationEquipment, matchEquipmentChain, matchGenshinPanel,
+  matchGenshinPanelDiscard, object, officialPanel, propertyLabels, readPanel,
   matchCharacterLevelCombination, matchConstellationTalent, matchNamedWeaponArtifacts, matchTalentArtifacts, matchTalentChange, matchTalentWeapon, selectAvatar, text,
   type PanelCatalog, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
@@ -30,6 +31,10 @@ const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", imp
 const previousDirectory = fileURLToPath(new URL("../../../data/PlayerData/gs/", import.meta.url));
 const limit = 8 * 1024 * 1024;
 
+function panelDiscardedAt(input: unknown): number {
+  const value = object(input)?.panelDiscardedAt;
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
+}
 
 async function oldPanel(root: string, uid: string, catalog: PanelCatalog, includeMysRoster = false): Promise<PanelSnapshot | undefined> {
   if (!/^[1-9]\d{8,9}$/u.test(uid)) throw new TypeError("原神 UID 格式无效。");
@@ -69,10 +74,24 @@ export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
   return {
     talents,
     update: store.update,
+    async discardedAt(qq: string, uid: string) {
+      return panelDiscardedAt(await store.read(qq, uid));
+    },
+    async discard(qq: string, uid: string, now: () => number, verify: () => Promise<void>) {
+      await store.update({ qq, uid }, verify, input => ({
+        document: { uid, avatars: {}, panelDiscardedAt: Math.max(now(), panelDiscardedAt(input) + 1) },
+        result: undefined,
+      }));
+    },
     readLegacy: (uid: string, catalog: PanelCatalog) => oldPanel(legacyDirectory, uid, catalog),
     async readPanel(qq: string, uid: string, catalog: PanelCatalog, includeMysRoster = false, talentAccount?: string) {
-      const snapshot = readPanel(uid, await store.read(qq, uid), catalog) ?? await oldPanel(legacyDirectory, uid, catalog, includeMysRoster);
-      return snapshot && talentAccount ? talents.apply(qq, talentAccount, snapshot) : snapshot;
+      const current = await store.read(qq, uid);
+      const discardedAt = panelDiscardedAt(current);
+      const local = readPanel(uid, current, catalog);
+      const snapshot = discardedAt
+        ? local && Object.keys(local.avatars).length ? local : undefined
+        : local ?? await oldPanel(legacyDirectory, uid, catalog, includeMysRoster);
+      return snapshot && talentAccount ? talents.apply(qq, talentAccount, snapshot, discardedAt) : snapshot;
     },
   };
 }
@@ -119,6 +138,51 @@ export function createGenshinPanelQuery(
 
   return async (message: string, context: GroupRankContext & { readonly privateCredentialSignal?: AbortSignal }): Promise<Reply | undefined> => {
     if (signal.aborted) return;
+    const discard = matchGenshinPanelDiscard(message);
+    if (discard) {
+      if (discard.profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+      if (context.isDelegated) return "请在本人 QQ 会话删除原神面板。";
+      const user = context.user_id;
+      if (!user || !Number.isSafeInteger(user) || user < 1 ||
+          (context.message_type !== "private" && context.message_type !== "group")) {
+        return "请在本人 QQ 私聊或群聊中删除原神面板。";
+      }
+      const qq = String(user);
+      const { uid: target, profileId } = discard;
+      try {
+        if (!target) {
+          const { source } = await ownedGenshinRole(profiles, qq, profileId);
+          const suffix = profileId === 1 ? "" : ` 档案${profileId}`;
+          return `你确认要删除面板数据吗？请回复 #删除面板${source.role.uid}${suffix} 以删除面板数据。`;
+        }
+        const source = await profiles.requestContext(qq, profileId, "gs", target);
+        const { role } = source;
+        if (role.uid !== target || !role.region || !role.gameBiz) {
+          throw new ProfileError("role-missing", "此 UID 未同步至当前档案。");
+        }
+        const accountId = genshinLoginAccount(source);
+        if (!accountId) throw new ProfileError("invalid", "档案的登录凭据与账号不一致。");
+        await store.discard(qq, target, now, async () => {
+          signal.throwIfAborted();
+          const latest = await profiles.requestContext(qq, profileId, "gs", target).catch(() => undefined);
+          if (!latest || latest.revision !== source.revision || genshinLoginAccount(latest) !== accountId ||
+              latest.role.uid !== target || latest.role.region !== role.region || latest.role.gameBiz !== role.gameBiz) {
+            throw new ProfileError("changed", "原神面板档案已变化。");
+          }
+          signal.throwIfAborted();
+        });
+        return `UID ${target} 的本地面板已删除，旧群面板排名已清除。`;
+      } catch (error) {
+        if (signal.aborted) return;
+        if (error instanceof ProfileError) {
+          if (error.code === "missing" || error.code === "login-required") return `请先登录 profile ${profileId}。`;
+          if (error.code === "role-missing") return "仅允许删除当前登录档案已同步的原神 UID。";
+          if (error.code === "changed") return "原神面板档案已变化，请重新确认。";
+          if (error.code === "invalid") return "原神档案的账号或登录凭据无法核验，请重新登录。";
+        }
+        return "原神面板暂时无法删除，请稍后重试。";
+      }
+    }
     const preset = matchPanelPreset(message);
     const presetDonor = (assets: PanelTheme) => async (uid: string) => {
       const code = preset?.donors.get(uid);
@@ -273,20 +337,26 @@ export function createGenshinPanelQuery(
         try {
           if (!source) throw new ProfileError("login-required", "原神面板更新需要登录。");
           if (reload) await verify();
+          const beforeDiscard = await store.discardedAt(qq, uid);
           const startedAt = now();
           const result = await client.fetchGenshinPanel(source, { signal });
           expected = result.revision;
           await verify();
           if (!result.avatars.length) return "米游社没有返回原神角色面板，原档案已保留。";
           const next = officialPanel(uid, result.avatars, assets, startedAt);
-          snapshot = await store.update({ qq, uid }, verify, async current => {
+          const nextSnapshot = await store.update({ qq, uid }, verify, async current => {
+            const discardedAt = panelDiscardedAt(current);
+            if (discardedAt !== beforeDiscard) return { result: null };
             const previous = readPanel(uid, current, assets);
             if (previous?._profile !== undefined && previous._profile >= startedAt) return { result: previous };
-            const inherited = previous ?? await store.readLegacy(uid, assets);
-            const document = { ...next, avatars: { ...inherited?.avatars, ...next.avatars } };
+            const inherited = previous ?? (discardedAt ? undefined : await store.readLegacy(uid, assets));
+            const document = { ...next, ...(discardedAt && { panelDiscardedAt: discardedAt }),
+              avatars: { ...inherited?.avatars, ...next.avatars } };
             updated = true;
             return { document, result: document };
           });
+          if (nextSnapshot === null) return "此原神面板已删除，请重新发起更新。";
+          snapshot = nextSnapshot;
         } finally {
           refreshes.delete(key);
         }
