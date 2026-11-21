@@ -3,3 +3,5 @@ rules/ is damage/lolomi-gs/, only rules and shared rule functions.
 engine/ is llm-engine/, with host dependencies bound to module-local primitives.
 data/ is llm-data/meta-gs/, numeric catalogs and effect tables. No images are shipped.
 The original Mulan PSL v2 and the more specific Yoimiya MIT notices are retained alongside these sources.
+presets/ records are derived from the four public replace/data/1/PlayerData/gs Git blobs in the same commit.
+Only the virtual preset ID and public role/equipment fields are retained. The source role aliases are from llm-data/meta-gs/character/alias.js, covered by data/LICENSE.

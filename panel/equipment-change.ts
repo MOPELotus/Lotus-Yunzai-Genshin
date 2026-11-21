@@ -56,8 +56,9 @@ async function namedWeapon(avatar: PanelAvatar, type: string, input: Extract<Equ
 }
 
 export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: PanelAvatar, change: EquipmentChangeSelection,
-  theme: PanelTheme, { constellation, displayedTalent, characterLevel }: {
+  theme: PanelTheme, { constellation, displayedTalent, characterLevel, presetDonor }: {
     constellation?: number; displayedTalent?: DisplayedTalentLevels; characterLevel?: number;
+    presetDonor?: (uid: string) => Promise<PanelSnapshot | undefined>;
   } = {}): Promise<TemporaryChange> {
   if (transient.has(avatar._source)) return { message: "临时换装需要本人已保存的原神角色面板。" };
   const meta = object(theme.characters[avatar.id]);
@@ -81,10 +82,11 @@ export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: Pane
     donors = [change, ...(change.moreDonors ?? [])];
   }
   for (const change of donors) {
-    if (change.donorUid !== undefined && change.donorUid !== snapshot.uid) {
+    const preset = change.donorUid === undefined ? undefined : await presetDonor?.(change.donorUid);
+    if (change.donorUid !== undefined && change.donorUid !== snapshot.uid && !preset) {
       return { message: "装备来源必须属于本次所选档案绑定的原神 UID。" };
     }
-    const donor = selectAvatar(snapshot, change.donor, theme);
+    const donor = selectAvatar(preset ?? snapshot, change.donor, theme);
     if (!donor || transient.has(donor._source)) {
       return { message: `此档案没有「${change.donor}」可用于换装的原神角色面板。` };
     }

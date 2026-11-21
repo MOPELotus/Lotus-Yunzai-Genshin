@@ -24,6 +24,7 @@ import { createRefreshedTalentArchive } from "./refreshed-talents.ts";
 import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
 import { readPanelTheme, type PanelTheme } from "./theme.ts";
 import { readTheaterStatisticsMonth, selectTheaterStatistics } from "./theater-statistics.ts";
+import { matchPanelPreset, presetLabel, readPanelPreset, selectPresetAvatar } from "./lolomi/presets.ts";
 
 const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
 const previousDirectory = fileURLToPath(new URL("../../../data/PlayerData/gs/", import.meta.url));
@@ -117,7 +118,61 @@ export function createGenshinPanelQuery(
 
   return async (message: string, context: GroupRankContext & { readonly privateCredentialSignal?: AbortSignal }): Promise<Reply | undefined> => {
     if (signal.aborted) return;
-    let command = matchGenshinPanel(message);
+    const preset = matchPanelPreset(message);
+    const presetDonor = (assets: PanelTheme) => async (uid: string) => {
+      const code = preset?.donors.get(uid);
+      return code && await readPanelPreset(code, assets);
+    };
+    if (preset?.target) {
+      const { command, target } = preset;
+      const label = presetLabel(target);
+      try {
+        const assets = await theme();
+        const snapshot = await readPanelPreset(target, assets);
+        signal.throwIfAborted();
+        if (command.type === "list") {
+          const pages = panelPages(snapshot);
+          const images: Image[] = [];
+          for (const [page, avatars] of pages.entries()) {
+            const { png } = await render.list(snapshot, avatars, assets, { page: page + 1, pageCount: pages.length });
+            signal.throwIfAborted();
+            images.push({ type: "image", file: png });
+          }
+          return images.length === 1 ? images[0] : { type: "forward", nodes: [label, ...images] };
+        }
+        const original = command.name && selectPresetAvatar(snapshot, command.name, assets);
+        if (!original) return `${label}暂无「${command.name}」的预设。`;
+        const changed = command.equipmentChange && await buildEquipmentChange(snapshot, original, command.equipmentChange, assets,
+          { presetDonor: presetDonor(assets) });
+        if (changed && "message" in changed) return changed.message;
+        const avatar = changed ? changed.avatar : original;
+        const change = changed ? { command: text(message), equipped: changed.equipped } : undefined;
+        const mode = command.mode ?? "profile";
+        const user = context.user_id;
+        const enemyLevel = mode === "damage" || mode === "profile"
+          ? user && Number.isSafeInteger(user) && user > 0 ? await preferences.level(String(user)) : undefined
+          : undefined;
+        const model = mode === "damage" || mode === "profile" ? await estimatePanelDamage(
+          avatar, assets, command.damageRow, enemyLevel, { includeComparison: mode === "damage" },
+        ) : undefined;
+        signal.throwIfAborted();
+        let png: Uint8Array;
+        if (mode === "damage") {
+          if (!model || "message" in model) return model?.message ?? "当前公开预设缺少伤害数据。";
+          ({ png } = await (render.damage ?? renderDamageCard)(snapshot, avatar, assets, model, { change }));
+        } else {
+          ({ png } = await render.detail(snapshot, avatar, assets, {
+            pane: mode, change, damage: model && "rows" in model ? model : undefined,
+          }));
+        }
+        signal.throwIfAborted();
+        return { type: "image", file: png };
+      } catch {
+        if (!signal.aborted) return `${label}暂时无法生成，请稍后再试。`;
+      }
+      return;
+    }
+    let command = preset?.command ?? matchGenshinPanel(message);
     if (command?.knownCharacterOnly && (!command.name || !findRankCharacter(command.name))) return;
     let preflight: PanelTheme | undefined;
     if (!command) {
@@ -340,7 +395,7 @@ export function createGenshinPanelQuery(
         const displayedTalent = command.talentChange;
         const characterLevel = command.characterLevelChange;
         const replacement = command.equipmentChange
-          ? await buildEquipmentChange(snapshot, original, command.equipmentChange, assets, { constellation, displayedTalent, characterLevel })
+          ? await buildEquipmentChange(snapshot, original, command.equipmentChange, assets, { constellation, displayedTalent, characterLevel, presetDonor: preset?.donors.size ? presetDonor(assets) : undefined })
           : characterLevel !== undefined ? buildCharacterLevelChange(original, characterLevel, assets, { constellation, displayedTalent })
             : displayedTalent ? buildTalentChange(original, displayedTalent, assets, constellation)
               : constellation !== undefined && buildConstellationChange(original, constellation, assets);
