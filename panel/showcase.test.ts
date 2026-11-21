@@ -169,14 +169,16 @@ test("public archive and local panel stay distinct across selected-role changes,
       });
       const list = await panel("#面板", own);
       expect(list).toMatchObject({ type: "image" });
-      if (!list || typeof list === "string" || list.type !== "image") throw Error("Expected panel list");
+      if (!list || typeof list === "string" || !("type" in list) || list.type !== "image") throw Error("Expected panel list");
       expect(Buffer.from(list.file).toString()).toContain(`${furina}:81`);
       expect(Buffer.from(list.file).toString()).toContain(`${ayaka}:90`);
       expect(await panel(`#面板列表${uid}`, { ...own, user_id: 43 })).toContain("暂无公开展板");
       discardedAt++;
       expect(await storage.read("42", uid, theme)).toBeUndefined();
       const afterDelete = await panel("#面板", own);
-      if (!afterDelete || typeof afterDelete === "string" || afterDelete.type !== "image") throw Error("Expected private list");
+      if (!afterDelete || typeof afterDelete === "string" || !("type" in afterDelete) || afterDelete.type !== "image") {
+        throw Error("Expected private list");
+      }
       expect(Buffer.from(afterDelete.file).toString()).toBe(`${furina}:81`);
     } finally {
       if (originalDirectory === undefined) delete Bun.env.LOTUS_GENSHIN_SHOWCASE_DIR;

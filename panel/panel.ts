@@ -6,7 +6,7 @@ import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { buildArtifactList } from "./artifact-list.ts";
-import { panelPages, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
+import { panelListOrder, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
   renderPanelList, renderPanelStatistics } from "./card.ts";
 import { matchBareEquipment, matchCharacterLevelChange, matchConstellationChange, matchConstellationEquipment, matchEquipmentChain, matchGenshinPanel,
   matchGenshinPanelDiscard, object, officialPanel, propertyLabels, readPanel,
@@ -20,6 +20,8 @@ import { buildCharacterLevelChange, buildConstellationChange, buildEquipmentChan
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import { genshinLoginAccount, ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
+import type { ReplyOptions } from "../../../lib/messages.ts";
+import { panelListColumns, PanelListImageLimitError } from "./panel-list-card.ts";
 import { renderOriginalProfile } from "./original-profile.ts";
 import { createRefreshedTalentArchive } from "./refreshed-talents.ts";
 import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
@@ -115,7 +117,7 @@ const renderDetail: Renderers["detail"] = (snapshot, avatar, theme, options) =>
     : renderPanelDetail(snapshot, avatar, theme, options);
 
 type Image = { readonly type: "image"; readonly file: Uint8Array };
-type Reply = string | Image | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] };
+type Reply = string | Image | readonly [] | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] };
 
 export function createGenshinPanelQuery(
   profiles: GenshinRoleProfiles,
@@ -140,7 +142,10 @@ export function createGenshinPanelQuery(
   const refreshes = new Set<string>();
   const dailyRefresh = createDailyMaterialRefresh(archiveDirectory, lockFile, client, now);
 
-  return async (message: string, context: GroupRankContext & { readonly privateCredentialSignal?: AbortSignal }): Promise<Reply | undefined> => {
+  return async (message: string, context: GroupRankContext & {
+    readonly privateCredentialSignal?: AbortSignal; readonly inlineImageByteLimit?: number;
+    readonly reply?: (image: Image, quote?: boolean, options?: ReplyOptions) => unknown;
+  }): Promise<Reply | undefined> => {
     if (signal.aborted) return;
     const discard = matchGenshinPanelDiscard(message);
     if (discard) {
@@ -200,14 +205,11 @@ export function createGenshinPanelQuery(
         const snapshot = await readPanelPreset(target, assets);
         signal.throwIfAborted();
         if (command.type === "list") {
-          const pages = panelPages(snapshot);
-          const images: Image[] = [];
-          for (const [page, avatars] of pages.entries()) {
-            const { png } = await render.list(snapshot, avatars, assets, { page: page + 1, pageCount: pages.length });
-            signal.throwIfAborted();
-            images.push({ type: "image", file: png });
-          }
-          return images.length === 1 ? images[0] : { type: "forward", nodes: [label, ...images] };
+          const { png } = await render.list(snapshot, panelListOrder(snapshot), assets, {
+            inlineImageByteLimit: context.inlineImageByteLimit,
+          });
+          signal.throwIfAborted();
+          return { type: "image", file: png };
         }
         const original = command.name && selectPresetAvatar(snapshot, command.name, assets);
         if (!original) return `${label}暂无「${command.name}」的预设。`;
@@ -586,35 +588,69 @@ export function createGenshinPanelQuery(
       }
 
       const selectedPanel = snapshot;
-      const pages = panelPages(selectedPanel);
+      const avatars = panelListOrder(selectedPanel, updated);
       const ranking = source ? await groupRank?.listMarkers?.(context, profileId, role,
-        pages.flatMap(avatars => avatars.map(avatar => avatar.id))).catch(() => undefined) : undefined;
-      const renderList = async (marks?: typeof ranking) => {
-        const images: Image[] = [];
-        for (const [index, avatars] of pages.entries()) {
-          const { png } = await render.list(selectedPanel, avatars, assets, {
-            updated, profileId, page: index + 1, pageCount: pages.length, rankMarkers: marks?.markers,
-          });
-          images.push({ type: "image", file: png });
+        avatars.map(avatar => avatar.id)).catch(() => undefined) : undefined;
+      const renderList = async (marks?: typeof ranking): Promise<Image[]> => {
+        const listOpts = { updated, profileId, rankMarkers: marks?.markers, rankParticipating: marks?.participating,
+          inlineImageByteLimit: context.inlineImageByteLimit };
+        try {
+          const { png } = await render.list(selectedPanel, avatars, assets, listOpts);
+          return [{ type: "image", file: png }];
+        } catch (error) {
+          if (!(error instanceof PanelListImageLimitError) || !context.reply || context.inlineImageByteLimit === undefined) throw error;
         }
-        return images;
+        const rows = Math.ceil(avatars.length / panelListColumns);
+        // Keep entire rows together and try the smallest balanced number of images first.
+        for (let pageCount = 2; pageCount <= rows; pageCount++) {
+          const images: Image[] = [];
+          try {
+            for (let page = 0; page < pageCount; page++) {
+              await verify();
+              const from = Math.ceil(page * rows / pageCount) * panelListColumns;
+              const to = Math.ceil((page + 1) * rows / pageCount) * panelListColumns;
+              const { png } = await render.list(selectedPanel, avatars.slice(from, to), assets, {
+                ...listOpts, page: page + 1, pageCount, scale: 2,
+              });
+              images.push({ type: "image", file: png });
+            }
+          } catch (error) {
+            if (error instanceof PanelListImageLimitError) continue;
+            throw error;
+          }
+          return images;
+        }
+        throw new RangeError("原神面板单行仍超过当前协议发送上限。");
       };
-      let result: Image[];
+      let images: Image[];
+      let marks = ranking;
       try {
-        result = await renderList(ranking);
-        if (ranking && !await ranking.validate().catch(() => false)) {
+        images = await renderList(marks);
+        if (marks && !await marks.validate().catch(() => false)) {
           await verify();
-          result = await renderList();
+          marks = undefined;
+          images = await renderList();
         }
       } catch {
         await verify();
         const prefix = updated ? "原神面板已更新" : "原神面板";
-        return `UID ${uid} · ${prefix} · ${Object.keys(snapshot.avatars).length} 位角色
-${Object.values(snapshot.avatars).map(avatar => avatar.name).join("、")}`;
+        return `UID ${uid} · ${prefix} · ${avatars.length} 位角色
+${avatars.map(avatar => avatar.name).join("、")}`;
       }
       await verify();
-      if (result.length === 1) return result[0]!;
-      return { type: "forward", nodes: [`UID ${uid} · 原神面板 · ${Object.keys(snapshot.avatars).length} 位角色`, ...result] };
+      if (images.length === 1) return images[0]!;
+      if (context.reply) for (const image of images) {
+        await verify();
+        if (marks && !await marks.validate().catch(() => false)) return [];
+        let delivered = false;
+        try {
+          const accepted = await context.reply(image, false, { onDelivered() { delivered = true; } });
+          if (accepted !== true || !delivered) return [];
+        } catch {
+          return [];
+        }
+      }
+      return [];
     } catch (error) {
       if (signal.aborted || (materialDay || command?.type === "list" || command?.type === "detail") && context.privateCredentialSignal?.aborted) return;
       if (error instanceof ProfileError) {

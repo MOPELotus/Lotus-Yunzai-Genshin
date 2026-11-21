@@ -2,7 +2,6 @@ import { renderGenshinCard } from "../card-render.ts";
 import { renderArtifactCard } from "./artifact-card.ts";
 import type { DamageRow, DamageSummary } from "./damage.ts";
 import type { DailyMaterialGroup } from "./daily-materials.ts";
-import type { PanelRankMarker } from "./group-rank.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
 import { panelTalentLevels, panelTalentThresholds, travelerIds } from "./talent-levels.ts";
@@ -15,7 +14,6 @@ type Context = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
 type RenderMode = Parameters<typeof renderGenshinCard>[3];
 type Position = readonly [x: number, y: number, width: number, height: number];
 
-const listWidth = 650;
 const detailWidth = 600;
 const font = '"Noto Sans CJK SC", sans-serif';
 const blue = "#a4ddff";
@@ -78,15 +76,6 @@ function footer(ctx: Context, width: number, height: number) {
 }
 
 const character = (theme: PanelTheme, name: string, ...rest: string[]) => theme.picture("meta-gs", "character", name, ...rest);
-
-export function panelPages(snapshot: PanelSnapshot) {
-  const result = [];
-  const characters = Object.values(snapshot.avatars).sort((a, b) =>
-    Number(b._time === snapshot._profile) - Number(a._time === snapshot._profile) ||
-    (b.star ?? 0) - (a.star ?? 0) || b.level - a.level || b.id - a.id);
-  for (let offset = 0; offset < characters.length; offset += 48) result.push(characters.slice(offset, offset + 48));
-  return result;
-}
 
 export const panelStatisticsPageSize = 48;
 
@@ -305,87 +294,6 @@ export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: reado
     ctx.fillRect(0, height - 51, width, 51);
     label(ctx, talentTitle ? `金色标示今日开放 · ${notice}` : notice, 17, height - 31, 12, "#f3e7ca");
     footer(ctx, width, height);
-  }, mode);
-}
-
-export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly PanelAvatar[], theme: PanelTheme, {
-  updated = false, profileId = 1, page = 1, pageCount = 1, mode = "auto", rankMarkers,
-}: { readonly updated?: boolean; readonly profileId?: number; readonly page?: number; readonly pageCount?: number;
-  readonly mode?: RenderMode; readonly rankMarkers?: ReadonlyMap<number, PanelRankMarker> } = {}) {
-  const rankHeight = rankMarkers ? 26 : 0;
-  const [backdrop, portraits, damageBadges, artifactBadges] = await Promise.all([
-    theme.picture("common", "bg", "bg-hydro.webp"),
-    Promise.all(avatars.map(async avatar => await character(theme, avatar.name, "imgs", "face-q.webp") ??
-      await character(theme, avatar.name, "imgs", "face.webp"))),
-    rankMarkers?.size ? theme.picture("character", "imgs", "dmg-rank-bg.png") : undefined,
-    rankMarkers?.size ? theme.picture("character", "imgs", "mark-rank-bg.png") : undefined,
-  ]);
-  const rows = Math.ceil(avatars.length / 8);
-  const height = 170 + rankHeight + rows * 94;
-  const suffix = profileId === 1 ? "" : String(profileId);
-  const abbr = (avatar: PanelAvatar) => text(object(theme.characters[avatar.id])?.abbr) || avatar.name;
-  const currentSource = Object.values(snapshot.avatars).find(avatar => avatar._time === snapshot._profile)?._source ??
-    avatars[0]?._source ?? "local";
-
-  return renderGenshinCard(listWidth, height, ctx => {
-    frame(ctx, backdrop, "hydro", listWidth, height);
-    block(ctx, "#162231bb", 16, 13, 618, 90);
-    label(ctx, "#面板列表", 29, 43, 27);
-    label(ctx, `UID:${snapshot.uid}${pageCount > 1 ? ` · 第 ${page}/${pageCount} 页` : ""}`, 621, 41, 15, gold, 240, "right");
-    if (updated) label(ctx, `获取角色面板数据成功 · ${Object.keys(snapshot.avatars).length} 位角色`, 30, 66, 14, "#b8ef5d");
-    const demo = avatars[0] ? abbr(avatars[0]) : "角色名";
-    label(ctx, `使用 #${demo}面板${suffix}、#${demo}圣遗物${suffix} 或 #${demo}武器${suffix} 查看详情`, 30, 90, 13, "#ebf2fc", 585);
-    if (rankMarkers) {
-      block(ctx, "#191c26d1", 16, 108, 618, 23);
-      label(ctx, "● 综合练度排名", 27, 124, 11, "#ff917d", 107);
-      label(ctx, "● 圣遗物评分排名", 121, 124, 11, "#ffd37b", 117);
-      label(ctx, "本群成员主动展示本人角色后参与排名", 304, 124, 11, "#e2eaf4", 317);
-    }
-    block(ctx, "#191c269c", 16, 110 + rankHeight, 618, 94 * rows + 29);
-    avatars.forEach((avatar, index) => {
-      const x = 62 + index % 8 * 75;
-      const y = 153 + rankHeight + Math.floor(index / 8) * 94;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(x, y, 31, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.fillStyle = avatar.star === 5 ? "#b17f45" : "#786090";
-      ctx.fillRect(x - 31, y - 31, 62, 62);
-      const portrait = portraits[index];
-      if (portrait) art(ctx, portrait, "cover", x - 30, y - 30, 60, 60);
-      else label(ctx, avatar.name.slice(0, 2), x, y + 7, 16, "#fff", 60, "center");
-      ctx.restore();
-      ctx.beginPath();
-      ctx.arc(x, y, 31, 0, Math.PI * 2);
-      ctx.strokeStyle = "#f1eaf0";
-      ctx.lineWidth = 1.6;
-      ctx.stroke();
-      const marker = rankMarkers?.get(avatar.id);
-      if (marker) {
-        const badge = marker.mode === "damage" ? damageBadges : artifactBadges;
-        const badgeWidth = badge ? badge.width / 5 : 0;
-        if (badge && badgeWidth > 0) {
-          ctx.drawImage(badge, badgeWidth * Math.min(marker.rank, 4), 0, badgeWidth, badge.height,
-            x - 35, y - 35, 70, 70);
-          if (marker.rank > 3) label(ctx, String(marker.rank), x, y + 33, 10, "#fff", 30, "center");
-        } else {
-          block(ctx, marker.mode === "damage" ? "#b84b3d" : "#99712e", x - 15, y + 22, 30, 13);
-          label(ctx, marker.rank === 1 ? "最强" : String(marker.rank), x, y + 32, 9, "#fff", 29, "center");
-        }
-      }
-      label(ctx, abbr(avatar), x - 6, y + 48, 13, "#fff", 58, "center");
-      if (avatar.cons !== undefined) label(ctx, String(avatar.cons), x + 27, y + 48, 10, gold, 9, "center");
-      if (updated && avatar._time === snapshot._profile) {
-        ctx.fillStyle = "#99ef15";
-        ctx.beginPath();
-        ctx.arc(x - 25, y + 35, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    });
-    const display = snapshot._profile && Number.isFinite(new Date(snapshot._profile).getTime()) ? time.format(snapshot._profile) : "";
-    label(ctx, display ? `更新时间：${display}` : "本地面板", 28, height - 39, 12, "#e2eaf4");
-    label(ctx, `当前更新服务：${sourceLabels[currentSource] ?? "本地"}`, 622, height - 39, 12, "#e2eaf4", 240, "right");
-    footer(ctx, listWidth, height);
   }, mode);
 }
 
@@ -703,4 +611,5 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
 }
 
 export { renderDamageCard } from "./damage-detail-card.ts";
+export { panelListOrder, renderPanelList } from "./panel-list-card.ts";
 export { renderArtifactCard, renderArtifactList } from "./artifact-card.ts";

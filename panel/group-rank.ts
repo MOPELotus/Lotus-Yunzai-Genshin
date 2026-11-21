@@ -183,7 +183,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         return !signal.aborted && !!refreshed && await stillBound(owner) &&
           (await Promise.all([...contributors.values()].map(row => refreshed.has(row.qq) && stillCurrent(row)))).every(Boolean);
       };
-      return { markers, validate };
+      return { markers, participating: ids.length > 0, validate };
     },
     allows(context: GroupRankContext) {
       const scope = scopeOf(context);
