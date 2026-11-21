@@ -6,6 +6,7 @@ import { createAchievementCommand } from "./achievement-command.ts";
 import { queryRankStats } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
+import { createGenshinPayLogCommand, matchGenshinPayLog } from "./pay-log-command.ts";
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
 import { createGenshinPanelArchive, createGenshinPanelQuery } from "./panel/panel.ts";
@@ -124,6 +125,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const panelImages = createPanelImageCommands(lockFile, signal);
   const changeDamageSettings = createDamageSettingsCommand(signal);
   const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal);
+  const payLog = createGenshinPayLogCommand(profiles, signal);
   const equippedWeapons = createWeaponListQuery(profiles, client, signal);
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
@@ -272,6 +274,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       if (matchWeaponList(message)) return ["[genshin] 武器查询"];
       if (matchGenshinBlueprint(message)) return ["[genshin] 尘歌壶模数"];
+      if (matchGenshinPayLog(message)) return ["[genshin] 充值记录"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
       if (achievements.explicit(context)) return [];
@@ -298,6 +301,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (publicPanel) return showcase(publicPanel, context);
       const challenge = matchPersonalChallenge(context.normalizedMessage);
       if (challenge) return personalChallenge(challenge, context);
+      const payment = matchGenshinPayLog(context.normalizedMessage);
+      if (payment) return payLog(payment, context);
       const record = matchPersonalRecord(context.normalizedMessage);
       if (record) return personalRecord(record, context);
       const weapons = matchWeaponList(context.normalizedMessage);
