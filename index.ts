@@ -4,6 +4,7 @@ import { createAchievementCommand } from "./achievement-command.ts";
 import { queryRankStats } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
+import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
 import { createGenshinPanelArchive, createGenshinPanelQuery } from "./panel/panel.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
 import { createGenshinTalentRefresh, matchGenshinTalentRefresh } from "./panel/talent-refresh.ts";
@@ -109,6 +110,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const panelImages = createPanelImageCommands(lockFile, signal);
   const changeDamageSettings = createDamageSettingsCommand(signal);
   const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal);
+  const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal);
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank });
   const sync = createGenshinGachaSync(profiles, client, history);
@@ -267,6 +269,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (panelImageCommand(context.normalizedMessage)) return panelImages(context);
       const settingsChange = matchDamageSettingsCommand(context.normalizedMessage);
       if (settingsChange) return changeDamageSettings(settingsChange, context);
+      const challenge = matchPersonalChallenge(context.normalizedMessage);
+      if (challenge) return personalChallenge(challenge, context);
       const record = matchPersonalRecord(context.normalizedMessage);
       if (record) return personalRecord(record, context);
       if (achievements.explicit(context)) {
