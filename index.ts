@@ -6,6 +6,7 @@ import { createWishCommands } from "./wish-sim/commands.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
 import { createGenshinPanelArchive, createGenshinPanelQuery } from "./panel/panel.ts";
+import { createGenshinShowcaseCommand, matchGenshinShowcase } from "./panel/showcase-command.ts";
 import { matchGenshinPanelDiscard } from "./panel/model.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
 import { createGenshinTalentRefresh, matchGenshinTalentRefresh } from "./panel/talent-refresh.ts";
@@ -115,7 +116,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
     { discardedAt: panelArchive.discardedAt });
-  const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank });
+  const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt });
+  const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank, readPanelDeletionBoundary: panelArchive.discardedAt });
   const sync = createGenshinGachaSync(profiles, client, history);
   const worldBossRanking = createGenshinWorldBossRanking(rankingDirectory, lockFile);
   const worldBossQuery = createWorldBossQuery(profiles, client, worldBossRanking, signal);
@@ -252,7 +254,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
-      if (matchGenshinPanelDiscard(message)) return ["[genshin] 角色面板"];
+      if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
@@ -274,6 +276,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (panelImageCommand(context.normalizedMessage)) return panelImages(context);
       const settingsChange = matchDamageSettingsCommand(context.normalizedMessage);
       if (settingsChange) return changeDamageSettings(settingsChange, context);
+      const publicPanel = matchGenshinShowcase(context.normalizedMessage);
+      if (publicPanel) return showcase(publicPanel, context);
       const challenge = matchPersonalChallenge(context.normalizedMessage);
       if (challenge) return personalChallenge(challenge, context);
       const record = matchPersonalRecord(context.normalizedMessage);

@@ -96,8 +96,9 @@ test("编号武器命令实际复用同档伤害矩阵，裸命令仍发武器�
     expect(await query(`#${uid}虚构角色伤害2 档案2`, message)).toBeUndefined();
     expect(await query("#老婆虚构角色详情 档案2", message)).toBeUndefined();
     expect(reads).toEqual([]);
-    expect(await query("#胡桃武器2 100999999", message)).toContain("当前档案绑定");
-    expect(await query("#100999999胡桃伤害2 档案2", message)).toContain("当前档案绑定");
+    expect(await query("#更新面板100999999", message)).toContain("当前档案绑定");
+    expect(await query("#胡桃武器2 100999999", message)).toContain("本地暂无公开展板");
+    expect(await query("#100999999胡桃伤害2 档案2", message)).toContain("本地暂无公开展板");
     expect(await query("#胡桃武器2 档案2", message)).toEqual({ type: "image", file: damageCard });
     expect(await query("#胡桃伤害2 档案2", message)).toEqual({ type: "image", file: damageCard });
     expect(await query(`#${uid}胡桃武器2 档案2`, message)).toEqual({ type: "image", file: damageCard });

@@ -28,7 +28,7 @@ const elements: Readonly<Record<string, string>> = {
 const weaponTypes = ["sword", "claymore", "polearm", "bow", "catalyst"];
 const tableKeys = ["hp", "atk", "def", "mastery", "cpct", "cdmg", "recharge", "dmg"];
 const sourceLabels: Readonly<Record<string, string>> = {
-  mysPanel: "米游社", enka: "第三方面板", miao: "第三方面板", mgg: "第三方面板", hutao: "第三方面板", homo: "第三方面板",
+  mysPanel: "米游社", enka: "Enka", miao: "第三方面板", mgg: "MiniGG", hutao: "Hutao", homo: "第三方面板",
   change: "面板变换", customize: "自定义", share: "共享", local: "本地",
 };
 const time = new Intl.DateTimeFormat("zh-CN", {
