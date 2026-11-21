@@ -1,9 +1,9 @@
-import { renderGenshinCard } from "../card-render.ts";
+import { renderGenshinCardForChat } from "../card-render.ts";
 import { nativeGenshinResourcesDirectory, originalFonts } from "./personal-record-card.ts";
 import { readPanelTheme, type PanelTheme } from "./theme.ts";
 import type { WeaponList } from "./weapon-list-model.ts";
 
-type Drawing = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
+type Drawing = Parameters<Parameters<typeof renderGenshinCardForChat>[2]>[0];
 const han = '"PingFang SC", "Noto Sans CJK SC", sans-serif';
 const dots = ["#d59258", "#9073ba", "#4c99b9"] as const;
 
@@ -14,9 +14,10 @@ function rounded(ctx: Drawing, colour: string, x: number, y: number, w: number, 
   ctx.fill();
 }
 
-export async function renderWeaponList(model: WeaponList, theme: PanelTheme, { signal, mode = "auto" }: {
+export async function renderWeaponList(model: WeaponList, theme: PanelTheme, { signal, mode = "auto", inlineImageByteLimit }: {
   readonly signal?: AbortSignal;
-  readonly mode?: Parameters<typeof renderGenshinCard>[3];
+  readonly mode?: Parameters<typeof renderGenshinCardForChat>[3];
+  readonly inlineImageByteLimit?: number;
 } = {}) {
   signal?.throwIfAborted();
   const source = nativeGenshinResourcesDirectory();
@@ -44,7 +45,7 @@ export async function renderWeaponList(model: WeaponList, theme: PanelTheme, { s
   const width = small ? Math.max(210, Math.min(model.items.length, columns) * 78 + 30) : 580;
   const top = small ? 54 : 128;
   const height = top + Math.ceil(model.items.length / columns) * 114 + 38;
-  return renderGenshinCard(width, height, ctx => {
+  return renderGenshinCardForChat(width, height, ctx => {
     function type(value: string | number, x: number, y: number, size: number, font: string, colour = "#1e1f20") {
       ctx.font = `${size}px ${font}`;
       ctx.fillStyle = colour;
@@ -132,5 +133,5 @@ export async function renderWeaponList(model: WeaponList, theme: PanelTheme, { s
       ctx.restore();
     });
     type("*仅显现已装备的武器", 22, height - 25, 12, han, "#7f858a");
-  }, mode, { scale: 1.5 });
+  }, mode, { displayWidth: width * 1.5, inlineImageByteLimit, signal });
 }

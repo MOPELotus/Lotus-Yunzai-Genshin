@@ -1,5 +1,6 @@
 import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
+import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { readPanelTheme } from "./theme.ts";
 import { renderWeaponList } from "./weapon-list-card.ts";
@@ -21,6 +22,7 @@ interface MessageContext {
   readonly isDelegated?: boolean;
   readonly message?: string | readonly { readonly type: string; readonly qq?: unknown }[];
   readonly privateCredentialSignal?: AbortSignal;
+  readonly inlineImageByteLimit?: number;
 }
 
 export function createWeaponListQuery(profiles: GenshinRoleProfiles,
@@ -58,11 +60,12 @@ export function createWeaponListQuery(profiles: GenshinRoleProfiles,
       const theme = await readPanelTheme();
       const model = buildWeaponList(uid, official.avatars, theme.characters, rarity);
       if (!model.items.length) return rarity ? `当前角色没有装备${rarity}星武器。` : "米游社未返回可显示的已装备武器。";
-      const { png } = await render(model, theme, { signal });
+      const { png } = await render(model, theme, { signal, inlineImageByteLimit: context.inlineImageByteLimit });
       await verify();
       return { type: "image", file: png } as const;
     } catch (error) {
       if (signal.aborted) return;
+      if (error instanceof ImageSizeLimitError) return "原神武器图片超过当前会话的单图大小上限。";
       if (error instanceof ProfileError) {
         if (error.code === "changed") return "原神档案已变化，请重新查询武器。";
         if (error.code === "login-required" || error.code === "missing") return `请先登录档案 ${profileId}。`;
