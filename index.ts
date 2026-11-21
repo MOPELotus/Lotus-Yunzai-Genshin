@@ -27,6 +27,7 @@ import { genshinGachaThemeDirectory, readGenshinGachaSources, readGenshinUigfIte
 import { createGenshinGachaImport, gachaImportCommand } from "./gacha-import.ts";
 import { createGenshinPublicPoolQuery } from "./gacha-pool-command.ts";
 import { createGenshinGrowQuery } from "./grow/command.ts";
+import { createGenshinBlueprintQuery, matchGenshinBlueprint } from "./grow/blueprint.ts";
 import { renderGenshinGachaFailure, renderGenshinGachaResult } from "./gacha-result-card.ts";
 import { buildGenshinGachaSpecial } from "./gacha-special.ts";
 import { renderGenshinGachaSpecial } from "./gacha-special-card.ts";
@@ -89,6 +90,7 @@ function matchGachaQuery(message: string): { profileId: number; view: GachaView;
 
 interface GachaContext extends GroupRankContext {
   readonly normalizedMessage: string;
+  readonly inlineImageByteLimit?: number;
   readonly message?: string | readonly { readonly type: string; readonly qq?: unknown }[];
   readonly sender?: Readonly<Record<string, unknown>>;
   readonly isMaster?: boolean;
@@ -133,6 +135,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const importGacha = createGenshinGachaImport(profiles, history, signal);
   const publicPool = createGenshinPublicPoolQuery(signal);
   const grow = createGenshinGrowQuery(profiles, lockFile, signal, { client });
+  const blueprint = createGenshinBlueprintQuery(profiles, client, signal);
 
   async function exportHistory(qq: string, profileId: number, version: GenshinUigfExportOptions["version"], context: GachaContext) {
     if (!context.uploadFile) return "当前会话暂不支持发送抽卡文件。";
@@ -263,6 +266,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       if (matchWeaponList(message)) return ["[genshin] 武器查询"];
+      if (matchGenshinBlueprint(message)) return ["[genshin] 尘歌壶模数"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
       if (achievements.explicit(context)) return [];
@@ -297,6 +301,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
         const achievement = await achievements.main(context);
         if (achievement !== undefined) return achievement;
       }
+      const replica = matchGenshinBlueprint(context.normalizedMessage);
+      if (replica) return blueprint(replica, context);
       const growth = await grow(context.normalizedMessage, context);
       if (growth !== undefined) return growth;
       const pool = await publicPool(context.normalizedMessage);
