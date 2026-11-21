@@ -111,11 +111,12 @@ function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined,
 }
 
 function matrixNotes(abbr: string) {
+  // Keep the original line breaks for the two fixed paragraphs in the 520px note area.
   return [
-    "大数字表示圣遗物副词条置换后平均伤害的变化，下方的详情数字依次为平均伤害和暴击伤害。",
-    "平均伤害将暴击率计入计算，用于衡量综合输出能力。实战中的单次伤害会随暴击和触发条件变化。",
-    "结果可作当前面板圣遗物副词条选择的参考。实战伤害还受其他触发条件和操作影响。",
-    `如需更换计算的伤害类型，可使用 #${abbr}伤害+序号 切换，序号参见伤害计算表。`,
+    "大数字的含义为圣遗物副词条置换后平均伤害的变化，下方的详情数字为平均伤害/暴击伤\n害。",
+    "关于平均伤害：是将暴击率计算在内的伤害期望，能反映综合的输出能力，不等于实际伤害数\n字。",
+    "可用于评估当前面板下圣遗物副词条的侧重方向。实际游戏情况更加复杂，结果供参考~",
+    `如需更换计算的伤害类型，可使用命令 #${abbr}伤害+序号来切换，序号参见伤害计算板块`,
   ];
 }
 
@@ -208,7 +209,8 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
   const measure = new Canvas(1, 1).getContext("2d");
   const measureText = typeset(measure, hero.faces);
   measureText.font(12);
-  const notes = comparison ? matrixNotes(profile.data.abbr).map(note => splitLine(measure, note, width - 55)) : [];
+  const notes = comparison ? matrixNotes(profile.data.abbr)
+    .map(note => note.split("\n").flatMap(line => splitLine(measure, line, width - 55))) : [];
   const matrixHeight = comparison ? 40 + 47 + comparison.axes.length * 48 + 25 +
     notes.reduce((sum, lines) => sum + lines.length * 15 + 5, 0) : 0;
   const buffs = [...new Set(selected?.buffs ?? [])].map(message => {
