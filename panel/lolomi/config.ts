@@ -17,6 +17,10 @@ function readSettings(file: string | undefined): DamageSettings {
   } catch (error) {
     if (file || (error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
+  return resolveDamageSettings(raw);
+}
+
+export function resolveDamageSettings(raw: unknown): DamageSettings {
   if (raw !== undefined && (!raw || typeof raw !== "object" || Array.isArray(raw))) throw new TypeError("原神伤害设置必须为 YAML 对象。");
   const cfg = (raw ?? {}) as Partial<DamageSettings>;
   if ([cfg.lolomicalc, cfg.templateteam, cfg.conscompare].some(value => value !== undefined && typeof value !== "boolean") ||
@@ -31,6 +35,7 @@ function readSettings(file: string | undefined): DamageSettings {
   });
 }
 
-export const damageSettings = readSettings(Bun.env.LOTUS_GENSHIN_DAMAGE_CONFIG?.trim());
+export const damageConfigOverride = Bun.env.LOTUS_GENSHIN_DAMAGE_CONFIG?.trim() || undefined;
+export const damageSettings = readSettings(damageConfigOverride);
 // The pinned rule modules read the same immutable settings as the selection logic.
 export const Config = { getConfig: (_scope: string, _key: string) => damageSettings };

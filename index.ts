@@ -1,3 +1,4 @@
+import { createDamageSettingsCommand, matchDamageSettingsCommand } from "./panel/lolomi/settings-command.ts";
 import { createPanelImageCommands, panelImageCommand } from "./panel/image-commands.ts";
 import { createAchievementCommand } from "./achievement-command.ts";
 import { queryRankStats } from "./rank-statistics/stats.ts";
@@ -106,6 +107,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const teamDamage = createTeamDamageQuery(profiles, createGenshinPanelArchive(lockFile), signal);
   const refreshTalent = createGenshinTalentRefresh(profiles, client, createGenshinPanelArchive(lockFile), signal);
   const panelImages = createPanelImageCommands(lockFile, signal);
+  const changeDamageSettings = createDamageSettingsCommand(signal);
   const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal);
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal);
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank });
@@ -245,6 +247,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
+      if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
       if (achievements.explicit(context)) return [];
@@ -262,6 +265,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       const talent = matchGenshinTalentRefresh(context.normalizedMessage);
       if (talent) return refreshTalent(talent, context);
       if (panelImageCommand(context.normalizedMessage)) return panelImages(context);
+      const settingsChange = matchDamageSettingsCommand(context.normalizedMessage);
+      if (settingsChange) return changeDamageSettings(settingsChange, context);
       const record = matchPersonalRecord(context.normalizedMessage);
       if (record) return personalRecord(record, context);
       if (achievements.explicit(context)) {
