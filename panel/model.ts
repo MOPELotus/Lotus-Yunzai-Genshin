@@ -678,7 +678,7 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
     };
   }
   return { uid, _profile: whole(root?._profile, Number.MAX_SAFE_INTEGER),
-    ...(isLegacy && includeMysRoster && { _mys: whole(root?._mys, Number.MAX_SAFE_INTEGER) }), avatars };
+    ...(includeMysRoster && { _mys: whole(root?._mys, Number.MAX_SAFE_INTEGER) }), avatars };
 }
 
 export function artifactStatRecord(item: PanelArtifact) {

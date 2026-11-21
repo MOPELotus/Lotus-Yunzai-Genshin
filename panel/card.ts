@@ -4,11 +4,12 @@ import type { DamageRow, DamageSummary } from "./damage.ts";
 import type { DailyMaterialGroup } from "./daily-materials.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
+import { renderTrainingStatistics } from "./training-statistics-card.ts";
 import { panelTalentLevels, panelTalentThresholds, travelerIds } from "./talent-levels.ts";
 import {
   artifactProperties, object, propertyLabels, talentKeys, text, whole, type DisplayedTalentLevels, type PanelAvatar, type PanelSnapshot,
 } from "./model.ts";
-import { panelPortrait, type PanelTheme, type Picture } from "./theme.ts";
+import { genshinWeaponTypes as weaponTypes, panelPortrait, panelWeaponPicture as weaponPicture, type PanelTheme, type Picture } from "./theme.ts";
 
 type Context = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
 type RenderMode = Parameters<typeof renderGenshinCard>[3];
@@ -21,7 +22,6 @@ const gold = "#ffdfa0";
 const elements: Readonly<Record<string, string>> = {
   anemo: "#377b77", geo: "#906735", electro: "#625483", dendro: "#4c7135", hydro: "#315579", pyro: "#7c3b38", cryo: "#427080",
 };
-const weaponTypes = ["sword", "claymore", "polearm", "bow", "catalyst"];
 const tableKeys = ["hp", "atk", "def", "mastery", "cpct", "cdmg", "recharge", "dmg"];
 const sourceLabels: Readonly<Record<string, string>> = {
   mysPanel: "米游社", enka: "Enka", miao: "第三方面板", mgg: "MiniGG", hutao: "Hutao", homo: "第三方面板",
@@ -175,8 +175,10 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
 }
 
 export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: readonly PanelStatisticRow[], theme: PanelTheme, {
-  mode = "auto", offset = 0, total = rows.length, talentTitle,
-}: { readonly mode?: RenderMode; readonly offset?: number; readonly total?: number; readonly talentTitle?: string } = {}) {
+  mode = "auto", offset = 0, total = rows.length, talentTitle, inlineImageByteLimit, signal,
+}: { readonly mode?: RenderMode; readonly offset?: number; readonly total?: number; readonly talentTitle?: string;
+  readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal } = {}) {
+  if (!talentTitle) return renderTrainingStatistics(snapshot, rows, theme, { mode, offset, total, inlineImageByteLimit, signal });
   const width = 630, tableY = 94, rowHeight = 36;
   const height = tableY + (rows.length + 1) * rowHeight + 51;
   const [backdrop, top, crown, fetter, pictures] = await Promise.all([
@@ -184,15 +186,11 @@ export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: reado
     theme.picture("common", "item", "crown-o.png"), theme.picture("common", "item", "fetter.png"),
     Promise.all(rows.map(async row => Promise.all([
       character(theme, row.avatar.name, "imgs", "face.webp"),
-      talentTitle || !row.weapon ? undefined : await theme.picture("meta-gs", "weapon", row.weapon.type, row.weapon.name, "icon.webp") ??
-        await weaponPicture(theme, row.avatar),
-      Promise.all((talentTitle ? [] : row.sets).map(async set => await theme.picture("meta-gs", "artifact", "imgs", set, "1.webp") ??
-        await theme.picture("meta-gs", "artifact", "imgs", set, "5.webp"))),
       row.materials?.weekly && theme.picture(...row.materials.weekly.icon.split("/")),
       row.materials?.talent && theme.picture(...row.materials.talent.icon.split("/")),
     ]))),
   ]);
-  const columns = [0, 30, 135, 170, 210, 250, 285, 320, 355, talentTitle ? 465 : 515, width];
+  const columns = [0, 30, 135, 170, 210, 250, 285, 320, 355, 465, width];
   const levelColors = ["#ececec", "#c0c1c1", "#8cdc9c", "#8ac0ea", "#bc9ef8", "#f9928a"];
   const levels = [0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 5];
   return renderGenshinCard(width, height, ctx => {
@@ -207,17 +205,17 @@ export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: reado
     ctx.shadowColor = "#1e2437";
     ctx.shadowBlur = 5;
     ctx.shadowOffsetY = 1;
-    label(ctx, talentTitle ? `#${talentTitle}` : "#面板练度统计", 32, 51, 35, "#fff", 360);
+    label(ctx, `#${talentTitle}`, 32, 51, 35, "#fff", 360);
     label(ctx, `UID ${snapshot.uid} · 共 ${total} 名角色`, 34, 78, 15, "#f3e7ca");
     ctx.restore();
     ctx.fillStyle = "#252a32df";
     ctx.fillRect(0, tableY, width, rowHeight);
     const center = (column: number) => (columns[column]! + columns[column + 1]!) / 2;
-    ["#", "角色", "Lv", "命座", "好感", "A", "E", "Q", ...(talentTitle ? ["周本", "天赋书"] : ["武器", "圣遗物"])].forEach((name, index) =>
+    ["#", "角色", "Lv", "命座", "好感", "A", "E", "Q", "周本", "天赋书"].forEach((name, index) =>
       label(ctx, name, center(index), tableY + 24, 13, "#e9d4a9", 105, "center"));
     rows.forEach((row, index) => {
       const y = tableY + (index + 1) * rowHeight;
-      const [face, weapon, relics, weeklyIcon, bookIcon] = pictures[index]!;
+      const [face, weeklyIcon, bookIcon] = pictures[index]!;
       const charColor = row.star === 5 ? "#ffe4b8" : row.star === 4 ? "#e2c9ec" : "#eee";
       ctx.fillStyle = index % 2 ? "#f0f0f0" : "#fff";
       ctx.fillRect(0, y, width, rowHeight);
@@ -242,41 +240,16 @@ export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: reado
         label(ctx, String(talent?.level ?? "—"), center(i + 5), y + 24, 13,
           talent && talent.level > talent.original ? "#064e95" : "#25252c", 32, "center");
       });
-      if (talentTitle) {
-        const { weekly, talent, open } = row.materials ?? { open: false };
-        ctx.fillStyle = open ? "#ffe5b7" : "#e0e0e0";
-        ctx.fillRect(355, y, 275, rowHeight);
-        art(ctx, weeklyIcon, "contain", 358, y + 3, 30, 30);
-        label(ctx, weekly?.name ?? "—", weekly ? 390 : center(8), y + 24, 12, "#35313b", 71, weekly ? "left" : "center");
-        art(ctx, bookIcon, "contain", 468, y + 3, 30, 30);
-        label(ctx, talent ? [talent.region, talent.name].filter(Boolean).join("·") : "—", talent ? 500 : center(9),
-          y + 24, 12, open ? "#6f4b00" : "#35313b", 92, talent ? "left" : "center");
-        if (talent) label(ctx, talent.days?.replace(/周([一二三四五六])\/周([一二三四五六])/u, "周$1/$2") ?? "日期待核",
-          625, y + 24, 10, "#50515b", 45, "right");
-      } else if (row.weapon) {
-        ctx.fillStyle = row.weapon.star === 5 ? "#ffe4b8" : row.weapon.star === 4 ? "#e2c9ec" : "#e9edef";
-        ctx.fillRect(355, y, 160, rowHeight);
-        label(ctx, row.weapon.level === undefined ? "—" : `Lv${row.weapon.level}`, 360, y + 24, 10, "#35313b", 29);
-        art(ctx, weapon, "contain", 391, y + 3, 28, 30);
-        label(ctx, row.weapon.affix ? String(row.weapon.affix) : "—", 423, y + 24, 11, "#523e5b", 12, "center");
-        label(ctx, row.weapon.abbr, 435, y + 24, 12, "#35313b", 77);
-      } else label(ctx, "—", center(8), y + 24, 13, "#333", 90, "center");
-      if (!talentTitle) {
-        const grade = row.rating?.rank;
-        const gradeColor = grade === "MAX" || grade?.startsWith("ACE") ? "#d84a22" :
-          grade?.startsWith("SS") ? "#6a40ac" : grade?.startsWith("S") || grade === "A" ? "#465cad" : "#747581";
-        if (grade) {
-          ctx.fillStyle = gradeColor + "35";
-          ctx.fillRect(515, y, 115, rowHeight);
-        }
-        relics.forEach((picture, i) => art(ctx, picture, "contain", 518 + i * 17, y + 5, 24, 25));
-        const hasSetImage = relics.some(Boolean);
-        if (row.rating && grade) {
-          block(ctx, gradeColor, 556, y + 9, 33, 19);
-          label(ctx, grade, 572, y + 23, 10, "#fff", 31, "center");
-          label(ctx, row.rating.score.toFixed(1), 627, y + 24, 11, "#2d2831", 36, "right");
-        } else label(ctx, "暂无评分", hasSetImage ? 558 : 572, y + 24, 11, "#56515a", 65, hasSetImage ? "left" : "center");
-      }
+      const { weekly, talent, open } = row.materials ?? { open: false };
+      ctx.fillStyle = open ? "#ffe5b7" : "#e0e0e0";
+      ctx.fillRect(355, y, 275, rowHeight);
+      art(ctx, weeklyIcon, "contain", 358, y + 3, 30, 30);
+      label(ctx, weekly?.name ?? "—", weekly ? 390 : center(8), y + 24, 12, "#35313b", 71, weekly ? "left" : "center");
+      art(ctx, bookIcon, "contain", 468, y + 3, 30, 30);
+      label(ctx, talent ? [talent.region, talent.name].filter(Boolean).join("·") : "—", talent ? 500 : center(9),
+        y + 24, 12, open ? "#6f4b00" : "#35313b", 92, talent ? "left" : "center");
+      if (talent) label(ctx, talent.days?.replace(/周([一二三四五六])\/周([一二三四五六])/u, "周$1/$2") ?? "日期待核",
+        625, y + 24, 10, "#50515b", 45, "right");
       ctx.strokeStyle = "#33333330";
       ctx.lineWidth = 0.55;
       ctx.beginPath();
@@ -292,20 +265,9 @@ export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: reado
     const notice = updated ? `面板更新 ${updated} · #更新面板` : "使用 #更新面板 刷新角色资料";
     ctx.fillStyle = "#252a327f";
     ctx.fillRect(0, height - 51, width, 51);
-    label(ctx, talentTitle ? `金色标示今日开放 · ${notice}` : notice, 17, height - 31, 12, "#f3e7ca");
+    label(ctx, `金色标示今日开放 · ${notice}`, 17, height - 31, 12, "#f3e7ca");
     footer(ctx, width, height);
   }, mode);
-}
-
-async function weaponPicture(theme: PanelTheme, avatar: Pick<PanelAvatar, "id" | "weapon">) {
-  if (!avatar.weapon) return;
-  const name = avatar.weapon.name;
-  const meta = object(theme.characters[avatar.id]);
-  const type = text(meta?.weapon);
-  for (const candidate of weaponTypes.includes(type) ? [type, ...weaponTypes.filter(item => item !== type)] : weaponTypes) {
-    const image = await theme.picture("meta-gs", "weapon", candidate, name, "icon.webp");
-    if (image) return image;
-  }
 }
 
 export async function renderGroupPanelRank(name: string, rankMode: RankMode,

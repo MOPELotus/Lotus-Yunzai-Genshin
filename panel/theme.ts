@@ -24,6 +24,22 @@ export interface PanelTheme extends PanelCatalog {
   readonly picture: (...parts: string[]) => Promise<Picture | undefined>;
 }
 
+export const genshinWeaponTypes = ["sword", "claymore", "polearm", "bow", "catalyst"];
+
+export async function panelWeaponPicture(theme: PanelTheme, avatar: Pick<PanelAvatar, "id" | "weapon">,
+  preferredType?: string) {
+  if (!avatar.weapon) return;
+  const name = avatar.weapon.name;
+  const type = preferredType || text(object(theme.characters[avatar.id])?.weapon);
+  const types = genshinWeaponTypes.includes(type)
+    ? [type, ...genshinWeaponTypes.filter(value => value !== type)]
+    : genshinWeaponTypes;
+  for (const candidate of types) {
+    const image = await theme.picture("meta-gs", "weapon", candidate, name, "icon.webp");
+    if (image) return image;
+  }
+}
+
 export async function panelPortrait(theme: PanelTheme, avatar: PortraitAvatar) {
   const name = text(object(theme.characters[avatar.id])?.name);
   if (name ? name !== avatar.name :

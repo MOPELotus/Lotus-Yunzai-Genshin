@@ -3,9 +3,7 @@ import { resolveGrowthMaterials } from "../grow/catalogue.ts";
 import { talentRegions, talentSchedule } from "./miao/talent-schedule.ts";
 import { object, text, whole, type PanelAvatar, type PanelSnapshot, type TalentStatisticsSelection } from "./model.ts";
 import { panelTalentLevels, travelerIds } from "./talent-levels.ts";
-import type { PanelTheme } from "./theme.ts";
-
-const types = ["sword", "claymore", "polearm", "bow", "catalyst"];
+import { genshinWeaponTypes as types, type PanelTheme } from "./theme.ts";
 
 function completeSets(avatar: PanelAvatar) {
   const counts = new Map<string, number>();
@@ -57,7 +55,7 @@ export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: Panel
     optional(trials.has(a.avatar) ? undefined : sum(a.talents), trials.has(b.avatar) ? undefined : sum(b.talents)) ||
     (b.avatar.cons ?? 0) - (a.avatar.cons ?? 0) ||
     optional(a.weapon?.level, b.weapon?.level) || optional(a.weapon?.star, b.weapon?.star) ||
-    optional(a.weapon?.affix, b.weapon?.affix) || (b.avatar.fetter ?? 0) - (a.avatar.fetter ?? 0);
+    optional(a.weapon?.affix, b.weapon?.affix) || optional(a.avatar.fetter, b.avatar.fetter);
   const compareOwned = (a: Row, b: Row) => compare(a, b) || b.avatar.id - a.avatar.id;
   if (!theaterRoster) return result.sort(compareOwned);
   const owned = result.filter(row => !trials.has(row.avatar)).sort(compareOwned);

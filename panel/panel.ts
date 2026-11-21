@@ -90,7 +90,7 @@ export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
     async readPanel(qq: string, uid: string, catalog: PanelCatalog, includeMysRoster = false, talentAccount?: string) {
       const current = await store.read(qq, uid);
       const discardedAt = panelDiscardedAt(current);
-      const local = readPanel(uid, current, catalog);
+      const local = readPanel(uid, current, catalog, false, includeMysRoster);
       const snapshot = discardedAt
         ? local && Object.keys(local.avatars).length ? local : undefined
         : local ?? await oldPanel(legacyDirectory, uid, catalog, includeMysRoster);
@@ -453,12 +453,14 @@ export function createGenshinPanelQuery(
           .filter(Boolean).join(" · ");
         const title = `UID ${uid} · ${talentTitle ?? "面板练度统计"} · 共 ${rows.length} 名角色`;
         const pages: (string | Image)[] = [];
-        for (let offset = 0; offset < rows.length; offset += panelStatisticsPageSize) {
-          const page = rows.slice(offset, offset + panelStatisticsPageSize);
+        const pageSize = schedule || theaterSelection ? panelStatisticsPageSize : rows.length;
+        for (let offset = 0; offset < rows.length; offset += pageSize) {
+          const page = rows.slice(offset, offset + pageSize);
           await verify();
           try {
             const { png } = await (render.statistics ?? renderPanelStatistics)(snapshot, page, assets, {
-              offset, total: rows.length, ...(talentTitle && { talentTitle }),
+              offset, total: rows.length, inlineImageByteLimit: context.inlineImageByteLimit, signal,
+              ...(talentTitle && { talentTitle }),
             });
             pages.push({ type: "image", file: png });
           } catch {
