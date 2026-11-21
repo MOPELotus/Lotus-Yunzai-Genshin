@@ -172,9 +172,10 @@ export function parseGenshinGachaRows(value: unknown, uid: string, pool: Genshin
   }
   const pulls = [...rows.values()];
   const allDated = pulls.every(({ at }) => at !== undefined);
-  // IDs retain the official order when a legacy row lacks a usable time.
-  return pulls.sort((a, b) =>
-    (allDated ? b.at! - a.at! : 0) || b.id.length - a.id.length || (b.id < a.id ? -1 : b.id > a.id ? 1 : 0));
+  // Stable time ordering keeps the source sequence for legacy pulls from the same second.
+  // Written pools already use descending IDs, so their ties keep the same order.
+  if (allDated) return pulls.sort((a, b) => b.at! - a.at!);
+  return pulls.sort((a, b) => b.id.length - a.id.length || (b.id < a.id ? -1 : b.id > a.id ? 1 : 0));
 }
 
 export function buildGenshinGachaDetail({
