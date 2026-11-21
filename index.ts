@@ -1,3 +1,4 @@
+import { createGenshinMonthlyQuery, matchGenshinMonthly } from "./monthly-command.ts";
 import { createDamageSettingsCommand, matchDamageSettingsCommand } from "./panel/lolomi/settings-command.ts";
 import { createPanelImageCommands, panelImageCommand } from "./panel/image-commands.ts";
 import { createAchievementCommand } from "./achievement-command.ts";
@@ -108,6 +109,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const achievements = createAchievementCommand(profiles, lockFile, signal);
   const client = createProfileHoyoClient(profiles);
+  const monthly = createGenshinMonthlyQuery(profiles, client, signal);
   const sevenSaintsDecks = createSevenSaintsDeckQuery(profiles, client, signal);
   const panelArchive = createGenshinPanelArchive(lockFile);
   const teamDamage = createTeamDamageQuery(profiles, panelArchive, signal);
@@ -252,6 +254,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     gachaUpdate,
     fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      if (matchGenshinMonthly(message)) return ["[genshin] 原石札记"];
       if (matchSevenSaintsCollection(message)) return ["[genshin] 七圣召唤收藏"];
       if (matchSevenSaintsDecks(message)) return ["[genshin] 七圣召唤牌组"];
       if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
@@ -272,6 +275,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     },
     async fallback(_message: string, context: GachaContext) {
       if (matchGenshinPanelDiscard(context.normalizedMessage)) return panel(context.normalizedMessage, context);
+      const diary = matchGenshinMonthly(context.normalizedMessage);
+      if (diary) return monthly(diary, context);
       const sevenSaints = matchSevenSaintsDecks(context.normalizedMessage) ?? matchSevenSaintsCollection(context.normalizedMessage);
       if (sevenSaints) return sevenSaintsDecks(sevenSaints, context);
       if (matchesTeamDamage(context.normalizedMessage)) return teamDamage(context.normalizedMessage, context);
