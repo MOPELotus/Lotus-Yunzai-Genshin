@@ -8,7 +8,7 @@ import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.
 import { createGenshinTalentRefresh, matchGenshinTalentRefresh } from "./panel/talent-refresh.ts";
 import { createTeamDamageQuery } from "./panel/team-damage.ts";
 import { matchesTeamDamage } from "./panel/team-damage-command.ts";
-import { createSevenSaintsDeckQuery, matchSevenSaintsDecks } from "./panel/seven-saints-decks.ts";
+import { createSevenSaintsDeckQuery, matchSevenSaintsCollection, matchSevenSaintsDecks } from "./panel/seven-saints-decks.ts";
 import { readPanelTheme } from "./panel/theme.ts";
 import { fileURLToPath } from "node:url";
 import { createProfileStore, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
@@ -240,6 +240,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     gachaUpdate,
     fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      if (matchSevenSaintsCollection(message)) return ["[genshin] 七圣召唤收藏"];
       if (matchSevenSaintsDecks(message)) return ["[genshin] 七圣召唤牌组"];
       if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
@@ -254,8 +255,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
-      const deck = matchSevenSaintsDecks(context.normalizedMessage);
-      if (deck) return sevenSaintsDecks(deck, context);
+      const sevenSaints = matchSevenSaintsDecks(context.normalizedMessage) ?? matchSevenSaintsCollection(context.normalizedMessage);
+      if (sevenSaints) return sevenSaintsDecks(sevenSaints, context);
       if (matchesTeamDamage(context.normalizedMessage)) return teamDamage(context.normalizedMessage, context);
       const talent = matchGenshinTalentRefresh(context.normalizedMessage);
       if (talent) return refreshTalent(talent, context);
