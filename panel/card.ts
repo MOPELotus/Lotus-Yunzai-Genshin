@@ -1,10 +1,10 @@
 import { renderGenshinCard } from "../card-render.ts";
 import type { ArtifactListEntry } from "./artifact-list.ts";
-import { attrPct, basicNum } from "./miao/artifact-tables.js";
+import { attrPct, basicNum } from "./miao/artifact-tables.ts";
 import type { DamageEstimate, DamageRow, DamageSummary } from "./damage.ts";
 import type { DailyMaterialGroup } from "./daily-materials.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
-import { scoreArtifacts } from "./artifact-score.ts";
+import { scorePanelArtifacts } from "./artifact-score.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
 import { panelTalentLevels, panelTalentThresholds, travelerIds } from "./talent-levels.ts";
 import {
@@ -688,12 +688,12 @@ const rarityColors: Readonly<Record<string, string>> = {
 };
 const percentageKeys = new Set(["hp", "atk", "def", "cpct", "cdmg", "recharge", "heal", "dmg",
   "pyro", "hydro", "cryo", "anemo", "geo", "electro", "dendro", "phy"]);
-const showValue = (key: string, value: number) => percentageKeys.has(key) ? `${value.toFixed(1)}%` : value.toFixed(0);
+const showValue = (key: string, value: number, flatPrecision = 0) => percentageKeys.has(key) ? `${value.toFixed(1)}%` : value.toFixed(flatPrecision);
 
 export async function renderArtifactCard(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme, mode: RenderMode = "auto") {
   const element = elements[avatar.elem] ? avatar.elem : "hydro";
-  const { rating, missing } = scoreArtifacts(avatar);
-  const [backdrop, splash, ...artifacts] = await Promise.all([
+  const [{ rating, missing }, backdrop, splash, ...artifacts] = await Promise.all([
+    scorePanelArtifacts(avatar, theme),
     theme.picture("common", "bg", `bg-${element}.webp`),
     panelPortrait(theme, avatar),
     ...Array.from({ length: 5 }, (_, index) => {
@@ -743,8 +743,8 @@ export async function renderArtifactCard(snapshot: PanelSnapshot, avatar: PanelA
       label(ctx, item.name, x + 69, y + 25, 16, "#fff0d5", 232);
       label(ctx, `${slotName} · +${item.level} · ${"★".repeat(item.star)}`, x + 70, y + 45, 12, gold, 228);
       const content = scored ? [
-        { key: scored.main.key, value: showValue(scored.main.key, scored.main.value), points: undefined },
-        ...scored.subs.map(({ key, value, contribution }) => ({ key, value: showValue(key, value), points: contribution })),
+        { key: scored.main.key, value: showValue(scored.main.key, scored.main.value, 1), points: undefined },
+        ...scored.subs.map(({ key, value, contribution }) => ({ key, value: showValue(key, value, 1), points: contribution })),
       ] : artifactProperties(item).slice(0, 5).map(({ key, value }) => ({ key, value, points: undefined }));
       content.forEach(({ key, value, points }, row) => {
         const top = y + 59 + row * 18;
