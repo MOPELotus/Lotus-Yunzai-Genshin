@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import { constants } from "node:fs";
 import { open, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { loadImage } from "skia-canvas";
 import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
@@ -17,6 +18,8 @@ const safeSegment = (part: string) => part && part !== "." && part !== ".." && !
 export type Picture = Awaited<ReturnType<typeof loadImage>>;
 type PortraitAvatar = Pick<PanelAvatar, "id" | "name" | "costume">;
 export interface PanelTheme extends PanelCatalog {
+  readonly resourceRoot?: string;
+  readonly galleryPortraitUrl?: (avatar: PortraitAvatar, special?: boolean) => Promise<string | undefined>;
   readonly metadata?: (...parts: string[]) => Promise<Json>;
   readonly weaponNames?: () => Promise<readonly Readonly<Record<string, string>>[]>;
   readonly galleryPortrait?: (avatar: PortraitAvatar) => Promise<Picture | undefined>;
@@ -121,21 +124,27 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
       }
     }
   }
-  return {
-    characters, artifacts, artifactSets,
-    async galleryPortrait(avatar) {
-      const name = text(object(characters[avatar.id])?.name);
-      if (name !== avatar.name || name === "旅行者" || !safeSegment(name) || characterNames.get(name) !== 1) return;
-      const owned = managed && await ownsPanelImages(managedDirectory, name);
-      const galleryLevels = owned ? [publicGallery, [managedDirectory], installedGallery] : [publicGallery, legacyGallery];
-      for (const bases of galleryLevels) {
-        const candidates = (await Promise.all(bases.map(base => galleryCandidates(base, name)))).flat();
-        while (candidates.length) {
-          const [file] = candidates.splice(randomInt(candidates.length), 1);
-          const image = await galleryImage(file!);
-          if (image) return image;
-        }
+  async function gallery(avatar: PortraitAvatar, special = false) {
+    const name = text(object(characters[avatar.id])?.name);
+    if (name !== avatar.name || name === "旅行者" || !safeSegment(name) || characterNames.get(name) !== 1) return;
+    const owned = managed && await ownsPanelImages(managedDirectory, name);
+    const galleryLevels = owned ? [publicGallery, [managedDirectory], installedGallery] : [publicGallery, legacyGallery];
+    if (special) galleryLevels.unshift([...publicGallery, ...installedGallery].map(base => join(base, "super-character")));
+    for (const bases of galleryLevels) {
+      const candidates = (await Promise.all(bases.map(base => galleryCandidates(base, name)))).flat();
+      while (candidates.length) {
+        const [file] = candidates.splice(randomInt(candidates.length), 1);
+        const image = await galleryImage(file!);
+        if (image) return { image, file: file! };
       }
+    }
+  }
+  return {
+    characters, artifacts, artifactSets, resourceRoot: installed,
+    async galleryPortrait(avatar) { return (await gallery(avatar))?.image; },
+    async galleryPortraitUrl(avatar, special) {
+      const verified = await gallery(avatar, special);
+      return verified && pathToFileURL(verified.file).href.replaceAll("(", "%28").replaceAll(")", "%29");
     },
     async weaponNames() {
       const file = join(root, "meta-gs", "weapon", "alias.js");

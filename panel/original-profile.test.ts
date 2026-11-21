@@ -1,0 +1,47 @@
+import { expect, test } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { PanelAvatar } from "./model.ts";
+import { originalProfileData } from "./original-profile.ts";
+import type { PanelTheme } from "./theme.ts";
+
+test("原角色模板还原展柜旧档的基础属性、武器精炼和圣遗物评分", async () => {
+  const root = await mkdtemp(join(tmpdir(), "lotus-profile-template-"));
+  try {
+    for (const [dir, file] of [["character", "profile-detail.css"], ["common", "common.css"]]) {
+      await mkdir(join(root, dir!));
+      await writeFile(join(root, dir!, file!), "");
+    }
+    const id = 10000002, uid = "100000001", name = "神里绫华", weapon = "雾切之回光";
+    const role = { name, abbr: "绫华", weapon: "sword", talentCons: { e: 5, q: 3 },
+      attr: { keys: ["hp", "atk", "def", "cdmg"], details: {
+        "80+": [11642, 310, 710, 38.4], "90": [12858.18, 341.63, 783.9, 38.4],
+      } } };
+    const equip = { name: weapon, star: 5, attr: {
+      atk: { "80+": 620.95, "90": 674.33 }, bonusKey: "cdmg", bonusData: { "80+": 40.22, "90": 44.1 },
+    }, affixData: { text: "获得$[0]所有元素伤害加成", datas: { 0: ["12%", "15%"] } } };
+    const theme: PanelTheme = {
+      resourceRoot: root, characters: { [id]: role }, artifacts: new Map(), artifactSets: new Map(),
+      async picture() { return; },
+      async metadata(...parts) {
+        return parts.includes("weapon") ? equip : parts.includes("character") ? role : {};
+      },
+    };
+    const avatar: PanelAvatar = {
+      id, name, elem: "cryo", level: 90, promote: 6, cons: 0, _source: "enka",
+      weapon: { name: weapon, level: 90, promote: 6, affix: 1 }, talent: { a: 8, e: 9, q: 10 },
+      artis: { 1: { name: "宗室之花", set: "昔日宗室之仪", level: 20, star: 5, mainId: 10001, attrIds: ["501201"] } },
+    };
+    const model = await originalProfileData({ uid, avatars: { [id]: avatar } }, avatar, theme);
+    expect(model).toMatchObject({ scale: 4, elem: "cryo", uid, attr: {
+      atk: "1,016.0", atkBase: "1,016.0", atkPlus: "0.0", cdmg: "132.5%", cdmgBase: "88.4%", cdmgPlus: "44.1%",
+    }, data: { talent: { a: { level: 8 }, e: { level: 9 }, q: { original: 10 } }, weapon: {
+      sName: weapon, attrs: { atkBase: "674.3", cdmg: "44.1%" }, desc: { desc: "获得<nobr>12%</nobr>所有元素伤害加成" },
+    } } });
+    expect(model?.artisDetail.mark).not.toBe("—");
+    expect(model?.artisDetail.artis["1"]?.img).toContain("artifact/imgs/");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

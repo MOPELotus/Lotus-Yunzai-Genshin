@@ -19,6 +19,7 @@ import { buildCharacterLevelChange, buildConstellationChange, buildEquipmentChan
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import { genshinLoginAccount, ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
+import { renderOriginalProfile } from "./original-profile.ts";
 import { createRefreshedTalentArchive } from "./refreshed-talents.ts";
 import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
 import { readPanelTheme, type PanelTheme } from "./theme.ts";
@@ -83,6 +84,15 @@ type Renderers = {
   statistics?(...args: Parameters<typeof renderPanelStatistics>): Promise<{ readonly png: Uint8Array }>;
   dailyMaterials?(...args: Parameters<typeof renderDailyMaterialCard>): Promise<{ readonly png: Uint8Array }>;
 };
+const renderDetail: Renderers["detail"] = (snapshot, avatar, theme, options) =>
+  (!options?.pane || options.pane === "profile") && theme.resourceRoot
+    ? renderOriginalProfile(snapshot, avatar, theme, {
+      damage: options?.damage, change: options?.change &&
+        [options.change.command, options.change.equipped, options.change.reason].filter(Boolean).join(" · "),
+      displayedTalent: options?.change?.displayedTalent,
+    })
+    : renderPanelDetail(snapshot, avatar, theme, options);
+
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Reply = string | Image | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] };
 
@@ -93,7 +103,7 @@ export function createGenshinPanelQuery(
     legacyDirectory = Bun.env.LOTUS_GENSHIN_LEGACY_PANEL_DIR?.trim() || previousDirectory,
     legacyPreferences = Bun.env.LOTUS_GENSHIN_PANEL_LEGACY_REDIS_URL?.trim(),
     groupRank,
-    render = { list: renderPanelList, detail: renderPanelDetail, damage: renderDamageCard, artifactList: renderArtifactList },
+    render = { list: renderPanelList, detail: renderDetail, damage: renderDamageCard, artifactList: renderArtifactList },
     theme = readPanelTheme,
     now = Date.now,
   }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly legacyPreferences?: string; readonly render?: Renderers;

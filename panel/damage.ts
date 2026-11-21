@@ -191,15 +191,19 @@ function weaponBuffs(name: string, refinement: number) {
 }
 
 function readInitial(avatar: PanelAvatar, detail: Json, weapon: Json, buffs: readonly Buff[],
-  other: Pick<ReturnType<typeof equipment>, "stats">) {
+  other: Pick<ReturnType<typeof equipment>, "stats">, originalBase?: Record<string, number>) {
   const record = Object.fromEntries(attributeKeys.map(key => [key, { base: 0, plus: 0, pct: 0 }]));
-  function add(key: string, input: unknown) {
+  function add(key: string, input: unknown, natural = false) {
     const mapped = /^(.*?)(Base|Plus|Pct)$/u.exec(key);
     const group = record[mapped?.[1] ?? key];
     if (!group) return;
     const value = finite(input);
     if (value === undefined) throw new Unavailable("旧版静态属性字段缺失。");
     const suffix = mapped?.[2];
+    if (originalBase && (suffix === "Base" || natural)) {
+      const attr = mapped?.[1] ?? key;
+      originalBase[attr] = (originalBase[attr] ?? 0) + value;
+    }
     if (suffix === "Base") group.base += value;
     else if (suffix === "Pct") group.pct += value;
     else group.plus += value;
@@ -215,15 +219,15 @@ function readInitial(avatar: PanelAvatar, detail: Json, weapon: Json, buffs: rea
   if (!Array.isArray(charLeft) || !Array.isArray(charRight) || !ascension) {
     throw new Unavailable("缺少角色旧版基础属性表。");
   }
-  add("recharge", 100); add("cpct", 5); add("cdmg", 50);
+  add("recharge", 100, true); add("cpct", 5, true); add("cdmg", 50, true);
   for (const [index, key] of ["hpBase", "atkBase", "defBase", ascension].entries()) {
-    add(key, valueAt(charLeft[index], charRight[index], lv.after, lv.width, index === 3 ? "ascension" : "linear"));
+    add(key, valueAt(charLeft[index], charRight[index], lv.after, lv.width, index === 3 ? "ascension" : "linear"), !/^(?:hp|atk|def)/u.test(key));
   }
   const characterExtras: Readonly<Record<number, Json>> = {
     10000119: { mastery: 200 }, 10000122: { mastery: 100 }, 10000136: { mastery: 100 },
   };
   const traveler = { mastery: 15, hpBase: 50, atkBase: 7, cpct: 10, cdmg: 20, recharge: 20, hpPct: 20, atkPct: 20, defPct: 20 };
-  for (const [key, value] of Object.entries([10000005, 10000007].includes(avatar.id) ? traveler : characterExtras[avatar.id] ?? {})) add(key, value);
+  for (const [key, value] of Object.entries([10000005, 10000007].includes(avatar.id) ? traveler : characterExtras[avatar.id] ?? {})) add(key, value, !key.endsWith("Pct"));
 
   const weaponLevelsRow = range(avatar.weapon?.level, avatar.weapon?.promote, weaponLevels);
   const wAttr = object(weapon.attr);
@@ -304,6 +308,40 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme) {
   const starting = readInitial(avatar, tables.detail, tables.weapon,
     allBuffs.filter((item): item is Buff => typeof item !== "string"), gear);
   return { cons, rule, tables, gear, weapon, allBuffs, starting };
+}
+
+export async function readOriginalPanelNumbers(avatar: PanelAvatar, theme: PanelTheme) {
+  try {
+    const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+    const tables = await sourceData(theme, avatar, name);
+    const gear = equipment(avatar);
+    const rule = Object.hasOwn(formulas, name) ? formulas[name]!() : undefined;
+    const buffs = [...(rule?.buffs ?? []), ...weaponBuffs(avatar.weapon!.name, avatar.weapon?.affix ?? 1), ...gear.buffs];
+    const base: Record<string, number> = {};
+    const values = readInitial(avatar, tables.detail, tables.weapon,
+      buffs.filter((item): item is Buff => typeof item !== "string"), gear, base);
+    return { values, base };
+  } catch (error) {
+    if (!(error instanceof Unavailable)) throw error;
+  }
+}
+
+export async function readOriginalWeapon(avatar: PanelAvatar, theme: PanelTheme) {
+  try {
+    const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+    const { weapon, weaponType } = await sourceData(theme, avatar, name);
+    const { left, right, after, width } = range(avatar.weapon?.level, avatar.weapon?.promote, weaponLevels);
+    const attr = object(weapon.attr);
+    const atk = object(attr?.atk);
+    const bonus = object(attr?.bonusData);
+    return { weapon, weaponType,
+      attack: valueAt(atk?.[`${left}+`] ?? atk?.[left], atk?.[right], after, width, "linear"),
+      bonusKey: text(attr?.bonusKey),
+      bonus: bonus ? valueAt(bonus[`${left}+`] ?? bonus[left], bonus[right], after, width, "weapon") : undefined,
+    };
+  } catch (error) {
+    if (!(error instanceof Unavailable)) throw error;
+  }
 }
 
 export async function readTeamPanelProperties(avatar: PanelAvatar, theme: PanelTheme) {
