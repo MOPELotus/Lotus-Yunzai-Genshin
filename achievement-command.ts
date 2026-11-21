@@ -1,8 +1,8 @@
 import { fileURLToPath } from "node:url";
-import { MAX_PROFILE_ID, ProfileError, type createProfileStore } from "@lotus-yunzai/account";
+import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createAtlasRuntimeCatalog } from "@lotus-yunzai/atlas/catalog";
 import { readAtlasGalleryImage } from "@lotus-yunzai/atlas/gallery";
-import { previewRedeemIdentity } from "@lotus-yunzai/hoyo-client/redeem-submit";
+import { ownedGenshinRole, type GenshinRoleProfiles } from "./owned-role.ts";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { renderAchievementCard, type AchievementCard } from "./achievement-card.ts";
 import { achievementCategoryKey, achievementGroups, achievementStats, AchievementInputError,
@@ -34,7 +34,6 @@ interface AchievementContext {
   readonly forward?: (nodes: readonly (string | Image)[], senderName?: string) => Promise<boolean>;
   reply(message: string): unknown;
 }
-type Account = Pick<ReturnType<typeof createProfileStore>, "requestContext" | "savedRole">;
 type Identity = { readonly uid: string; readonly accountId: string; readonly revision: string };
 type Atlas = ReturnType<typeof createAtlasRuntimeCatalog>;
 type Pending = { readonly profileId: number; readonly expires: number; readonly session: Identity;
@@ -99,7 +98,7 @@ const summary = (stats: Pick<ReturnType<typeof achievementStats>, "completed" | 
   rows: [[`${stats.completed}/${stats.total}`, `${stats.pointsDone}/${stats.pointsTotal}`, `${stats.percent}%`, end]],
 });
 
-export function createAchievementCommand(profiles: Account, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
+export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
   atlas = createAtlasRuntimeCatalog(atlasRoot, Bun.env.LOTUS_ATLAS_DATA_DIR),
   store = createAchievementProgressStore(achievementRoot, [achievementRoot, ...legacyRoots], lockFile),
   render = renderAchievementCard, now = () => performance.now(),
@@ -115,19 +114,7 @@ export function createAchievementCommand(profiles: Account, lockFile: AcquireRol
   signal.addEventListener("abort", () => { for (const key of pending.keys()) clear(key); }, { once: true });
 
   async function identity(qq: string, profileId: number): Promise<Identity> {
-    const before = await profiles.requestContext(qq, profileId, "gs");
-    // savedRole can represent an unverified public UID. Only the exact saved login role may read personal progress.
-    const selected = await profiles.savedRole(qq, profileId, "gs");
-    const source = await profiles.requestContext(qq, profileId, "gs", selected.uid);
-    if (before.revision !== source.revision) throw new ProfileError("changed", "档案变化。");
-    if (!source.role.region || !source.role.gameBiz || source.role.uid !== selected.uid ||
-        source.role.region !== selected.region || source.role.gameBiz !== selected.gameBiz) {
-      throw new ProfileError("role-missing", "档案没有已同步的原神角色。");
-    }
-    const accountId = source.account.stuid || source.account.ltuid;
-    if (!accountId || previewRedeemIdentity(source) !== accountId) {
-      throw new ProfileError("invalid", "档案的登录凭据与账号不一致。");
-    }
+    const { source, accountId } = await ownedGenshinRole(profiles, qq, profileId);
     return { uid: source.role.uid, accountId, revision: source.revision };
   }
 

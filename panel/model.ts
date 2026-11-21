@@ -99,7 +99,7 @@ export interface PanelCatalog {
 }
 
 export interface PanelCommand {
-  readonly type: "list" | "update" | "detail" | "artifact-list" | "statistics" | "change" | "daily-materials";
+  readonly type: "list" | "reload" | "update" | "detail" | "artifact-list" | "statistics" | "change" | "daily-materials";
   readonly profileId: number;
   readonly uid?: string;
   readonly name?: string;
@@ -408,6 +408,9 @@ function profileQueryName(raw: string, knownOnly = false) {
 }
 
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
+  const reload = /^#(?:原神)?(?:加载|重新加载|重载)面板\s*(?:([1-9]\d{8,9})(?:\s+档案\s*([1-9]\d{0,2}))?|(?:档案\s*)?([1-9]\d{0,2}))?$/u.exec(message);
+  if (reload) return { type: "reload", profileId: Number(reload[2] ?? reload[3] ?? 1), ...(reload[1] && { uid: reload[1] }) };
+  if (/^#(?:原神)?(?:加载|重新加载|重载)面板/u.test(message)) return;
   if (message.includes("换")) return matchTemporaryEquipment(message);
   const theater = /^#(?:原神)?(20\d{2}(?:0[1-9]|1[0-2]))(?:幻想真境剧诗|幻想真境|剧诗|幻想)练度统计\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
   if (theater) {
