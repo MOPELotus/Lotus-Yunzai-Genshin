@@ -1,3 +1,4 @@
+import { createPanelImageCommands, panelImageCommand } from "./panel/image-commands.ts";
 import { createAchievementCommand } from "./achievement-command.ts";
 import { queryRankStats } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
@@ -79,6 +80,7 @@ interface GachaContext extends GroupRankContext {
   readonly normalizedMessage: string;
   readonly sender?: Readonly<Record<string, unknown>>;
   readonly isMaster?: boolean;
+  readonly isBotMaster?: (userId: number) => boolean;
   readonly attachment?: { readonly name: string; read(signal?: AbortSignal): Promise<Uint8Array | undefined> };
   readonly canReadAttachments?: boolean;
   readonly uploadFile?: (file: { readonly name: string; readonly bytes: Uint8Array }) => Promise<"confirmed" | "rejected" | "unknown">;
@@ -95,6 +97,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const achievements = createAchievementCommand(profiles, lockFile, signal);
   const client = createProfileHoyoClient(profiles);
+  const panelImages = createPanelImageCommands(lockFile, signal);
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal);
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank });
   const sync = createGenshinGachaSync(profiles, client, history);
@@ -228,6 +231,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     gachaUpdate,
     fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
       if (achievements.explicit(context)) return [];
       if (genshinBackpackCommand.test(message)) return ["[genshin] 背包"];
       if (worldBossCommand.test(message) || worldBossRankingCommand.test(message)) return ["[genshin] 世界 BOSS"];
@@ -237,6 +241,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
+      if (panelImageCommand(context.normalizedMessage)) return panelImages(context);
       if (achievements.explicit(context)) {
         const achievement = await achievements.main(context);
         if (achievement !== undefined) return achievement;
