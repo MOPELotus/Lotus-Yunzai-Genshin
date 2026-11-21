@@ -24,6 +24,7 @@ import type { ReplyOptions } from "../../../lib/messages.ts";
 import { panelListColumns, PanelListImageLimitError } from "./panel-list-card.ts";
 import { renderOriginalProfile } from "./original-profile.ts";
 import { createRefreshedTalentArchive } from "./refreshed-talents.ts";
+import { createTrainingRoster } from "./training-roster.ts";
 import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
 import { readPanelTheme, type PanelTheme } from "./theme.ts";
 import { createGenshinShowcaseStorage, mergeGenshinShowcase, type ReadPanelDeletionBoundary } from "./showcase-storage.ts";
@@ -121,7 +122,7 @@ type Reply = string | Image | readonly [] | { readonly type: "forward"; readonly
 
 export function createGenshinPanelQuery(
   profiles: GenshinRoleProfiles,
-  client: DailyMaterialClient, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
+  client: DailyMaterialClient & Parameters<typeof createTrainingRoster>[2], lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
     archiveDirectory = Bun.env.LOTUS_GENSHIN_PANEL_DIR?.trim() || mainDirectory,
     legacyDirectory = Bun.env.LOTUS_GENSHIN_LEGACY_PANEL_DIR?.trim() || previousDirectory,
     legacyPreferences = Bun.env.LOTUS_GENSHIN_PANEL_LEGACY_REDIS_URL?.trim(),
@@ -141,6 +142,7 @@ export function createGenshinPanelQuery(
   const preferences = createDamagePreferences(join(archiveDirectory, "preferences"), lockFile, signal, legacyPreferences);
   const refreshes = new Set<string>();
   const dailyRefresh = createDailyMaterialRefresh(archiveDirectory, lockFile, client, now);
+  const trainingRoster = createTrainingRoster(archiveDirectory, lockFile, client, now);
 
   return async (message: string, context: GroupRankContext & {
     readonly privateCredentialSignal?: AbortSignal; readonly inlineImageByteLimit?: number;
@@ -282,8 +284,13 @@ export function createGenshinPanelQuery(
     if (materialDay?.selected === 7) return "周日全部天赋与武器突破素材均开放。";
     const { profileId } = selection;
     const reload = command?.type === "reload";
+    const training = command?.type === "statistics" && !command.theaterMonth && !command.talentStatistics &&
+      typeof client.fetchGenshinPersonalRecord === "function";
     if (reload && profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
-    if (materialDay && context.privateCredentialSignal?.aborted) return;
+    if ((materialDay || training) && context.privateCredentialSignal?.aborted) return;
+    if (training && (context.isDelegated || (context.message_type !== "group" && context.message_type !== "private"))) {
+      return "请在本人 QQ 会话查看原神练度。";
+    }
     if (materialDay && context.isDelegated) return "请在本人 QQ 会话查看原神素材。";
     const user = context.user_id;
     if (reload && context.isDelegated) return "请在本人 QQ 会话重新加载原神面板。";
@@ -296,7 +303,7 @@ export function createGenshinPanelQuery(
       const publicOnly = explicit && (!selected || selected.uid !== explicit);
       const publicUid = publicOnly ? explicit : undefined;
       let publicGeneration: Awaited<ReturnType<typeof showcase.baseline>> | undefined;
-      const owned = reload || materialDay ? await ownedGenshinRole(profiles, qq, profileId) : undefined;
+      const owned = reload || materialDay || training ? await ownedGenshinRole(profiles, qq, profileId) : undefined;
       const source = publicUid ? undefined : owned?.source ?? await profiles.requestContext(qq, profileId, "gs").catch(error => {
         if (command?.type !== "update" && error instanceof ProfileError && error.code === "login-required") return undefined;
         throw error;
@@ -307,10 +314,14 @@ export function createGenshinPanelQuery(
       const talentAccount = !context.isDelegated && source ? genshinLoginAccount(source) : undefined;
       if (command?.uid && command.uid !== uid) return "此 UID 与当前档案绑定的原神角色不一致。";
       let expected = source?.revision;
-      async function verify(revision?: string) {
+      let trainingDiscardedAt: number | undefined;
+      async function check(revision?: string) {
         if (revision !== undefined) expected = revision;
         signal.throwIfAborted();
-        if (materialDay || publicRead) context.privateCredentialSignal?.throwIfAborted();
+        if (materialDay || publicRead || training) context.privateCredentialSignal?.throwIfAborted();
+        if (trainingDiscardedAt !== undefined && await store.discardedAt(qq, uid) !== trainingDiscardedAt) {
+          throw new ProfileError("changed", "原神面板已删除。");
+        }
         if (publicGeneration) {
           const current = await showcase.baseline(qq, uid);
           if (current.generation !== publicGeneration.generation || current.discarded !== publicGeneration.discarded) {
@@ -327,7 +338,7 @@ export function createGenshinPanelQuery(
             throw new ProfileError("changed", "原神面板档案已变化。");
           }
           signal.throwIfAborted();
-          return;
+          return latest.source;
         }
         const latest = await (expected === undefined
           ? profiles.savedRole(qq, profileId, "gs").then(role => ({ role, revision: undefined }))
@@ -336,6 +347,8 @@ export function createGenshinPanelQuery(
           throw new ProfileError("changed", "原神面板档案已变化。");
         }
       }
+
+      async function verify(revision?: string) { await check(revision); }
 
       if (enemy) {
         const level = await preferences.setLevel(qq, enemy.enemyLevel, verify);
@@ -382,6 +395,7 @@ export function createGenshinPanelQuery(
           refreshes.delete(key);
         }
       } else if (type !== "reload") {
+        if (training) trainingDiscardedAt = await store.discardedAt(qq, uid);
         snapshot = publicUid ? undefined : await store.readPanel(qq, uid, assets, type === "statistics" || type === "daily-materials", talentAccount);
         if (publicRead) {
           const disclosed = await (async () => {
@@ -394,6 +408,16 @@ export function createGenshinPanelQuery(
             return undefined;
           });
           snapshot = mergeGenshinShowcase(snapshot, disclosed);
+        }
+        if (training && owned && trainingDiscardedAt !== undefined) {
+          const credentialSignal = context.privateCredentialSignal
+            ? AbortSignal.any([signal, context.privateCredentialSignal]) : signal;
+          snapshot = await trainingRoster(owned.source, owned.accountId, assets, snapshot, trainingDiscardedAt,
+            credentialSignal, async revision => {
+              const current = await check(revision);
+              if (!current) throw new ProfileError("changed", "原神练度档案已变化。");
+              return current;
+            });
         }
         if (type === "daily-materials" && owned) {
           const materialSignal = context.privateCredentialSignal ? AbortSignal.any([signal, context.privateCredentialSignal]) : signal;
@@ -654,12 +678,12 @@ ${avatars.map(avatar => avatar.name).join("、")}`;
       }
       return [];
     } catch (error) {
-      if (signal.aborted || (materialDay || command?.type === "list" || command?.type === "detail") && context.privateCredentialSignal?.aborted) return;
+      if (signal.aborted || (materialDay || training || command?.type === "list" || command?.type === "detail") && context.privateCredentialSignal?.aborted) return;
       if (error instanceof ProfileError) {
         if (error.code === "changed") return "原神面板档案已变化，请重新查询。";
         if (error.code === "missing" || error.code === "login-required") return `请先登录 profile ${profileId}。`;
         if (error.code === "role-missing") return `profile ${profileId} 没有同步原神 UID。`;
-        if ((reload || materialDay) && error.code === "invalid") return "原神档案的账号或登录凭据无法核验，请重新登录。";
+        if ((reload || materialDay || training) && error.code === "invalid") return "原神档案的账号或登录凭据无法核验，请重新登录。";
       }
       if (error instanceof GameRecordRequestError) return error.message;
       if (error instanceof DamagePreferencesError) return error.message;
