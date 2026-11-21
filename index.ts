@@ -2,6 +2,7 @@ import { createPanelImageCommands, panelImageCommand } from "./panel/image-comma
 import { createAchievementCommand } from "./achievement-command.ts";
 import { queryRankStats } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
+import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
 import { createGenshinPanelQuery } from "./panel/panel.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
 import { readPanelTheme } from "./panel/theme.ts";
@@ -98,6 +99,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const achievements = createAchievementCommand(profiles, lockFile, signal);
   const client = createProfileHoyoClient(profiles);
   const panelImages = createPanelImageCommands(lockFile, signal);
+  const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal);
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal);
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank });
   const sync = createGenshinGachaSync(profiles, client, history);
@@ -232,6 +234,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
+      if (matchPersonalRecord(message)) return ["[genshin] 角色查询"];
       if (achievements.explicit(context)) return [];
       if (genshinBackpackCommand.test(message)) return ["[genshin] 背包"];
       if (worldBossCommand.test(message) || worldBossRankingCommand.test(message)) return ["[genshin] 世界 BOSS"];
@@ -242,6 +245,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     },
     async fallback(_message: string, context: GachaContext) {
       if (panelImageCommand(context.normalizedMessage)) return panelImages(context);
+      const record = matchPersonalRecord(context.normalizedMessage);
+      if (record) return personalRecord(record, context);
       if (achievements.explicit(context)) {
         const achievement = await achievements.main(context);
         if (achievement !== undefined) return achievement;
