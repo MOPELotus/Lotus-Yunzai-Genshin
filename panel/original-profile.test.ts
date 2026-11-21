@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { artifactRatingRules, scorePanelArtifacts } from "./artifact-score.ts";
 import type { PanelAvatar } from "./model.ts";
 import { originalProfileData } from "./original-profile.ts";
 import type { PanelTheme } from "./theme.ts";
@@ -37,6 +38,20 @@ test("原角色面板从展柜旧档恢复基础属性、武器精炼和圣遗�
     } } });
     expect(model?.artisDetail.mark).not.toBe("—");
     expect(model?.artisDetail.artis["1"]?.img).toContain("artifact/imgs/");
+    const { rating } = await scorePanelArtifacts({ ...avatar, artis: {
+      ...avatar.artis,
+      2: { name: "宗室之翎", set: "昔日宗室之仪", level: 20, star: 5, mainId: 10003, attrIds: ["501201"] },
+    } }, theme);
+    expect(rating).toBeDefined();
+    if (!rating) return;
+    expect(rating.items[1]?.mainDisplayPoints).toBeUndefined();
+    expect(rating.items[2]?.mainDisplayPoints).toBeGreaterThan(0);
+    const { attributes, positions } = artifactRatingRules(rating);
+    expect(positions).toHaveLength(5);
+    expect(positions[0]?.optimalWeight).toBeUndefined();
+    expect(positions[4]?.optimalWeight).toBeGreaterThan(0);
+    expect(attributes.find(({ key }) => key === "cpct")).toMatchObject({ growth: 3.885, subLimit: 46.6 });
+
   } finally {
     await rm(root, { force: true, recursive: true });
   }

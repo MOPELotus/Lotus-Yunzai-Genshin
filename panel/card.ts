@@ -1,11 +1,9 @@
 import { renderGenshinCard } from "../card-render.ts";
-import type { ArtifactListEntry } from "./artifact-list.ts";
-import { attrPct, basicNum } from "./miao/artifact-tables.ts";
+import { renderArtifactCard } from "./artifact-card.ts";
 import type { DamageEstimate, DamageRow, DamageSummary } from "./damage.ts";
 import type { DailyMaterialGroup } from "./daily-materials.ts";
 import type { PanelRankMarker } from "./group-rank.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
-import { scorePanelArtifacts } from "./artifact-score.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
 import { panelTalentLevels, panelTalentThresholds, travelerIds } from "./talent-levels.ts";
 import {
@@ -704,111 +702,6 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
   }, mode);
 }
 
-const ratingScale = 46.6 / 6 / 100;
-const artifactSlots = ["生之花", "死之羽", "时之沙", "空之杯", "理之冠"];
-const rarityColors: Readonly<Record<string, string>> = {
-  D: "#c6c5c2", C: "#c6c5c2", B: "#89b8ef", A: "#a3d0fc", S: "#d5b2ec",
-  SS: "#ead188", SSS: "#ffdf84", ACE: "#ffd597", MAX: "#ffe3ac",
-};
-const percentageKeys = new Set(["hp", "atk", "def", "cpct", "cdmg", "recharge", "heal", "dmg",
-  "pyro", "hydro", "cryo", "anemo", "geo", "electro", "dendro", "phy"]);
-const showValue = (key: string, value: number, flatPrecision = 0) => percentageKeys.has(key) ? `${value.toFixed(1)}%` : value.toFixed(flatPrecision);
-
-export async function renderArtifactCard(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme, mode: RenderMode = "auto") {
-  const element = elements[avatar.elem] ? avatar.elem : "hydro";
-  const [{ rating, missing }, backdrop, splash, ...artifacts] = await Promise.all([
-    scorePanelArtifacts(avatar, theme),
-    theme.picture("common", "bg", `bg-${element}.webp`),
-    panelPortrait(theme, avatar),
-    ...Array.from({ length: 5 }, (_, index) => {
-      const item = avatar.artis[String(index + 1)];
-      return item ? theme.picture("meta-gs", "artifact", "imgs", item.set ?? "", `${index + 1}.webp`) : undefined;
-    }),
-  ]);
-  const width = 660;
-  const rules = Object.entries(rating?.weights ?? {}).filter(([key]) => !key.endsWith("Plus"));
-  const cardHeight = 220;
-  const baseHeight = 200 + 3 * (cardHeight + 7);
-  const height = baseHeight + (rating ? 136 + rules.length * 23 : 36);
-
-  return renderGenshinCard(width, height, ctx => {
-    frame(ctx, backdrop, element, width, height);
-    art(ctx, splash, "contain", 0, -8, 380, 428);
-    label(ctx, avatar.name, 637, 60, 47, "#fff4e0", 310, "right");
-    label(ctx, `UID ${snapshot.uid} · Lv.${avatar.level}${avatar.cons === undefined ? "" : ` · ${avatar.cons}命`}`, 637, 88, 16, blue, 302, "right");
-    if (rating) {
-      block(ctx, "#151c2ccd", 340, 101, 299, 93);
-      label(ctx, `评分规则：${rating.title}`, 352, 121, 13, gold, 276);
-      label(ctx, rating.rank ?? "—", 405, 163, 33, rarityColors[rating.rank ?? ""] ?? gold, 98, "center");
-      label(ctx, rating.total.toFixed(1), 558, 163, 36, "#fff4de", 126, "center");
-      label(ctx, "圣遗物评级", 405, 183, 12, "#dfdfed", 120, "center");
-      label(ctx, "圣遗物总分", 558, 183, 12, "#dfdfed", 120, "center");
-    } else {
-      block(ctx, "#151c2ccd", 340, 102, 299, 86);
-      label(ctx, "圣遗物评分待补全", 353, 131, 21, gold, 277);
-      label(ctx, missing ?? "旧版评分资料不完整", 353, 157, 12, "#e8eaf4", 276);
-    }
-
-    artifactSlots.forEach((slotName, index) => {
-      const slot = String(index + 1);
-      const cell = index + 1;
-      const x = 11 + (cell % 2) * 323;
-      const y = 201 + Math.floor(cell / 2) * (cardHeight + 7);
-      const item = avatar.artis[slot];
-      const scored = rating?.items[slot];
-      block(ctx, "#1d2031d9", x, y, 315, cardHeight);
-      if (!item) {
-        label(ctx, slotName, x + 16, y + 29, 17, "#e9e3f2");
-        label(ctx, "此位置无圣遗物数据", x + 16, y + 52, 13, "#c8c6d6");
-        return;
-      }
-
-      art(ctx, artifacts[index], "contain", x + 9, y + 5, 54, 50);
-      label(ctx, item.name, x + 69, y + 25, 16, "#fff0d5", 232);
-      label(ctx, `${slotName} · +${item.level} · ${"★".repeat(item.star)}`, x + 70, y + 45, 12, gold, 228);
-      const content = scored ? [
-        { key: scored.main.key, value: showValue(scored.main.key, scored.main.value, 1), points: undefined },
-        ...scored.subs.map(({ key, value, contribution }) => ({ key, value: showValue(key, value, 1), points: contribution })),
-      ] : artifactProperties(item).slice(0, 5).map(({ key, value }) => ({ key, value, points: undefined }));
-      content.forEach(({ key, value, points }, row) => {
-        const top = y + 59 + row * 18;
-        ctx.fillStyle = row % 2 ? "#090d1955" : "#42404c47";
-        ctx.fillRect(x + 6, top, 303, 17);
-        label(ctx, propertyLabels[key] ?? key, x + 12, top + 13, 12, row ? "#cdebb4" : gold, 122);
-        label(ctx, `+${value}`, x + 221, top + 13, 12, "#e9e6ee", 78, "right");
-        if (points !== undefined) label(ctx, `${points.toFixed(1)}分`, x + 302, top + 13, 12, "#e5ebf8", 76, "right");
-      });
-      if (scored) {
-        const scale = scored.scale * 100;
-        label(ctx, `总分对齐 ×${scale.toFixed(1)}%`, x + 12, y + 164, 11, "#bdc8d9");
-        if (index >= 2) label(ctx, `主词条修正 ×${(scored.coefficient * 100).toFixed(0)}%`, x + 299, y + 164, 11, "#bdc8d9", 142, "right");
-        block(ctx, "#091224ac", x + 6, y + 176, 302, 35);
-        label(ctx, "最终得分", x + 15, y + 198, 13, "#e9e5e9");
-        label(ctx, `${scored.score.toFixed(1)}${scored.rank ? ` · ${scored.rank}` : ""}`, x + 301, y + 200, 18,
-          rarityColors[scored.rank ?? ""] ?? gold, 155, "right");
-      }
-    });
-
-    if (rating) {
-      block(ctx, "#1d2031d9", 11, baseHeight + 5, 638, height - baseHeight - 32);
-      label(ctx, `${avatar.name}评分规则 · ${rating.title}`, 25, baseHeight + 30, 19, gold, 590);
-      const columns = [27, 226, 409, 619];
-      ["属性", "评分权重", "每点得分", "主词条最高分"].forEach((heading, index) =>
-        label(ctx, heading, columns[index]!, baseHeight + 57, 13, "#e6e5ed", 156, index === 0 ? "left" : "right"));
-      rules.forEach(([key, weight], index) => {
-        const y = baseHeight + 79 + index * 23;
-        label(ctx, propertyLabels[key] ?? key, columns[0]!, y, 12, "#e6e5ed");
-        label(ctx, String(weight.weight), columns[1]!, y, 12, blue, 117, "right");
-        label(ctx, (ratingScale * weight.mark).toFixed(2), columns[2]!, y, 12, blue, 117, "right");
-        label(ctx, (46.6 * weight.weight / 300).toFixed(1), columns[3]!, y, 12, blue, 117, "right");
-      });
-      label(ctx, "沙、杯、冠加入 25% 主词条裸分。按位置对齐至旧版 66 分基准。", 25, height - 48, 11, "#d5d5e8", 615);
-    }
-    footer(ctx, width, height);
-  }, mode);
-}
-
-
 export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme,
   model: Extract<DamageEstimate, { rows: unknown }>, { mode = "auto", profileId = 1, change }:
     { readonly mode?: RenderMode; readonly profileId?: number; readonly change?: EquipmentNotice } = {}) {
@@ -885,72 +778,4 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
   }, mode);
 }
 
-
-const rollValues: Readonly<Record<string, number>> = attrPct;
-
-export async function renderArtifactList(snapshot: PanelSnapshot, entries: readonly ArtifactListEntry[], theme: PanelTheme,
-  mode: RenderMode = "auto") {
-  if (!entries.length) throw new Error("原神圣遗物列表没有可绘制的条目。");
-  const [backdrop, texture, ...pictures] = await Promise.all([
-    theme.picture("common", "bg", "bg-hydro.webp"),
-    theme.picture("common", "cont", "card-bg.png"),
-    ...entries.map(async ({ avatar, slot, item }) => Promise.all([
-      character(theme, avatar.name, "imgs", "side.webp"),
-      theme.picture("meta-gs", "artifact", "imgs", item.set ?? "", `${slot}.webp`),
-    ])),
-  ]);
-  const width = 790;
-  const height = 76 + Math.ceil(entries.length / 4) * 195;
-  return renderGenshinCard(width, height, ctx => {
-    frame(ctx, backdrop, "hydro", width, height);
-    label(ctx, "圣遗物列表", 15, 33, 22, "#fff0d5");
-    label(ctx, `UID ${snapshot.uid}`, width - 16, 32, 15, "#e8effe", 220, "right");
-    entries.forEach(({ avatar, item, rated, weights }, index) => {
-      const x = 10 + index % 4 * 194;
-      const y = 48 + Math.floor(index / 4) * 195;
-      const [portrait, gear] = pictures[index] ?? [];
-      block(ctx, "#1d2030dd", x, y, 185, 187);
-      if (texture) {
-        ctx.save();
-        ctx.globalAlpha = 0.35;
-        art(ctx, texture, "cover", x, y, 185, 65);
-        ctx.restore();
-      }
-      art(ctx, gear, "contain", x + 112, y - 4, 69, 69);
-      if (portrait) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(x + 166, y + 44, 17, 0, Math.PI * 2);
-        ctx.clip();
-        art(ctx, portrait, "cover", x + 149, y + 27, 34, 34);
-        ctx.restore();
-      }
-      label(ctx, item.name, x + 9, y + 20, 14, "#fff9ec", 130);
-      const rating = `${rated.score.toFixed(1)} 分${rated.rank ? ` · ${rated.rank}` : ""}`;
-      label(ctx, rating, x + 10, y + 40, 13, rarityColors[rated.rank ?? ""] ?? gold, 117);
-      label(ctx, avatar.name, x + 10, y + 56, 10, "#e3e7f1", 130);
-      const rows = [rated.main, ...rated.subs.slice(0, 4)];
-      rows.forEach((row, line) => {
-        const top = y + 64 + line * 23;
-        ctx.fillStyle = line % 2 ? "#090d1960" : "#42404c62";
-        ctx.fillRect(x + 3, top, 179, 22);
-        const weight = weights[row.key]?.weight ?? 0;
-        const color = line === 0 ? "#fff2d5" : weight >= 80 ? gold : weight > 0 ? "#e1ede1" : "#9c9baa";
-        const rollUnit = rollValues[row.key];
-        if (line !== 0 && rollUnit && "rolls" in row) {
-          block(ctx, "#0408119b", x + 6, top + 4, 24, 14);
-          label(ctx, (row.value / (basicNum * rollUnit * 0.85)).toFixed(1), x + 18, top + 15, 8, color, 21, "center");
-          for (let dot = 0; dot < Math.min(Math.max(0, Number(row.rolls) - 1), 5); dot++) {
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(x + 98 + 4 * dot, top + 11, 1.3, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-        label(ctx, propertyLabels[row.key] ?? row.key, x + (line === 0 ? 12 : 35), top + 15, 11, color, 62);
-        label(ctx, `+${showValue(row.key, row.value)}`, x + 177, top + 15, 11, color, 58, "right");
-      });
-    });
-    footer(ctx, width, height);
-  }, mode);
-}
+export { renderArtifactCard, renderArtifactList } from "./artifact-card.ts";

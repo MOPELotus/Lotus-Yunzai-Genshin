@@ -53,6 +53,7 @@ interface RatedArtifact {
   readonly rank?: string;
   readonly scale: number;
   readonly coefficient: number;
+  readonly mainDisplayPoints?: number;
   readonly main: Attribute;
   readonly subs: readonly (Attribute & { readonly rolls: number; readonly contribution: number })[];
 }
@@ -195,10 +196,33 @@ function maxTotal(attributes: Readonly<Record<string, Weight>>, primary: string,
 const rank = (value: number) => rankSteps[edges.findIndex(edge => value < edge)];
 const shownScale = 46.6 / 6 / 100;
 
-function rate(piece: RatingInput, slot: number, attributes: Readonly<Record<string, Weight>>, avatar: PanelAvatar): RatedArtifact {
+function positionMaximum(slot: number, attributes: Readonly<Record<string, Weight>>) {
   const choices = mainCandidates[slot] ?? [];
   const optimal = slot === 1 ? "hpPlus" : slot === 2 ? "atkPlus" : maximum(attributes, choices, 1)[0] ?? choices[0]!;
-  let ceiling = maxTotal(attributes, optimal, slot >= 3);
+  return { optimal, ceiling: maxTotal(attributes, optimal, slot >= 3) };
+}
+
+export function artifactRatingRules(rating: ArtifactRating) {
+  const attributes = Object.entries(rating.weights).flatMap(([key, weight]) => {
+    if (baseAlias[key]) return [];
+    return [{ key, weight: weight.weight, growth: basicNum * scalars[key]!,
+      perPoint: shownScale * weight.mark, subLimit: subCandidates.includes(key) ? 46.6 * weight.weight / 100 : undefined,
+      mainLimit: 46.6 * weight.weight / 300,
+    }];
+  });
+  const positions = Array.from({ length: 5 }, (_, index) => {
+    const slot = index + 1;
+    const { optimal, ceiling } = positionMaximum(slot, rating.weights);
+    return { rawLimit: ceiling * shownScale, scale: ceiling > 0 ? 66 / (ceiling * shownScale) : undefined,
+      optimalWeight: slot >= 3 ? rating.weights[optimal]?.fixWeight ?? 0 : undefined,
+    };
+  });
+  return { attributes, positions };
+}
+
+function rate(piece: RatingInput, slot: number, attributes: Readonly<Record<string, Weight>>, avatar: PanelAvatar): RatedArtifact {
+  const { optimal, ceiling: defaultCeiling } = positionMaximum(slot, attributes);
+  let ceiling = defaultCeiling;
   let trim = 1;
   let raw = 0;
   const { main, subs } = piece;
@@ -212,7 +236,7 @@ function rate(piece: RatingInput, slot: number, attributes: Readonly<Record<stri
     if (main.key !== "recharge" && best > 0 && !(["atk", "hp", "def"].includes(key) && current >= 75)) {
       trim = Math.min(Math.max(0, current / best), 1);
     }
-    raw += (attributes[key]?.mark ?? 0) * main.value / 4;
+    raw = (attributes[key]?.mark ?? 0) * main.value / 4;
     ceiling = Math.max(ceiling, maxTotal(attributes, key, true));
   }
   const details = subs.map(attr => {
@@ -223,7 +247,13 @@ function rate(piece: RatingInput, slot: number, attributes: Readonly<Record<stri
   if (ceiling <= 0) throw new Missing("这套旧评分规则没有有效词条权重");
   const coefficient = (1 + trim) / 2;
   const score = Math.min(70, raw * coefficient / ceiling * 66);
-  return { score, rank: rank(score), scale: 66 / (shownScale * ceiling), coefficient, main, subs: details };
+  // The legacy detail column shows a main-stat preview independently of the score formula above.
+  // In particular slot 2 displays the feather's value, while only slots 3–5 apply main-stat points.
+  const previewKey = elements.has(main.key) ? "dmg" : main.key;
+  const mainDisplayPoints = slot > 1
+    ? Math.round((attributes[previewKey]?.mark ?? 0) * main.value / 4 + 0.01) * shownScale
+    : undefined;
+  return { score, rank: rank(score), scale: 66 / (shownScale * ceiling), coefficient, mainDisplayPoints, main, subs: details };
 }
 
 export function scoreArtifacts(avatar: PanelAvatar): ArtifactScore {

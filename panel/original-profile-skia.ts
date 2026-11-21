@@ -31,33 +31,33 @@ const shortStat: Readonly<Record<string, string>> = {
 };
 const consColor = ["#666", "#5cbac2", "#339d61", "#3e95b9", "#3955b7", "#531ba9cf", "#ff5722"];
 const refineColor = ["#ebebebaa", "#ebebebaa", "#ddffdeaa", "#ddebffaa", "#ffddf0aa", "#fff6dd"];
-const gradeColor = (rank: string) => /^(ACE|MAX)$/u.test(rank) ? "#e85656"
+export const gradeColor = (rank: string) => /^(ACE|MAX)$/u.test(rank) ? "#e85656"
   : /^SS/u.test(rank) ? boosted : /^(S|A)$/u.test(rank) ? "#d699ff" : body;
 
-function round(ctx: Drawing, [x, y, width, height]: Box, radius = 0) {
+export function round(ctx: Drawing, [x, y, width, height]: Box, radius = 0) {
   ctx.beginPath();
   ctx.roundRect(x, y, width, height, radius);
 }
-function fill(ctx: Drawing, colour: Drawing["fillStyle"], box: Box, radius = 0) {
+export function fill(ctx: Drawing, colour: Drawing["fillStyle"], box: Box, radius = 0) {
   ctx.fillStyle = colour;
   if (radius) {
     round(ctx, box, radius);
     ctx.fill();
   } else ctx.fillRect(...box);
 }
-function contain(ctx: Drawing, image: Picture | undefined, [x, y, width, height]: Box) {
+export function contain(ctx: Drawing, image: Picture | undefined, [x, y, width, height]: Box) {
   if (!image) return;
   const ratio = Math.min(width / image.width, height / image.height);
   const w = image.width * ratio, h = image.height * ratio;
   ctx.drawImage(image, x + (width - w) / 2, y + (height - h) / 2, w, h);
 }
-function shadow(ctx: Drawing, color = "#000", blur = 3, offset = 0) {
+export function shadow(ctx: Drawing, color = "#000", blur = 3, offset = 0) {
   ctx.shadowColor = color;
   ctx.shadowBlur = blur * zoom;
   ctx.shadowOffsetX = offset * zoom;
   ctx.shadowOffsetY = offset * zoom;
 }
-async function profileFonts(root: string | undefined) {
+export async function profileFonts(root: string | undefined) {
   const families = await Promise.all(["tttgbnumber", "HYWH-65W", "NZBZ"].map(async name => {
     if (!root) return;
     const family = `LotusGenshinProfile-${createHash("sha256").update(join(root, name)).digest("hex").slice(0, 12)}`;
@@ -80,7 +80,7 @@ async function profileFonts(root: string | undefined) {
   };
 }
 type Faces = Awaited<ReturnType<typeof profileFonts>>;
-function typeset(ctx: Drawing, faces: Faces) {
+export function typeset(ctx: Drawing, faces: Faces) {
   function font(size: number, bold = false, title = false) {
     ctx.font = `${bold ? "bold " : ""}${size}px ${title ? faces.title : faces.text}`;
   }
@@ -99,7 +99,7 @@ function typeset(ctx: Drawing, faces: Faces) {
 }
 type TextWriter = ReturnType<typeof typeset>;
 
-function panel(ctx: Drawing, texture: Picture | undefined, box: Box, paint: () => void) {
+export function panel(ctx: Drawing, texture: Picture | undefined, box: Box, paint: () => void, paintOverflow?: () => void) {
   ctx.save();
   const [x, y, w, h] = box;
   ctx.beginPath();
@@ -118,6 +118,13 @@ function panel(ctx: Drawing, texture: Picture | undefined, box: Box, paint: () =
   if (texture) {
     const tile = texture.width * h / texture.height;
     for (let left = x; left < x + w; left += tile) ctx.drawImage(texture, left, y, tile, h);
+  }
+  if (paintOverflow) {
+    ctx.restore();
+    paintOverflow();
+    ctx.save();
+    round(ctx, box, 10);
+    ctx.clip();
   }
   paint();
   ctx.restore();
@@ -172,7 +179,7 @@ function showAffix(ctx: Drawing, { font, write }: TextWriter, markup: string, x:
   ctx.restore();
 }
 
-function headShade(ctx: Drawing, [x, y, w, h]: Box, center: string) {
+export function headShade(ctx: Drawing, [x, y, w, h]: Box, center: string) {
   const gradient = ctx.createLinearGradient(x, 0, x + w, 0);
   gradient.addColorStop(0, "#000b");
   gradient.addColorStop(.25, "#000b");
@@ -185,9 +192,9 @@ function headShade(ctx: Drawing, [x, y, w, h]: Box, center: string) {
   ctx.fill();
 }
 
-function artifactIcon(ctx: Drawing, image: Picture | undefined, x: number, y: number) {
+export function artifactIcon(ctx: Drawing, image: Picture | undefined, x: number, y: number, width = 90) {
   if (!image) return;
-  const width = 90, pixels = Math.round(width * zoom);
+  const pixels = Math.round(width * zoom);
   // Apply the original diagonal mask to the artwork only, at the export pixel ratio.
   const icon = new Canvas(pixels, pixels);
   icon.gpu = ctx.canvas.gpu;
