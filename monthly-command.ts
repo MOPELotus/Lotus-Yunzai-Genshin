@@ -24,6 +24,11 @@ export function genshinMonthlyPeriod(month: number | undefined, now: number) {
     title: `${selected}月${selected === current ? `${date.getUTCDate()}号` : ""}札记` };
 }
 
+export function genshinRecentMonthlyPeriods(now: number) {
+  const current = genshinMonthlyPeriod(undefined, now)!;
+  return [2, 1, 0].map(offset => genshinMonthlyPeriod((current.month + 11 - offset) % 12 + 1, now)!);
+}
+
 function text(snapshot: GenshinMonthlySnapshot, uid: string, title: string) {
   const numeric = (amount: number | undefined) => amount ?? "—";
   return [`${title} · UID ${uid}`,

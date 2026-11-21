@@ -1,7 +1,7 @@
 import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import type { createGenshinMonthlyArchive } from "./monthly-archive.ts";
-import { genshinMonthlyPeriod } from "./monthly-command.ts";
+import { genshinRecentMonthlyPeriods } from "./monthly-command.ts";
 import { renderGenshinStatistics } from "./monthly-statistics-card.ts";
 import { buildGenshinStatistics, genshinStatisticsPeriod, type GenshinMonthlyStatistics } from "./monthly-statistics-model.ts";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "./owned-role.ts";
@@ -63,9 +63,7 @@ export function createGenshinStatisticsQuery(profiles: GenshinRoleProfiles,
       await verify();
       let failed: string | undefined;
       if (!selection) {
-        const current = genshinMonthlyPeriod(undefined, time)!;
-        for (const offset of [2, 1, 0]) {
-          const candidate = genshinMonthlyPeriod((current.month + 11 - offset) % 12 + 1, time)!;
+        for (const candidate of genshinRecentMonthlyPeriods(time)) {
           if (candidate.finalized && initial.some(row => row.year === candidate.year && row.finalized && row.snapshot.month === candidate.month)) continue;
           const active = await verify();
           let live;

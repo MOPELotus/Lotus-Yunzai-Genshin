@@ -157,15 +157,15 @@ export function createGenshinMonthlyArchive(directory: string, legacyDirectory: 
 
     async record(identity: GenshinMonthlyIdentity, month: GenshinArchivedMonth, verifyProfile: () => Promise<void>) {
       assertIdentity(identity);
-      if (!meaningful(month.snapshot)) return;
+      if (!meaningful(month.snapshot)) return false;
       const next = decodeMonth(encodeMonth(month), identity);
-      await files.update(identity, verifyProfile, value => {
+      return files.update(identity, verifyProfile, value => {
         const months = readCurrent(value, identity);
         const key = period(next);
         const before = months.get(key);
         merge(months, next);
-        if (months.get(key) === before) return { result: undefined };
-        return { document: { version: 1, ...identity, months: ordered(months).map(encodeMonth) }, result: undefined };
+        if (months.get(key) === before) return { result: false };
+        return { document: { version: 1, ...identity, months: ordered(months).map(encodeMonth) }, result: true };
       });
     },
   };
