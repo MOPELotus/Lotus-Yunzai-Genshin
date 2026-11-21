@@ -42,7 +42,7 @@ function fill(ctx: Drawing, colour: string, [x, y, w, h]: Box, radius = 0) {
   ctx.fill();
 }
 
-async function originalFonts(directory: string, folder: string, han: string) {
+export async function originalFonts(directory: string, folder: string, han: string) {
   const families: string[] = [];
   for (const file of ["tttgbnumber.ttf", han]) {
     const path = resolve(directory, folder, file);

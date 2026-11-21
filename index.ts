@@ -6,6 +6,8 @@ import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal
 import { createGenshinPanelArchive, createGenshinPanelQuery } from "./panel/panel.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
 import { createGenshinTalentRefresh, matchGenshinTalentRefresh } from "./panel/talent-refresh.ts";
+import { createTeamDamageQuery } from "./panel/team-damage.ts";
+import { matchesTeamDamage } from "./panel/team-damage-command.ts";
 import { readPanelTheme } from "./panel/theme.ts";
 import { fileURLToPath } from "node:url";
 import { createProfileStore, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
@@ -99,6 +101,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const achievements = createAchievementCommand(profiles, lockFile, signal);
   const client = createProfileHoyoClient(profiles);
+  const teamDamage = createTeamDamageQuery(profiles, createGenshinPanelArchive(lockFile), signal);
   const refreshTalent = createGenshinTalentRefresh(profiles, client, createGenshinPanelArchive(lockFile), signal);
   const panelImages = createPanelImageCommands(lockFile, signal);
   const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal);
@@ -235,6 +238,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     gachaUpdate,
     fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
       if (matchPersonalRecord(message)) return ["[genshin] 角色查询"];
@@ -247,6 +251,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
+      if (matchesTeamDamage(context.normalizedMessage)) return teamDamage(context.normalizedMessage, context);
       const talent = matchGenshinTalentRefresh(context.normalizedMessage);
       if (talent) return refreshTalent(talent, context);
       if (panelImageCommand(context.normalizedMessage)) return panelImages(context);

@@ -306,6 +306,19 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme) {
   return { cons, rule, tables, gear, weapon, allBuffs, starting };
 }
 
+export async function readTeamPanelProperties(avatar: PanelAvatar, theme: PanelTheme) {
+  try {
+    const { starting } = await panelInputs(avatar, theme);
+    const keys = ["hp", "hpBase", "atk", "atkBase", "def", "defBase", "mastery", "cpct", "cdmg", "heal", "recharge", "phy", "dmg"] as const;
+    const entries = keys.map(key => [key, finite(starting[key])] as const);
+    if (entries.some(([, value]) => value === undefined)) return;
+    return Object.fromEntries(entries) as Record<typeof keys[number], number>;
+  } catch (error) {
+    if (error instanceof Unavailable) return;
+    throw error;
+  }
+}
+
 export async function readLegacyArtifactRuleProperties(avatar: PanelAvatar, theme: PanelTheme) {
   try {
     const { starting } = await panelInputs(avatar, theme);
