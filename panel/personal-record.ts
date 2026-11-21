@@ -34,6 +34,7 @@ interface MessageContext {
   readonly message_type?: string;
   readonly isDelegated?: boolean;
   readonly privateCredentialSignal?: AbortSignal;
+  readonly inlineImageByteLimit?: number;
   readonly sender?: Readonly<Record<string, unknown>>;
 }
 type Image = { readonly type: "image"; readonly file: Uint8Array };
@@ -85,8 +86,12 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
       if (includeExploration && official) {
         const model = buildPersonalExploration(uid, region, official.overview, official.gcg);
         if (!model) return "米游社未返回原神探索统计。";
-        const { png } = await explore(model, { signal });
+        const { inlineImageByteLimit } = context;
+        const { png } = await explore(model, { signal, qq, inlineImageByteLimit });
         await verify();
+        if (inlineImageByteLimit !== undefined && png.byteLength > inlineImageByteLimit) {
+          return "原神探索图卡超过当前会话的图片大小限制。";
+        }
         return { type: "image", file: png };
       }
       const assets = await theme();

@@ -35,9 +35,10 @@ function fill(ctx: Drawing, colour: string, [x, y, w, h]: Box, radius = 0) {
   ctx.fill();
 }
 
-export async function originalFonts(directory: string, folder: string, han: string) {
+export async function originalFonts(directory: string, folder: string, han?: string, fallback = '"Noto Sans CJK SC", sans-serif') {
   const families: string[] = [];
   for (const file of ["tttgbnumber.ttf", han]) {
+    if (!file) continue;
     const path = resolve(directory, folder, file);
     if (!await Bun.file(path).exists()) continue;
     const family = `LotusGenshinRecord-${createHash("sha256").update(path).digest("hex").slice(0, 12)}`;
@@ -46,7 +47,7 @@ export async function originalFonts(directory: string, folder: string, han: stri
       families.push(`"${family}"`);
     } catch {}
   }
-  return [...families, '"Noto Sans CJK SC"', "sans-serif"].join(", ");
+  return [...families, fallback].join(", ");
 }
 
 function typeset(ctx: Drawing, family: string) {

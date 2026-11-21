@@ -2,11 +2,12 @@ import { expect, test } from "bun:test";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createProfileStore } from "@lotus-yunzai/account";
+import { createProfileStore, loadPublicQqAvatar } from "@lotus-yunzai/account";
 import { createHoyoClient, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { lockFile } from "../../../lib/file-lock.ts";
 import { buildPersonalOverview } from "./personal-record-model.ts";
 import { buildPersonalExploration } from "./personal-exploration-model.ts";
+import { renderPersonalExploration } from "./personal-exploration-card.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./personal-record.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -237,4 +238,72 @@ test("探索只读同一角色 index 与 basicInfo，续期只重试过期读，
     summaryMode = "switch";
     await expect(client.fetchGenshinPersonalRecord(next, options)).rejects.toMatchObject({ code: "profile-changed" });
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("原探索头像只请求当前 QQ 的固定公开地址并禁止凭据或重定向", async () => {
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aB9sAAAAASUVORK5CYII=", "base64");
+  let calls = 0;
+  const transport = async (url: URL, init: RequestInit) => {
+    calls++;
+    expect(url.href).toBe("https://q.qlogo.cn/g?b=qq&s=0&nk=42");
+    expect(init).toMatchObject({ method: "GET", credentials: "omit", redirect: "error", referrerPolicy: "no-referrer" });
+    const headers = new Headers(init.headers);
+    expect(headers.has("Cookie")).toBe(false);
+    expect(headers.has("Authorization")).toBe(false);
+    return new Response(png, { headers: { "Content-Type": "image/png" } });
+  };
+  expect(await loadPublicQqAvatar("42", { transport })).toEqual(png);
+  expect(await loadPublicQqAvatar("42&target=99", { transport })).toBeUndefined();
+  expect(await loadPublicQqAvatar("42", { transport, signal: AbortSignal.abort() })).toBeUndefined();
+  expect(calls).toBe(1);
+  expect(await loadPublicQqAvatar("42", {
+    transport: async () => Response.redirect("https://elsewhere.invalid/portrait"),
+  })).toBeUndefined();
+});
+
+test("探索原版画布仅在 4× 实际字节超限时按同一比例重画 2×", async () => {
+  const model = buildPersonalExploration(role.uid, role.region, data)!;
+  for (const [limit, expected, size] of [
+    [undefined, [4], 100],
+    [100, [4], 100],
+    [99, [4, 2], 25],
+  ] as const) {
+    const draws: number[] = [];
+    const bounds: number[][] = [];
+    const result = await renderPersonalExploration(model, { inlineImageByteLimit: limit,
+      async renderCard(width, height, _draw, _mode, options) {
+        draws.push(options?.scale ?? 4);
+        bounds.push([width, height, options?.displayWidth ?? width]);
+        return { png: Buffer.alloc(options?.scale === 2 ? 25 : 100), engine: {} as never };
+      } });
+    expect(draws).toEqual([...expected]);
+    expect(bounds.every(frame => frame[0] === 470 && frame[2] === 705 && frame[1] === bounds[0]![1])).toBe(true);
+    expect(result.png.byteLength).toBe(size);
+  }
+});
+
+test("尘歌壶透传当前会话上限，2× 仍超限时只提示", async () => {
+  const root = await mkdtemp(join(tmpdir(), "lotus-gs-exploration-delivery-"));
+  try {
+    await writeFile(join(root, "42-3.yaml"), profile());
+    let byteLength = 26;
+    const query = createPersonalRecordQuery(createProfileStore(root), {
+      async fetchGenshinPersonalRecord(source) {
+        return { overview: data, avatars: [], revision: source.revision };
+      },
+    }, lockFile, new AbortController().signal, {
+      async explore(_model, options) {
+        expect(options?.inlineImageByteLimit).toBe(25);
+        expect(options?.qq).toBe("42");
+        return { png: Buffer.alloc(byteLength), engine: {} as never };
+      },
+    });
+    const command = matchPersonalRecord("#尘歌壶 档案3")!;
+    const capped = { ...context, inlineImageByteLimit: 25 };
+    await expect(query(command, capped)).resolves.toContain("超过当前会话");
+    byteLength = 25;
+    await expect(query(command, capped)).resolves.toEqual({ type: "image", file: Buffer.alloc(25) });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

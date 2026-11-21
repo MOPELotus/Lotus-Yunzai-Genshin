@@ -111,7 +111,7 @@ export function buildPersonalExploration(uid: string, region: string, data: Json
     }
     regions.push({ id, name: title, details });
   }
-  return { uid, region, name: name(role?.nickname) || `#${uid}`, level: whole(role?.level, 100),
+  return { uid, region: name(role?.region) || region, name: name(role?.nickname) || `#${uid}`, level: whole(role?.level, 100),
     avatar: normalizeProfileRoleArtworkUrl(role?.game_head_icon), rows, regions,
     gcg: gcg?.level && gcg.uid === uid ? gcg : undefined };
 }
