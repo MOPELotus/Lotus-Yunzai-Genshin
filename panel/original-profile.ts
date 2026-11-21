@@ -117,9 +117,10 @@ function formatArtifacts(avatar: PanelAvatar, { rating, missing }: Awaited<Retur
 }
 
 export async function originalProfileData(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme, {
-  damage, change, displayedTalent,
-}: { readonly damage?: DamageSummary; readonly change?: string; readonly displayedTalent?: DisplayedTalentLevels } = {}) {
-  if (!theme.resourceRoot) return;
+  damage, change, displayedTalent, allowMissingTheme = false,
+}: { readonly damage?: DamageSummary; readonly change?: string; readonly displayedTalent?: DisplayedTalentLevels;
+  readonly allowMissingTheme?: boolean } = {}) {
+  if (!theme.resourceRoot && !allowMissingTheme) return;
   const root = theme.resourceRoot;
   const traveler = travelerIds.has(avatar.id);
   const meta = object(theme.characters[avatar.id]);
@@ -137,7 +138,7 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
   const splashRoot = ["meta-gs", "character", avatar.name, "imgs"];
   const gallerySplash = await theme.galleryPortrait?.(avatar, superBuild);
   let costumeSplash: string | undefined;
-  if (!gallerySplash) {
+  if (!gallerySplash && root) {
     for (const file of candidates) {
       const path = resource(...splashRoot, file);
       if (path && await access(join(root, ...splashRoot, file)).then(() => true, () => false)) {

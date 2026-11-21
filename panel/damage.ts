@@ -1,6 +1,7 @@
 import DmgAttr from "./miao/damage/DmgAttr.ts";
 import DmgCalc from "./miao/damage/DmgCalc.ts";
 import type { RefinementLevels } from "./miao/damage/rule-types.ts";
+import { Meta as damageAttributes } from "./miao/damage/compat.ts";
 import artifactSource from "./miao/damage/artifact-rules.ts";
 import swordRules from "./miao/damage/sword.ts";
 import bowRules from "./miao/damage/bow.ts";
@@ -76,6 +77,7 @@ export type DamageRow = {
 };
 export interface DamageComparison {
   readonly axes: readonly string[];
+  readonly axisSteps?: readonly (string | undefined)[];
   readonly cells: readonly (readonly { readonly average?: number | string; readonly crit?: number | string }[])[];
 }
 export interface DamageSummary {
@@ -516,7 +518,12 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     if (!ranking && includeComparison && selectedScenario && !titles[selected]?.unavailable && keys.length >= 2 &&
         (!native || typeof titles[selected]?.average === "number")) {
       const { formula, params } = selectedScenario;
+      const { attrMap } = damageAttributes.getMeta("gs", "arti");
       comparison = {
+        axisSteps: keys.map(key => {
+          const attr = attrMap[key];
+          if (attr) return attr.value.toFixed(2) + (key === "mastery" ? "" : "%");
+        }),
         axes: keys.map(key => propertyLabels[key]!),
         cells: keys.map(reduce => keys.map(inc => {
           if (reduce === inc) return {};

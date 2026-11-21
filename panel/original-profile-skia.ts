@@ -210,24 +210,121 @@ export function artifactIcon(ctx: Drawing, image: Picture | undefined, x: number
   ctx.drawCanvas(icon, x, y, width, width);
 }
 
+function profileArtwork(theme: PanelTheme, relative: string | undefined) {
+  if (relative) return theme.picture(...relative.split("/").map(part => decodeURIComponent(part)));
+}
+
+const talentOrder = ["a", "e", "q"] as const;
+
+export async function readOriginalProfileHero(theme: PanelTheme, { elem, data }: Model) {
+  const [faces, backdrop, circle, portrait, sprite, crown, talents, constellations] = await Promise.all([
+    profileFonts(theme.resourceRoot), theme.picture("common", "bg", `bg-${elem}.webp`),
+    theme.picture("common", "bg", `talent-${elem}.webp`), data.gallerySplash ?? profileArtwork(theme, data.costumeSplash),
+    theme.picture("character", "imgs", "icon.png"), theme.picture("character", "imgs", "crown.png"),
+    Promise.all(talentOrder.map(key => profileArtwork(theme, data.imgs[key]))),
+    Promise.all(data.constellations.map(file => profileArtwork(theme, file))),
+  ]);
+  return { faces, backdrop, circle, portrait, sprite, crown, talents, constellations };
+}
+
+export function drawOriginalProfileBackdrop(ctx: Drawing, backdrop: Picture | undefined, height: number) {
+  fill(ctx, "#2e353e", [0, 0, cardWidth, height]);
+  if (backdrop) {
+    const scale = Math.max(cardWidth / backdrop.width, height / backdrop.height);
+    ctx.drawImage(backdrop, 0, 0, backdrop.width * scale, backdrop.height * scale);
+  }
+}
+
+export function drawOriginalProfileHero(ctx: Drawing, { font, write }: TextWriter, model: Model,
+  { circle, portrait, sprite, crown, talents, constellations }: Awaited<ReturnType<typeof readOriginalProfileHero>>) {
+  const { data, attr } = model;
+  ctx.save();
+  shadow(ctx, "#fff", 2);
+  round(ctx, [8, 115, 584, 385], 5);
+  ctx.strokeStyle = "#fff9";
+  ctx.lineWidth = .25;
+  ctx.stroke();
+  ctx.restore();
+  contain(ctx, portrait, [-545, 0, 1400, 500]);
+  ctx.save();
+  shadow(ctx, "#000b", 4, 2);
+  write(data.name, 580, 68, 50, { align: "right", title: true, maxWidth: 540 });
+  const cons = `${data.cons}命`;
+  font(18);
+  const badgeWidth = ctx.measureText(cons).width + 10;
+  fill(ctx, consColor[data.cons] ?? consColor[0]!, [580 - badgeWidth, 78, badgeWidth, 22], 4);
+  write(cons, 575, 96, 18, { align: "right" });
+  write(`UID ${model.uid} - Lv.${data.level}`, 575 - badgeWidth, 96, 18, { align: "right" });
+  ctx.restore();
+
+  talents.forEach((picture, i) => {
+    const x = 280 + i * 100;
+    contain(ctx, circle, [x, 120, 100, 100]);
+    contain(ctx, picture, [x + 27, 148, 46, 46]);
+    const level = data.talent[talentOrder[i]!];
+    const plus = level && level.level > level.original;
+    ctx.save();
+    shadow(ctx, plus ? "#d3bc8e" : "#000", plus ? 1 : 5);
+    fill(ctx, plus ? "#2e353e" : body, [x + 35, 192, 34, 26], 5);
+    ctx.restore();
+    write(level?.level, x + 52, 212, 17, { align: "center", bold: true, color: plus ? "#ffdfa0" : "#000" });
+    if (level && level.original >= 10) contain(ctx, crown, [x + 38, 120, 28, 28]);
+  });
+  constellations.forEach((picture, i) => {
+    const x = 15 + i * 40;
+    ctx.save();
+    if (i >= data.cons) {
+      ctx.globalAlpha = .4;
+      ctx.filter = "grayscale(1)";
+    }
+    contain(ctx, circle, [x, 445, 50, 50]);
+    contain(ctx, picture, [x + 13.5, 459, 23, 23]);
+    ctx.restore();
+  });
+  ctx.save();
+  round(ctx, [280, 230, 300, 256], 8);
+  ctx.clip();
+  fill(ctx, "#0003", [280, 230, 300, 256]);
+  statistics.forEach(([key, label], index) => {
+    const y = 230 + index * 32;
+    fill(ctx, index % 2 ? dark : "rgba(50,50,50,.4)", [280, y, 300, 32]);
+    if (sprite) {
+      const size = sprite.height;
+      ctx.drawImage(sprite, size * (index + 1), 0, size, size, 288, y + 9, 16, 16);
+    }
+    fill(ctx, "#0003", [512, y, 68, 32]);
+    ctx.save();
+    shadow(ctx, "#0008", 1);
+    write(label, 309, y + 22, 17);
+    write(attr[key], 502, y + 22, 17, { align: "right" });
+    ctx.restore();
+    const weight = model.artisDetail.charWeight[key];
+    if (weight) {
+      fill(ctx, "#0008", [383, y + 7, 30, 18], 5);
+      write(weight, 398, y + 21, 12, { align: "center", color: weight >= 80 ? boosted : body });
+    }
+    const base = attr[key + "Base"], bonus = attr[key + "Plus"];
+    write(base, 570, y + 14, 12, { align: "right", color: base === "0.0%" ? "#aaaa" : "#eee" });
+    write(bonus && "+" + bonus, 570, y + 27, 12, { align: "right", color: "#90e800" });
+  });
+  ctx.restore();
+  ctx.save();
+  shadow(ctx, "#000", 1, 1);
+  write([data.dataSource && "数据源：" + data.dataSource, data.updateTime].filter(Boolean).join("  "),
+    580, 505, 12, { align: "right", color: "#ffffffd9" });
+  ctx.restore();
+}
+
 export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode: Mode = "auto") {
   const { data, attr, artisDetail: rating, dmgCalc: damage } = model;
-  const artwork = (relative: string | undefined) => relative
-    ? theme.picture(...relative.split("/").map(part => decodeURIComponent(part)))
-    : undefined;
-  const icon = (file: string) => theme.picture("character", "imgs", file);
-  const levels = ["a", "e", "q"] as const;
   const pieces = Object.values(rating.artis);
-  const [faces, backdrop, circle, card, portrait, sprite, crown, rolls, talents, constellations, weapon, artifactPictures] =
-    await Promise.all([
-      profileFonts(theme.resourceRoot), theme.picture("common", "bg", `bg-${model.elem}.webp`),
-      theme.picture("common", "bg", `talent-${model.elem}.webp`), theme.picture("common", "cont", "card-bg.png"),
-      data.gallerySplash ?? artwork(data.costumeSplash), icon("icon.png"), icon("crown.png"),
-      Promise.all([0, 1, 2].map(index => icon(`up-num-icon${index}.png`))),
-      Promise.all(levels.map(key => artwork(data.imgs[key]))),
-      Promise.all(data.constellations.map(artwork)),
-      artwork(data.weapon?.img), Promise.all(pieces.map(piece => artwork(piece.img))),
-    ]);
+  const icon = (file: string) => theme.picture("character", "imgs", file);
+  const [hero, card, rolls, weapon, artifactPictures] = await Promise.all([
+    readOriginalProfileHero(theme, model), theme.picture("common", "cont", "card-bg.png"),
+    Promise.all([0, 1, 2].map(index => icon(`up-num-icon${index}.png`))),
+    profileArtwork(theme, data.weapon?.img), Promise.all(pieces.map(piece => profileArtwork(theme, piece.img))),
+  ]);
+  const { faces, backdrop } = hero;
   const changeHeight = model.changeProfile ? 40 : 0;
   const artifactsTop = 633 + changeHeight;
   const artifactHeight = (piece: (typeof pieces)[number]) => piece.main && piece.name
@@ -245,87 +342,8 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
     const type = typeset(ctx, faces);
     const { font, write } = type;
     const weightColour = (key: string) => (rating.charWeight[key] ?? 0) >= 80 ? boosted : (rating.charWeight[key] ?? 0) > 0 ? body : "#888";
-    fill(ctx, "#2e353e", [0, 0, 600, height]);
-    if (backdrop) {
-      const scale = Math.max(600 / backdrop.width, height / backdrop.height);
-      ctx.drawImage(backdrop, 0, 0, backdrop.width * scale, backdrop.height * scale);
-    }
-
-    ctx.save();
-    shadow(ctx, "#fff", 2);
-    round(ctx, [8, 115, 584, 385], 5);
-    ctx.strokeStyle = "#fff9";
-    ctx.lineWidth = .25;
-    ctx.stroke();
-    ctx.restore();
-    contain(ctx, portrait, [-545, 0, 1400, 500]);
-    ctx.save();
-    shadow(ctx, "#000b", 4, 2);
-    write(data.name, 580, 68, 50, { align: "right", title: true, maxWidth: 540 });
-    const cons = `${data.cons}命`;
-    font(18);
-    const badgeWidth = ctx.measureText(cons).width + 10;
-    fill(ctx, consColor[data.cons] ?? consColor[0]!, [580 - badgeWidth, 78, badgeWidth, 22], 4);
-    write(cons, 575, 96, 18, { align: "right" });
-    write(`UID ${model.uid} - Lv.${data.level}`, 575 - badgeWidth, 96, 18, { align: "right" });
-    ctx.restore();
-
-    talents.forEach((picture, i) => {
-      const x = 280 + i * 100;
-      contain(ctx, circle, [x, 120, 100, 100]);
-      contain(ctx, picture, [x + 27, 148, 46, 46]);
-      const level = data.talent[levels[i]!];
-      const plus = level && level.level > level.original;
-      ctx.save();
-      shadow(ctx, plus ? "#d3bc8e" : "#000", plus ? 1 : 5);
-      fill(ctx, plus ? "#2e353e" : body, [x + 35, 192, 34, 26], 5);
-      ctx.restore();
-      write(level?.level, x + 52, 212, 17, { align: "center", bold: true, color: plus ? "#ffdfa0" : "#000" });
-      if (level && level.original >= 10) contain(ctx, crown, [x + 38, 120, 28, 28]);
-    });
-    constellations.forEach((picture, i) => {
-      const x = 15 + i * 40;
-      ctx.save();
-      if (i >= data.cons) {
-        ctx.globalAlpha = .4;
-        ctx.filter = "grayscale(1)";
-      }
-      contain(ctx, circle, [x, 445, 50, 50]);
-      contain(ctx, picture, [x + 13.5, 459, 23, 23]);
-      ctx.restore();
-    });
-    ctx.save();
-    round(ctx, [280, 230, 300, 256], 8);
-    ctx.clip();
-    fill(ctx, "#0003", [280, 230, 300, 256]);
-    statistics.forEach(([key, label], index) => {
-      const y = 230 + index * 32;
-      fill(ctx, index % 2 ? dark : "rgba(50,50,50,.4)", [280, y, 300, 32]);
-      if (sprite) {
-        const size = sprite.height;
-        ctx.drawImage(sprite, size * (index + 1), 0, size, size, 288, y + 9, 16, 16);
-      }
-      fill(ctx, "#0003", [512, y, 68, 32]);
-      ctx.save();
-      shadow(ctx, "#0008", 1);
-      write(label, 309, y + 22, 17);
-      write(attr[key], 502, y + 22, 17, { align: "right" });
-      ctx.restore();
-      const weight = rating.charWeight[key];
-      if (weight) {
-        fill(ctx, "#0008", [383, y + 7, 30, 18], 5);
-        write(weight, 398, y + 21, 12, { align: "center", color: weight >= 80 ? boosted : body });
-      }
-      const base = attr[key + "Base"], bonus = attr[key + "Plus"];
-      write(base, 570, y + 14, 12, { align: "right", color: base === "0.0%" ? "#aaaa" : "#eee" });
-      write(bonus && "+" + bonus, 570, y + 27, 12, { align: "right", color: "#90e800" });
-    });
-    ctx.restore();
-    ctx.save();
-    shadow(ctx, "#000", 1, 1);
-    write([data.dataSource && "数据源：" + data.dataSource, data.updateTime].filter(Boolean).join("  "),
-      580, 505, 12, { align: "right", color: "#ffffffd9" });
-    ctx.restore();
+    drawOriginalProfileBackdrop(ctx, backdrop, height);
+    drawOriginalProfileHero(ctx, type, model, hero);
 
     if (model.changeProfile) panel(ctx, card, [10, 515, 575, 35], () => {
       fill(ctx, "#0008", [10, 515, 575, 35]);
