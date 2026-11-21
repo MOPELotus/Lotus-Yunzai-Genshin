@@ -36,7 +36,7 @@ function wrap(input: string, limit: number, measure: (value: string) => number) 
   const lines: string[] = [];
   for (const paragraph of input.split("\n")) {
     let current = "";
-    const tokens = paragraph.match(/[-+]?\d+(?:\.\d+)?%?|[A-Za-z][A-Za-z0-9.-]*|./gu) ?? [];
+    const tokens = paragraph.match(/[-+]?\d+(?:,\d{3})*(?:\.\d+)?%?|[A-Za-z][A-Za-z0-9.-]*|./gu) ?? [];
     for (const token of tokens.flatMap(token => measure(token) > limit ? [...token] : [token])) {
       if (current && measure(current + token) > limit) { lines.push(current); current = ""; }
       current += token;
@@ -63,8 +63,8 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
   const tables: Table[] = [];
   const details: Table[] = [];
   if (overview) {
-    tables.push({ header: ["总伤害", "DPS", "时间", "评级"],
-      rows: [[totalDamage(result.total), result.dps || "—", result.seconds ? `${result.seconds}s` : "—", result.rank || "—"]] });
+    tables.push({ header: ["总伤害", "DPS", "时间", result.source === "gcsim" ? "模拟次数" : "评级"],
+      rows: [[totalDamage(result.total), result.dps || "—", result.seconds ? `${result.seconds}s` : "—", (result.source === "gcsim" ? result.iterations : result.rank) || "—"]] });
     tables.push({ header: ["#", "角色", "等级 / 命座", "装备"], faces, widths: [28, 160, 100, tableWidth - 288],
       rows: members.map((member, index) => [index + 1, member.name, `Lv.${member.level} · ${member.cons}命`,
         `${member.weapon}\nLv.${member.weaponLevel} · ${member.weaponAffix}精炼`]) });
@@ -74,13 +74,13 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
     }
     if (result.contributions.length) {
       const sum = result.contributions.reduce((total, row) => total + row.value, 0);
-      tables.push({ header: ["伤害贡献", "伤害", "占比"], rows: result.contributions.map(row =>
+      tables.push({ header: ["伤害贡献", result.source === "gcsim" ? "估算伤害" : "伤害", "占比"], rows: result.contributions.map(row =>
         [row.name, number(row.value), `${sum ? (row.value / sum * 100).toFixed(1) : "0"}%`]) });
     }
   }
-  if (page?.timeline.length) details.push({ header: ["时间", "动作", "伤害"], widths: [65, 185, tableWidth - 250],
+  if (page?.timeline.length) details.push({ header: ["时间", result.source === "gcsim" ? "样本动作" : "动作", "伤害"], widths: result.source === "gcsim" ? [85, 185, tableWidth - 270] : [65, 185, tableWidth - 250],
     rows: page.timeline.map(row => [`${row.time}s`, row.action, row.values]) });
-  if (page?.buffs.length) details.push({ header: ["时间", "增益", "说明"], widths: [65, 185, tableWidth - 250],
+  if (page?.buffs.length) details.push({ header: ["时间", "增益", "说明"], widths: result.source === "gcsim" ? [85, 185, tableWidth - 270] : [65, 185, tableWidth - 250],
     rows: page.buffs.map(row => [`${row.time}s`, row.name, row.detail]) });
 
   const measureContext = new Canvas(1, 1).getContext("2d");
@@ -152,7 +152,9 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
     drawings.forEach(draw => draw(ctx));
     ctx.save();
     ctx.shadowColor = "#000"; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
-    drawText(ctx, "数据来源：提瓦特小助手", width / 2, cursor + 7, 12, "#fff", "center");
+    const sample = card.detail && result.sampleSeed ? ` · 样本 ${result.sampleSeed}` : "";
+    const source = result.source === "gcsim" ? `本地 gcsim 模拟 · ${result.rotation}${sample}` : "数据来源：提瓦特小助手";
+    drawText(ctx, source, width / 2, cursor + 7, 12, "#fff", "center");
     drawText(ctx, "Lotus-Yunzai", width / 2, cursor + 25, 12, "#fff", "center");
     ctx.restore();
   }, mode, { displayWidth: 720 });

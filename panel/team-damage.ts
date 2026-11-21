@@ -1,24 +1,26 @@
 import { ProfileError } from "@lotus-yunzai/account";
 import { HoyoRequestError, readGenshinTeamDamage } from "@lotus-yunzai/hoyo-client";
+import { createGcsim } from "./gcsim/simulator.ts";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import type { createGenshinPanelArchive } from "./panel.ts";
 import { renderTeamDamage, teamDamagePages } from "./team-damage-card.ts";
 import { parseTeamDamage, selectTeam } from "./team-damage-command.ts";
-import { buildTeamDamagePayload, parseTeamDamageResult } from "./team-damage-model.ts";
+import { buildTeamDamagePayload, parseTeamDamageResult, type TeamDamageResult } from "./team-damage-model.ts";
 import { readPanelTheme } from "./theme.ts";
 
 const help = [
   "#队伍伤害神鹤万心 或 #队伍伤害 神里绫华 申鹤 万叶 心海",
   "#队伍伤害详情3 雷九万班 查询本人档案 3，可用「过程」或「全图」查看时间线。",
-  "省略角色时取本人已有的前四份面板。提瓦特小助手会收到所选原神 UID、区服和队伍角色的等级、天赋、属性及配装。",
+  "省略角色时取本人已有的前四份面板。已有时间轴的队伍优先使用本地 gcsim。未有对应时间轴时使用提瓦特小助手，其收到的资料会在计算前明确提示。",
 ].join("\n");
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Context = { readonly user_id?: number; readonly message_type?: string; readonly isDelegated?: boolean;
   readonly privateCredentialSignal?: AbortSignal; reply(message: string | Image): unknown };
 
 export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pick<ReturnType<typeof createGenshinPanelArchive>, "readPanel">,
-  lifecycle: AbortSignal, { theme = readPanelTheme, request = readGenshinTeamDamage, render = renderTeamDamage }:
-    { readonly theme?: typeof readPanelTheme; readonly request?: typeof readGenshinTeamDamage; readonly render?: typeof renderTeamDamage } = {}) {
+  lifecycle: AbortSignal, { theme = readPanelTheme, request = readGenshinTeamDamage, render = renderTeamDamage, simulate = createGcsim(),
+    engine = Bun.env.LOTUS_GENSHIN_GCSIM_MODE?.trim() }:
+    { readonly theme?: typeof readPanelTheme; readonly request?: typeof readGenshinTeamDamage; readonly render?: typeof renderTeamDamage; readonly simulate?: ReturnType<typeof createGcsim>; readonly engine?: string } = {}) {
   const pending = new Set<string>();
   return async (message: string, context: Context) => {
     if (lifecycle.aborted || context.privateCredentialSignal?.aborted) return;
@@ -51,23 +53,29 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
           }
           signal.throwIfAborted();
         }
-        let assets, members, payload;
+        let assets, team, members, payload;
         try {
           assets = await theme();
           const snapshot = await archive.readPanel(qq, uid, assets, false, accountId);
           if (!snapshot) return "当前档案没有原神角色面板，请先使用 #更新面板。";
-          const team = selectTeam(command.tokens, snapshot);
+          team = selectTeam(command.tokens, snapshot);
           ({ members, payload } = await buildTeamDamagePayload(uid, region, team, assets));
         } catch (error) {
           if (error instanceof TypeError) return error.message;
           throw error;
         }
         await verify();
-        const note = `正在使用提瓦特小助手（api.lelaer.com）计算档案 ${profileId} 的队伍伤害。将发送本人的原神 UID、区服和 ${members.map(member => member.name).join("、")} 的等级、天赋、属性与配装。`;
-        if (await context.reply(note) !== true) return "队伍伤害的来源提示未能送出，请重试。";
-        await verify();
-        let result;
-        try { result = parseTeamDamageResult(await request(payload, { signal }), members); }
+        let result: TeamDamageResult | undefined;
+        try {
+          if (engine !== "legacy") result = await simulate(team, assets, command.detail, signal);
+          if (!result) {
+            if (engine === "local") return "当前阵容没有可用的本地 gcsim 时间轴，或本地模拟依赖尚未安装。";
+            const note = `正在使用提瓦特小助手（api.lelaer.com）计算档案 ${profileId} 的队伍伤害。将发送本人的原神 UID、区服和 ${members.map(member => member.name).join("、")} 的等级、天赋、属性与配装。`;
+            if (await context.reply(note) !== true) return "队伍伤害的来源提示未能送出，请重试。";
+            await verify();
+            result = parseTeamDamageResult(await request(payload, { signal }), members);
+          }
+        }
         catch (error) {
           if (error instanceof TypeError) return error.message;
           throw error;
@@ -89,7 +97,8 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
           if (error instanceof ProfileError || signal.aborted) throw error;
           const lines = [`原神队伍伤害 · ${members.map(member => member.name).join(" / ")}`,
             `总伤害 ${result.total ?? "—"} · DPS ${result.dps || "—"} · 时间 ${result.seconds ? `${result.seconds} 秒` : "—"} · 评级 ${result.rank || "—"}`,
-            ...result.contributions.map(row => `${row.name} ${row.value}`), "数据来源：提瓦特小助手"];
+            ...result.contributions.map(row => `${row.name} ${row.value}`),
+            result.source === "gcsim" ? `本地 gcsim 模拟 · ${result.rotation}` : "数据来源：提瓦特小助手"];
           return lines.join("\n");
         }
       } finally { pending.delete(key); }

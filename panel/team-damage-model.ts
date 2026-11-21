@@ -137,4 +137,9 @@ export function parseTeamDamageResult(raw: Json, members: readonly TeamMember[])
   return { total, seconds, dps, rank, contributions, actions, timeline, buffs };
 }
 
-export type TeamDamageResult = ReturnType<typeof parseTeamDamageResult>;
+export type TeamDamageResult = ReturnType<typeof parseTeamDamageResult> & {
+  readonly source?: "gcsim";
+  readonly rotation?: string;
+  readonly iterations?: number;
+  readonly sampleSeed?: string;
+};
