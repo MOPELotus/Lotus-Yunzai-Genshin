@@ -21,14 +21,11 @@ export async function renderGenshinCardForChat(width: number, height: number, dr
   } = {}) {
   const fits = (png: Uint8Array) => inlineImageByteLimit === undefined || png.byteLength <= inlineImageByteLimit;
   signal?.throwIfAborted();
-  const high = await renderGenshinCard(width, height, draw, mode, { displayWidth }).catch(error => {
-    if (!(error instanceof ImageSizeLimitError)) throw error;
-    return error;
-  });
+  const high = await renderGenshinCard(width, height, draw, mode, { displayWidth, allowHalfScale: true });
   signal?.throwIfAborted();
-  if (!(high instanceof ImageSizeLimitError) && fits(high.png)) return high;
-  const half = await renderGenshinCard(width, height, draw, mode, { displayWidth, scale: 2 });
+  if (fits(high.png)) return high;
+  const half = high.reducedScaleReason ? high : await renderGenshinCard(width, height, draw, mode, { displayWidth, scale: 2 });
   signal?.throwIfAborted();
   if (!fits(half.png)) throw new ImageSizeLimitError("图片超过当前会话的单图大小上限。");
-  return { ...half, reducedScaleReason: high instanceof ImageSizeLimitError ? high.message : "四倍图超过当前会话的单图大小上限。" };
+  return { ...half, reducedScaleReason: "四倍图超过当前会话的单图大小上限。" };
 }
