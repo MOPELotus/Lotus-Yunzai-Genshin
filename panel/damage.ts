@@ -10,6 +10,9 @@ import { characterDamageRules } from "./miao/damage/character-rules.js";
 import { artifactStatRecord, characterLevelBreakpoints, object, propertyLabels, talentKeys, text,
   type DisplayedTalentLevels, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
 import { panelTalentLevels, travelerIds } from "./talent-levels.ts";
+import { damageSettings } from "./lolomi/config.ts";
+import { miaoWithNativeRule, nativeArtifactEffects, nativeAttr, nativeCalc, nativeWeaponEffects,
+  readNativeRule, readNativeTables } from "./lolomi/native.ts";
 import type { PanelTheme } from "./theme.ts";
 
 interface Buff {
@@ -43,6 +46,7 @@ interface Rule {
   readonly buffs?: readonly (Buff | string)[];
   readonly defDmgIdx?: number | ((context: Context) => number);
   readonly defDmgKey?: string | ((context: Context) => string);
+  readonly consDmgKey?: string;
   readonly defParams?: Json | ((context: Context) => Json);
   readonly mainAttr?: string;
   readonly enemyName?: string;
@@ -78,6 +82,7 @@ export interface DamageSummary {
   readonly enemyLevel: number;
   readonly enemyName: string;
   readonly ruleAuthors: readonly string[];
+  readonly constellation?: readonly DamageRow[];
 }
 export type DamageEstimate =
   | (DamageSummary & { readonly selected: number; readonly comparison?: DamageComparison })
@@ -133,10 +138,10 @@ function strictTable(table: Json) {
   });
 }
 
-function talents(avatar: PanelAvatar, record: Json, archiveMeta: Json | undefined, displayed?: DisplayedTalentLevels) {
+function talents(avatar: PanelAvatar, record: Json, archiveMeta: Json | undefined, displayed?: DisplayedTalentLevels, native = false) {
   const talent = object(record.talentData);
   const result: Json = {};
-  const talentLevel: Json = {};
+  const talentLevel: Partial<Record<typeof talentKeys[number], { level: number; original: number }>> = {};
   const levels = panelTalentLevels(avatar, record, archiveMeta, displayed);
   for (const [index, key] of talentKeys.entries()) {
     const level = levels[index];
@@ -145,16 +150,17 @@ function talents(avatar: PanelAvatar, record: Json, archiveMeta: Json | undefine
     const values = Object.fromEntries(Object.entries(object(talent?.[key])!).flatMap(([label, rows]) => {
       if (!Array.isArray(rows)) return [];
       const value = rows[level.level - 1];
+      if (native) return [[label, value]];
       if (Array.isArray(value) && value.length && value.every(x => finite(x) !== undefined)) return [[label, value]];
       return finite(value) === undefined ? [] : [[label, value]];
     }));
     if (!Object.keys(values).length) throw new Unavailable("旧版天赋倍率表不包含当前等级。");
-    result[key] = strictTable(values);
+    result[key] = native ? values : strictTable(values);
   }
   return { ...result, talentLevel };
 }
 
-function equipment(avatar: PanelAvatar) {
+function equipment(avatar: PanelAvatar, isolated = false) {
   const count = Object.create(null) as Record<string, number>;
   const stats: { readonly key: string; readonly value: number }[] = [];
   for (const item of Object.values(avatar.artis)) {
@@ -170,7 +176,8 @@ function equipment(avatar: PanelAvatar) {
   const buffs: Buff[] = [];
   for (const [name, size] of Object.entries(pieces)) {
     for (const number of size === 4 ? [2, 4] : [2]) {
-      for (const row of list(sets[name]?.[number])) {
+      const buffsForSet = isolated ? nativeArtifactEffects(name, number) as readonly Buff[] : list(sets[name]?.[number]);
+      for (const row of buffsForSet) {
         buffs.push({ ...row, title: row.isStatic ? row.title : `${name}${number}：${row.title}` });
       }
     }
@@ -271,6 +278,17 @@ async function sourceData(theme: PanelTheme, avatar: PanelAvatar, name: string) 
   return { detail, weapon, weaponType };
 }
 
+async function panelTables(theme: PanelTheme, avatar: PanelAvatar, name: string,
+  pinned?: Awaited<ReturnType<typeof readNativeTables>>) {
+  try { return await sourceData(theme, avatar, name); }
+  catch (error) {
+    if (!(error instanceof Unavailable)) throw error;
+    const data = pinned ?? await readNativeTables(name, avatar);
+    if (!data?.weapon) throw error;
+    return { ...data, weapon: data.weapon };
+  }
+}
+
 function normalBuffs(items: readonly (Buff | string)[]) {
   return items.flatMap(item => {
     if (typeof item === "string") {
@@ -287,7 +305,7 @@ const resultValue = (value: unknown): number | string | undefined => {
   return typeof value === "string" && /^\d+(?:\.\d+)?%$/u.test(value) ? value : undefined;
 };
 
-async function panelInputs(avatar: PanelAvatar, theme: PanelTheme) {
+async function panelInputs(avatar: PanelAvatar, theme: PanelTheme, selectEngine = false) {
   if (!Object.hasOwn(elementNames, avatar.elem)) throw new Unavailable("面板缺少有效的角色元素。");
   const cons = avatar.cons;
   const equippedWeapon = avatar.weapon;
@@ -295,25 +313,47 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme) {
     throw new Unavailable("伤害估算需要武器精炼、命座和圣遗物词条，请先更新面板。");
   }
   const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
-  if (!Object.hasOwn(formulas, name)) throw new Unavailable("当前规则库没有这个角色的伤害规则。");
-  const rule = formulas[name]!();
-  const tables = await sourceData(theme, avatar, name);
+  const [catalog, selected] = await Promise.all([
+    selectEngine ? readNativeTables(name, avatar) : undefined,
+    selectEngine && damageSettings.lolomicalc ? readNativeRule(name) : undefined,
+  ]);
+  const native = !!catalog && damageSettings.engineMode !== "miao";
+  if (selectEngine && damageSettings.engineMode === "lolomi" && !native) {
+    throw new Unavailable("指定伤害引擎没有当前角色的数值表。");
+  }
+  const inherited = Object.hasOwn(formulas, name) ? formulas[name]!() : undefined;
+  const rule = (selected as Rule | undefined) ?? inherited;
+  if (!rule) throw new Unavailable("当前规则库没有这个角色的伤害规则。");
+
+  const tables = selectEngine ? await panelTables(theme, avatar, name, catalog) : await sourceData(theme, avatar, name);
   const gear = equipment(avatar);
+  const nativeGear = native ? equipment(avatar, true) : gear;
+  const setMissing = (set: string, size: number) =>
+    native ? !nativeArtifactEffects(set, size).length : !Object.hasOwn(sets, set) || !sets[set]?.[size];
   if (avatar._source === "change" && Object.entries(gear.pieces).some(([set, count]) =>
-    !Object.hasOwn(sets, set) || !sets[set]?.[2] || (count === 4 && !sets[set]?.[4]))) {
+    setMissing(set, 2) || (count === 4 && setMissing(set, 4)))) {
     throw new Unavailable("旧伤害规则缺少这套装备生效的圣遗物套装数值。");
   }
   const weapon = { ...equippedWeapon, type: tables.weaponType, typeName: weaponClass[tables.weaponType] };
-  const allBuffs = [...(rule.buffs ?? []), ...weaponBuffs(weapon.name, equippedWeapon.affix), ...gear.buffs];
+  const originalWeapon = weaponBuffs(weapon.name, equippedWeapon.affix);
+  const selectedWeapon = catalog?.weapon ? nativeWeaponEffects(weapon.name, catalog.weapon, equippedWeapon.affix) as Buff[] : undefined;
+  const staticWeapon = selectedWeapon?.length ? selectedWeapon : originalWeapon;
+  const dynamicWeapon = native ? selectedWeapon ?? [] : staticWeapon;
+  const allBuffs = [...(rule.buffs ?? []), ...dynamicWeapon, ...nativeGear.buffs];
+  const staticSets = Object.entries(gear.pieces).flatMap(([set, count]) => (count === 4 ? [2, 4] : [2]).flatMap(size => {
+    const effects = selectEngine ? nativeArtifactEffects(set, size) as readonly Buff[] : [];
+    return effects.length ? effects : Object.hasOwn(sets, set) ? list(sets[set]?.[size]) : [];
+  }));
+  // Production's Lolomi reads the Miao panel's static numbers, then adds its own dynamic rules.
   const starting = readInitial(avatar, tables.detail, tables.weapon,
-    allBuffs.filter((item): item is Buff => typeof item !== "string"), gear);
-  return { cons, rule, tables, gear, weapon, allBuffs, starting };
+    [...inherited?.buffs ?? [], ...staticWeapon, ...staticSets].filter((item): item is Buff => typeof item !== "string"), gear);
+  return { cons, rule, tables, gear, weapon, allBuffs, starting, native, catalog, usesNativeRule: !!selected };
 }
 
 export async function readOriginalPanelNumbers(avatar: PanelAvatar, theme: PanelTheme) {
   try {
     const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
-    const tables = await sourceData(theme, avatar, name);
+    const tables = await panelTables(theme, avatar, name);
     const gear = equipment(avatar);
     const rule = Object.hasOwn(formulas, name) ? formulas[name]!() : undefined;
     const buffs = [...(rule?.buffs ?? []), ...weaponBuffs(avatar.weapon!.name, avatar.weapon?.affix ?? 1), ...gear.buffs];
@@ -329,7 +369,7 @@ export async function readOriginalPanelNumbers(avatar: PanelAvatar, theme: Panel
 export async function readOriginalWeapon(avatar: PanelAvatar, theme: PanelTheme) {
   try {
     const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
-    const { weapon, weaponType } = await sourceData(theme, avatar, name);
+    const { weapon, weaponType } = await panelTables(theme, avatar, name);
     const { left, right, after, width } = range(avatar.weapon?.level, avatar.weapon?.promote, weaponLevels);
     const attr = object(weapon.attr);
     const atk = object(attr?.atk);
@@ -405,13 +445,17 @@ export async function readChangedPanelProperties(avatar: PanelAvatar, theme: Pan
 }
 
 export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme, row?: number,
-  enemyLevel = genshinDamageEnemyLevel, { includeComparison = true, ranking = false, displayedTalent }:
-    { readonly includeComparison?: boolean; readonly ranking?: boolean; readonly displayedTalent?: DisplayedTalentLevels } = {}): Promise<DamageEstimate> {
+  enemyLevel = genshinDamageEnemyLevel, { includeComparison = true, ranking = false, displayedTalent, useMiao = false }:
+    { readonly includeComparison?: boolean; readonly ranking?: boolean; readonly displayedTalent?: DisplayedTalentLevels; readonly useMiao?: boolean } = {}): Promise<DamageEstimate> {
   try {
-    const { cons, rule, tables, gear, weapon, allBuffs, starting } = await panelInputs(avatar, theme);
-    const talent = talents(avatar, tables.detail, object(theme.characters[avatar.id]), displayedTalent);
+    const { cons, rule, tables, gear, weapon, allBuffs, starting, native, catalog, usesNativeRule } = await panelInputs(avatar, theme, !useMiao);
+    const talentData = native && catalog ? catalog.detail : tables.detail;
+    const archiveMeta = object(theme.characters[avatar.id]);
+    const talent = talents(avatar, talentData, archiveMeta, displayedTalent, !!native);
     const character = { ...tables.detail, elem: avatar.elem, weaponTypeName: weaponClass[tables.weaponType] };
-    const originalAttr = DmgAttr.getAttr({ originalAttr: undefined, attr: starting, weapon, char: character, game: "gs" });
+    const attributes = native ? nativeAttr : DmgAttr;
+    const getDamage = native ? nativeCalc.getDmgFn : usesNativeRule ? miaoWithNativeRule : DmgCalc.getDmgFn;
+    const originalAttr = attributes.getAttr({ originalAttr: undefined, attr: starting, weapon, char: character, game: "gs" });
     const base = { characterName: avatar.name, level: avatar.level, cons, talent, trees: {}, weapon };
     const defaults = typeof rule.defParams === "function" ? rule.defParams(base) : rule.defParams;
     const defaultIdx = typeof rule.defDmgIdx === "function" ? rule.defDmgIdx(base) : rule.defDmgIdx;
@@ -419,19 +463,22 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     const titles: DamageRow[] = [];
     const scenarios: ({ formula: Formula; params: Json } | undefined)[] = [];
     let preferred = -1;
-    function calc(params: Json = {}, skill = "", incAttr = "", reduceAttr = "") {
-      const meta = { ...base };
+    function calc(params: Json = {}, skill = "", incAttr = "", reduceAttr = "", meta = base) {
       const buffs = normalBuffs(allBuffs);
-      const result = DmgAttr.calcAttr({ originalAttr, buffs, artis: gear.pieces, meta, params, talent: skill, incAttr, reduceAttr, game: "gs" });
-      const ds = { ...DmgAttr.getDs(result.attr, meta, params), ...{ talent, artis: gear.pieces } };
+      const result = attributes.calcAttr({ originalAttr, buffs, artis: gear.pieces, meta, params, talent: skill, incAttr, reduceAttr, game: "gs" });
+      const ds = { ...attributes.getDs(result.attr, meta, params), ...{ talent: meta.talent, artis: gear.pieces } };
       return { ...result, ds };
     }
-    function calculate(formula: Formula, params: Json, inc = "", reduce = "") {
-      const { ds, attr, msg } = calc(params, formula.talent, inc, reduce);
+    function calculate(formula: Formula, params: Json, inc = "", reduce = "", meta = base, level = enemyLevel) {
+      const { ds, attr, msg } = calc(params, formula.talent, inc, reduce, meta);
       if (!formula.dmg || (formula.check && !formula.check(ds))) return;
-      const hit = DmgCalc.getDmgFn({ ds, attr, level: avatar.level, enemyLv: enemyLevel, showDetail: false, game: "gs" });
-      const result = object(formula.dmg(ds, hit));
-      return { ds, msg, average: resultValue(result?.avg), crit: resultValue(result?.dmg), unit: result?.unit === "%" ? "%" as const : undefined };
+      const hit = getDamage({ ds, attr, level: avatar.level, enemyLv: level, showDetail: false, game: "gs", params });
+      const result = object(formula.dmg(ds, hit as ReturnType<typeof DmgCalc.getDmgFn>));
+      const note = result?.type === "text" && object(result.avg);
+      const narrated = typeof result?.avg === "string" ? text(result.avg)
+        : note ? Object.entries(note).flatMap(([name, count]) => typeof count === "number" ? [`${name}×${count}`] : []).join("、") || "无套装"
+        : undefined;
+      return { ds, msg, average: resultValue(result?.avg) ?? (result?.type === "text" ? narrated : undefined), crit: resultValue(result?.dmg), unit: result?.unit === "%" ? "%" as const : undefined };
     }
 
     for (const [index, raw] of rule.details.entries()) {
@@ -447,7 +494,7 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
         if (!outcome) continue;
         const { ds, msg, average, crit, unit } = outcome;
         label = text(typeof formula.title === "string" ? formula.title : formula.title(ds)) || label;
-        if (defaultKey ? formula.dmgKey === defaultKey && preferred < 0 : index === defaultIdx) preferred = titles.length;
+        if (defaultKey && (!native || ranking) ? formula.dmgKey === defaultKey && preferred < 0 : index === defaultIdx) preferred = titles.length;
         scenarios.push({ formula, params });
         titles.push(average !== undefined || crit !== undefined
           ? { title: label, average, crit, ...(unit && { unit }), buffs: msg.map(text).filter(Boolean) }
@@ -465,7 +512,8 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     let comparison: DamageComparison | undefined;
     const selectedScenario = scenarios[selected];
     const keys = (rule.mainAttr || "atk,cpct,cdmg").split(",").filter(key => Object.hasOwn(propertyLabels, key));
-    if (!ranking && includeComparison && selectedScenario && !titles[selected]?.unavailable && keys.length >= 2) {
+    if (!ranking && includeComparison && selectedScenario && !titles[selected]?.unavailable && keys.length >= 2 &&
+        (!native || typeof titles[selected]?.average === "number")) {
       const { formula, params } = selectedScenario;
       comparison = {
         axes: keys.map(key => propertyLabels[key]!),
@@ -480,9 +528,51 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
         })),
       };
     }
-    const ruleAuthors = text(rule.createdBy).split("&").map(name => name.trim())
+    let constellation: DamageRow[] | undefined;
+    if (native && !ranking && damageSettings.conscompare && typeof rule.defDmgIdx === "number" && rule.defDmgIdx > 0) {
+      const comparisonKey = text(rule.consDmgKey).trim();
+      const preferred = comparisonKey ? rule.details.findIndex(item => {
+        if (typeof item === "function") return false;
+        try { return text(typeof item.title === "string" ? item.title : item.title({ cons })).includes(comparisonKey); }
+        catch { return false; }
+      }) : -1;
+      const rowIndex = preferred >= 0 ? preferred : rule.defDmgIdx;
+      const raw = rule.details[rowIndex];
+      function atConstellation(value: number) {
+        if (!raw) return;
+        try {
+          const refreshedTalent = Object.fromEntries(talentKeys.map(key => [key, talent.talentLevel[key]?.original]));
+          const profile = { ...avatar, cons: value, refreshedTalent };
+          const meta = { ...base, cons: value, talent: talents(profile, talentData, archiveMeta, undefined, true) };
+          const formula = typeof raw === "function" ? raw({ ...calc({}, "", "", "", meta).ds, profile }) : raw;
+          if (formula.isStatic || (formula.cons && value < formula.cons)) return;
+          const localDefaults = typeof rule.defParams === "function" ? rule.defParams(meta) : rule.defParams;
+          const params = { ...localDefaults, ...(typeof formula.params === "function" ? formula.params(meta) : formula.params) };
+          const result = calculate(formula, params, "", "", meta, genshinDamageEnemyLevel);
+          if (typeof result?.average !== "number") return;
+          const title = typeof formula.title === "string" ? formula.title : formula.title(result.ds);
+          return { title: text(title), average: result.average, crit: typeof result.crit === "number" ? result.crit : 0 };
+        } catch { return; }
+      }
+      const here = atConstellation(cons);
+      const previous = cons > 0 ? atConstellation(cons - 1) : undefined;
+      const next = cons < 6 ? atConstellation(cons + 1) : undefined;
+      if (here && (previous || next)) {
+        type Point = NonNullable<ReturnType<typeof atConstellation>>;
+        const rowFor = (title: string, point: Point): DamageRow =>
+          ({ title, average: Math.floor(point.average), crit: Math.floor(point.crit), buffs: [] });
+        const change = (from: Point, to: Point) => from.average ? (to.average - from.average) / from.average * 100 : 0;
+        constellation = [rowFor("命座对比 " + here.title, here)];
+        if (previous && cons > 1) constellation.push(rowFor(
+          `对比 ${cons - 1} 命提升 ${Math.abs(change(here, previous)).toFixed(2)}%`, previous));
+        if (next) constellation.push(rowFor(`${cons + 1} 命预计提升 ${Math.abs(change(here, next)).toFixed(2)}%`, next));
+        const zero = cons === 1 ? previous : cons > 1 ? atConstellation(0) : undefined;
+        if (zero && zero.average > 0) constellation.push(rowFor(`对比 0 命总提升 ${change(zero, here).toFixed(2)}%`, zero));
+      }
+    }
+    const ruleAuthors = text(rule.createdBy || (usesNativeRule ? "洛洛米" : "")).split("&").map(name => name.trim())
       .filter(name => name && name !== "喵喵");
-    return { rows: titles, selected, enemyLevel, enemyName: text(rule.enemyName) || "小宝", ruleAuthors, comparison };
+    return { rows: titles, selected, enemyLevel, enemyName: text(rule.enemyName) || "小宝", ruleAuthors, comparison, constellation };
   } catch (error) {
     if (error instanceof Unavailable) return { message: error.message };
     throw error;

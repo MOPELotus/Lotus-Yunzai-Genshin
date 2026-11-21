@@ -794,11 +794,12 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
     panelPortrait(theme, avatar),
   ]);
   const selected = model.rows[model.selected];
+  const rows = [...model.rows, ...model.constellation ?? []];
   const buffs = [...new Set(selected?.buffs ?? [])];
   const width = 650;
   const rowsStart = 282 + (change ? 48 : 0);
   const comparison = model.comparison;
-  const matrixStart = rowsStart + model.rows.length * 35 + 20;
+  const matrixStart = rowsStart + rows.length * 35 + 20;
   const buffsStart = matrixStart + (comparison ? 86 + comparison.axes.length * 32 : 0);
   const height = buffsStart + (buffs.length ? 67 + buffs.length * 23 : 47);
 
@@ -814,16 +815,16 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
       352, 185, 13, "#e8eaf4", 270);
     label(ctx, `#敌人等级${model.enemyLevel}${profileId === 1 ? "" : ` 档案${profileId}`}`, 352, 204, 11, "#a4ddff", 270);
     if (change) drawEquipmentChange(ctx, width, 230, change);
-    block(ctx, "#171c2ce5", 14, rowsStart - 51, 622, 52 + model.rows.length * 35);
+    block(ctx, "#171c2ce5", 14, rowsStart - 51, 622, 52 + rows.length * 35);
     label(ctx, "伤害计算 · 旧情景", 29, rowsStart - 26, 19, gold);
     label(ctx, "期望", 505, rowsStart - 10, 12, "#e8eaf4", 95, "right");
     label(ctx, "暴击", 617, rowsStart - 10, 12, "#e8eaf4", 95, "right");
-    model.rows.forEach((entry, index) => {
+    rows.forEach((entry, index) => {
       const y = rowsStart + index * 35;
       const highlight = index === model.selected;
       ctx.fillStyle = highlight ? "#53602d96" : index % 2 ? "#13172477" : "#31364666";
       ctx.fillRect(19, y, 612, 34);
-      label(ctx, `${index + 1}. ${entry.title}`, 30, y + 23, 15, highlight ? gold : "#e8eaf4", 343);
+      label(ctx, index < model.rows.length ? `${index + 1}. ${entry.title}` : entry.title, 30, y + 23, 15, highlight ? gold : "#e8eaf4", 343);
       if (entry.unavailable) label(ctx, "数据不全", 616, y + 23, 13, "#d6c8a9", 121, "right");
       else {
         label(ctx, displayDamage(entry.average, entry.unit), 505, y + 23, 15, blue, 108, "right");

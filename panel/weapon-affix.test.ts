@@ -18,7 +18,7 @@ test("盈满之实各精炼的满层攻击力降幅相同，精通独立影响�
   };
   const averages: number[] = [];
   for (const [index, mastery] of [120, 135, 150, 165, 180].entries()) {
-    const result = await estimatePanelDamage({ ...avatar, weapon: { ...avatar.weapon!, affix: index + 1 } }, theme, 2);
+    const result = await estimatePanelDamage({ ...avatar, weapon: { ...avatar.weapon!, affix: index + 1 } }, theme, 2, undefined, { useMiao: true });
     if (!("rows" in result)) throw Error(result.message);
     const expected = (200 + 250) * 0.75 * (190 / 393) * 0.9 * (1 + 0.05 * 0.5);
     expect(result.rows[0]?.average).toBeCloseTo(expected, 8);
@@ -53,8 +53,8 @@ test("掠食者的固定攻击力仅埃洛伊获得，冰元素满层分别影�
       },
       async picture() { return undefined; },
     };
-    const result = await estimatePanelDamage(avatar, theme, 1);
-    const reference = await estimatePanelDamage({ ...avatar, weapon: { ...avatar.weapon!, name: "猎弓" } }, theme, 1);
+    const result = await estimatePanelDamage(avatar, theme, 1, undefined, { useMiao: true });
+    const reference = await estimatePanelDamage({ ...avatar, weapon: { ...avatar.weapon!, name: "猎弓" } }, theme, 1, undefined, { useMiao: true });
     if (!("rows" in result) || !("rows" in reference)) throw Error(sample.name);
     expect(result.rows[0]?.average).toBeCloseTo(Number(reference.rows[0]?.average) * sample.normal, 8);
     const skillRow = sample.name === "甘雨" ? 3 : 1;

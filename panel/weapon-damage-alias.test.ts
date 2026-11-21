@@ -106,8 +106,8 @@ test("编号武器命令实际复用同档伤害矩阵，裸命令仍发武器�
     expect(await query("#胡桃武器 档案2", message)).toEqual({ type: "image", file: weaponCard });
     expect(await query(`#${uid}胡桃武器 档案2`, message)).toEqual({ type: "image", file: weaponCard });
     expect(await query("#胡桃老婆武器 档案2", message)).toEqual({ type: "image", file: weaponCard });
-    expect(await query("#胡桃武器7 档案2", message)).toContain("只支持3种");
-    expect([selected, detail]).toEqual([[1, 1, 1, 1, 1], [2, 2, 2]]);
+    expect(await query("#胡桃武器7 档案2", message)).toEqual({ type: "image", file: damageCard });
+    expect([selected, detail]).toEqual([[1, 1, 1, 1, 1, 6], [2, 2, 2]]);
     await expect(stat(archiveDirectory)).rejects.toMatchObject({ code: "ENOENT" });
     expect(await readFile(file, "utf8")).toBe(original);
   } finally {

@@ -1,0 +1,5 @@
+https://gitee.com/land-route_lu/lolomi-calc/tree/22cb14e7571678ef152707d50c46bffab58e12ba
+rules/ is damage/lolomi-gs/, only rules and shared rule functions.
+engine/ is llm-engine/, with host dependencies bound to module-local primitives.
+data/ is llm-data/meta-gs/, numeric catalogs and effect tables. No images are shipped.
+The original Mulan PSL v2 and the more specific Yoimiya MIT notices are retained alongside these sources.
