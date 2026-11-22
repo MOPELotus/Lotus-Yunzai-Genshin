@@ -19,7 +19,7 @@ import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createG
 import { createGenshinShowcaseCommand, matchGenshinShowcase } from "./panel/showcase-command.ts";
 import { matchGenshinPanelDiscard } from "./panel/model.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
-import { matchGroupPanelRank } from "./panel/group-rank-model.ts";
+import { matchGroupPanelRank, resolveGroupPanelRank } from "./panel/group-rank-model.ts";
 import { createGenshinShowcaseClient } from "./panel/showcase-client.ts";
 import { createGenshinGroupShowcaseReader } from "./panel/showcase-reader.ts";
 import { createGenshinTalentRefresh, matchGenshinTalentRefresh } from "./panel/talent-refresh.ts";
@@ -146,6 +146,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
     { discardedAt: panelArchive.discardedAt, readShowcase: createGenshinGroupShowcaseReader(fetchShowcase),
       readEnemyLevel: panelPreferences.level });
+  const groupRankMatches = new WeakMap<GachaContext, Awaited<ReturnType<typeof resolveGroupPanelRank>>>();
   const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase });
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank, preferences: panelPreferences, readPanelDeletionBoundary: panelArchive.discardedAt });
   const sync = createGenshinGachaSync(profiles, client, history);
@@ -278,7 +279,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     commands: {},
     gachaUpdate,
     panelRebuild: panel.rebuild,
-    fallbackFeatures(context: GachaContext) {
+    async fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
       const aliases = matchGameCharacterAliasCommand(message);
       if (aliases && aliases.game !== "sr") return ["[genshin] 角色别名"];
@@ -303,7 +304,13 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       const gacha = gachaImportCommand.test(message) || helpCommand.test(message) || updateCommand.test(message) ||
         externalGachaCommand.test(message) || exportCommand.test(message) || matchGachaQuery(message) ||
         (!message.trim() && attachment && /\.json$/iu.test(attachment.name));
-      return gacha ? ["[gacha] 抽卡记录"] : [];
+      if (gacha) return ["[gacha] 抽卡记录"];
+      const customRank = await resolveGroupPanelRank(message);
+      if (customRank) {
+        groupRankMatches.set(context, customRank);
+        return ["[genshin] 角色面板"];
+      }
+      return [];
     },
     async fallback(_message: string, context: GachaContext) {
       const aliases = matchGameCharacterAliasCommand(context.normalizedMessage);
@@ -347,7 +354,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (pool !== undefined) return pool;
       const rankStats = await queryRankStats(context.normalizedMessage, signal);
       if (rankStats !== undefined) return rankStats;
-      const groupPanelRank = await groupRank.query(context.normalizedMessage, context, readPanelTheme)
+      const resolvedRank = groupRankMatches.get(context) ?? matchGroupPanelRank(context.normalizedMessage);
+      const groupPanelRank = await groupRank.query(resolvedRank, context, readPanelTheme)
         .catch(() => signal.aborted ? undefined : "群面板排名暂时无法读取，请稍后查询。");
       if (groupPanelRank !== undefined) return groupPanelRank;
       const panelReply = await panel(context.normalizedMessage, context);

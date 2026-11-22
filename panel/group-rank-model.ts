@@ -1,4 +1,5 @@
 import { MAX_PROFILE_ID } from "@lotus-yunzai/account";
+import { characterAliasKey, readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import { scorePanelArtifacts } from "./artifact-score.ts";
 import { estimatePanelDamage } from "./damage.ts";
@@ -35,22 +36,48 @@ function rankModeOf(metric?: string): RankMode {
   return "artifacts";
 }
 
-export function matchGroupPanelRank(message: string) {
+function groupRankTargets(message: string) {
+  if (/^#(?:星铁|崩铁|星穹铁道|绝区零)/u.test(message)) return;
   const list = /^#(?:原神)?(?:群内?)?([^#]{1,36}?)(?:排名|排行)榜?$/u.exec(message);
   const leader = list ? undefined : /^#(?:原神)?(?:群内?)?(最强|最高分|最高|最牛|第一)([^#]{1,36}?)(?:面[板版]|详情)?$/u.exec(message);
   const input = list?.[1] ?? leader?.[2];
   if (!input) return;
   const strongest = leader && { strongest: true as const };
-  const defaultMode = leader?.[1] === "最高分" ? "artifacts" as const : "damage" as const;
+  const defaultMode: RankMode = leader?.[1] === "最高分" ? "artifacts" : "damage";
   const body = input.trim();
-  const plain = findRankCharacter(body);
-  if (plain) return { character: plain, mode: defaultMode, ...strongest };
+  const targets: { name: string; mode: RankMode; strongest?: true }[] = [{ name: body, mode: defaultMode, ...strongest }];
   const suffix = metricSuffix.exec(body)?.[0];
   const root = suffix ? body.slice(0, -suffix.length).trim() : body;
   const prefix = metricPrefix.exec(root)?.[0];
-  if ((!suffix && !prefix) || (suffix && prefix && rankModeOf(suffix) !== rankModeOf(prefix))) return;
-  const character = findRankCharacter(prefix ? root.slice(prefix.length).trim() : root);
-  if (character) return { character, mode: rankModeOf(suffix ?? prefix), ...strongest };
+  if ((suffix || prefix) && !(suffix && prefix && rankModeOf(suffix) !== rankModeOf(prefix))) {
+    const name = prefix ? root.slice(prefix.length).trim() : root;
+    if (name) targets.push({ name, mode: rankModeOf(suffix ?? prefix), ...strongest });
+  }
+  return targets;
+}
+
+function matchRankTarget(targets: NonNullable<ReturnType<typeof groupRankTargets>>, find = findRankCharacter) {
+  for (const { name, ...intent } of targets) {
+    const character = find(name);
+    if (character) return { character, ...intent };
+  }
+}
+
+export function matchGroupPanelRank(message: string) {
+  const targets = groupRankTargets(message);
+  if (targets) return matchRankTarget(targets);
+}
+
+export async function resolveGroupPanelRank(message: string, readAliases = () => readGameCharacterAliases("gs")) {
+  const targets = groupRankTargets(message);
+  if (!targets) return;
+  const preset = matchRankTarget(targets);
+  if (preset) return preset;
+  const aliases = await readAliases();
+  return matchRankTarget(targets, name => {
+    const canonical = aliases.get(characterAliasKey(name));
+    if (canonical) return findRankCharacter(canonical);
+  });
 }
 
 export const rankId = (value: unknown): value is number =>

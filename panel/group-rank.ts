@@ -2,7 +2,7 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createGroupRankRefresh, type GameRole } from "@lotus-yunzai/account";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
-import { decodeRankAvatar, displayedRankScore, isRankProfile, matchGroupPanelRank, projectRankAvatar, rankId, rankModeNames,
+import { decodeRankAvatar, displayedRankScore, isRankProfile, resolveGroupPanelRank, projectRankAvatar, rankId, rankModeNames,
   rankUid, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { renderGroupPanelRank } from "./card.ts";
 import { object, type PanelAvatar, type PanelSnapshot } from "./model.ts";
@@ -228,8 +228,9 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         return { document: { version: 1, adapter: scope.adapter, bot: scope.bot, group: scope.group, qq: scope.qq, profiles: existing }, result: undefined };
       });
     },
-    async query(message: string, context: GroupRankContext, loadTheme: () => Promise<PanelTheme>) {
-      const intent = matchGroupPanelRank(message);
+    async query(rank: string | Awaited<ReturnType<typeof resolveGroupPanelRank>>, context: GroupRankContext, loadTheme: () => Promise<PanelTheme>) {
+      if (signal.aborted) return;
+      const intent = typeof rank === "string" ? await resolveGroupPanelRank(rank) : rank;
       if (!intent || signal.aborted) return;
       const scope = scopeOf(context);
       if (!scope) return "原神群面板排名只能在群聊中查询。";

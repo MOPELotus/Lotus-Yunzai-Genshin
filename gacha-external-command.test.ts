@@ -19,13 +19,13 @@ test("外部抽卡记录命令停用品牌别名并保留官方更新和附件�
   try {
     for (const message of ["#同步外部抽卡记录", "#原神同步外部抽卡记录2", "#更新抽卡记录2", "#导入记录2",
       "#武器记录", "#版本统计", "#全部记录"]) {
-      expect(module.fallbackFeatures(context(message))).toEqual(["[gacha] 抽卡记录"]);
+      expect(await module.fallbackFeatures(context(message))).toEqual(["[gacha] 抽卡记录"]);
     }
     const attachment = { name: "uigf.json", async read() { throw Error("unexpected attachment fetch"); } };
-    expect(module.fallbackFeatures({ ...context(""), attachment })).toEqual(["[gacha] 抽卡记录"]);
+    expect(await module.fallbackFeatures({ ...context(""), attachment })).toEqual(["[gacha] 抽卡记录"]);
     for (const message of ["#更新小助手抽卡记录", "#获取提瓦特小助手祈愿历史2", "#喵喵抽卡记录",
       "#原神喵喵版本统计", "#喵喵新手记录"]) {
-      expect(module.fallbackFeatures(context(message))).toEqual([]);
+      expect(await module.fallbackFeatures(context(message))).toEqual([]);
       expect(await module.fallback(message, context(message))).toBeUndefined();
     }
     const help = await module.fallback("#抽卡帮助", context("#抽卡帮助"));
