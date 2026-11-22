@@ -103,7 +103,8 @@ async function assetsForRow(avatar: RankAvatar, theme: PanelTheme) {
 
 export async function renderGroupPanelRank(name: string, rankMode: RankMode,
   rows: readonly { readonly uid: string; readonly avatar: RankAvatar }[], theme: PanelTheme, mode: RenderMode = "auto",
-  { signal, inlineImageByteLimit }: { readonly signal?: AbortSignal; readonly inlineImageByteLimit?: number } = {}) {
+  { signal, inlineImageByteLimit, refreshSummary }: { readonly signal?: AbortSignal; readonly inlineImageByteLimit?: number;
+    readonly refreshSummary?: string } = {}) {
   const element = rows[0]?.avatar.elem ?? "hydro";
   const [fonts, backdrop, texture, medals, first, talentBadge, crown, emptyRelic, aliases, rarity, people] = await Promise.all([
     profileFonts(theme.resourceRoot),
@@ -115,7 +116,8 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
     Promise.all([1, 2, 3, 4, 5].map(star => theme.picture("common", "item", `bg${star}.png`))),
     Promise.all(rows.map(({ avatar }) => assetsForRow(avatar, theme))),
   ]);
-  const rowStart = 269;
+  const extra = refreshSummary ? 20 : 0;
+  const rowStart = 269 + extra;
   const height = rowStart + rows.length * (rowHeight + gap) + 29;
   const metric = rankMode === "damage" ? "artifacts" : rankMode;
   const scoreMode = rankMode !== "damage";
@@ -139,11 +141,11 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
     ctx.shadowOffsetY = 4;
     write(`#${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`, 20, 74, 36, { title: true, maxWidth: 780 });
     ctx.restore();
-    panel(ctx, texture, [10, 97, 795, 166], () => {
+    panel(ctx, texture, [10, 97, 795, 166 + extra], () => {
       fill(ctx, "#0006", [10, 97, 795, 40]);
       fill(ctx, "#ffffff46", [10, 137, 795, 1]);
       write("群排名说明", 30, 124, 16, { color: gold });
-      fill(ctx, "#0006", [10, 138, 795, 124]);
+      fill(ctx, "#0006", [10, 138, 795, 124 + extra]);
       explanations.forEach(([title, body], index) => {
         const y = 161 + index * 20;
         write("•", 36, y, 13);
@@ -153,8 +155,10 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
         write(heading, x, y, 13, { color: gold });
         font(13);
         const bodyX = x + ctx.measureText(heading).width + 3;
-        write(body, bodyX, y, 13, { maxWidth: 781 - bodyX });
+        write(refreshSummary && index === 4 ? "本群当前登记成员的公开展板。" : body,
+          bodyX, y, 13, { maxWidth: 781 - bodyX });
       });
+      if (refreshSummary) write(refreshSummary, 54, 261, 13, { color: gold, maxWidth: 725 });
     });
 
     rows.forEach(({ uid, avatar }, index) => {

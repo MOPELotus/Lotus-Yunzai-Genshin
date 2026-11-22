@@ -36,17 +36,20 @@ function rankModeOf(metric?: string): RankMode {
 }
 
 export function matchGroupPanelRank(message: string) {
-  const match = /^#(?:原神)?(?:群内?)?([^#]{1,36}?)(?:排名|排行)榜?$/u.exec(message);
-  if (!match?.[1]) return;
-  const body = match[1].trim();
+  const list = /^#(?:原神)?(?:群内?)?([^#]{1,36}?)(?:排名|排行)榜?$/u.exec(message);
+  const leader = list ? undefined : /^#(?:原神)?(?:群内?)?最强([^#]{1,36}?)(?:面[板版]|详情)?$/u.exec(message);
+  const input = list?.[1] ?? leader?.[1];
+  if (!input) return;
+  const strongest = leader && { strongest: true as const };
+  const body = input.trim();
   const plain = findRankCharacter(body);
-  if (plain) return { character: plain, mode: "damage" as const };
+  if (plain) return { character: plain, mode: "damage" as const, ...strongest };
   const suffix = metricSuffix.exec(body)?.[0];
   const root = suffix ? body.slice(0, -suffix.length).trim() : body;
   const prefix = metricPrefix.exec(root)?.[0];
   if ((!suffix && !prefix) || (suffix && prefix && rankModeOf(suffix) !== rankModeOf(prefix))) return;
   const character = findRankCharacter(prefix ? root.slice(prefix.length).trim() : root);
-  if (character) return { character, mode: rankModeOf(suffix ?? prefix) };
+  if (character) return { character, mode: rankModeOf(suffix ?? prefix), ...strongest };
 }
 
 export const rankId = (value: unknown): value is number =>

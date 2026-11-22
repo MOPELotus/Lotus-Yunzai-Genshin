@@ -1,11 +1,15 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { GameRole } from "@lotus-yunzai/account";
+import { createGroupRankRefresh, type GameRole } from "@lotus-yunzai/account";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { decodeRankAvatar, displayedRankScore, isRankProfile, matchGroupPanelRank, projectRankAvatar, rankId, rankModeNames,
   rankUid, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { renderGroupPanelRank } from "./card.ts";
-import { object, type PanelAvatar } from "./model.ts";
+import { object, type PanelAvatar, type PanelSnapshot } from "./model.ts";
+import { renderOriginalProfile } from "./original-profile.ts";
+import { estimatePanelDamage } from "./damage.ts";
+import { createGenshinGroupShowcaseReader } from "./showcase-reader.ts";
+import { readGenshinShowcaseServer } from "./showcase-config.ts";
 import type { PanelTheme } from "./theme.ts";
 
 export interface GroupRankContext {
@@ -16,6 +20,7 @@ export interface GroupRankContext {
   readonly user_id?: number;
   readonly isDelegated?: boolean;
   readonly inlineImageByteLimit?: number;
+  readonly groupActivitySignal?: AbortSignal;
   readonly listCurrentGroupMembers?: () => Promise<readonly { id: number; name?: string }[] | undefined>;
 }
 
@@ -34,6 +39,13 @@ interface RankProfiles {
   }>;
 }
 type Renderer = (...args: Parameters<typeof renderGroupPanelRank>) => Promise<{ readonly png: Uint8Array }>;
+type StrongestRenderer = (snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme,
+  options: Parameters<typeof renderOriginalProfile>[4]) => Promise<{ readonly png: Uint8Array }>;
+
+const renderLeader: StrongestRenderer = async (snapshot, avatar, theme, chat) => {
+  const damage = await estimatePanelDamage(avatar, theme, undefined, 103, { ranking: true });
+  return renderOriginalProfile(snapshot, avatar, theme, { damage: "rows" in damage ? damage : undefined }, chat);
+};
 const subject = "原神群面板摘要";
 const limit = 15;
 const maxMembers = 10_000;
@@ -89,19 +101,22 @@ async function currentMembers(scope: Scope, context: GroupRankContext): Promise<
 const sameRole = (left: Role, right: Role | undefined) =>
   left.uid === right?.uid && left.region === right.region && left.gameBiz === right.gameBiz;
 
-function rankRows(rows: readonly Row[], mode: RankMode): Row[] {
+function rankRows<Ranked extends Row>(rows: readonly Ranked[], mode: RankMode): Ranked[] {
   const sorted = [...rows].sort((a, b) =>
     b.avatar[mode]!.score - a.avatar[mode]!.score || (b.role.uid > a.role.uid ? 1 : b.role.uid < a.role.uid ? -1 : 0) ||
     a.qq - b.qq || a.profileId - b.profileId);
-  const unique = new Map<string, Row>();
+  const unique = new Map<string, Ranked>();
   for (const row of sorted) if (!unique.has(row.role.uid)) unique.set(row.role.uid, row);
   return [...unique.values()].slice(0, limit);
 }
 
 export function createGroupPanelRank(directory: string, profiles: RankProfiles, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
   groups = Bun.env.LOTUS_GENSHIN_PANEL_RANK_GROUPS ?? "", render = renderGroupPanelRank,
-  discardedAt,
-}: { readonly groups?: string; readonly render?: Renderer; readonly discardedAt?: (qq: string, uid: string) => Promise<number> } = {}) {
+  discardedAt, refresh = createGroupRankRefresh(), readShowcase = createGenshinGroupShowcaseReader(),
+  readSelector = readGenshinShowcaseServer, renderStrongest = renderLeader,
+}: { readonly groups?: string; readonly render?: Renderer; readonly discardedAt?: (qq: string, uid: string) => Promise<number>;
+  readonly refresh?: ReturnType<typeof createGroupRankRefresh>; readonly readShowcase?: ReturnType<typeof createGenshinGroupShowcaseReader>;
+  readonly readSelector?: typeof readGenshinShowcaseServer; readonly renderStrongest?: StrongestRenderer } = {}) {
   const enabled = new Set(groups.split(/[\s,]+/u).filter(group => /^[1-9]\d*$/u.test(group)));
   const folder = (scope: Scope) => join(directory, scope.adapter, String(scope.bot));
   const archive = (scope: Scope) => createRoleJsonArchive(folder(scope), lockFile, {
@@ -216,27 +231,66 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       const scope = scopeOf(context);
       if (!scope) return "原神群面板排名只能在群聊中查询。";
       if (!isEnabled(scope)) return "本群未启用原神群面板排名。";
+      const active = context.groupActivitySignal ? AbortSignal.any([signal, context.groupActivitySignal]) : signal;
+      if (active.aborted) return;
       const members = await currentMembers(scope, context);
-      if (!members) return "暂时无法核对本群成员，请稍后查询。";
-      const { character, mode } = intent;
-      const observations = await boundObservations(scope, members, record => !!record.avatars[String(character.id)]?.[mode]);
-      const candidates = observations.map(record => ({ ...record, avatar: record.avatars[String(character.id)]! }));
-      const ranked = rankRows(candidates, mode);
-      if (!ranked.length) return `本群暂无${character.name}的${rankModeNames[mode]}排行。可在本群查看自己的角色详情加入。`;
-      const rows = ranked.map(row => ({ uid: row.role.uid, avatar: row.avatar }));
-      let png: Uint8Array | undefined;
-      try {
-        ({ png } = await render(character.name, mode, rows, await loadTheme(), undefined,
-          { inlineImageByteLimit: context.inlineImageByteLimit, signal }));
-      } catch {}
-      const refreshed = await currentMembers(scope, context);
-      if (signal.aborted) return;
-      if (!refreshed || ranked.some(row => !refreshed.has(row.qq)) || !(await Promise.all(ranked.map(stillCurrent))).every(Boolean)) {
-        return "群成员或档案已变化，请重新查询排行。";
+      if (!members || active.aborted) return active.aborted ? undefined : "暂时无法核对本群成员，请稍后查询。";
+      const { character, mode, strongest } = intent;
+      const observations = await boundObservations(scope, members, () => true);
+      if (active.aborted) return;
+      const subjects = new Map<string, BoundObservation>();
+      // Prefer the latest observation when a UID occurs in several eligible profile slots.
+      for (const row of observations) {
+        if ((subjects.get(row.role.uid)?.observedAt ?? -1) < row.observedAt) subjects.set(row.role.uid, row);
       }
-      if (signal.aborted) return;
-      if (png) return { type: "image" as const, file: png };
-      return [`${character.name} · 本群${rankModeNames[mode]}排行`, ...rows.map(({ uid, avatar }, index) => {
+      if (!subjects.size) return "本群暂无已登记的原神 UID。可在本群查看自己的角色详情加入。";
+      const [theme, selector] = await Promise.all([loadTheme(), readSelector()]);
+      const results = await refresh([...subjects.values()], async (entry, requestSignal) => {
+        if (!await stillCurrent(entry)) throw new Error("原神群榜登记已失效。");
+        requestSignal.throwIfAborted();
+        const snapshot = await readShowcase(entry.role, selector, theme, requestSignal);
+        if (!snapshot) return;
+        if (snapshot.uid !== entry.role.uid) throw new Error("公开展板返回了其他 UID。");
+        const publicAvatar = snapshot.avatars[String(character.id)];
+        if (!publicAvatar) return;
+        const avatar = await projectRankAvatar(publicAvatar, theme);
+        if (!avatar?.[mode]) throw new Error("公开展板资料不足以计算该项排行。");
+        return { avatar, publicAvatar, snapshot };
+      }, active).catch(error => {
+        if (!active.aborted) throw error;
+      });
+      if (!results || active.aborted) return;
+      const candidates = results.flatMap(result => result.status === "fresh" ? [{ ...result.entry, ...result.value }] : []);
+      const ranked = rankRows(candidates, mode);
+      const missing = results.filter(result => result.status === "not-listed").length;
+      const failed = results.filter(result => result.status === "failed").length;
+      const summary = `本轮查询已登记 UID ${subjects.size} 个，可排名 ${candidates.length} 个，未展示 ${missing} 个，无法刷新或计算 ${failed} 个。`;
+      const lead = ranked[0];
+      if (!lead) return [summary, `本群本轮未取得可用于${character.name}${rankModeNames[mode]}排行的公开展板。`].join("\n");
+      const rows = ranked.map(row => ({ uid: row.role.uid, avatar: row.avatar }));
+      const unchanged = async () => {
+        if (active.aborted) return false;
+        const refreshed = await currentMembers(scope, context);
+        return !!refreshed && (await Promise.all(candidates.map(row => refreshed.has(row.qq) && stillCurrent(row)))).every(Boolean)
+          && !active.aborted;
+      };
+      if (!await unchanged()) return active.aborted ? undefined : "群成员或档案已变化，请重新查询排行。";
+      let png: Uint8Array | undefined;
+      const options = { inlineImageByteLimit: context.inlineImageByteLimit, signal: active };
+      try {
+        ({ png } = strongest
+          ? await renderStrongest(lead.snapshot, lead.publicAvatar, { ...theme, galleryPortrait: undefined }, options)
+          : await render(character.name, mode, rows, theme, undefined, { ...options, refreshSummary: summary }));
+      } catch {}
+      if (!await unchanged()) return active.aborted ? undefined : "群成员或档案已变化，请重新查询排行。";
+      const image = png && { type: "image" as const, file: png };
+      if (strongest) {
+        const title = `${character.name} · 本轮${rankModeNames[mode]}榜首 · UID ${lead.role.uid}`;
+        if (image) return [title + "\n" + summary, image];
+        return [title, summary, "本轮公开数据已取得，暂时无法生成完整面板。"].join("\n");
+      }
+      if (image) return image;
+      return [`${character.name} · 本群${rankModeNames[mode]}排行`, summary, ...rows.map(({ uid, avatar }, index) => {
         const score = displayedRankScore(avatar, mode)!;
         const formatted = mode === "crit" || mode === "valid" ? score.toFixed(1) : String(score);
         return `${index + 1}. UID ${uid} · ${formatted}${mode === "damage" && avatar.damage?.percent ? "%" : ""}`;

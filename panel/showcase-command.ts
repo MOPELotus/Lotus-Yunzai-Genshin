@@ -3,16 +3,15 @@ import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import type { GenshinRoleProfiles } from "../owned-role.ts";
 import { renderPanelList } from "./card.ts";
-import { object, text, avatarId, type Json, type PanelCatalog } from "./model.ts";
-import { createGenshinShowcaseClient, genshinShowcaseTarget, normalizeGenshinShowcase,
+import { createGenshinShowcaseClient, genshinShowcaseTarget,
   GenshinShowcaseError, showcaseNames } from "./showcase-client.ts";
 import { readGenshinShowcaseServer } from "./showcase-config.ts";
 import { createGenshinShowcaseStorage, type ReadPanelDeletionBoundary } from "./showcase-storage.ts";
-import { readPanelTheme, type PanelTheme } from "./theme.ts";
+import { readPanelTheme } from "./theme.ts";
+import { decodeGenshinShowcaseResponse } from "./showcase-reader.ts";
 
 const showcase = /^#(?:原神)?\s*(?:展板|备用)\s*(?:全部面板更新|更新全部面板|获取游戏角色详情|更新面板|面板更新)\s*(?:((?:18|[1-9])\d{8})(?:\s+(?:档案|profile)\s*([1-9]\d{0,2}))?|(?:(?:档案|profile)\s*)?([1-9]\d{0,2}))?$/iu;
 const reserved = /^#(?:原神)?\s*(?:展板|备用)\s*(?:全部面板更新|更新全部面板|获取游戏角色详情|更新面板|面板更新)/u;
-const weaponTypes = ["sword", "claymore", "polearm", "bow", "catalyst"] as const;
 const defaultPanelDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
 
 export function matchGenshinShowcase(message: string) {
@@ -28,23 +27,6 @@ interface ShowcaseContext {
   readonly isDelegated?: boolean;
   readonly privateCredentialSignal?: AbortSignal;
   reply(text: string): unknown;
-}
-
-async function metadata(panel: PanelTheme, raw: Json, catalog: PanelCatalog) {
-  const roster = Array.isArray(raw.avatarInfoList) ? raw.avatarInfoList : [];
-  const ids = new Set(roster.map(row => avatarId(object(row)?.avatarId)));
-  const [weapons, details] = await Promise.all([
-    Promise.all(weaponTypes.map(type => panel.metadata?.("meta-gs", "weapon", type, "data.json"))),
-    Promise.all([...ids].flatMap(id => {
-      const name = id && text(object(catalog.characters[id])?.name);
-      return id && name ? [Promise.resolve(panel.metadata?.("meta-gs", "character", name, "data.json")).then(detail =>
-           [id, detail ?? {}] as const)] : [];
-    })),
-  ]);
-  return { weaponNames: new Map(weapons.flatMap(group => Object.entries(group ?? {}).flatMap(([id, raw]) => {
-    const name = text(object(raw)?.name);
-    return name ? [[Number(id), name] as const] : [];
-  }))), details: new Map(details) };
 }
 
 export function createGenshinShowcaseCommand(profiles: GenshinRoleProfiles, lock: AcquireRoleArchiveLock, lifecycle: AbortSignal, {
@@ -94,8 +76,7 @@ export function createGenshinShowcaseCommand(profiles: GenshinRoleProfiles, lock
       const result = await fetchShowcase(target, signal);
       await verify();
       const assets = await theme();
-      const { weaponNames, details } = await metadata(assets, result.raw, assets);
-      const snapshot = normalizeGenshinShowcase(target, result.raw, assets, id => weaponNames.get(id), result.acquiredAt, details);
+      const snapshot = await decodeGenshinShowcaseResponse(target, result, assets);
       if (!snapshot) return "游戏内没有可读取的公开展板角色，请检查是否展示角色详情。已有面板已保留。";
       const written = await storage.replace(qq, snapshot, baseline, verify);
       if (!written) return "原神公开展板已变更，请重新查询。";

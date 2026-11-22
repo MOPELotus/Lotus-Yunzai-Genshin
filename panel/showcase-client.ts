@@ -66,12 +66,12 @@ export function createGenshinShowcaseClient(transport: typeof fetch = fetch, now
   const cache = new Map<string, Entry>();
   const cooldown = new Map<ShowcaseProvider, number>();
   const pending = new Set<string>();
-  return async ({ uid, provider }: Target, signal: AbortSignal) => {
+  return async ({ uid, provider }: Target, signal: AbortSignal, { fresh = false } = {}) => {
     signal.throwIfAborted();
     const key = `${provider}:${uid}`;
     const date = now();
     const existing = cache.get(key);
-    if (existing && date < existing.until) return existing;
+    if (!fresh && existing && date < existing.until) return existing;
     if (pending.has(key)) throw new GenshinShowcaseError("此 UID 的公开展板正在查询，请稍后再试。");
     if (date < (cooldown.get(provider) ?? 0)) throw new GenshinShowcaseError("公开展板服务请求过于频繁，请稍后重试。");
     pending.add(key);

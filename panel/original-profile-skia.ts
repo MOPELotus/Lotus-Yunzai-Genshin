@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { Canvas, FontLibrary } from "skia-canvas";
-import { renderGenshinCard } from "../card-render.ts";
+import { renderGenshinCard, renderGenshinCardForChat } from "../card-render.ts";
 import type { originalProfileData } from "./original-profile.ts";
 import type { PanelTheme, Picture } from "./theme.ts";
 
@@ -315,7 +315,8 @@ export function drawOriginalProfileHero(ctx: Drawing, { font, write }: TextWrite
   ctx.restore();
 }
 
-export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode: Mode = "auto") {
+export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode: Mode = "auto",
+  chat?: Omit<NonNullable<Parameters<typeof renderGenshinCardForChat>[4]>, "displayWidth">) {
   const { data, attr, artisDetail: rating, dmgCalc: damage } = model;
   const pieces = Object.values(rating.artis);
   const icon = (file: string) => theme.picture("character", "imgs", file);
@@ -338,7 +339,7 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
   const height = contentEnd + 37;
   // Coordinates are the fixed original CSS dimensions before its 1.4 display transform.
   // Skia draws these vectors and glyphs directly at the target pixel ratio.
-  return renderGenshinCard(cardWidth, height, ctx => {
+  const draw = (ctx: Drawing) => {
     const type = typeset(ctx, faces);
     const { font, write } = type;
     const weightColour = (key: string) => (rating.charWeight[key] ?? 0) >= 80 ? boosted : (rating.charWeight[key] ?? 0) > 0 ? body : "#888";
@@ -467,5 +468,7 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
     shadow(ctx, "#000", 1, 1);
     write("Lotus-Yunzai", 305, contentEnd + 24, 14, { align: "center" });
     ctx.restore();
-  }, mode, { displayWidth, scale: model.scale });
+  };
+  return chat ? renderGenshinCardForChat(cardWidth, height, draw, mode, { ...chat, displayWidth })
+    : renderGenshinCard(cardWidth, height, draw, mode, { displayWidth, scale: model.scale });
 }

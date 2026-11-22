@@ -169,8 +169,8 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
 }
 
 export async function renderOriginalProfile(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme,
-  options: Parameters<typeof originalProfileData>[3]) {
+  options: Parameters<typeof originalProfileData>[3], chat?: Parameters<typeof drawOriginalProfile>[3]) {
   const data = await originalProfileData(snapshot, avatar, theme, options);
   if (!data) throw new Error("原神原版面板资源不可用。");
-  return drawOriginalProfile(data, theme);
+  return drawOriginalProfile(data, theme, undefined, chat);
 }

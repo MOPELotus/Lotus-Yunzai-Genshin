@@ -221,3 +221,20 @@ test("the actual private discard fence hides public results and prevents an in-f
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("live group reads bypass the local showcase TTL without borrowing private transport", async () => {
+  let requests = 0;
+  const client = createGenshinShowcaseClient((async (endpoint, options) => {
+    expect(String(endpoint)).toBe("https://profile.microgg.cn/api/uid/" + uid);
+    expect(options).toMatchObject({ method: "GET", credentials: "omit" });
+    expect(options?.body).toBeUndefined();
+    expect(new Headers(options?.headers).has("Cookie")).toBe(false);
+    requests++;
+    return Response.json(payload());
+  }) as typeof fetch);
+  await client(target, signal);
+  await client(target, signal);
+  expect(requests).toBe(1);
+  await client(target, signal, { fresh: true });
+  expect(requests).toBe(2);
+});

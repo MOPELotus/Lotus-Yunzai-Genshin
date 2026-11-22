@@ -18,6 +18,9 @@ import { createGenshinPanelArchive, createGenshinPanelQuery } from "./panel/pane
 import { createGenshinShowcaseCommand, matchGenshinShowcase } from "./panel/showcase-command.ts";
 import { matchGenshinPanelDiscard } from "./panel/model.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
+import { matchGroupPanelRank } from "./panel/group-rank-model.ts";
+import { createGenshinShowcaseClient } from "./panel/showcase-client.ts";
+import { createGenshinGroupShowcaseReader } from "./panel/showcase-reader.ts";
 import { createGenshinTalentRefresh, matchGenshinTalentRefresh } from "./panel/talent-refresh.ts";
 import { createTeamDamageQuery } from "./panel/team-damage.ts";
 import { matchesTeamDamage } from "./panel/team-damage-command.ts";
@@ -136,9 +139,10 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const payLog = createGenshinPayLogCommand(profiles, signal);
   const equippedWeapons = createWeaponListQuery(profiles, client, signal);
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
+  const fetchShowcase = createGenshinShowcaseClient();
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
-    { discardedAt: panelArchive.discardedAt });
-  const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt });
+    { discardedAt: panelArchive.discardedAt, readShowcase: createGenshinGroupShowcaseReader(fetchShowcase) });
+  const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase });
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank, readPanelDeletionBoundary: panelArchive.discardedAt });
   const sync = createGenshinGachaSync(profiles, client, history);
   const worldBossRanking = createGenshinWorldBossRanking(rankingDirectory, lockFile);
@@ -279,7 +283,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
-      if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message)) return ["[genshin] 角色面板"];
+      if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message) || matchGroupPanelRank(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       if (matchWeaponList(message)) return ["[genshin] 武器查询"];
       if (matchGenshinBlueprint(message)) return ["[genshin] 尘歌壶模数"];
