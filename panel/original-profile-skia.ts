@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { access } from "node:fs/promises";
 import { join } from "node:path";
+import { nativeImageRasterScale } from "@lotus-yunzai/skia";
 import { Canvas, FontLibrary } from "skia-canvas";
 import { renderGenshinCard, renderGenshinCardForChat } from "../card-render.ts";
 import type { originalProfileData } from "./original-profile.ts";
@@ -16,6 +17,11 @@ const body = "#fff";
 const displayWidth = 840;
 const cardWidth = 600;
 const zoom = 4 * displayWidth / cardWidth;
+
+function effectScale(ctx: Drawing): number {
+  // Other standard cards also reuse these effects at the original profile density.
+  return nativeImageRasterScale() === 1 ? ctx.getTransform().a : zoom;
+}
 const dark = "rgba(0,0,0,.4)";
 const statistics = [
   ["hp", "生命值"], ["atk", "攻击力"], ["def", "防御力"], ["mastery", "元素精通"],
@@ -53,13 +59,14 @@ export function contain(ctx: Drawing, image: Picture | undefined, [x, y, width, 
 }
 export function shadow(ctx: Drawing, color = "#000", blur = 3, offset = 0) {
   ctx.shadowColor = color;
-  ctx.shadowBlur = blur * zoom;
-  ctx.shadowOffsetX = offset * zoom;
-  ctx.shadowOffsetY = offset * zoom;
+  const scale = effectScale(ctx);
+  ctx.shadowBlur = blur * scale;
+  ctx.shadowOffsetX = offset * scale;
+  ctx.shadowOffsetY = offset * scale;
 }
-export async function profileFonts(root: string | undefined) {
+export async function profileFonts(root: string | undefined, { numberFont = true } = {}) {
   const families = await Promise.all(["tttgbnumber", "HYWH-65W", "NZBZ"].map(async name => {
-    if (!root) return;
+    if (!root || (!numberFont && name === "tttgbnumber")) return;
     const family = `LotusGenshinProfile-${createHash("sha256").update(join(root, name)).digest("hex").slice(0, 12)}`;
     if (!FontLibrary.has(family)) {
       for (const extension of ["woff", "ttf"]) {
@@ -194,7 +201,7 @@ export function headShade(ctx: Drawing, [x, y, w, h]: Box, center: string) {
 
 export function artifactIcon(ctx: Drawing, image: Picture | undefined, x: number, y: number, width = 90) {
   if (!image) return;
-  const pixels = Math.round(width * zoom);
+  const pixels = Math.max(1, Math.round(width * effectScale(ctx)));
   // Apply the original diagonal mask to the artwork only, at the export pixel ratio.
   const icon = new Canvas(pixels, pixels);
   icon.gpu = ctx.canvas.gpu;

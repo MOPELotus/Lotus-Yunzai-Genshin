@@ -28,6 +28,7 @@ interface AchievementContext {
   readonly user_id?: number;
   readonly group_id?: number;
   readonly message_type?: string;
+  readonly inlineImageByteLimit?: number;
   readonly isDelegated?: boolean;
   readonly canReadAttachments?: boolean;
   readonly attachment?: { readonly name: string; read(signal?: AbortSignal): Promise<Uint8Array | undefined> };
@@ -93,8 +94,8 @@ function decode(value: string | Uint8Array) {
 const progressLabel = (stats: ReturnType<typeof achievementStats>) =>
   `已完成 ${stats.completed}/${stats.total}，原石 ${stats.pointsDone}/${stats.pointsTotal}，完成率 ${stats.percent}%。`;
 const summary = (stats: Pick<ReturnType<typeof achievementStats>, "completed" | "total" | "pointsDone" | "pointsTotal" | "percent">,
-  end: string) => ({
-  headers: ["成就", "原石", "完成率", "分类 / 分组"], widths: [183, 183, 183, 186],
+  end: string, label: "分类" | "分组" = "分类") => ({
+  headers: ["成就", "原石", "完成率", label], widths: [183.75, 183.75, 183.75, 183.75],
   rows: [[`${stats.completed}/${stats.total}`, `${stats.pointsDone}/${stats.pointsTotal}`, `${stats.percent}%`, end]],
 });
 
@@ -140,13 +141,13 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
     return await readAtlasGalleryImage(atlas.assetRoot(entry), "gi", path);
   }
 
-  async function asImage(data: AchievementCard): Promise<Image> {
-    const { png } = await render(data);
+  async function asImage(data: AchievementCard, inlineImageByteLimit?: number): Promise<Image> {
+    const { png } = await render(data, { inlineImageByteLimit, signal });
     return { type: "image", file: png };
   }
 
   async function directoryCard(data: Awaited<ReturnType<typeof catalog>>, uid: string,
-    stats: ReturnType<typeof achievementStats>, report?: { title: string; summary: AchievementCard["tables"][number]; notes: string[] }) {
+    stats: ReturnType<typeof achievementStats>, inlineImageByteLimit?: number, report?: { title: string; summary: AchievementCard["tables"][number]; notes: string[] }) {
     const rows = await Promise.all(stats.categories.map(async row => [
       { label: row.category.name, icon: await artwork(data, row.category).catch(() => undefined) },
       `${row.completed}/${row.total}`, `${row.pointsDone}/${row.pointsTotal}`, `${row.percent}%`,
@@ -155,8 +156,8 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
       title: "原神成就目录", subtitle: `UID ${uid}`, badge: report?.title ?? `${stats.completed}/${stats.total}`,
       tables: [report?.summary ?? summary(stats, `${stats.categories.filter(row => row.completed === row.total).length}/${stats.categories.length}`),
         { headers: ["分类", "已完成", "原石", "完成率"], widths: [270, 100, 105, 260], rows }],
-      notes: report?.notes ?? [progressLabel(stats)],
-    });
+      notes: report?.notes ?? [`已完成 ${stats.completed}/${stats.total} 个成就，原石 ${stats.pointsDone}/${stats.pointsTotal}。目录状态来自椰羊 JSON 导入进度与本地图鉴。`],
+    }, inlineImageByteLimit);
   }
 
   async function main(context: AchievementContext, bareOnly = false): Promise<Reply | undefined> {
@@ -231,9 +232,9 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
         const updates = result.touched.length ? `更新分类：${result.touched.slice(0, 8).join(" / ")}${result.touched.length > 8 ? " 等" : ""}` : "";
         const notes = [info, updates].filter(Boolean);
         const progress = await store.read(qq, uid).catch(() => undefined);
-        const reply = progress ? await directoryCard(data, uid, achievementStats(data.categories, progress), {
-          title: `+${result.added}`, notes,
-          summary: { headers: ["新增", "重复", "未知", "补全"], widths: [183, 183, 183, 186],
+        const reply = progress ? await directoryCard(data, uid, achievementStats(data.categories, progress), context.inlineImageByteLimit, {
+          title: `+${result.added}`, notes: [notes.join(" ")],
+          summary: { headers: ["新增", "重复", "未知", "补全"], widths: [183.75, 183.75, 183.75, 183.75],
             rows: [[result.added, result.duplicate, result.unknown, result.inferred].map(String)] },
         }).catch(() => notes.join("\n")) : notes.join("\n");
         if (!await sameIdentity(qq, profileId, session) || signal.aborted) return;
@@ -245,7 +246,7 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
       const progress = await store.read(qq, uid);
       const stats = achievementStats(category ? [category] : data.categories, progress);
       if (!category) {
-        const reply = await directoryCard(data, uid, stats).catch(() => ["原神成就目录", progressLabel(stats),
+        const reply = await directoryCard(data, uid, stats, context.inlineImageByteLimit).catch(() => ["原神成就目录", progressLabel(stats),
           ...stats.categories.map(row => `${row.category.name} · ${row.completed}/${row.total}`)].join("\n"));
         await verify();
         return reply;
@@ -266,7 +267,7 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
         const groupLabel = `${offset + 1}-${offset + visible.length}/${groups.length} 组`;
         const label = `${pageLabel} · ${groupLabel}`;
         const card = { title: category.name, subtitle: `UID ${uid}`, badge: `${stats.completed}/${stats.total}`,
-          tables: [summary(stats, `${pageLabel}\n${groupLabel}`), ...visible.map(group => ({
+          tables: [summary(stats, totalPages === 1 ? String(groups.length) : `${offset + 1}-${offset + visible.length}/${groups.length}`, "分组"), ...visible.map(group => ({
             title: `${group.name} · ${group.completed}/${group.total} · 原石 ${group.pointsDone}/${group.pointsTotal}`,
             description: group.stages[0]?.description,
             headers: ["阶段 / 状态", "成就说明", "原石 / 进度"], widths: [120, 520, 95],
@@ -274,8 +275,8 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
               `${group.total > 1 ? `${stage.stage}/${group.total}` : "单项"} · ${stage.done ? "已完成" : "未完成"}${stage.date ? `\n${stage.date}` : ""}`,
               stage.description || stage.name, `${stage.points ?? 0} 原石\n${stage.progress}`,
             ]),
-          }))], notes: ["未完成条目优先显示，同名多阶段成就一起排序。", label] };
-        pages.push(await asImage(card).catch(() => [category.name, progressLabel(stats), label,
+          }))], notes: [`未完成条目优先显示；同名多阶段成就会作为一个条目一起排序。原石 ${stats.pointsDone}/${stats.pointsTotal}。${totalPages > 1 ? ` ${label}` : ""}`] };
+        pages.push(await asImage(card, context.inlineImageByteLimit).catch(() => [category.name, progressLabel(stats), label,
           ...visible.map(group => `${group.name} · ${group.completed}/${group.total}`)].join("\n")));
         if (forward && (pages.length === 2 || page === totalPages)) {
           await verify();

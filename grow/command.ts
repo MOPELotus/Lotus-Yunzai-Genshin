@@ -38,8 +38,8 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
     readonly loadCatalogue?: typeof readGenshinGachaCatalogue;
     readonly archive?: Pick<ReturnType<typeof createGenshinPanelArchive>, "readPanel">;
     readonly client?: Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinGrowth"> } = {}) {
-  return async (message: string, { user_id, message_type, isDelegated }:
-    { readonly user_id?: number; readonly message_type?: string; readonly isDelegated?: boolean }) => {
+  return async (message: string, { user_id, message_type, isDelegated, inlineImageByteLimit }:
+    { readonly user_id?: number; readonly message_type?: string; readonly isDelegated?: boolean; readonly inlineImageByteLimit?: number }) => {
     const request = matchGrowthCommand(message);
     if (!request || signal.aborted) return;
     if (request === "help") return growthHelp;
@@ -102,7 +102,8 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
           }
         }
         result = calculateCharacterGrowth(target.materials, start, plan, material);
-        notice.push("天赋按不含命座加成的等级计算，经验未扣除当前等级内已有经验。");
+        notice.push("天赋按不含命座加成的等级计算，经验未扣除当前等级内已有经验。",
+          `可指定方向：#养成计算 ${target.name} 等级89 天赋 10 9 10（80+ 表示80级已突破）`);
       }
       if (signal.aborted) return;
       if (!result) return `暂无${target.name}的养成材料数据。`;
@@ -147,7 +148,7 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
         isWeapon: target.type === "weapon", uid, notice, shortfall, inventoryMora };
       if (!await verify()) return signal.aborted ? undefined : changed;
       let png: Uint8Array | undefined;
-      try { ({ png } = await render(model, theme)); } catch {}
+      try { ({ png } = await render(model, theme, "auto", { inlineImageByteLimit, signal })); } catch {}
       if (!await verify()) return signal.aborted ? undefined : changed;
       return png ? { type: "image" as const, file: png } : fallback(model);
     } catch {
