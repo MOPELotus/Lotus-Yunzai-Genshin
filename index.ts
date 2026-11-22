@@ -8,6 +8,7 @@ import { createAchievementCommand } from "./achievement-command.ts";
 import { queryRankStats } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
+import { matchGenshinPanelHelp, renderGenshinPanelHelp } from "./panel/help-card.ts";
 import { createGenshinPayLogCommand, matchGenshinPayLog } from "./pay-log-command.ts";
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
@@ -276,7 +277,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
-      if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message)) return ["[genshin] 角色面板"];
+      if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       if (matchWeaponList(message)) return ["[genshin] 武器查询"];
       if (matchGenshinBlueprint(message)) return ["[genshin] 尘歌壶模数"];
@@ -306,6 +307,9 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (panelImageCommand(context.normalizedMessage)) return panelImages(context);
       const settingsChange = matchDamageSettingsCommand(context.normalizedMessage);
       if (settingsChange) return changeDamageSettings(settingsChange, context);
+      if (matchGenshinPanelHelp(context.normalizedMessage)) {
+        return renderGenshinPanelHelp({ signal, inlineImageByteLimit: context.inlineImageByteLimit });
+      }
       const publicPanel = matchGenshinShowcase(context.normalizedMessage);
       if (publicPanel) return showcase(publicPanel, context);
       const challenge = matchPersonalChallenge(context.normalizedMessage);
