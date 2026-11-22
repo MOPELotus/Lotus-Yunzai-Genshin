@@ -1,4 +1,5 @@
-import { renderGenshinCardForChat } from "../card-render.ts";
+import { ImageSizeLimitError } from "@lotus-yunzai/skia";
+import { renderGenshinCard, renderGenshinCardForChat } from "../card-render.ts";
 import { contain, fill, panel, profileFonts, shadow, typeset } from "./original-profile-skia.ts";
 import type { PanelSnapshot } from "./model.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
@@ -141,9 +142,9 @@ function centeredParts(ctx: Context, { font, write }: Writer, parts: readonly (r
 }
 
 export async function renderTrainingStatistics(snapshot: PanelSnapshot, rows: readonly PanelStatisticRow[], theme: PanelTheme, {
-  mode = "auto", offset = 0, total = rows.length, talent = false, inlineImageByteLimit, signal,
+  mode = "auto", offset = 0, total = rows.length, talent = false, inlineImageByteLimit, signal, scale,
 }: { readonly mode?: Mode; readonly offset?: number; readonly total?: number;
-  readonly talent?: boolean; readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal } = {}) {
+  readonly talent?: boolean; readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal; readonly scale?: 2 } = {}) {
   const columns = talent ? talentEdges : edges;
   const cellCenter = (i: number) => (columns[i]! + columns[i + 1]!) / 2;
   const [faces, background, top, fetter, crown, portraits, materials, equipment, placeholder, starsBackdrop] = await Promise.all([
@@ -163,7 +164,7 @@ export async function renderTrainingStatistics(snapshot: PanelSnapshot, rows: re
   const noticeHeight = mys ? 60 : profile ? 36 : 52;
   const height = noticeY + noticeHeight + 47;
 
-  return renderGenshinCardForChat(width, height, ctx => {
+  const draw = (ctx: Context) => {
     const writer = typeset(ctx, faces);
     const { write } = writer;
     fill(ctx, "#273837", [0, 0, width, height]);
@@ -235,5 +236,14 @@ export async function renderTrainingStatistics(snapshot: PanelSnapshot, rows: re
     shadow(ctx, "#000", 1, 1);
     write("Lotus-Yunzai", 305, height - 23, 14, { align: "center" });
     ctx.restore();
-  }, mode, { displayWidth: 840, inlineImageByteLimit, signal });
+  };
+  const displayWidth = 840;
+  if (scale !== 2) return renderGenshinCardForChat(width, height, draw, mode, { displayWidth, inlineImageByteLimit, signal });
+  signal?.throwIfAborted();
+  const result = await renderGenshinCard(width, height, draw, mode, { displayWidth, scale });
+  signal?.throwIfAborted();
+  if (inlineImageByteLimit !== undefined && result.png.byteLength > inlineImageByteLimit) {
+    throw new ImageSizeLimitError("原神剧诗练度分片超过当前会话的单图大小上限。");
+  }
+  return result;
 }

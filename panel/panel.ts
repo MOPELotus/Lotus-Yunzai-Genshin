@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
+import { ImageSizeLimitError } from "@lotus-yunzai/skia";
+import { batchInlineImagePages, type BatchedImageForward } from "@lotus-yunzai/skia/forward-images";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { buildArtifactList } from "./artifact-list.ts";
 import { panelListOrder, panelStatisticsPageSize, renderArtifactList, renderDailyMaterialCard, renderDamageCard, renderPanelDetail,
@@ -118,7 +120,7 @@ const renderDetail: Renderers["detail"] = (snapshot, avatar, theme, options) =>
     : renderPanelDetail(snapshot, avatar, theme, options);
 
 type Image = { readonly type: "image"; readonly file: Uint8Array };
-type Reply = string | Image | readonly [] | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] };
+type Reply = string | Image | readonly [] | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] } | BatchedImageForward;
 
 export function createGenshinPanelQuery(
   profiles: GenshinRoleProfiles,
@@ -484,8 +486,56 @@ export function createGenshinPanelQuery(
         const talentTitle = schedule && ["天赋统计", schedule.day.label, talent?.star === 5 ? "五星" : talent?.star === 4 ? "四星" : ""]
           .filter(Boolean).join(" · ");
         const title = `UID ${uid} · ${talentTitle ?? "面板练度统计"} · 共 ${rows.length} 名角色`;
+        const statisticsText = (page: readonly PanelStatisticRow[]) => page.map(({ avatar, talents, weapon, rating, fetter, materials }) => {
+          const entries = schedule ?
+            [`周本 ${materials?.weekly?.name ?? "—"}`, `天赋书 ${materials?.talent?.name ?? "—"}`, materials?.talent?.days ?? ""] :
+            [`武器 ${weapon?.name ?? "—"}`, rating ? `圣遗物 ${rating.rank} ${rating.score.toFixed(1)}` : "圣遗物 暂无评分"];
+          return [avatar.name, `Lv.${avatar.level}`, `命座 ${avatar.cons ?? "—"}`, `好感 ${fetter ?? "—"}`,
+            `天赋 ${talents.map(talent => talent?.level ?? "—").join("/")}`, ...entries].filter(Boolean).join(" · ");
+        }).join("\n");
+        if (theaterSelection) {
+          const explanation = `${monthTitle}\n${theaterSelection.text}`;
+          const details = { total: rows.length, inlineImageByteLimit: context.inlineImageByteLimit, signal };
+          const draw = render.statistics ?? renderPanelStatistics;
+          try {
+            const { png } = await draw(snapshot, rows, assets, details);
+            await verify();
+            return { type: "forward", nodes: [explanation, { type: "image", file: png }] };
+          } catch (error) {
+            await verify();
+            if (!(error instanceof ImageSizeLimitError)) {
+              return { type: "forward", nodes: [explanation, statisticsText(rows)] };
+            }
+          }
+          // Preserving whole rows allows the index to continue across the smallest set of balanced pages.
+          for (let pageCount = 2; pageCount <= rows.length; pageCount++) {
+            const images: Image[] = [];
+            try {
+              for (let page = 0; page < pageCount; page++) {
+                await verify();
+                const offset = Math.ceil(page * rows.length / pageCount);
+                const end = Math.ceil((page + 1) * rows.length / pageCount);
+                const { png } = await draw(snapshot, rows.slice(offset, end), assets, { ...details, offset, scale: 2 });
+                images.push({ type: "image", file: png });
+              }
+            } catch (error) {
+              if (error instanceof ImageSizeLimitError) continue;
+              throw error;
+            }
+            const batches = batchInlineImagePages(images, details.inlineImageByteLimit, image => image.file.byteLength);
+            await verify();
+            if (!batches) continue;
+            return {
+              type: "forward-image-batches",
+              batches: batches.map((images, index) => index === 0 ? [explanation, ...images] : images),
+              beforeSend: verify,
+            };
+          }
+          await verify();
+          return { type: "forward", nodes: [explanation, statisticsText(rows)] };
+        }
         const pages: (string | Image)[] = [];
-        const pageSize = schedule || theaterSelection ? panelStatisticsPageSize : rows.length;
+        const pageSize = schedule ? panelStatisticsPageSize : rows.length;
         for (let offset = 0; offset < rows.length; offset += pageSize) {
           const page = rows.slice(offset, offset + pageSize);
           await verify();
@@ -496,19 +546,10 @@ export function createGenshinPanelQuery(
             });
             pages.push({ type: "image", file: png });
           } catch {
-            const labels = page.map(({ avatar, talents, weapon, rating, fetter, materials }) => {
-              const entries = schedule ?
-                [`周本 ${materials?.weekly?.name ?? "—"}`, `天赋书 ${materials?.talent?.name ?? "—"}`,
-                  materials?.talent?.days ?? ""] :
-                [`武器 ${weapon?.name ?? "—"}`, rating ? `圣遗物 ${rating.rank} ${rating.score.toFixed(1)}` : "圣遗物 暂无评分"];
-              return [avatar.name, `Lv.${avatar.level}`, `命座 ${avatar.cons ?? "—"}`, `好感 ${fetter ?? "—"}`,
-                `天赋 ${talents.map(talent => talent?.level ?? "—").join("/")}`, ...entries].filter(Boolean).join(" · ");
-            });
-            pages.push(labels.join("\n"));
+            pages.push(statisticsText(page));
           }
         }
         await verify();
-        if (theaterSelection) return { type: "forward", nodes: [`${monthTitle}\n${theaterSelection.text}`, ...pages] };
         if (pages.length === 1) {
           const result = pages[0]!;
           return typeof result === "string" ? `${title}\n${result}` : result;

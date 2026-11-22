@@ -176,10 +176,10 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
 }
 
 export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: readonly PanelStatisticRow[], theme: PanelTheme, {
-  mode = "auto", offset = 0, total = rows.length, talentTitle, inlineImageByteLimit, signal,
+  mode = "auto", offset = 0, total = rows.length, talentTitle, inlineImageByteLimit, signal, scale,
 }: { readonly mode?: RenderMode; readonly offset?: number; readonly total?: number; readonly talentTitle?: string;
-  readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal } = {}) {
-  return renderTrainingStatistics(snapshot, rows, theme, { mode, offset, total, talent: !!talentTitle, inlineImageByteLimit, signal });
+  readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal; readonly scale?: 2 } = {}) {
+  return renderTrainingStatistics(snapshot, rows, theme, { mode, offset, total, talent: !!talentTitle, inlineImageByteLimit, signal, scale });
 }
 
 const summaryRowHeight = 40;
