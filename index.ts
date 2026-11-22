@@ -1,5 +1,6 @@
 import { gachaImageReply } from "../../lib/gacha-image-reply.ts";
 import type { MessageEvent } from "../../lib/messages.ts";
+import { createGameCharacterAliasCommands, matchGameCharacterAliasCommand } from "../../lib/game-character-aliases.ts";
 import { createGenshinMonthlyArchive } from "./monthly-archive.ts";
 import { createGenshinMonthlyTask, genshinMonthlyTaskCommand } from "./monthly-task.ts";
 import { createGenshinStatisticsQuery, matchGenshinStatistics } from "./monthly-statistics-command.ts";
@@ -120,6 +121,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   runtimeVersion?: { readonly version?: string; readonly revision?: string };
 }) {
   const wish = createWishCommands({ lockFile, signal });
+  const characterAliases = createGameCharacterAliasCommands(lockFile, signal);
   const profiles = createProfileStore(Bun.env.LOTUS_PROFILE_DIR || undefined);
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const achievements = createAchievementCommand(profiles, lockFile, signal);
@@ -275,8 +277,11 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   return {
     commands: {},
     gachaUpdate,
+    panelRebuild: panel.rebuild,
     fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      const aliases = matchGameCharacterAliasCommand(message);
+      if (aliases && aliases.game !== "sr") return ["[genshin] 角色别名"];
       if (genshinMonthlyTaskCommand.test(message)) return ["[genshin] 原石任务"];
       if (matchGenshinStatistics(message)) return ["[genshin] 原石统计"];
       if (matchGenshinMonthly(message)) return ["[genshin] 原石札记"];
@@ -301,6 +306,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return gacha ? ["[gacha] 抽卡记录"] : [];
     },
     async fallback(_message: string, context: GachaContext) {
+      const aliases = matchGameCharacterAliasCommand(context.normalizedMessage);
+      if (aliases && aliases.game !== "sr") return characterAliases(aliases, context);
       if (matchGenshinPanelDiscard(context.normalizedMessage)) return panel(context.normalizedMessage, context);
       if (genshinMonthlyTaskCommand.test(context.normalizedMessage)) return monthlyTask(context);
       const statistics = matchGenshinStatistics(context.normalizedMessage);

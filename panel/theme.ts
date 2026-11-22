@@ -4,6 +4,7 @@ import { open, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { loadImage } from "skia-canvas";
 import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
+import { readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
 import { managedPanelImageRoot, ownsPanelImages, usablePanelImageRoot } from "./image-library.ts";
 import { avatarId, object, text, type Json, type PanelAvatar, type PanelCatalog } from "./model.ts";
@@ -107,11 +108,12 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
   galleryDirectory = Bun.env.LOTUS_CHARACTER_GALLERY_DIR?.trim(),
   managedDirectory = managedPanelImageRoot()): Promise<PanelTheme> {
   const root = resolve(directory);
-  const [characters, relics, installed, configured, managed] = await Promise.all([
+  const [characters, relics, installed, configured, managed, customAliases] = await Promise.all([
     json(join(root, "meta-gs", "character", "data.json")), json(join(root, "meta-gs", "artifact", "data.json")),
     realpath(root).catch(() => undefined),
     galleryDirectory ? realpath(resolve(galleryDirectory)).catch(() => undefined) : undefined,
     usablePanelImageRoot(managedDirectory, [root, genshinGachaThemeDirectory(), galleryDirectory]).catch(() => false),
+    readGameCharacterAliases("gs"),
   ]);
   const characterNames = new Map<string, number>();
   for (const row of Object.values(characters)) {
@@ -154,7 +156,7 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
     }
   }
   return {
-    characters, artifacts, artifactSets, resourceRoot: installed,
+    characters, artifacts, artifactSets, resourceRoot: installed, customAliases,
     galleryPortrait: gallery,
     async weaponNames() {
       const file = join(root, "meta-gs", "weapon", "alias.js");

@@ -37,13 +37,14 @@ function rankModeOf(metric?: string): RankMode {
 
 export function matchGroupPanelRank(message: string) {
   const list = /^#(?:原神)?(?:群内?)?([^#]{1,36}?)(?:排名|排行)榜?$/u.exec(message);
-  const leader = list ? undefined : /^#(?:原神)?(?:群内?)?最强([^#]{1,36}?)(?:面[板版]|详情)?$/u.exec(message);
-  const input = list?.[1] ?? leader?.[1];
+  const leader = list ? undefined : /^#(?:原神)?(?:群内?)?(最强|最高分|最高|最牛|第一)([^#]{1,36}?)(?:面[板版]|详情)?$/u.exec(message);
+  const input = list?.[1] ?? leader?.[2];
   if (!input) return;
   const strongest = leader && { strongest: true as const };
+  const defaultMode = leader?.[1] === "最高分" ? "artifacts" as const : "damage" as const;
   const body = input.trim();
   const plain = findRankCharacter(body);
-  if (plain) return { character: plain, mode: "damage" as const, ...strongest };
+  if (plain) return { character: plain, mode: defaultMode, ...strongest };
   const suffix = metricSuffix.exec(body)?.[0];
   const root = suffix ? body.slice(0, -suffix.length).trim() : body;
   const prefix = metricPrefix.exec(root)?.[0];

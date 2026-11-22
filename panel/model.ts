@@ -99,6 +99,7 @@ export interface PanelSnapshot {
 
 export interface PanelCatalog {
   readonly characters: Json;
+  readonly customAliases?: ReadonlyMap<string, string>;
   readonly artifacts: ReadonlyMap<number, { readonly name: string; readonly set: string }>;
   readonly artifactSets: ReadonlyMap<string, string>;
 }
@@ -714,11 +715,16 @@ export function artifactProperties(item: PanelArtifact): readonly PanelProperty[
 }
 
 export function selectAvatar(snapshot: PanelSnapshot, name: string, catalog: PanelCatalog) {
-  const normalize = (value: string) => value.normalize("NFKC").replace(/[\s·・]/gu, "").toLowerCase();
+  const normalize = (value: string) => value.normalize("NFKC").replace(/[\s·・•]/gu, "").toLowerCase();
   const key = normalize(name);
   const avatars = Object.values(snapshot.avatars);
   const exact = avatars.find(row => normalize(row.name) === key || String(row.id) === key);
   if (exact) return exact;
+  const canonical = catalog.customAliases?.get(key);
+  if (canonical) {
+    const matches = avatars.filter(row => normalize(row.name) === normalize(canonical));
+    if (matches.length === 1) return matches[0];
+  }
   const matches = avatars.filter(row =>
     [text(object(catalog.characters[row.id])?.abbr), ...(aliases[row.name] ?? "").split(",")].some(value => normalize(value) === key));
   return matches.length === 1 ? matches[0] : undefined;

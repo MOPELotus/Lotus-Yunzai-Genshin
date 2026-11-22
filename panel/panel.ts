@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { batchInlineImagePages, type BatchedImageForward } from "@lotus-yunzai/skia/forward-images";
@@ -22,7 +22,9 @@ import { buildCharacterLevelChange, buildConstellationChange, buildEquipmentChan
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import { genshinLoginAccount, ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
+import { characterAliasKey, readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
 import type { ReplyOptions } from "../../../lib/messages.ts";
+import type { PanelRebuilder } from "../../../lib/panel-rebuild.ts";
 import { panelListColumns, PanelListImageLimitError } from "./panel-list-card.ts";
 import { renderOriginalProfile } from "./original-profile.ts";
 import { createRefreshedTalentArchive } from "./refreshed-talents.ts";
@@ -153,7 +155,65 @@ export function createGenshinPanelQuery(
   const dailyRefresh = createDailyMaterialRefresh(archiveDirectory, lockFile, client, now);
   const trainingRoster = createTrainingRoster(archiveDirectory, lockFile, client, now);
 
-  return async (message: string, context: GroupRankContext & {
+  async function refreshPanel(source: ProfileRequestContext, assets: PanelTheme,
+    verify: (revision?: string) => Promise<void>, active: AbortSignal) {
+    const { qq, role: { uid } } = source;
+    const key = `${qq}:${uid}`;
+    if (refreshes.has(key)) return { status: "busy" } as const;
+    refreshes.add(key);
+    try {
+      await verify();
+      const beforeDiscard = await store.discardedAt(qq, uid);
+      const startedAt = Math.max(now(), beforeDiscard + 1);
+      const result = await client.fetchGenshinPanel(source, { signal: active });
+      await verify(result.revision);
+      const next = officialPanel(uid, result.avatars, assets, startedAt);
+      if (!Object.keys(next.avatars).length) return { status: "empty" } as const;
+      let updated = false;
+      const snapshot = await store.update({ qq, uid }, verify, async current => {
+        const discardedAt = panelDiscardedAt(current);
+        if (discardedAt !== beforeDiscard) return { result: null };
+        const previous = readPanel(uid, current, assets);
+        if (previous?._profile !== undefined && previous._profile >= startedAt) return { result: previous };
+        const inherited = previous ?? (discardedAt ? undefined : await store.readLegacy(uid, assets));
+        const document = { ...next, ...(discardedAt && { panelDiscardedAt: discardedAt }),
+          avatars: { ...inherited?.avatars, ...next.avatars } };
+        updated = true;
+        return { document, result: document };
+      });
+      return snapshot
+        ? { status: "ready", snapshot, updated } as const
+        : { status: "discarded" } as const;
+    } finally {
+      refreshes.delete(key);
+    }
+  }
+
+  const rebuild: PanelRebuilder = async (qq, profileId, uid, requesterSignal, verifyAuthority) => {
+    const active = AbortSignal.any([signal, requesterSignal]);
+    active.throwIfAborted();
+    verifyAuthority();
+    const { source, accountId } = await ownedGenshinRole(profiles, qq, profileId);
+    const { role } = source;
+    if (role.uid !== uid) throw new ProfileError("changed", "原神面板档案已变化。");
+    let expected = source.revision;
+    const result = await refreshPanel(source, await theme(), async (revision) => {
+      if (revision !== undefined) expected = revision;
+      verifyAuthority();
+      active.throwIfAborted();
+      const latest = await ownedGenshinRole(profiles, qq, profileId);
+      if (latest.accountId !== accountId || latest.source.revision !== expected || latest.source.role.uid !== uid ||
+          latest.source.role.region !== role.region || latest.source.role.gameBiz !== role.gameBiz) {
+        throw new ProfileError("changed", "原神面板档案已变化。");
+      }
+      active.throwIfAborted();
+      verifyAuthority();
+    }, active);
+    if (result.status === "empty") throw new Error("米游社没有返回原神角色面板。");
+    return result.status === "ready" && result.updated;
+  };
+
+  const query = async (message: string, context: GroupRankContext & {
     readonly privateCredentialSignal?: AbortSignal; readonly inlineImageByteLimit?: number;
     readonly reply?: (image: Image, quote?: boolean, options?: ReplyOptions) => unknown;
   }): Promise<Reply | undefined> => {
@@ -255,14 +315,21 @@ export function createGenshinPanelQuery(
       return;
     }
     let command = preset?.command ?? matchGenshinPanel(message);
-    if (command?.knownCharacterOnly && (!command.name || !findRankCharacter(command.name))) return;
+    let customNames: ReturnType<typeof readGameCharacterAliases> | undefined;
+    async function findCharacter(name: string) {
+      const known = findRankCharacter(name);
+      if (known) return known;
+      const canonical = (await (customNames ??= readGameCharacterAliases("gs"))).get(characterAliasKey(name));
+      return canonical ? findRankCharacter(canonical) : undefined;
+    }
+    if (command?.knownCharacterOnly && (!command.name || !await findCharacter(command.name))) return;
     let preflight: PanelTheme | undefined;
     if (!command) {
       const candidate = matchCharacterLevelChange(message) ?? matchCharacterLevelCombination(message) ??
         matchConstellationChange(message) ?? matchTalentChange(message) ?? matchConstellationTalent(message) ??
         matchConstellationEquipment(message) ?? matchTalentWeapon(message) ?? matchTalentArtifacts(message) ??
         matchNamedWeaponArtifacts(message) ?? matchEquipmentChain(message) ?? matchBareEquipment(message);
-      const target = candidate?.name && findRankCharacter(candidate.name);
+      const target = candidate?.name && await findCharacter(candidate.name);
       const change = candidate?.equipmentChange;
       if (candidate && target && !change && (candidate.constellationChange !== undefined || candidate.talentChange ||
         candidate.characterLevelChange !== undefined)) {
@@ -270,7 +337,7 @@ export function createGenshinPanelQuery(
       } else if (candidate && target && change) {
         if ("weaponName" in change) {
           if (!change.bare) {
-            if (!change.artifactSource || findRankCharacter(change.artifactSource.donor)) command = { ...candidate, name: target.name };
+            if (!change.artifactSource || await findCharacter(change.artifactSource.donor)) command = { ...candidate, name: target.name };
           }
           else {
             try {
@@ -281,7 +348,7 @@ export function createGenshinPanelQuery(
               if (known) command = { ...candidate, name: target.name, equipmentChange: { ...change, weaponName: known.canonical } };
             } catch {}
           }
-        } else if ([change, ...(change.moreDonors ?? [])].every(source => findRankCharacter(source.donor))) {
+        } else if ((await Promise.all([change, ...(change.moreDonors ?? [])].map(source => findCharacter(source.donor)))).every(Boolean)) {
           command = candidate;
         }
       }
@@ -374,7 +441,6 @@ export function createGenshinPanelQuery(
       if (!command) return;
       const { name, type, mode } = command;
       const observedAt = type === "detail" && source && mode === "profile" && groupRank?.allows(context) ? now() : undefined;
-      const key = `${qq}:${uid}`;
       const assets = preflight ?? await theme();
       let snapshot: PanelSnapshot | undefined;
       let updated = false;
@@ -383,34 +449,13 @@ export function createGenshinPanelQuery(
         snapshot = await store.readPanel(qq, uid, assets, false, talentAccount);
       }
       if (type === "update" || (type === "reload" && (!snapshot || !Object.keys(snapshot.avatars).length))) {
-        if (refreshes.has(key)) return "此原神面板正在更新，请稍后查询。";
-        refreshes.add(key);
-        try {
-          if (!source) throw new ProfileError("login-required", "原神面板更新需要登录。");
-          if (reload) await verify();
-          const beforeDiscard = await store.discardedAt(qq, uid);
-          const startedAt = now();
-          const result = await client.fetchGenshinPanel(source, { signal });
-          expected = result.revision;
-          await verify();
-          if (!result.avatars.length) return "米游社没有返回原神角色面板，原档案已保留。";
-          const next = officialPanel(uid, result.avatars, assets, startedAt);
-          const nextSnapshot = await store.update({ qq, uid }, verify, async current => {
-            const discardedAt = panelDiscardedAt(current);
-            if (discardedAt !== beforeDiscard) return { result: null };
-            const previous = readPanel(uid, current, assets);
-            if (previous?._profile !== undefined && previous._profile >= startedAt) return { result: previous };
-            const inherited = previous ?? (discardedAt ? undefined : await store.readLegacy(uid, assets));
-            const document = { ...next, ...(discardedAt && { panelDiscardedAt: discardedAt }),
-              avatars: { ...inherited?.avatars, ...next.avatars } };
-            updated = true;
-            return { document, result: document };
-          });
-          if (nextSnapshot === null) return "此原神面板已删除，请重新发起更新。";
-          snapshot = nextSnapshot;
-        } finally {
-          refreshes.delete(key);
-        }
+        if (!source) throw new ProfileError("login-required", "原神面板更新需要登录。");
+        const result = await refreshPanel(source, assets, verify, signal);
+        if (result.status === "busy") return "此原神面板正在更新，请稍后查询。";
+        if (result.status === "empty") return "米游社没有返回原神角色面板，原档案已保留。";
+        if (result.status === "discarded") return "此原神面板已删除，请重新发起更新。";
+        snapshot = result.snapshot;
+        updated = result.updated;
       } else if (type !== "reload") {
         if (readRoster && owned) trainingDiscardedAt = await store.discardedAt(qq, uid);
         snapshot = publicUid ? undefined : await store.readPanel(qq, uid, assets, type === "statistics" || type === "daily-materials", talentAccount);
@@ -751,4 +796,5 @@ ${avatars.map(avatar => avatar.name).join("、")}`;
       return "原神面板暂时无法读取或更新，请稍后重试。";
     }
   };
+  return Object.assign(query, { rebuild });
 }

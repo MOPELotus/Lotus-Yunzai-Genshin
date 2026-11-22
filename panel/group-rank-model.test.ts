@@ -1,5 +1,16 @@
 import { expect, test } from "bun:test";
-import { decodeRankAvatar } from "./group-rank-model.ts";
+import { decodeRankAvatar, matchGroupPanelRank } from "./group-rank-model.ts";
+
+test("legacy strongest aliases select the same live ranking and keep highest score on artifacts", () => {
+  for (const prefix of ["最强", "最高", "最牛", "第一"]) {
+    expect(matchGroupPanelRank(`#原神群内${prefix}胡桃面板`)).toMatchObject({
+      character: { name: "胡桃" }, mode: "damage", strongest: true,
+    });
+  }
+  expect(matchGroupPanelRank("#最高分胡桃")).toMatchObject({ mode: "artifacts", strongest: true });
+  expect(matchGroupPanelRank("#最强胡桃双暴")).toMatchObject({ mode: "crit", strongest: true });
+  expect(matchGroupPanelRank("#极限胡桃")).toBeUndefined();
+});
 
 test("rank summaries preserve only checked original talents and continue to read older summaries", () => {
   const stored = {
