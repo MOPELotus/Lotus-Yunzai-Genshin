@@ -8,6 +8,7 @@ import {
 import { renderGenshinWorldBossCard } from "@lotus-yunzai/skia/genshin-world-boss";
 import { renderGenshinWorldBossRankingCard } from "@lotus-yunzai/skia/genshin-world-boss-ranking";
 import type { createGenshinWorldBossRanking } from "./world-boss-ranking.ts";
+import { genshinGachaThemeDirectory } from "./wish-calendar.ts";
 
 export const worldBossCommand = /^#(?:原神)?(?:世界)?BOSS击杀([1-9]\d{0,2})?$/iu;
 export const worldBossRankingCommand = /^#(?:原神)?(?:世界)?BOSS击杀排行$/iu;
@@ -121,7 +122,7 @@ export function createWorldBossQuery(
           const groups = await Promise.all(page.map(async ({ name, bosses }) => ({
             name, bosses: await Promise.all(bosses.map(async (boss) => ({ ...boss, image: await imageFor(boss.name) }))),
           })));
-          const { png } = await renderGenshinWorldBossCard({ groups });
+          const { png } = await renderGenshinWorldBossCard({ groups }, { miaoResourceDirectory: genshinGachaThemeDirectory() });
           reply = { type: "image", file: png };
         } catch {
           reply = textReply(page);
@@ -163,7 +164,7 @@ export function createWorldBossRankingQuery(ranking: Pick<Ranking, "rank">, sign
       try {
         const rows = await Promise.all(page.map(async ({ name, killCount, uid }) =>
           ({ name, count: killCount, uid, image: await imageFor(name) })));
-        const { png } = await renderGenshinWorldBossRankingCard({ rows });
+        const { png } = await renderGenshinWorldBossRankingCard({ rows }, { miaoResourceDirectory: genshinGachaThemeDirectory() });
         reply = { type: "image", file: png };
       } catch {
         reply = page.length

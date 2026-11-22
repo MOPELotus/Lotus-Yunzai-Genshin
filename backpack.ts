@@ -76,10 +76,11 @@ export function createGenshinBackpackQuery(
       }
       if (!await currentRole()) return signal.aborted ? undefined : changed;
       if (!result.items.length) return "官方养成计算器没有返回可查询的背包材料。";
-      const model = await groupGenshinBackpackMaterials(result.items, genshinGachaThemeDirectory(), signal);
+      const miaoResourceDirectory = genshinGachaThemeDirectory();
+      const model = await groupGenshinBackpackMaterials(result.items, miaoResourceDirectory, signal);
       async function image(categories: readonly Category[]) {
         try {
-          const { png } = await renderGenshinBackpackCard(await model.withArtwork(categories));
+          const { png } = await renderGenshinBackpackCard(await model.withArtwork(categories), { miaoResourceDirectory });
           if (png.byteLength <= imageByteLimit) return { type: "image" as const, file: png };
         } catch {
           return;
