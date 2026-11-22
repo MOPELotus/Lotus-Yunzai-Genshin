@@ -1,8 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readLiteralArrayExport } from "@lotus-yunzai/gacha/literal-exports";
 import { parseDocument } from "yaml";
-import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
+import { genshinGachaThemeDirectory, readGenshinWishCalendar } from "../wish-calendar.ts";
 
 export type PoolKind = "role" | "role2" | "weapon" | "permanent";
 
@@ -131,12 +130,8 @@ export function createWishPoolSource({
       } else if (legacyDirectory) {
         banner = await readLegacyBanner(legacyDirectory, qq, config);
       } else {
-        const calendar = await readFile(join(themeDirectory, "meta-gs", "info", "pool.js"), "utf8")
-          .catch((error: NodeJS.ErrnoException) => {
-            if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
-            return "";
-          });
-        banner = scheduleBanner(readLiteralArrayExport(calendar, "poolDetail"), now)
+        const { regular } = await readGenshinWishCalendar(themeDirectory);
+        banner = scheduleBanner(regular, now)
           ?? configuredBanner(await readWishYaml(new URL("pool.yaml", defaults)));
       }
     }

@@ -1,20 +1,17 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { readLiteralArrayExport, readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
+import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
 import { resolveGenshinDetailPool, type GenshinGachaDetailOptions, type GenshinGachaDetailPeriod } from "./gacha-detail.ts";
 import type { GenshinPreviousGacha } from "./gacha-history.ts";
 import type { GenshinUigfItem, GenshinUigfItemResolver } from "./gacha-uigf.ts";
 import type { GenshinGachaVersionPeriod } from "./gacha-version.ts";
+import { readGenshinWishCalendar } from "./wish-calendar.ts";
 
-const defaultTheme = fileURLToPath(new URL("../../data/genshin/miao-theme", import.meta.url));
+export { genshinGachaThemeDirectory } from "./wish-calendar.ts";
+
 const weaponTypes = ["sword", "claymore", "polearm", "bow", "catalyst"] as const;
 type Resolver = NonNullable<GenshinGachaDetailOptions["resolveItem"]>;
 type Item = NonNullable<ReturnType<Resolver>> & { readonly rank?: GenshinUigfItem["rank"] };
-
-export function genshinGachaThemeDirectory() {
-  return Bun.env.LOTUS_GENSHIN_GACHA_THEME_DIR?.trim() || defaultTheme;
-}
 
 function record(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
@@ -118,10 +115,8 @@ export async function readGenshinGachaCatalogue(root: string) {
 }
 
 export async function readGenshinPublicPoolSources(root: string) {
-  const [catalogue, calendar] = await Promise.all([readGenshinGachaCatalogue(root), readOptional(join(root, "meta-gs", "info", "pool.js"))]);
-  return {
-    ...catalogue, regular: readLiteralArrayExport(calendar, "poolDetail"), mixed: readLiteralArrayExport(calendar, "mixPoolDetail"),
-  };
+  const [catalogue, calendar] = await Promise.all([readGenshinGachaCatalogue(root), readGenshinWishCalendar(root)]);
+  return { ...catalogue, ...calendar };
 }
 
 async function readPublicWeapons(root: string) {
@@ -151,14 +146,14 @@ function versionPeriod(entry: GenshinGachaDetailPeriod): entry is GenshinGachaVe
 
 export async function readGenshinGachaSources(root: string, records: GenshinPreviousGacha, beginner?: readonly unknown[]) {
   const [characters, weapons, calendar] = await Promise.all([
-    readCharacters(root), readWeapons(root, [...Object.values(records), beginner]), readOptional(join(root, "meta-gs", "info", "pool.js")),
+    readCharacters(root), readWeapons(root, [...Object.values(records), beginner]), readGenshinWishCalendar(root),
   ]);
   const resolveItem: Resolver = ({ name, itemType }) => (itemType === "char" ? characters : weapons).get(name);
   const named = (entry: GenshinGachaVersionPeriod): GenshinGachaVersionPeriod => ({
     ...entry, name: entry.char5.map((name) => characters.get(name)?.abbr ?? name).join(" / "),
   });
-  const regular = readLiteralArrayExport(calendar, "poolDetail").filter(period);
-  const mixed = readLiteralArrayExport(calendar, "mixPoolDetail").filter(period);
+  const regular = calendar.regular.filter(period);
+  const mixed = calendar.mixed.filter(period);
   return {
     resolveItem,
     schedule: regular.filter(versionPeriod).map(named),
