@@ -13,6 +13,7 @@ import { createWishCommands } from "./wish-sim/commands.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
 import { matchGenshinPanelHelp, renderGenshinPanelHelp } from "./panel/help-card.ts";
 import { createGenshinPayLogCommand, matchGenshinPayLog } from "./pay-log-command.ts";
+import { createGenshinBirthdayPhotoCommand, matchGenshinBirthdayPhoto } from "./birthday-photo.ts";
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
 import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createGenshinPanelQuery, matchLegacyGenshinExtremePanel } from "./panel/panel.ts";
@@ -109,6 +110,7 @@ interface GachaContext extends GroupRankContext {
   readonly sender?: Readonly<Record<string, unknown>>;
   readonly isMaster?: boolean;
   readonly isBotMaster?: (userId: number) => boolean;
+  readonly privateCredentialSignal?: AbortSignal;
   readonly attachment?: { readonly name: string; read(signal?: AbortSignal): Promise<Uint8Array | undefined> };
   readonly canReadAttachments?: boolean;
   readonly uploadFile?: (file: { readonly name: string; readonly bytes: Uint8Array }) => Promise<"confirmed" | "rejected" | "unknown">;
@@ -140,6 +142,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const changeDamageSettings = createDamageSettingsCommand(signal);
   const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal);
   const payLog = createGenshinPayLogCommand(profiles, signal);
+  const birthdayPhoto = createGenshinBirthdayPhotoCommand(profiles, client, signal);
   const equippedWeapons = createWeaponListQuery(profiles, client, signal);
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
   const fetchShowcase = createGenshinShowcaseClient();
@@ -297,6 +300,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchWeaponList(message)) return ["[genshin] 武器查询"];
       if (matchGenshinBlueprint(message)) return ["[genshin] 尘歌壶模数"];
       if (matchGenshinPayLog(message)) return ["[genshin] 充值记录"];
+      if (matchGenshinBirthdayPhoto(message)) return ["[genshin] 生日留影"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
       if (achievements.explicit(context)) return [];
@@ -340,6 +344,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (challenge) return personalChallenge(challenge, context);
       const payment = matchGenshinPayLog(context.normalizedMessage);
       if (payment) return payLog(payment, context);
+      const birthday = matchGenshinBirthdayPhoto(context.normalizedMessage);
+      if (birthday) return birthdayPhoto(birthday, context);
       const record = matchPersonalRecord(context.normalizedMessage);
       if (record) return personalRecord(record, context);
       const weapons = matchWeaponList(context.normalizedMessage);
