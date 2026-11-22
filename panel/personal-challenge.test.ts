@@ -24,10 +24,14 @@ const result = { uid, server: region, start_time: "1761926400", total_battle_tim
   damage_rank: [{ avatar_id: furina.id, value: 138550 }], defeat_rank: [{ avatar_id: keqing.id, value: 18 }] };
 const combat = { has_detail_data: true, data: [
   { stat: { difficulty_id: 5, heraldry: 4, max_round_id: 10, get_medal_round_list: [1, 0, "1"],
-      coin_num: 77, avatar_bonus_num: 2, rent_cnt: 1 },
-    detail: { rounds_data: [{ round_id: 1, finish: "2025-11-01 09:00", is_get_medal: true,
-      avatars: [{ ...furina, avatar_type: 3, element: "Hydro" }],
-      buffs: [{ icon: "https://webstatic.mihoyo.com/fixture.png?ignored=query" }, { icon: "https://not-official.example/fixture.png" }] }] } },
+      coin_num: 77, avatar_bonus_num: 2, rent_cnt: 1, tarot_finished_cnt: 2 },
+    schedule: { start_date_time: { month: "11" } },
+    detail: { fight_statisic: { total_use_time: 836 }, rounds_data: [{ round_id: 1, finish_time: 1761926400, is_get_medal: true,
+      avatars: [{ ...furina, avatar_type: 3, element: "Hydro" }, { ...keqing, avatar_type: 1 }],
+      choice_cards: [{ icon: "https://not-official.example/choice.png" }, { icon: "https://webstatic.mihoyo.com/choice.png" }],
+      enemies: [{ icon: "https://webstatic.mihoyo.com/enemy.png" }],
+      splendour_buff: { summary: { total_level: 4 }, buffs: [{ level: 4, icon: "https://webstatic.mihoyo.com/fixture.png?ignored=query" },
+        { level: 0, icon: "https://not-official.example/fixture.png" }] } }] } },
   { stat: { difficulty_id: 4, max_round_id: 8 },
     detail: { rounds_data: [{ is_tarot: true, tarot_serial_no: 1, avatars: [keqing] }] } },
 ] };
@@ -64,11 +68,13 @@ test("old stars, ranks, rooms, timestamps, constellations, seasons and medals re
       teams: [{ upper: true, avatars: [{ constellation: 2 }] }, { upper: false, avatars: [{ constellation: 6 }] }] }],
   });
   expect(buildPersonalChallenge(uid, matchPersonalChallenge("#幻想真境剧诗")!, overview, combat)).toMatchObject({
-    kind: "theater", difficulty: "月谕", best: 10, medals: [true, false, true],
-    rounds: [{ title: "第1幕", avatars: [{ type: 3 }], buffs: ["https://webstatic.mihoyo.com/fixture.png"] }],
+    kind: "theater", difficulty: "月谕", best: 10, medals: [true, false, true], month: 11, tarot: 2, totalTime: 836,
+    rounds: [{ title: "第 1 幕", finish: "11-01 00:00:00", avatars: [expect.objectContaining({ type: 3 }), expect.objectContaining({ type: 1 })],
+      blessingLevel: 4, blessings: [{ level: 4, icon: "https://webstatic.mihoyo.com/fixture.png" }, { level: 0, icon: undefined }],
+      enemy: "https://webstatic.mihoyo.com/enemy.png", choiceCount: 2, choices: ["https://webstatic.mihoyo.com/choice.png"] }],
   });
   expect(buildPersonalChallenge(uid, matchPersonalChallenge("#上期剧诗")!, overview, { ...combat, data: [null, combat.data[1]] }))
-    .toMatchObject({ kind: "theater", best: 8, rounds: [{ title: "圣牌挑战1" }] });
+    .toMatchObject({ kind: "theater", best: 8, rounds: [{ title: "圣牌挑战 I" }] });
   expect(buildPersonalChallenge(uid, matchPersonalChallenge("#深渊12层")!, overview, {})).toMatchObject({ message: expect.stringContaining("第12层") });
   expect(buildPersonalChallenge(uid, matchPersonalChallenge("#深渊")!, overview, { total_battle_times: 2 })).toMatchObject({ message: expect.stringContaining("没更新") });
   expect(buildPersonalChallenge(uid, matchPersonalChallenge("#剧诗")!, overview, { ...combat, has_detail_data: "false" }))
@@ -142,5 +148,45 @@ test("only the selected owned account renders and a switch during image generati
     switchOnRender = true;
     expect(await query(command, group)).toContain("档案已变化");
     expect(calls).toBe(2);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+
+test("theater enriches only distinct owned team members and still renders if details are unavailable", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "lotus-genshin-theater-"));
+  try {
+    const path = join(directory, "42-3.yaml");
+    await writeFile(path, profile());
+    const profiles = createProfileStore(directory);
+    const contexts = { user_id: 42, message_type: "group", inlineImageByteLimit: 16 * 1024 * 1024 };
+    const command = matchPersonalChallenge("#本期幻想真境剧诗数据 档案3")!;
+    const detail = { base: { id: keqing.id } };
+    let detailUnavailable = false, switchDuringDetail = false, detailCalls = 0, renderCalls = 0;
+    const query = createPersonalChallengeQuery(profiles, {
+      async fetchGenshinChallenge(source) {
+        return { overview, challenge: combat, revision: source.revision, refreshedCookie: false };
+      },
+      async fetchGenshinTalents(source, options) {
+        detailCalls++;
+        expect(source.role.uid).toBe(uid);
+        expect(options.characterIds).toEqual([keqing.id]);
+        if (switchDuringDetail) await writeFile(path, profile(alternate.uid));
+        if (detailUnavailable) throw new Error("fixture unavailable");
+        return { avatars: [detail], revision: source.revision, refreshedCookie: false };
+      },
+    }, new AbortController().signal, async (model, _signal, options) => {
+      renderCalls++;
+      expect(model.kind).toBe("theater");
+      expect(options?.owned).toEqual(detailUnavailable ? undefined : [detail]);
+      expect(options?.inlineImageByteLimit).toBe(contexts.inlineImageByteLimit);
+      return { png: Buffer.from("image"), engine: {} as never };
+    });
+    expect(await query(command, contexts)).toMatchObject({ type: "image" });
+    detailUnavailable = true;
+    expect(await query(command, contexts)).toMatchObject({ type: "image" });
+    switchDuringDetail = true;
+    expect(await query(command, contexts)).toContain("档案已变化");
+    expect(detailCalls).toBe(3);
+    expect(renderCalls).toBe(2);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

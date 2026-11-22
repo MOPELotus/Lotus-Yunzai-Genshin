@@ -3,10 +3,11 @@ import type { Json } from "./model.ts";
 
 export const combatLabels = ["战斗次数", "最多击破", "承受伤害", "元素战技", "最强一击", "元素爆发"] as const;
 const ranks = ["defeat_rank", "take_damage_rank", "normal_skill_rank", "damage_rank", "energy_skill_rank"] as const;
-const difficulties = ["", "轻简", "普通", "困难", "卓越", "月谕"] as const;
+const difficulties = ["", "简单", "普通", "困难", "卓越", "月谕"] as const;
 const chineseTime = "Asia/Shanghai";
 const dateFormat = new Intl.DateTimeFormat("en-CA", { timeZone: chineseTime, year: "numeric", month: "2-digit", day: "2-digit" });
 const timeFormat = new Intl.DateTimeFormat("en-GB", { timeZone: chineseTime, hourCycle: "h23", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const roundDateFormat = new Intl.DateTimeFormat("en-CA", { timeZone: chineseTime, month: "2-digit", day: "2-digit" });
 const monthFormat = new Intl.DateTimeFormat("zh-CN", { timeZone: chineseTime, month: "numeric" });
 
 export type ChallengeSelection = { readonly mode: "abyss"; readonly scheduleType: 1 | 2; readonly floor?: number } |
@@ -36,6 +37,18 @@ function time(value: unknown) {
 function truth(value: unknown) { return value === true || value === "true" || value === 1 || value === "1"; }
 function falsity(value: unknown) { return value === false || value === "false" || value === 0 || value === "0"; }
 
+function roman(value: number | undefined) {
+  if (!value || value > 3999) return "—";
+  let remaining = value, result = "";
+  for (const [number, numeral] of [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"],
+    [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]] as const) {
+    const count = Math.floor(remaining / number);
+    result += numeral.repeat(count);
+    remaining %= number;
+  }
+  return result;
+}
+
 function avatar(row: Json, owned?: ReadonlyMap<number, Json>) {
   const id = number(row.avatar_id ?? row.id);
   return {
@@ -56,20 +69,37 @@ export function buildPersonalChallenge(uid: string, selection: ChallengeSelectio
     }
     const difficulty = difficulties[number(stat.difficulty_id) ?? 0];
     const role = object(overview.role);
-    const icons = (value: unknown) => rows(value, 14).flatMap(row => {
+    const detail = object(season.detail);
+    const month = number(object(object(season.schedule).start_date_time).month);
+    const icons = (value: readonly Json[]) => value.flatMap(row => {
       const icon = normalizeProfileRoleArtworkUrl(row.icon);
       return icon ? [icon] : [];
     });
     return {
       kind: "theater", uid, period, difficulty, player: label(role.nickname), playerLevel: number(role.level),
-      playerIcon: normalizeProfileRoleArtworkUrl(role.game_head_icon) ?? normalizeProfileRoleArtworkUrl(role.AvatarUrl), heraldry: number(stat.heraldry), startTime: label(stat.start_time),
-      best: number(stat.max_round_id), flowers: number(stat.coin_num), audience: number(stat.avatar_bonus_num), rent: number(stat.rent_cnt),
+      playerIcon: normalizeProfileRoleArtworkUrl(role.game_head_icon) ?? normalizeProfileRoleArtworkUrl(role.AvatarUrl), heraldry: number(stat.heraldry),
+      month: month && month <= 12 ? month : undefined, totalTime: number(object(detail.fight_statisic).total_use_time),
+      tarot: number(stat.tarot_finished_cnt), best: number(stat.max_round_id), flowers: number(stat.coin_num), audience: number(stat.avatar_bonus_num), rent: number(stat.rent_cnt),
       medals: (Array.isArray(stat.get_medal_round_list) ? stat.get_medal_round_list : []).slice(0, 24).map(truth),
-      rounds: rows(object(season.detail).rounds_data, 24).map(round => ({
-        title: truth(round.is_tarot) ? `圣牌挑战${number(round.tarot_serial_no) ?? "—"}` : `第${number(round.round_id) ?? "—"}幕`,
-        medal: truth(round.is_get_medal), finish: label(round.finish), avatars: rows(round.avatars, 8).map(row => avatar(row)),
-        buffs: icons(round.buffs), choices: icons(round.choice_cards),
-      })),
+      rounds: rows(detail.rounds_data, 24).map(round => {
+        const tarot = truth(round.is_tarot);
+        const serial = number(round.tarot_serial_no);
+        const roundId = number(round.round_id);
+        const finished = time(round.finish_time);
+        const blessing = object(round.splendour_buff);
+        const choices = rows(round.choice_cards, 24);
+        return {
+          title: tarot ? `圣牌挑战 ${roman(serial)}` : `第 ${roundId ?? "—"} 幕`,
+          medal: truth(round.is_get_medal), avatars: rows(round.avatars, 8).map(row => avatar(row)),
+          finish: finished ? `${roundDateFormat.format(finished)} ${timeFormat.format(finished)}` : label(round.finish),
+          blessingLevel: number(object(blessing.summary).total_level),
+          blessings: rows(Array.isArray(blessing.buffs) ? blessing.buffs : round.buffs, 14).map(row => ({
+            level: number(row.level), icon: normalizeProfileRoleArtworkUrl(row.icon),
+          })),
+          enemy: normalizeProfileRoleArtworkUrl(rows(round.enemies, 1)[0]?.icon),
+          choiceCount: choices.length, choices: icons(choices),
+        };
+      }),
     } as const;
   }
   const floors = rows(data.floors, 16);
@@ -108,3 +138,5 @@ export function buildPersonalChallenge(uid: string, selection: ChallengeSelectio
 }
 
 export type PersonalChallenge = Exclude<ReturnType<typeof buildPersonalChallenge>, { readonly message: string }>;
+
+export type PersonalTheater = Extract<PersonalChallenge, { readonly kind: "theater" }>;

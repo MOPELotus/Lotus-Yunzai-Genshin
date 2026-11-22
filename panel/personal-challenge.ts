@@ -1,8 +1,11 @@
 import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
+import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { buildPersonalChallenge, type ChallengeSelection } from "./personal-challenge-model.ts";
+import type { Json } from "./model.ts";
 import { renderPersonalChallenge } from "./personal-challenge-card.ts";
+import { PersonalTheaterThemeError } from "./personal-theater-card.ts";
 
 const abyss = /^#?(?:原神)?(?:(本期|上期|往期))?(?:深境螺旋|深渊|深境)(?:(本期|上期|往期))?(?:第?(9|10|11|12|九|十|十一|十二)层)?(?:\s*(\d{9,10}))?(?:\s*(?:档案|profile)\s*(\d{1,3}))?$/iu;
 const theater = /^#(?:原神)?(?:(本期|上期|往期))?(?:幻想真境剧诗|剧诗|幻想|幻境)(?:数据)?(?:\s*(?:档案|profile)\s*(\d{1,3}))?$/iu;
@@ -27,11 +30,13 @@ interface MessageContext {
   readonly user_id?: number;
   readonly message_type?: string;
   readonly isDelegated?: boolean;
+  readonly inlineImageByteLimit?: number;
   readonly privateCredentialSignal?: AbortSignal;
 }
 
 export function createPersonalChallengeQuery(profiles: GenshinRoleProfiles,
-  client: Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinChallenge">,
+  client: Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinChallenge"> &
+    Partial<Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinTalents">>,
   lifecycle: AbortSignal, render = renderPersonalChallenge) {
   return async (command: Command, context: MessageContext) => {
     if (lifecycle.aborted || context.privateCredentialSignal?.aborted) return;
@@ -55,14 +60,30 @@ export function createPersonalChallengeQuery(profiles: GenshinRoleProfiles,
           throw new ProfileError("changed", "原神角色档案已变化。");
         }
         signal.throwIfAborted();
+        return latest;
       }
       await verify();
       const official = await client.fetchGenshinChallenge(initial.source, { ...command, signal });
       revision = official.revision;
-      await verify();
+      const latest = await verify();
       const model = buildPersonalChallenge(uid, command, official.overview, official.challenge);
       if ("message" in model) return model.message;
-      const { png } = await render(model, signal);
+      let owned: readonly Json[] | undefined;
+      if (model.kind === "theater" && client.fetchGenshinTalents) {
+        const characterIds = [...new Set(model.rounds.flatMap(round =>
+          round.avatars.flatMap(avatar => avatar.type === 1 && avatar.id !== undefined ? [avatar.id] : [])))];
+        if (characterIds.length) {
+          try {
+            const details = await client.fetchGenshinTalents(latest.source, { characterIds, signal });
+            revision = details.revision;
+            owned = details.avatars;
+          } catch (error) {
+            if (error instanceof ProfileError || (error instanceof HoyoRequestError && error.code === "profile-changed")) throw error;
+          }
+          await verify();
+        }
+      }
+      const { png } = await render(model, signal, { owned, inlineImageByteLimit: context.inlineImageByteLimit });
       await verify();
       return { type: "image", file: png } as const;
     } catch (error) {
@@ -72,6 +93,9 @@ export function createPersonalChallengeQuery(profiles: GenshinRoleProfiles,
         if (error.code === "login-required" || error.code === "missing") return `请先登录档案 ${profileId}。`;
         if (error.code === "role-missing") return `档案 ${profileId} 没有已同步的原神角色。`;
         if (error.code === "invalid") return "档案的登录凭据与账号不一致，请重新登录。";
+      }
+      if (error instanceof PersonalTheaterThemeError || (command.mode === "theater" && error instanceof ImageSizeLimitError)) {
+        return error.message;
       }
       if (error instanceof GameRecordRequestError) {
         if (error.retcode === 10102) return "此档案的原神米游社战绩未公开，或尚未在米游社绑定角色。";
