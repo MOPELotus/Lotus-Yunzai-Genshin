@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { loadImage } from "skia-canvas";
 import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
 import { readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
+import { localPanelGalleryRoot, retainedPanelGalleryDirectory } from "../../../lib/panel-gallery-paths.ts";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
 import { managedPanelImageRoot, ownsPanelImages, usablePanelImageRoot } from "./image-library.ts";
 import { avatarId, object, text, type Json, type PanelAvatar, type PanelCatalog } from "./model.ts";
@@ -106,15 +107,18 @@ async function json(path: string): Promise<Json> {
 
 export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THEME_DIR?.trim() || genshinGachaThemeDirectory(),
   galleryDirectory = Bun.env.LOTUS_CHARACTER_GALLERY_DIR?.trim(),
-  managedDirectory = managedPanelImageRoot()): Promise<PanelTheme> {
+  managedDirectory = managedPanelImageRoot(),
+  installation?: string): Promise<PanelTheme> {
   const root = resolve(directory);
-  const [characters, relics, installed, configured, managed, customAliases] = await Promise.all([
+  const galleryRoot = galleryDirectory ?? localPanelGalleryRoot(installation);
+  const [characters, relics, installed, configured, retained, customAliases] = await Promise.all([
     json(join(root, "meta-gs", "character", "data.json")), json(join(root, "meta-gs", "artifact", "data.json")),
     realpath(root).catch(() => undefined),
-    galleryDirectory ? realpath(resolve(galleryDirectory)).catch(() => undefined) : undefined,
-    usablePanelImageRoot(managedDirectory, [root, genshinGachaThemeDirectory(), galleryDirectory]).catch(() => false),
+    galleryRoot ? realpath(resolve(galleryRoot)).catch(() => undefined) : undefined,
+    galleryDirectory === "" ? undefined : retainedPanelGalleryDirectory("gs", installation),
     readGameCharacterAliases("gs"),
   ]);
+  const managed = await usablePanelImageRoot(managedDirectory, [root, genshinGachaThemeDirectory(), galleryRoot, retained]).catch(() => false);
   const characterNames = new Map<string, number>();
   for (const row of Object.values(characters)) {
     const name = text(object(row)?.name);
@@ -144,8 +148,11 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
     const name = text(object(characters[avatar.id])?.name);
     if (name !== avatar.name || name === "旅行者" || !safeSegment(name) || characterNames.get(name) !== 1) return;
     const owned = managed && await ownsPanelImages(managedDirectory, name);
-    const galleryLevels = owned ? [publicGallery, [managedDirectory], installedGallery] : [publicGallery, legacyGallery];
-    if (special) galleryLevels.unshift([...publicGallery, ...installedGallery].map(base => join(base, "super-character")));
+    const selected = special ? [publicGallery.map(base => join(base, "super-character")), publicGallery] : [publicGallery];
+    const maintained = owned ? [[managedDirectory]] : [];
+    const levels = galleryDirectory ? [...selected, ...maintained] : [...maintained, ...selected];
+    if (special) levels.push(installedGallery.map(base => join(base, "super-character")));
+    const galleryLevels = [...levels, retained ? [retained] : [], owned ? installedGallery : legacyGallery];
     for (const bases of galleryLevels) {
       const candidates = (await Promise.all(bases.map(base => galleryCandidates(base, name)))).flat();
       while (candidates.length) {

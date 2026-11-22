@@ -138,6 +138,27 @@ test("full character names keep per-character ownership across fresh theme reads
   },
 ));
 
+test("managed originals take priority over the default gallery and retained GuTools output", () => fixture(
+  async ({ root, theme, flat, nested }) => {
+    const installation = dirname(root);
+    const defaultGallery = join(installation, "data", "character-gallery", "gs-character", name);
+    const retained = join(installation, "backup", "plugins", "miao-plugin", "resources", "profile", "normal-character", name);
+    const wide = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8DwH4QBEfcD/ePF9e8AAAAASUVORK5CYII=", "base64");
+    await mkdir(defaultGallery, { recursive: true });
+    await mkdir(retained, { recursive: true });
+    await writeFile(join(defaultGallery, "borrowed.png"), wide);
+    await writeFile(join(retained, "filtered.png"), wide);
+    await rm(flat);
+    const model = { id: 10000089, name };
+    const warm = await readPanelTheme(theme, undefined, root, installation);
+    expect((await warm.galleryPortrait!(model))?.width).toBe(1);
+    await rm(nested, { recursive: true });
+    expect((await warm.galleryPortrait!(model))?.width).toBe(2);
+    await rm(defaultGallery, { recursive: true });
+    expect((await warm.galleryPortrait!(model))?.width).toBe(2);
+  },
+));
+
 test("does not follow symlinks, and an interruption before rename leaves the image available for retry", () => fixture(
   async ({ reload, root, flat, nested }) => {
     const source = (await panelImageCandidates(root, name))[0]!;
