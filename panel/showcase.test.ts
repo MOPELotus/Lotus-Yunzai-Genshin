@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { GameRole } from "@lotus-yunzai/account";
 import { createProfileStore } from "@lotus-yunzai/account";
+import { normalizeGameCommand } from "../../../lib/command-prefix.ts";
+import { CommandRegistry } from "../../../lib/commands.ts";
 import { lockFile } from "../../../lib/file-lock.ts";
+import type { MessageEvent } from "../../../lib/messages.ts";
+import { createModule } from "../index.ts";
 import { createGenshinShowcaseCommand, matchGenshinShowcase } from "./showcase-command.ts";
 import { createGenshinShowcaseClient, genshinShowcaseTarget, normalizeGenshinShowcase } from "./showcase-client.ts";
 import { createGenshinShowcaseStorage, mergeGenshinShowcase } from "./showcase-storage.ts";
@@ -49,8 +53,11 @@ test("original aliases and providers resolve independently from ordinary officia
     "#原神展板获取游戏角色详情", "#备用面板更新"]) expect(matchGenshinShowcase(intent)).toMatchObject({ profileId: 1 });
   expect(matchGenshinShowcase(`＃原神备用更新面板${uid} 档案3`)).toEqual({ uid, profileId: 3, explicitProfile: true });
   expect(matchGenshinShowcase("#展板更新面板2")).toEqual({ uid: undefined, profileId: 2, explicitProfile: true });
+  expect(matchGenshinShowcase("#更新胡桃面板")).toMatchObject({ characterName: "胡桃", profileId: 1 });
+  expect(matchGenshinShowcase("#原神更新胡桃详情档案2")).toMatchObject({ characterName: "胡桃", profileId: 2 });
   expect(matchGenshinShowcase("#备用更新面板 参数错")).toContain("用法");
-  for (const command of ["#更新面板", "#原神获取游戏角色详情", "*展板更新面板", "%更新展柜面板"]) {
+  for (const command of ["#更新面板", "#原神获取游戏角色详情", "*展板更新面板", "%更新展柜面板",
+    "#胡桃详情更新", "*更新希儿面板", "#星铁更新希儿详情", "#更新胡桃面板档案"]) {
     expect(matchGenshinShowcase(command)).toBeUndefined();
   }
   expect(matchGenshinPanel("#更新面板")?.type).toBe("update");
@@ -60,6 +67,78 @@ test("original aliases and providers resolve independently from ordinary officia
   expect(genshinShowcaseTarget({ uid: "618285856", region: "os_usa", gameBiz: "hk4e_global" }, "0").provider).toBe("enka");
   expect(() => genshinShowcaseTarget(cn, "1")).toThrow("私有");
   expect(() => genshinShowcaseTarget({ ...cn, region: "cn_qd01" }, "0")).toThrow("区服");
+});
+
+test("宿主按角色名检查旧刷新写法并查询所选档案的公开展板，官方更新使用各自入口", async () => {
+  const root = await mkdtemp(join(tmpdir(), "lotus-genshin-named-showcase-"));
+  const env = {
+    LOTUS_PROFILE_DIR: Bun.env.LOTUS_PROFILE_DIR,
+    LOTUS_GENSHIN_PANEL_DIR: Bun.env.LOTUS_GENSHIN_PANEL_DIR,
+    LOTUS_GENSHIN_SHOWCASE_DIR: Bun.env.LOTUS_GENSHIN_SHOWCASE_DIR,
+    LOTUS_GENSHIN_SHOWCASE_SERVER: Bun.env.LOTUS_GENSHIN_SHOWCASE_SERVER,
+  };
+  const originalFetch = globalThis.fetch;
+  try {
+    Bun.env.LOTUS_PROFILE_DIR = root;
+    Bun.env.LOTUS_GENSHIN_PANEL_DIR = join(root, "panels");
+    Bun.env.LOTUS_GENSHIN_SHOWCASE_DIR = join(root, "showcases");
+    Bun.env.LOTUS_GENSHIN_SHOWCASE_SERVER = "0";
+    for (const profileId of [1, 2]) {
+      const roleUid = profileId === 1 ? uid : alternate;
+      await writeFile(join(root, profileId === 1 ? "42.yaml" : "42-2.yaml"), `version: 1
+user: { qq: '42' }
+profile: { id: ${profileId} }
+account:
+  ltuid: '12'
+  stuid: '12'
+  stoken: synthetic-stoken
+  stoken_cookie: 'stuid=12; stoken=synthetic-stoken'
+  cookie: 'account_id=12; cookie_token=synthetic-cookie'
+  game_roles: { gs: [{ uid: '${roleUid}', region: ${cn.region}, game_biz: ${cn.gameBiz} }] }
+  current_uid: { gs: '${roleUid}' }
+`);
+    }
+    const requests: { url: URL; headers: Headers }[] = [];
+    globalThis.fetch = Object.assign(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      requests.push({ url, headers: new Headers(init?.headers) });
+      if (url.hostname === "profile.microgg.cn") return new Response(null, { status: 404 });
+      return Response.json({ retcode: 0, data: { list: [] } });
+    }, { preconnect: originalFetch.preconnect });
+    const registry = new CommandRegistry();
+    registry.registerModule({ name: "@lotus-yunzai/genshin", ...createModule({ signal, lockFile }) });
+    const notices: string[] = [];
+    const dispatch = (msg: string, context: Partial<MessageEvent> = {}) => {
+      const event = normalizeGameCommand({ msg, message_type: "private", user_id: 42, isMaster: false,
+        reply: (message: string) => { notices.push(message); return true; }, ...context } as MessageEvent);
+      return registry.dispatchFallback(event, () => true, () => false);
+    };
+    for (const cmd of ["#更新胡桃面板", "#原神更新胡桃详情 档案2", "#原神更新核桃详细2"]) {
+      expect(await dispatch(cmd)).toContain("找不到此 UID 的公开展板");
+    }
+    expect(await dispatch("#更新胡桃面板", { isDelegated: true })).toContain("本人");
+    expect(await dispatch("#更新不存在的角色面板")).toBeUndefined();
+    expect(await dispatch("#胡桃详情更新")).toBeUndefined();
+    expect(await dispatch("#更新面板")).toContain("米游社没有返回");
+    expect(await dispatch("#米游社原神更新面板")).toContain("米游社没有返回");
+    expect(notices.filter(message => message.includes("查询公开展板"))).toHaveLength(3);
+    expect(requests.slice(0, 3).map(({ url, headers }) => [url.href, headers.get("cookie")])).toEqual([
+      [`https://profile.microgg.cn/api/uid/${uid}`, null],
+      [`https://profile.microgg.cn/api/uid/${alternate}`, null],
+      [`https://profile.microgg.cn/api/uid/${alternate}`, null],
+    ]);
+    expect(requests.slice(3).map(({ url, headers }) => [url.pathname, headers.get("cookie")])).toEqual([
+      ["/game_record/app/genshin/api/character/list", "account_id=12; cookie_token=synthetic-cookie"],
+      ["/game_record/app/genshin/api/character/list", "account_id=12; cookie_token=synthetic-cookie"],
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of Object.entries(env)) {
+      if (value === undefined) delete Bun.env[key];
+      else Bun.env[key] = value;
+    }
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("Miao source model fields preserve actor, costume, talent, weapon, rolls and numeric stats", () => {

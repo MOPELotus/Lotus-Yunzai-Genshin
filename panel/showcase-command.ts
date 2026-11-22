@@ -12,6 +12,7 @@ import { decodeGenshinShowcaseResponse } from "./showcase-reader.ts";
 
 const showcase = /^#(?:原神)?\s*(?:展板|备用)\s*(?:全部面板更新|更新全部面板|获取游戏角色详情|更新面板|面板更新)\s*(?:((?:18|[1-9])\d{8})(?:\s+(?:档案|profile)\s*([1-9]\d{0,2}))?|(?:(?:档案|profile)\s*)?([1-9]\d{0,2}))?$/iu;
 const reserved = /^#(?:原神)?\s*(?:展板|备用)\s*(?:全部面板更新|更新全部面板|获取游戏角色详情|更新面板|面板更新)/u;
+const namedShowcase = /^#(?:原神)?\s*更新\s*([\p{L}\p{N}·・•_.&★ -]{1,28}?)(?:详细|详情|面板)(?:\s*(?:(?:档案|profile)\s*)?([1-9]\d{0,2}))?$/iu;
 const defaultPanelDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
 
 export function matchGenshinShowcase(message: string) {
@@ -19,6 +20,9 @@ export function matchGenshinShowcase(message: string) {
   const result = showcase.exec(normalized);
   if (result) return { uid: result[1], profileId: Number(result[2] ?? result[3] ?? 1), explicitProfile: !!(result[2] ?? result[3]) };
   if (reserved.test(normalized)) return "用法：#展板更新面板 [UID] [档案编号]" as const;
+  const named = namedShowcase.exec(normalized);
+  const characterName = named?.[1]?.trim();
+  if (characterName) return { characterName, uid: undefined, profileId: Number(named?.[2] ?? 1), explicitProfile: !!named?.[2] };
 }
 
 interface ShowcaseContext {

@@ -30,6 +30,11 @@ export function findRankCharacter(name: string) {
   if (related.length === 1) return related[0];
 }
 
+export async function resolveGenshinCharacter(name: string) {
+  return findRankCharacter(name) ??
+    findRankCharacter((await readGameCharacterAliases("gs")).get(characterAliasKey(name)) ?? "");
+}
+
 export async function fetchRankStats(id: number, signal: AbortSignal, transport?: RankStatsTransport) {
   if (!entries.some(row => row.id === id)) return { message: "此角色没有有效的原神角色编号。" };
   return fetchPublicRankStats(id, signal, transport);
@@ -38,8 +43,7 @@ export async function fetchRankStats(id: number, signal: AbortSignal, transport?
 export async function queryRankStats(message: string, signal: AbortSignal) {
   const name = rankStatsName(message);
   if (!name || signal.aborted) return;
-  const character = findRankCharacter(name) ??
-    findRankCharacter((await readGameCharacterAliases("gs")).get(characterAliasKey(name)) ?? "");
+  const character = await resolveGenshinCharacter(name);
   if (!character || signal.aborted) return;
   const result = await fetchRankStats(character.id, signal);
   if (signal.aborted) return;

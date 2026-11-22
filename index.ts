@@ -8,7 +8,7 @@ import { createGenshinMonthlyQuery, matchGenshinMonthly } from "./monthly-comman
 import { createDamageSettingsCommand, matchDamageSettingsCommand } from "./panel/lolomi/settings-command.ts";
 import { createPanelImageCommands, panelImageCommand } from "./panel/image-commands.ts";
 import { createAchievementCommand } from "./achievement-command.ts";
-import { queryRankStats } from "./rank-statistics/stats.ts";
+import { queryRankStats, resolveGenshinCharacter } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
 import { matchGenshinPanelHelp, renderGenshinPanelHelp } from "./panel/help-card.ts";
@@ -339,7 +339,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
         return renderGenshinPanelHelp({ signal, inlineImageByteLimit: context.inlineImageByteLimit });
       }
       const publicPanel = matchGenshinShowcase(context.normalizedMessage);
-      if (publicPanel) return showcase(publicPanel, context);
+      if (publicPanel && (typeof publicPanel === "string" || !publicPanel.characterName ||
+          await resolveGenshinCharacter(publicPanel.characterName))) return showcase(publicPanel, context);
       const challenge = matchPersonalChallenge(context.normalizedMessage);
       if (challenge) return personalChallenge(challenge, context);
       const payment = matchGenshinPayLog(context.normalizedMessage);
