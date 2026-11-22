@@ -38,17 +38,27 @@ import { matchPanelPreset, presetLabel, readPanelPreset, selectPresetAvatar } fr
 const mainDirectory = fileURLToPath(new URL("../../../data/genshin/panels/", import.meta.url));
 const previousDirectory = fileURLToPath(new URL("../../../data/PlayerData/gs/", import.meta.url));
 const limit = 8 * 1024 * 1024;
+const legacyExtremePanelUid = "100000000";
+const bundledExtremePanelFile = fileURLToPath(new URL("../../../resources/extreme-panels/gs.json", import.meta.url));
+
+export function matchLegacyGenshinExtremePanel(message: string) {
+  return /^#(?:原神)?\s*(?:群内?)?\s*(?:排名|排行)?\s*极限\s*([^#\r\n]{1,30}?)(?:\s*面[板版]|\s*详情)?$/u.exec(message)?.[1]?.trim() || undefined;
+}
 
 function panelDiscardedAt(input: unknown): number {
   const value = object(input)?.panelDiscardedAt;
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
 }
 
-async function oldPanel(root: string, uid: string, catalog: PanelCatalog, includeMysRoster = false): Promise<PanelSnapshot | undefined> {
+async function oldPanel(root: string, uid: string, catalog: PanelCatalog, includeMysRoster = false) {
   if (!/^[1-9]\d{8,9}$/u.test(uid)) throw new TypeError("原神 UID 格式无效。");
+  return readOldPanelFile(join(root, `${uid}.json`), uid, catalog, includeMysRoster);
+}
+
+async function readOldPanelFile(path: string, uid: string, catalog: PanelCatalog, includeMysRoster = false): Promise<PanelSnapshot | undefined> {
   let file;
   try {
-    file = await open(join(root, `${uid}.json`), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
     throw error;
@@ -106,7 +116,8 @@ export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
 
 type Renderers = {
   list(...args: Parameters<typeof renderPanelList>): Promise<{ readonly png: Uint8Array }>;
-  detail(...args: Parameters<typeof renderPanelDetail>): Promise<{ readonly png: Uint8Array }>;
+  detail(snapshot: PanelSnapshot, avatar: Parameters<typeof renderPanelDetail>[1], theme: PanelTheme,
+    options?: Parameters<typeof renderPanelDetail>[3] & { readonly inlineImageByteLimit?: number }): Promise<{ readonly png: Uint8Array }>;
   artifactList?(...args: Parameters<typeof renderArtifactList>): Promise<{ readonly png: Uint8Array }>;
   damage?(...args: Parameters<typeof renderDamageCard>): Promise<{ readonly png: Uint8Array }>;
   statistics?(...args: Parameters<typeof renderPanelStatistics>): Promise<{ readonly png: Uint8Array }>;
@@ -118,7 +129,7 @@ const renderDetail: Renderers["detail"] = (snapshot, avatar, theme, options) =>
       damage: options?.damage, change: options?.change &&
         [options.change.command, options.change.equipped, options.change.reason].filter(Boolean).join(" · "),
       displayedTalent: options?.change?.displayedTalent,
-    })
+    }, options?.inlineImageByteLimit === undefined ? undefined : { inlineImageByteLimit: options.inlineImageByteLimit })
     : renderPanelDetail(snapshot, avatar, theme, options);
 
 type Image = { readonly type: "image"; readonly file: Uint8Array };
@@ -135,6 +146,7 @@ export function createGenshinPanelQuery(
   client: DailyMaterialClient & Parameters<typeof createTrainingRoster>[2], lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
     archiveDirectory = Bun.env.LOTUS_GENSHIN_PANEL_DIR?.trim() || mainDirectory,
     legacyDirectory = Bun.env.LOTUS_GENSHIN_LEGACY_PANEL_DIR?.trim() || previousDirectory,
+    extremePanelFile = bundledExtremePanelFile,
     legacyPreferences = Bun.env.LOTUS_GENSHIN_PANEL_LEGACY_REDIS_URL?.trim(),
     preferences = createGenshinPanelDamagePreferences(lockFile, signal, archiveDirectory, legacyPreferences),
     groupRank,
@@ -142,7 +154,8 @@ export function createGenshinPanelQuery(
     render = { list: renderPanelList, detail: renderDetail, damage: renderDamageCard, artifactList: renderArtifactList },
     theme = readPanelTheme,
     now = Date.now,
-  }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly legacyPreferences?: string; readonly render?: Renderers;
+  }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly extremePanelFile?: string;
+    readonly legacyPreferences?: string; readonly render?: Renderers;
     readonly preferences?: ReturnType<typeof createGenshinPanelDamagePreferences>;
     readonly readPanelDeletionBoundary?: ReadPanelDeletionBoundary;
     readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "observe" | "allows"> &
@@ -218,6 +231,45 @@ export function createGenshinPanelQuery(
     readonly reply?: (image: Image, quote?: boolean, options?: ReplyOptions) => unknown;
   }): Promise<Reply | undefined> => {
     if (signal.aborted) return;
+    const extreme = matchLegacyGenshinExtremePanel(message);
+    if (extreme) {
+      try {
+        const assets = await theme();
+        let snapshot = await store.readLegacy(legacyExtremePanelUid, assets);
+        let avatar = snapshot && selectPresetAvatar(snapshot, extreme, assets);
+        let label = "极限示例";
+        if (!avatar) {
+          const bundled = await readOldPanelFile(extremePanelFile, legacyExtremePanelUid, assets);
+          if (bundled) {
+            snapshot = bundled;
+            avatar = selectPresetAvatar(bundled, extreme, assets);
+            label = "公开极限示例";
+          }
+        }
+        signal.throwIfAborted();
+        if (!snapshot) return "尚未准备原神极限示例数据。";
+        if (!avatar) return `暂无「${extreme}」的原神极限示例。`;
+        const damage = await estimatePanelDamage(avatar, assets, undefined, undefined, { includeComparison: false });
+        signal.throwIfAborted();
+        const description = `${label} · ${avatar.name} · Lv.${avatar.level}`;
+        const time = avatar._time;
+        const timestamp = time && time >= 1_000_000_000 && time <= 8_640_000_000_000_000
+          ? time < 1_000_000_000_000 ? time * 1000 : time : undefined;
+        try {
+          const { png } = await render.detail(snapshot, { ...avatar, _source: label, _time: timestamp }, assets, {
+            damage: "rows" in damage ? damage : undefined, inlineImageByteLimit: context.inlineImageByteLimit,
+          });
+          signal.throwIfAborted();
+          if (context.inlineImageByteLimit === undefined || png.byteLength <= context.inlineImageByteLimit) {
+            return { type: "image", file: png };
+          }
+        } catch {}
+        if (!signal.aborted) return description;
+      } catch {
+        if (!signal.aborted) return "原神极限示例暂时无法读取。";
+      }
+      return;
+    }
     const discard = matchGenshinPanelDiscard(message);
     if (discard) {
       if (discard.profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";

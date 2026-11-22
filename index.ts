@@ -15,7 +15,7 @@ import { matchGenshinPanelHelp, renderGenshinPanelHelp } from "./panel/help-card
 import { createGenshinPayLogCommand, matchGenshinPayLog } from "./pay-log-command.ts";
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
-import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createGenshinPanelQuery } from "./panel/panel.ts";
+import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createGenshinPanelQuery, matchLegacyGenshinExtremePanel } from "./panel/panel.ts";
 import { createGenshinShowcaseCommand, matchGenshinShowcase } from "./panel/showcase-command.ts";
 import { matchGenshinPanelDiscard } from "./panel/model.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
@@ -291,6 +291,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
+      if (matchLegacyGenshinExtremePanel(message)) return ["[genshin] 角色面板"];
       if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message) || matchGroupPanelRank(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       if (matchWeaponList(message)) return ["[genshin] 武器查询"];
@@ -315,6 +316,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     async fallback(_message: string, context: GachaContext) {
       const aliases = matchGameCharacterAliasCommand(context.normalizedMessage);
       if (aliases && aliases.game !== "sr") return characterAliases(aliases, context);
+      if (matchLegacyGenshinExtremePanel(context.normalizedMessage)) return panel(context.normalizedMessage, context);
       if (matchGenshinPanelDiscard(context.normalizedMessage)) return panel(context.normalizedMessage, context);
       if (genshinMonthlyTaskCommand.test(context.normalizedMessage)) return monthlyTask(context);
       const statistics = matchGenshinStatistics(context.normalizedMessage);
