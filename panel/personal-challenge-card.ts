@@ -185,7 +185,9 @@ export async function renderPersonalChallenge(model: PersonalChallenge, signal: 
     const player = decoded.get(model.playerIcon ?? "");
     if (player) {
       ctx.save(); ctx.beginPath(); ctx.arc(227, 49, 33, 0, Math.PI * 2); ctx.clip();
-      image(ctx, player, 194, 16, 66, 66); ctx.restore();
+      const side = Math.min(player.width, player.height);
+      ctx.drawImage(player, (player.width - side) / 2, (player.height - side) / 2, side, side, 194, 16, 66, 66);
+      ctx.restore();
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(227, 49, 33, 0, Math.PI * 2); ctx.stroke();
     }

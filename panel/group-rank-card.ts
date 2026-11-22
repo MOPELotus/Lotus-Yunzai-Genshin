@@ -168,10 +168,10 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
         medal(ctx, showFirst ? first : medals, scoreMode, [showFirst ? 18 : 30, y + 18, showFirst ? 48 : 24, 24]);
         if (!showFirst || !first) write(index + 1, 42, y + 34, 12, { align: "center" });
 
-        const portrait: Box = [69, y + 6, 44, 48];
-        framedIcon(ctx, current.star ? rarity[current.star - 1] : undefined, portrait, 22);
+        const portrait: Box = [66, y + 5, 50, 50];
+        framedIcon(ctx, current.star ? rarity[current.star - 1] : undefined, portrait, 25);
         ctx.save();
-        round(ctx, portrait, 22);
+        round(ctx, portrait, 25);
         ctx.clip();
         cover(ctx, current.face, portrait);
         ctx.restore();
