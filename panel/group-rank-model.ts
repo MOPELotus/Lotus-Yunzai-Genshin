@@ -8,7 +8,7 @@ import type { PanelTheme } from "./theme.ts";
 
 export type RankMode = "damage" | "artifacts" | "crit" | "valid";
 export const rankModeNames: Readonly<Record<RankMode, string>> = {
-  damage: "伤害", artifacts: "圣遗物评分", crit: "双暴副词条", valid: "加权有效词条",
+  damage: "伤害", artifacts: "圣遗物评分", crit: "双爆副词条", valid: "加权有效词条",
 };
 export interface RankAvatar {
   readonly id: number;

@@ -316,7 +316,7 @@ export function drawOriginalProfileHero(ctx: Drawing, { font, write }: TextWrite
 }
 
 export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode: Mode = "auto",
-  chat?: Omit<NonNullable<Parameters<typeof renderGenshinCardForChat>[4]>, "displayWidth">) {
+  chat?: Parameters<typeof renderGenshinCardForChat>[4]) {
   const { data, attr, artisDetail: rating, dmgCalc: damage } = model;
   const pieces = Object.values(rating.artis);
   const icon = (file: string) => theme.picture("character", "imgs", file);
@@ -469,6 +469,6 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
     write("Lotus-Yunzai", 305, contentEnd + 24, 14, { align: "center" });
     ctx.restore();
   };
-  return chat ? renderGenshinCardForChat(cardWidth, height, draw, mode, { ...chat, displayWidth })
+  return chat ? renderGenshinCardForChat(cardWidth, height, draw, mode, { displayWidth, ...chat })
     : renderGenshinCard(cardWidth, height, draw, mode, { displayWidth, scale: model.scale });
 }

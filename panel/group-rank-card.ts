@@ -20,12 +20,11 @@ const consColors = ["#666", "#5cbac2", "#339d61", "#3e95b9", "#3955b7", "#531ba9
 const grades: Readonly<Record<string, string>> = { ACE: "#ff5722", MAX: "#ff5722", SSS: "#531ba9cf", SS: "#531ba9cf",
   S: "#3955b7", A: "#3955b7" };
 const number = new Intl.NumberFormat("zh-CN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const shortNumber = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 1 });
 
 const explanations = [
   ["综合练度排名", "以期望伤害（计入暴击率的平均伤害）为序，统一按 103 级目标计算，仅作比较。"],
   ["圣遗物评分排名", "按角色的圣遗物规则计分，线性评分无法体现词条平衡，仅作参考。"],
-  ["双暴排名", "按圣遗物双暴词条排序，计入双暴头部主词条。"],
+  ["双爆排名", "按圣遗物双爆词条排序，计入双爆头部主词条。"],
   ["加权有效词条排名", "按角色的词条权重计算圣遗物有效副词条。"],
   ["排名范围", "本群当前成员在群内主动查看过的本人角色详情。"],
 ] as const;
@@ -169,19 +168,19 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
         medal(ctx, showFirst ? first : medals, scoreMode, [showFirst ? 18 : 30, y + 18, showFirst ? 48 : 24, 24]);
         if (!showFirst || !first) write(index + 1, 42, y + 34, 12, { align: "center" });
 
-        const portrait: Box = [72, y + 5, 50, 50];
-        framedIcon(ctx, current.star ? rarity[current.star - 1] : undefined, portrait, 25);
+        const portrait: Box = [69, y + 6, 44, 48];
+        framedIcon(ctx, current.star ? rarity[current.star - 1] : undefined, portrait, 22);
         ctx.save();
-        round(ctx, portrait, 25);
+        round(ctx, portrait, 22);
         ctx.clip();
         cover(ctx, current.face, portrait);
         ctx.restore();
-        if (avatar.cons !== undefined) badge(ctx, writer, avatar.cons, consColors[avatar.cons] ?? "#666", [127, y + 14, 16, 16]);
-        write(current.shortName, avatar.cons === undefined ? 127 : 147, y + 27, 17, { color: gold, maxWidth: 82 });
-        write(uid, 127, y + 47, 13, { maxWidth: 105 });
+        if (avatar.cons !== undefined) badge(ctx, writer, avatar.cons, consColors[avatar.cons] ?? "#666", [118, y + 14, 16, 16]);
+        write(current.shortName, avatar.cons === undefined ? 118 : 138, y + 27, 17, { color: gold, maxWidth: 82 });
+        write(uid, 118, y + 47, 13, { maxWidth: 105 });
 
         current.talents.forEach((icon, j) => {
-          const x = 236 + j * 49;
+          const x = 188 + j * 49;
           const original = current.originals[j];
           const level = avatar.talents[j];
           const boosted = original !== undefined && level != null && level > original;
@@ -192,31 +191,32 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
           write(level ?? "—", x + 26, y + 54, 12, { color: boosted ? "#ffdfa0" : "#000", align: "center" });
         });
 
-        columnDivider(ctx, 390, y + 9);
+        columnDivider(ctx, 344, y + 9);
         const weapon = avatar.weapon;
         if (weapon) {
-          framedIcon(ctx, current.weaponStar ? rarity[current.weaponStar - 1] : undefined, [404, y + 12, 36, 36], 6);
-          contain(ctx, current.weapon, [399, y + 2, 46, 56]);
+          framedIcon(ctx, current.weaponStar ? rarity[current.weaponStar - 1] : undefined, [360, y + 12, 36, 36], 6);
+          contain(ctx, current.weapon, [355, y + 2, 46, 56]);
           const label = weapon.name.length > 4 ? aliases?.[1]?.[weapon.name] || weapon.name : weapon.name;
-          write(label, 449, y + 27, 13, { color: gold, maxWidth: 86 });
+          write(label, 404, y + 24, 13, { color: gold, maxWidth: 48 });
           if (weapon.affix !== undefined) badge(ctx, writer, `精${weapon.affix}`, consColors[weapon.affix + 1] ?? "#666",
-            [449, y + 34, 26, 15]);
-          if (weapon.level !== undefined) write(`Lv.${weapon.level}`, weapon.affix === undefined ? 449 : 478, y + 46, 12);
+            [404, y + 31, 26, 14]);
+          if (weapon.level !== undefined) write(`Lv.${weapon.level}`, 404, y + (weapon.affix === undefined ? 43 : 56), 12);
         }
 
-        const relicBox: Box = [542, y + 12, 36, 36];
+        const relicBox: Box = [456, y + 12, 36, 36];
         framedIcon(ctx, avatar.sets.length ? rarity[4] : undefined, relicBox, 6);
-        if (avatar.sets.length === 2) current.sets.forEach((icon, i) => contain(ctx, icon, [542 + i * 11, y + 12 + i * 11, 25, 25]));
-        else contain(ctx, current.sets[0] ?? emptyRelic, [543, y + 13, 34, 34]);
-        write(avatar.sets.join(" + "), 586, y + 27, 12, { color: gold, maxWidth: 109 });
+        if (avatar.sets.length === 2) current.sets.forEach((icon, i) => contain(ctx, icon, [456 + i * 11, y + 12 + i * 11, 25, 25]));
+        else contain(ctx, current.sets[0] ?? emptyRelic, [457, y + 13, 34, 34]);
+        write(avatar.sets.join(" + "), 499, y + 27, 12, { color: gold, maxWidth: 76 });
         const grade = avatar.artifacts?.grade;
         const score = displayedRankScore(avatar, metric);
-        if (grade) badge(ctx, writer, grade, grades[grade] ?? "#aaa", [586, y + 34, 27, 15]);
-        if (score !== undefined) write(number.format(score), grade ? 619 : 586, y + 47, 16, { maxWidth: 67 });
-        columnDivider(ctx, 704, y + 9);
+        if (grade) badge(ctx, writer, grade, grades[grade] ?? "#aaa", [499, y + 34, 27, 15]);
+        if (score !== undefined) write(number.format(score), grade ? 532 : 499, y + 47, 16, { maxWidth: 43 });
+        columnDivider(ctx, 574, y + 9);
+        columnDivider(ctx, 675, y + 9);
         if (avatar.damage) {
-          write(avatar.damage.title, 717, y + 24, 12, { color: grey, maxWidth: 82 });
-          write(`${shortNumber.format(avatar.damage.score)}${avatar.damage.percent ? "%" : ""}`, 717, y + 47, 18, { maxWidth: 82 });
+          write(avatar.damage.title, 586, y + 24, 12, { color: grey, maxWidth: 82 });
+          write(`${number.format(avatar.damage.score)}${avatar.damage.percent ? "%" : ""}`, 586, y + 47, 18, { maxWidth: 82 });
         }
       });
     });

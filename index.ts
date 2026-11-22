@@ -14,7 +14,7 @@ import { matchGenshinPanelHelp, renderGenshinPanelHelp } from "./panel/help-card
 import { createGenshinPayLogCommand, matchGenshinPayLog } from "./pay-log-command.ts";
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
-import { createGenshinPanelArchive, createGenshinPanelQuery } from "./panel/panel.ts";
+import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createGenshinPanelQuery } from "./panel/panel.ts";
 import { createGenshinShowcaseCommand, matchGenshinShowcase } from "./panel/showcase-command.ts";
 import { matchGenshinPanelDiscard } from "./panel/model.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
@@ -131,6 +131,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const monthlyStatistics = createGenshinStatisticsQuery(profiles, client, monthlyArchive, signal);
   const sevenSaintsDecks = createSevenSaintsDeckQuery(profiles, client, signal);
   const panelArchive = createGenshinPanelArchive(lockFile);
+  const panelPreferences = createGenshinPanelDamagePreferences(lockFile, signal);
   const teamDamage = createTeamDamageQuery(profiles, panelArchive, signal);
   const refreshTalent = createGenshinTalentRefresh(profiles, client, panelArchive, signal);
   const panelImages = createPanelImageCommands(lockFile, signal);
@@ -141,9 +142,10 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
   const fetchShowcase = createGenshinShowcaseClient();
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
-    { discardedAt: panelArchive.discardedAt, readShowcase: createGenshinGroupShowcaseReader(fetchShowcase) });
+    { discardedAt: panelArchive.discardedAt, readShowcase: createGenshinGroupShowcaseReader(fetchShowcase),
+      readEnemyLevel: panelPreferences.level });
   const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase });
-  const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank, readPanelDeletionBoundary: panelArchive.discardedAt });
+  const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank, preferences: panelPreferences, readPanelDeletionBoundary: panelArchive.discardedAt });
   const sync = createGenshinGachaSync(profiles, client, history);
   const worldBossRanking = createGenshinWorldBossRanking(rankingDirectory, lockFile);
   const worldBossQuery = createWorldBossQuery(profiles, client, worldBossRanking, signal);

@@ -122,18 +122,26 @@ const renderDetail: Renderers["detail"] = (snapshot, avatar, theme, options) =>
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Reply = string | Image | readonly [] | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] } | BatchedImageForward;
 
+export function createGenshinPanelDamagePreferences(lockFile: AcquireRoleArchiveLock, signal: AbortSignal,
+  archiveDirectory = Bun.env.LOTUS_GENSHIN_PANEL_DIR?.trim() || mainDirectory,
+  legacyPreferences = Bun.env.LOTUS_GENSHIN_PANEL_LEGACY_REDIS_URL?.trim()) {
+  return createDamagePreferences(join(archiveDirectory, "preferences"), lockFile, signal, legacyPreferences);
+}
+
 export function createGenshinPanelQuery(
   profiles: GenshinRoleProfiles,
   client: DailyMaterialClient & Parameters<typeof createTrainingRoster>[2], lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
     archiveDirectory = Bun.env.LOTUS_GENSHIN_PANEL_DIR?.trim() || mainDirectory,
     legacyDirectory = Bun.env.LOTUS_GENSHIN_LEGACY_PANEL_DIR?.trim() || previousDirectory,
     legacyPreferences = Bun.env.LOTUS_GENSHIN_PANEL_LEGACY_REDIS_URL?.trim(),
+    preferences = createGenshinPanelDamagePreferences(lockFile, signal, archiveDirectory, legacyPreferences),
     groupRank,
     readPanelDeletionBoundary,
     render = { list: renderPanelList, detail: renderDetail, damage: renderDamageCard, artifactList: renderArtifactList },
     theme = readPanelTheme,
     now = Date.now,
   }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly legacyPreferences?: string; readonly render?: Renderers;
+    readonly preferences?: ReturnType<typeof createGenshinPanelDamagePreferences>;
     readonly readPanelDeletionBoundary?: ReadPanelDeletionBoundary;
     readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "observe" | "allows"> &
       Partial<Pick<ReturnType<typeof createGroupPanelRank>, "listMarkers">>;
@@ -141,7 +149,6 @@ export function createGenshinPanelQuery(
 ) {
   const store = createGenshinPanelArchive(lockFile, { archiveDirectory, legacyDirectory });
   const showcase = createGenshinShowcaseStorage(archiveDirectory, lockFile, undefined, readPanelDeletionBoundary);
-  const preferences = createDamagePreferences(join(archiveDirectory, "preferences"), lockFile, signal, legacyPreferences);
   const refreshes = new Set<string>();
   const dailyRefresh = createDailyMaterialRefresh(archiveDirectory, lockFile, client, now);
   const trainingRoster = createTrainingRoster(archiveDirectory, lockFile, client, now);

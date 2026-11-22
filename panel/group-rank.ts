@@ -7,7 +7,7 @@ import { decodeRankAvatar, displayedRankScore, isRankProfile, matchGroupPanelRan
 import { renderGroupPanelRank } from "./card.ts";
 import { object, type PanelAvatar, type PanelSnapshot } from "./model.ts";
 import { renderOriginalProfile } from "./original-profile.ts";
-import { estimatePanelDamage } from "./damage.ts";
+import { estimatePanelDamage, genshinDamageEnemyLevel } from "./damage.ts";
 import { createGenshinGroupShowcaseReader } from "./showcase-reader.ts";
 import { readGenshinShowcaseServer } from "./showcase-config.ts";
 import type { PanelTheme } from "./theme.ts";
@@ -40,11 +40,12 @@ interface RankProfiles {
 }
 type Renderer = (...args: Parameters<typeof renderGroupPanelRank>) => Promise<{ readonly png: Uint8Array }>;
 type StrongestRenderer = (snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme,
-  options: Parameters<typeof renderOriginalProfile>[4]) => Promise<{ readonly png: Uint8Array }>;
+  options: Parameters<typeof renderOriginalProfile>[4], enemyLevel: number) => Promise<{ readonly png: Uint8Array }>;
 
-const renderLeader: StrongestRenderer = async (snapshot, avatar, theme, chat) => {
-  const damage = await estimatePanelDamage(avatar, theme, undefined, 103, { ranking: true });
-  return renderOriginalProfile(snapshot, avatar, theme, { damage: "rows" in damage ? damage : undefined }, chat);
+const renderLeader: StrongestRenderer = async (snapshot, avatar, theme, chat, enemyLevel) => {
+  const damage = await estimatePanelDamage(avatar, theme, undefined, enemyLevel, { includeComparison: false });
+  return renderOriginalProfile(snapshot, avatar, theme, { damage: "rows" in damage ? damage : undefined },
+    { ...chat, displayWidth: 960 });
 };
 const subject = "原神群面板摘要";
 const limit = 15;
@@ -114,9 +115,11 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
   groups = Bun.env.LOTUS_GENSHIN_PANEL_RANK_GROUPS ?? "", render = renderGroupPanelRank,
   discardedAt, refresh = createGroupRankRefresh(), readShowcase = createGenshinGroupShowcaseReader(),
   readSelector = readGenshinShowcaseServer, renderStrongest = renderLeader,
+  readEnemyLevel = async () => genshinDamageEnemyLevel,
 }: { readonly groups?: string; readonly render?: Renderer; readonly discardedAt?: (qq: string, uid: string) => Promise<number>;
   readonly refresh?: ReturnType<typeof createGroupRankRefresh>; readonly readShowcase?: ReturnType<typeof createGenshinGroupShowcaseReader>;
-  readonly readSelector?: typeof readGenshinShowcaseServer; readonly renderStrongest?: StrongestRenderer } = {}) {
+  readonly readSelector?: typeof readGenshinShowcaseServer; readonly renderStrongest?: StrongestRenderer;
+  readonly readEnemyLevel?: (qq: string) => Promise<number> } = {}) {
   const enabled = new Set(groups.split(/[\s,]+/u).filter(group => /^[1-9]\d*$/u.test(group)));
   const folder = (scope: Scope) => join(directory, scope.adapter, String(scope.bot));
   const archive = (scope: Scope) => createRoleJsonArchive(folder(scope), lockFile, {
@@ -279,7 +282,8 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       const options = { inlineImageByteLimit: context.inlineImageByteLimit, signal: active };
       try {
         ({ png } = strongest
-          ? await renderStrongest(lead.snapshot, lead.publicAvatar, { ...theme, galleryPortrait: undefined }, options)
+          ? await renderStrongest(lead.snapshot, lead.publicAvatar, { ...theme, galleryPortrait: undefined }, options,
+            await readEnemyLevel(String(scope.qq)))
           : await render(character.name, mode, rows, theme, undefined, { ...options, refreshSummary: summary }));
       } catch {}
       if (!await unchanged()) return active.aborted ? undefined : "群成员或档案已变化，请重新查询排行。";
