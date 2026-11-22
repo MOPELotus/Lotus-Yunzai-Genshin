@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { decodeRankAvatar, matchGroupPanelRank, resolveGroupPanelRank } from "./group-rank-model.ts";
+import { availableRankMode, decodeRankAvatar, matchGroupPanelRank, resolveGroupPanelRank } from "./group-rank-model.ts";
 
 test("legacy strongest aliases select the same live ranking and keep highest score on artifacts", () => {
   for (const prefix of ["最强", "最高", "最牛", "第一"]) {
@@ -10,6 +10,17 @@ test("legacy strongest aliases select the same live ranking and keep highest sco
   expect(matchGroupPanelRank("#最高分胡桃")).toMatchObject({ mode: "artifacts", strongest: true });
   expect(matchGroupPanelRank("#最强胡桃双暴")).toMatchObject({ mode: "crit", strongest: true });
   expect(matchGroupPanelRank("#极限胡桃")).toBeUndefined();
+});
+
+test("普通角色榜默认算伤，仅缺规则才回退圣遗物评分，显式指标不变", () => {
+  const intent = matchGroupPanelRank("#原神胡桃排名");
+  expect(intent).toMatchObject({ character: { name: "胡桃" }, mode: "damage" });
+  expect(availableRankMode(intent!.mode, intent!.character)).toBe("damage");
+  expect(availableRankMode("damage", { id: 10000005, name: "空" })).toBe("damage");
+  const unsupported = { id: 10000999, name: "未收录角色" };
+  expect(availableRankMode("damage", unsupported)).toBe("artifacts");
+  expect(availableRankMode("crit", unsupported)).toBe("crit");
+  expect(availableRankMode("valid", intent!.character)).toBe("valid");
 });
 
 test("自定义别名接入路由前保留原神静态别名及排行指标优先级", async () => {

@@ -2,7 +2,7 @@ import { MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { characterAliasKey, readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import { scorePanelArtifacts } from "./artifact-score.ts";
-import { estimatePanelDamage } from "./damage.ts";
+import { estimatePanelDamage, hasGenshinDamageRule } from "./damage.ts";
 import { object, text, whole, type PanelAvatar } from "./model.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
@@ -11,6 +11,10 @@ export type RankMode = "damage" | "artifacts" | "crit" | "valid";
 export const rankModeNames: Readonly<Record<RankMode, string>> = {
   damage: "伤害", artifacts: "圣遗物评分", crit: "双爆副词条", valid: "加权有效词条",
 };
+
+export function availableRankMode(mode: RankMode, character: { id: number; name: string }): RankMode {
+  return mode === "damage" && !hasGenshinDamageRule(character.id, character.name) ? "artifacts" : mode;
+}
 export interface RankAvatar {
   readonly id: number;
   readonly name: string;

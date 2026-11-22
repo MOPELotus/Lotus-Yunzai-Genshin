@@ -2,7 +2,8 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createGroupRankRefresh, type GameRole } from "@lotus-yunzai/account";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
-import { decodeRankAvatar, displayedRankScore, isRankProfile, resolveGroupPanelRank, projectRankAvatar, rankId, rankModeNames,
+import { readGroupPanelRankEnabled } from "../../../lib/group-panel-rank-settings.ts";
+import { availableRankMode, decodeRankAvatar, displayedRankScore, isRankProfile, resolveGroupPanelRank, projectRankAvatar, rankId, rankModeNames,
   rankUid, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { renderGroupPanelRank } from "./card.ts";
 import { object, type PanelAvatar, type PanelSnapshot } from "./model.ts";
@@ -48,6 +49,7 @@ const renderLeader: StrongestRenderer = async (snapshot, avatar, theme, chat, en
     { ...chat, displayWidth: 960 });
 };
 const subject = "原神群面板摘要";
+const changed = "群榜设置、群成员或档案已变化，请重新查询排行。";
 const limit = 15;
 const maxMembers = 10_000;
 
@@ -113,10 +115,12 @@ function rankRows<Ranked extends Row>(rows: readonly Ranked[], mode: RankMode): 
 
 export function createGroupPanelRank(directory: string, profiles: RankProfiles, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
   groups = Bun.env.LOTUS_GENSHIN_PANEL_RANK_GROUPS ?? "", render = renderGroupPanelRank,
+  readEnabled = readGroupPanelRankEnabled,
   discardedAt, refresh = createGroupRankRefresh(), readShowcase = createGenshinGroupShowcaseReader(),
   readSelector = readGenshinShowcaseServer, renderStrongest = renderLeader,
   readEnemyLevel = async () => genshinDamageEnemyLevel,
 }: { readonly groups?: string; readonly render?: Renderer; readonly discardedAt?: (qq: string, uid: string) => Promise<number>;
+  readonly readEnabled?: typeof readGroupPanelRankEnabled;
   readonly refresh?: ReturnType<typeof createGroupRankRefresh>; readonly readShowcase?: ReturnType<typeof createGenshinGroupShowcaseReader>;
   readonly readSelector?: typeof readGenshinShowcaseServer; readonly renderStrongest?: StrongestRenderer;
   readonly readEnemyLevel?: (qq: string) => Promise<number> } = {}) {
@@ -125,7 +129,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
   const archive = (scope: Scope) => createRoleJsonArchive(folder(scope), lockFile, {
     subject, lockSuffix: "panel-group-rank", maxBytes: 2 * 1024 * 1024, rejectNull: true,
   });
-  const isEnabled = (scope: Scope) => enabled.has(String(scope.group));
+  const isEnabled = (scope: Scope) => readEnabled("gs", scope.group, enabled.has(String(scope.group)));
 
   async function stillBound(row: Pick<Row, "qq" | "profileId" | "role">) {
     const profile = await profiles.describe(String(row.qq), row.profileId).catch(() => undefined);
@@ -165,7 +169,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
   return {
     async listMarkers(context: GroupRankContext, profileId: number, selectedRole: Role, characterIds: readonly number[]) {
       const scope = scopeOf(context), role = publicRole(selectedRole);
-      if (!scope || !role || !isEnabled(scope) || !isRankProfile(profileId) || signal.aborted) return;
+      if (!scope || !role || !isRankProfile(profileId) || signal.aborted || !await isEnabled(scope)) return;
       const owner = { qq: scope.qq, profileId, role };
       const members = await currentMembers(scope, context);
       if (!members || !await stillBound(owner)) return;
@@ -200,21 +204,26 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         if (signal.aborted) return false;
         const refreshed = await currentMembers(scope, context);
         return !signal.aborted && !!refreshed && await stillBound(owner) &&
-          (await Promise.all([...contributors.values()].map(row => refreshed.has(row.qq) && stillCurrent(row)))).every(Boolean);
+          (await Promise.all([...contributors.values()].map(row => refreshed.has(row.qq) && stillCurrent(row)))).every(Boolean) &&
+          await isEnabled(scope) && !signal.aborted;
       };
       return { markers, participating: ids.length > 0, validate };
     },
-    allows(context: GroupRankContext) {
+    async allows(context: GroupRankContext) {
       const scope = scopeOf(context);
-      return !!scope && isEnabled(scope) && context.listCurrentGroupMembers !== undefined && !signal.aborted;
+      return !!scope && context.listCurrentGroupMembers !== undefined && !signal.aborted && await isEnabled(scope) && !signal.aborted;
     },
     async observe(context: GroupRankContext, profileId: number, selectedRole: Role, avatar: PanelAvatar, theme: PanelTheme,
       observedAt: number, verifyProfile: () => Promise<void>) {
       const scope = scopeOf(context), role = publicRole(selectedRole);
-      if (!scope || !isEnabled(scope) || !role || !isRankProfile(profileId) || !rankId(observedAt) || signal.aborted) return;
+      if (!scope || !role || !isRankProfile(profileId) || !rankId(observedAt) || signal.aborted || !await isEnabled(scope)) return;
       if (!(await currentMembers(scope, context)) || !(await stillBound({ qq: scope.qq, profileId, role }))) return;
       const ranked = await projectRankAvatar(avatar, theme);
-      await archive(scope).update({ qq: String(scope.group), uid: String(scope.qq) }, verifyProfile, async input => {
+      const verify = async () => {
+        await verifyProfile();
+        if (!await isEnabled(scope) || signal.aborted) throw new Error("本群未启用原神群面板排名。");
+      };
+      await archive(scope).update({ qq: String(scope.group), uid: String(scope.qq) }, verify, async input => {
         const boundary = await discardedAt?.(String(scope.qq), role.uid) ?? 0;
         if (observedAt <= boundary) return { result: undefined };
         const existing = readObservations(input, scope, scope.qq);
@@ -234,12 +243,13 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       if (!intent || signal.aborted) return;
       const scope = scopeOf(context);
       if (!scope) return "原神群面板排名只能在群聊中查询。";
-      if (!isEnabled(scope)) return "本群未启用原神群面板排名。";
+      if (!await isEnabled(scope)) return "本群未启用原神群面板排名。";
       const active = context.groupActivitySignal ? AbortSignal.any([signal, context.groupActivitySignal]) : signal;
       if (active.aborted) return;
       const members = await currentMembers(scope, context);
       if (!members || active.aborted) return active.aborted ? undefined : "暂时无法核对本群成员，请稍后查询。";
-      const { character, mode, strongest } = intent;
+      const { character, strongest } = intent;
+      const mode = availableRankMode(intent.mode, character);
       const observations = await boundObservations(scope, members, () => true);
       if (active.aborted) return;
       const subjects = new Map<string, BoundObservation>();
@@ -268,17 +278,18 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       const ranked = rankRows(candidates, mode);
       const missing = results.filter(result => result.status === "not-listed").length;
       const failed = results.filter(result => result.status === "failed").length;
-      const summary = `本轮查询已登记 UID ${subjects.size} 个，可排名 ${candidates.length} 个，未展示 ${missing} 个，无法刷新或计算 ${failed} 个。`;
+      const summary = `本轮查询已登记 UID ${subjects.size} 个，可排名 ${candidates.length} 个，未展示 ${missing} 个，无法刷新或计算 ${failed} 个。` +
+        (mode !== intent.mode ? "该角色暂无伤害规则，按圣遗物评分排名。" : "");
       const lead = ranked[0];
       if (!lead) return [summary, `本群本轮未取得可用于${character.name}${rankModeNames[mode]}排行的公开展板。`].join("\n");
       const rows = ranked.map(row => ({ uid: row.role.uid, avatar: row.avatar }));
       const unchanged = async () => {
         if (active.aborted) return false;
         const refreshed = await currentMembers(scope, context);
-        return !!refreshed && (await Promise.all(candidates.map(row => refreshed.has(row.qq) && stillCurrent(row)))).every(Boolean)
-          && !active.aborted;
+        return !!refreshed && (await Promise.all(candidates.map(row => refreshed.has(row.qq) && stillCurrent(row)))).every(Boolean) &&
+          await isEnabled(scope) && !active.aborted;
       };
-      if (!await unchanged()) return active.aborted ? undefined : "群成员或档案已变化，请重新查询排行。";
+      if (!await unchanged()) return active.aborted ? undefined : changed;
       let png: Uint8Array | undefined;
       const options = { inlineImageByteLimit: context.inlineImageByteLimit, signal: active };
       try {
@@ -287,7 +298,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
             await readEnemyLevel(String(scope.qq)))
           : await render(character.name, mode, rows, theme, undefined, { ...options, refreshSummary: summary }));
       } catch {}
-      if (!await unchanged()) return active.aborted ? undefined : "群成员或档案已变化，请重新查询排行。";
+      if (!await unchanged()) return active.aborted ? undefined : changed;
       const image = png && { type: "image" as const, file: png };
       if (strongest) {
         const title = `${character.name} · 本轮${rankModeNames[mode]}榜首 · UID ${lead.role.uid}`;

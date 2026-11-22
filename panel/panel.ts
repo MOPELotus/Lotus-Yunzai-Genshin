@@ -158,8 +158,9 @@ export function createGenshinPanelQuery(
     readonly legacyPreferences?: string; readonly render?: Renderers;
     readonly preferences?: ReturnType<typeof createGenshinPanelDamagePreferences>;
     readonly readPanelDeletionBoundary?: ReadPanelDeletionBoundary;
-    readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "observe" | "allows"> &
-      Partial<Pick<ReturnType<typeof createGroupPanelRank>, "listMarkers">>;
+    readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "observe"> &
+      Partial<Pick<ReturnType<typeof createGroupPanelRank>, "listMarkers">> &
+      { allows(context: GroupRankContext): boolean | Promise<boolean> };
     readonly theme?: typeof readPanelTheme; readonly now?: () => number } = {},
 ) {
   const store = createGenshinPanelArchive(lockFile, { archiveDirectory, legacyDirectory });
@@ -492,7 +493,7 @@ export function createGenshinPanelQuery(
       }
       if (!command) return;
       const { name, type, mode } = command;
-      const observedAt = type === "detail" && source && mode === "profile" && groupRank?.allows(context) ? now() : undefined;
+      const observedAt = type === "detail" && source && mode === "profile" && await groupRank?.allows(context) ? now() : undefined;
       const assets = preflight ?? await theme();
       let snapshot: PanelSnapshot | undefined;
       let updated = false;

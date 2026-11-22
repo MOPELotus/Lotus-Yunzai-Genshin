@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { createProfileStore } from "@lotus-yunzai/account";
 import { lockFile } from "../../../lib/file-lock.ts";
 import { createGroupPanelRank } from "./group-rank.ts";
+import { matchGroupPanelRank } from "./group-rank-model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -28,10 +29,19 @@ test("原神面板列表只用本群本人现有排名，平手优先综合练�
     const store = createProfileStore(profiles);
     let departed = false;
     let removeWhenRendering = false;
+    let disableWhenRendering = false;
+    let showcaseRequests = 0;
+    const groupOverrides = new Map<number, boolean>();
     const context = { user_id: 42, self_id: 99, group_id: 77, adapter: "onebot", message_type: "group",
       async listCurrentGroupMembers() { return [99, 42, ...(departed ? [] : [43])].map(id => ({ id })); } };
     const theme: PanelTheme = { characters: {}, artifacts: new Map(), artifactSets: new Map(), async picture() { return undefined; } };
-    const groupRank = createGroupPanelRank(rankRoot, store, lockFile, controller.signal, { groups: "77,78" });
+    const groupRank = createGroupPanelRank(rankRoot, store, lockFile, controller.signal, {
+      groups: "77,78", async readEnabled(game, groupId, fallback) {
+        expect(game).toBe("gs");
+        return groupOverrides.get(groupId) ?? fallback;
+      },
+      async readShowcase() { showcaseRequests++; return undefined; },
+    });
     const group = join(rankRoot, "onebot", "99", "77");
     await mkdir(group, { recursive: true });
     const records = (qq: number, uid: string, damage: number, artifacts: number) => JSON.stringify({
@@ -53,12 +63,22 @@ test("原神面板列表只用本群本人现有排名，平手优先综合练�
           async list(_snapshot, _avatars, _theme, options) {
             seen.push(options?.rankMarkers === undefined ? undefined : [...options.rankMarkers]);
             if (removeWhenRendering) departed = true;
+            if (disableWhenRendering) groupOverrides.set(77, false);
             return { png: Buffer.from(options?.rankMarkers === undefined ? "normal" : "rank") };
           },
         },
       });
     expect(await query("#面板", context)).toEqual({ type: "image", file: Buffer.from("rank") });
     expect(seen.at(-1)).toEqual([[character.id, { rank: 2, mode: "damage" }]]);
+    const intent = matchGroupPanelRank("#神里绫华排名")!;
+    const ordinary = await groupRank.query(intent, context, async () => theme);
+    expect(ordinary).toContain("神里绫华伤害排行");
+    expect(showcaseRequests).toBe(2);
+    const unsupported = { ...intent, character: { ...intent.character, id: 10000999, name: "未收录角色" } };
+    const result = await groupRank.query(unsupported, context, async () => theme);
+    expect(result).toContain("该角色暂无伤害规则，按圣遗物评分排名。");
+    expect(result).toContain("未收录角色圣遗物评分排行");
+    expect(showcaseRequests).toBe(4);
     await writeFile(ownerRank, records(42, ownerUid, 3200, 99));
     expect(await query("#面板", context)).toEqual({ type: "image", file: Buffer.from("rank") });
     expect(seen.at(-1)).toEqual([[character.id, { rank: 1, mode: "artifacts" }]]);
@@ -76,6 +96,17 @@ test("原神面板列表只用本群本人现有排名，平手优先综合练�
     removeWhenRendering = true;
     expect(await query("#面板", context)).toEqual({ type: "image", file: Buffer.from("normal") });
     expect(seen.slice(-2)).toEqual([[[character.id, { rank: 2, mode: "damage" }]], undefined]);
+    removeWhenRendering = false;
+    departed = false;
+    groupOverrides.set(76, true);
+    expect(await groupRank.allows({ ...context, group_id: 76 })).toBe(true);
+    disableWhenRendering = true;
+    expect(await query("#面板", context)).toEqual({ type: "image", file: Buffer.from("normal") });
+    expect(seen.slice(-2)).toEqual([[[character.id, { rank: 2, mode: "damage" }]], undefined]);
+    expect(await groupRank.query("#胡桃排名", context, async () => {
+      throw new Error("禁用后无须加载榜单主题");
+    })).toBe("本群未启用原神群面板排名。");
+    expect(showcaseRequests).toBe(4);
     expect(await readFile(ownerRank, "utf8")).toBe(ownerSummary);
     expect(await readFile(peerRank, "utf8")).toBe(peerSummary);
   } finally {

@@ -13,6 +13,7 @@ import { artifactStatRecord, characterLevelBreakpoints, object, propertyLabels, 
   type DisplayedTalentLevels, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
 import { panelTalentLevels, travelerIds } from "./talent-levels.ts";
 import { damageSettings } from "./lolomi/config.ts";
+import { nativeRules } from "./lolomi/sources.ts";
 import { miaoWithNativeRule, nativeArtifactEffects, nativeAttr, nativeCalc, nativeWeaponEffects,
   readNativeRule, readNativeTables } from "./lolomi/native.ts";
 import type { PanelTheme } from "./theme.ts";
@@ -61,6 +62,11 @@ const weapons: Readonly<Record<string, readonly Buff[] | Buff>> = Object.assign(
   ...[swordRules, bowRules, catalystRules, claymoreRules, polearmRules].map(factory => factory(step, constant)));
 const weaponClass: Readonly<Record<string, string>> = { sword: "单手剑", claymore: "双手剑", polearm: "长柄武器", bow: "弓", catalyst: "法器" };
 const elementNames: Readonly<Record<string, string>> = { pyro: "火", hydro: "水", anemo: "风", electro: "雷", dendro: "草", cryo: "冰", geo: "岩" };
+
+export function hasGenshinDamageRule(id: number, name: string): boolean {
+  const names = travelerIds.has(id) ? Object.keys(elementNames).map(element => `旅行者/${element}`) : [name];
+  return names.some(key => Object.hasOwn(formulas, key) || (damageSettings.lolomicalc && Object.hasOwn(nativeRules, key)));
+}
 const weaponLevels = characterLevelBreakpoints.slice(0, -1);
 const attributeKeys = ["hp", "atk", "def", "mastery", "recharge", "cpct", "cdmg", "dmg", "phy", "heal", "shield", "coloringDmg"];
 const basePercent = ["hp", "atk", "def"];
