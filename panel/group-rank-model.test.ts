@@ -23,6 +23,17 @@ test("普通角色榜默认算伤，仅缺规则才回退圣遗物评分，显�
   expect(availableRankMode("valid", intent!.character)).toBe("valid");
 });
 
+test("旧复合群榜指令返回角色列表并保留显式评分条件", () => {
+  for (const command of ["#群内最强胡桃排行", "#群内排行最强胡桃", "#原神 群内 最强胡桃面板排行榜"]) {
+    const intent = matchGroupPanelRank(command);
+    expect(intent).toMatchObject({ character: { name: "胡桃" }, mode: "damage" });
+    expect(intent?.strongest).toBeUndefined();
+  }
+  expect(matchGroupPanelRank("#群内最高分胡桃排行")).toMatchObject({ character: { name: "胡桃" }, mode: "artifacts" });
+  expect(matchGroupPanelRank("#群内排行最高分胡桃双暴")).toMatchObject({ character: { name: "胡桃" }, mode: "crit" });
+  expect(matchGroupPanelRank("#星铁群内最强希儿排行")).toBeUndefined();
+});
+
 test("自定义别名接入路由前保留原神静态别名及排行指标优先级", async () => {
   let reads = 0;
   const aliases = async () => {

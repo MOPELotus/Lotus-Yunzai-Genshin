@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { createProfileStore } from "@lotus-yunzai/account";
 import { lockFile } from "../../../lib/file-lock.ts";
 import { createGroupPanelRank } from "./group-rank.ts";
-import { matchGroupPanelRank } from "./group-rank-model.ts";
+import { matchGroupPanelRank, projectRankAvatar } from "./group-rank-model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -112,5 +112,68 @@ test("原神面板列表只用本群本人现有排名，平手优先综合练�
   } finally {
     controller.abort();
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("原神实时群榜先刷新所有登记 UID，再按当前人数显示", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "lotus-genshin-rank-limit-"));
+  const avatar = {
+    id: 10000046, name: "胡桃", elem: "pyro", level: 90, promote: 6, cons: 0, _source: "enka",
+    talent: { a: 1, e: 1, q: 1 },
+    weapon: { name: "新手长枪", level: 90, promote: 6, affix: 1 },
+    artis: { 1: { name: "冒险家之花", set: "冒险家", level: 20, star: 5, mainId: 14001, attrIds: ["501224", "501204"] } },
+  };
+  const theme: PanelTheme = {
+    characters: {}, artifacts: new Map(), artifactSets: new Map(), async picture() { return undefined; },
+    async metadata(_game, kind) {
+      if (kind === "character") return { name: "胡桃", weapon: "polearm",
+        attr: { keys: ["hp", "atk", "def", "cdmg"], details: { "80+": [9000, 190, 500, 10], "90": [10000, 200, 550, 20] } },
+        talentData: { a: { 重击伤害: [270] }, e: { 攻击力提高: [5] }, q: { 低血量时技能伤害: [350] } },
+      };
+      return { name: "新手长枪", attr: { atk: { "80+": 230, "90": 250 } } };
+    },
+  };
+  const members = [40, 41, 42, 43, 44, 45, 46];
+  const role = (qq: number) => ({ uid: String(100123400 + qq), region: "cn_gf01", gameBiz: "hk4e_cn", chosen: true, nickname: "" });
+  const context = (qq: number) => ({ user_id: qq, self_id: 99, group_id: 77, adapter: "onebot", message_type: "group",
+    async listCurrentGroupMembers() { return [99, ...members].map(id => ({ id })); } });
+  const fetched: string[] = [];
+  const rendered: number[] = [];
+  let configured = 5;
+  const board = createGroupPanelRank(directory, {
+    async describe(qq) {
+      const current = role(Number(qq));
+      return { loggedIn: true, roles: { gs: [current] }, activeRoles: { gs: current.uid } };
+    },
+  }, lockFile, new AbortController().signal, {
+    groups: "77",
+    async readEnabled(_game, _group, fallback) { return fallback; },
+    async readLimit(game, fallback) {
+      expect([game, fallback]).toEqual(["gs", 15]);
+      return configured;
+    },
+    async readSelector() { return "0"; },
+    async readShowcase(current) {
+      fetched.push(current.uid);
+      return { uid: current.uid, avatars: { [avatar.id]: avatar } };
+    },
+    async render(_name, _metric, rows) {
+      rendered.push(rows.length);
+      return { png: new Uint8Array([1]) };
+    },
+  });
+  try {
+    expect(await projectRankAvatar(avatar, theme)).toMatchObject({ artifacts: { score: expect.any(Number) } });
+    for (const qq of members) await board.observe(context(qq), 1, role(qq), avatar, theme, 1000, async () => {});
+    for (const count of [5, 30]) {
+      configured = count;
+      fetched.length = 0;
+      expect(await board.query("#群内排行最高分胡桃", context(42), async () => theme))
+        .toEqual({ type: "image", file: new Uint8Array([1]) });
+      expect(fetched.sort()).toEqual(members.map(qq => role(qq).uid));
+    }
+    expect(rendered).toEqual([5, 7]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });

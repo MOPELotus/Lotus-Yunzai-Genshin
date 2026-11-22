@@ -33,6 +33,8 @@ export interface RankAvatar {
 const rankMetric = "(?:圣遗物)?(?:双[暴爆](?:副?词条)?|加权(?:有效)?词条|有效词条|词条|评分)|圣遗物";
 const metricPrefix = new RegExp(`^(?:${rankMetric})`, "u");
 const metricSuffix = new RegExp(`(?:${rankMetric})$`, "u");
+const rankEnding = /(?:排名|排行)榜?$/u;
+const panelEnding = /\s*(?:面[板版]|详情)$/u;
 function rankModeOf(metric?: string): RankMode {
   if (!metric) return "damage";
   if (/双[暴爆]/u.test(metric)) return "crit";
@@ -42,12 +44,16 @@ function rankModeOf(metric?: string): RankMode {
 
 function groupRankTargets(message: string) {
   if (/^#(?:星铁|崩铁|星穹铁道|绝区零)/u.test(message)) return;
+  const compound = /^#(?:原神)?\s*(?:群内?)?\s*(?:(排名|排行)\s*)?(最高分|最强|最高|最牛|第一|最多)\s*([^#\r\n]{1,36})$/u.exec(message);
+  const compoundBody = compound?.[3]?.replace(panelEnding, "").trim();
+  const compoundList = compoundBody && (compound?.[1] || rankEnding.test(compoundBody))
+    ? compoundBody.replace(rankEnding, "").replace(panelEnding, "").trim() : undefined;
   const list = /^#(?:原神)?(?:群内?)?([^#]{1,36}?)(?:排名|排行)榜?$/u.exec(message);
-  const leader = list ? undefined : /^#(?:原神)?(?:群内?)?(最强|最高分|最高|最牛|第一)([^#]{1,36}?)(?:面[板版]|详情)?$/u.exec(message);
-  const input = list?.[1] ?? leader?.[2];
+  const leader = list || compoundList ? undefined : /^#(?:原神)?(?:群内?)?(最强|最高分|最高|最牛|第一)([^#]{1,36}?)(?:面[板版]|详情)?$/u.exec(message);
+  const input = compoundList ?? list?.[1] ?? leader?.[2];
   if (!input) return;
   const strongest = leader && { strongest: true as const };
-  const defaultMode: RankMode = leader?.[1] === "最高分" ? "artifacts" : "damage";
+  const defaultMode: RankMode = (compoundList ? compound?.[2] : leader?.[1]) === "最高分" ? "artifacts" : "damage";
   const body = input.trim();
   const targets: { name: string; mode: RankMode; strongest?: true }[] = [{ name: body, mode: defaultMode, ...strongest }];
   const suffix = metricSuffix.exec(body)?.[0];

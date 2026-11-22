@@ -2,7 +2,7 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createGroupRankRefresh, type GameRole } from "@lotus-yunzai/account";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
-import { readGroupPanelRankEnabled } from "../../../lib/group-panel-rank-settings.ts";
+import { readGroupPanelRankEnabled, readGroupPanelRankLimit } from "../../../lib/group-panel-rank-settings.ts";
 import { availableRankMode, decodeRankAvatar, displayedRankScore, isRankProfile, resolveGroupPanelRank, projectRankAvatar, rankId, rankModeNames,
   rankUid, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { renderGroupPanelRank } from "./card.ts";
@@ -50,7 +50,7 @@ const renderLeader: StrongestRenderer = async (snapshot, avatar, theme, chat, en
 };
 const subject = "原神群面板摘要";
 const changed = "群榜设置、群成员或档案已变化，请重新查询排行。";
-const limit = 15;
+const defaultLimit = 15;
 const maxMembers = 10_000;
 
 function scopeOf(context: GroupRankContext): Scope | undefined {
@@ -104,7 +104,7 @@ async function currentMembers(scope: Scope, context: GroupRankContext): Promise<
 const sameRole = (left: Role, right: Role | undefined) =>
   left.uid === right?.uid && left.region === right.region && left.gameBiz === right.gameBiz;
 
-function rankRows<Ranked extends Row>(rows: readonly Ranked[], mode: RankMode): Ranked[] {
+function rankRows<Ranked extends Row>(rows: readonly Ranked[], mode: RankMode, limit: number): Ranked[] {
   const sorted = [...rows].sort((a, b) =>
     b.avatar[mode]!.score - a.avatar[mode]!.score || (b.role.uid > a.role.uid ? 1 : b.role.uid < a.role.uid ? -1 : 0) ||
     a.qq - b.qq || a.profileId - b.profileId);
@@ -115,12 +115,13 @@ function rankRows<Ranked extends Row>(rows: readonly Ranked[], mode: RankMode): 
 
 export function createGroupPanelRank(directory: string, profiles: RankProfiles, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
   groups = Bun.env.LOTUS_GENSHIN_PANEL_RANK_GROUPS ?? "", render = renderGroupPanelRank,
-  readEnabled = readGroupPanelRankEnabled,
+  readEnabled = readGroupPanelRankEnabled, readLimit = readGroupPanelRankLimit,
   discardedAt, refresh = createGroupRankRefresh(), readShowcase = createGenshinGroupShowcaseReader(),
   readSelector = readGenshinShowcaseServer, renderStrongest = renderLeader,
   readEnemyLevel = async () => genshinDamageEnemyLevel,
 }: { readonly groups?: string; readonly render?: Renderer; readonly discardedAt?: (qq: string, uid: string) => Promise<number>;
   readonly readEnabled?: typeof readGroupPanelRankEnabled;
+  readonly readLimit?: typeof readGroupPanelRankLimit;
   readonly refresh?: ReturnType<typeof createGroupRankRefresh>; readonly readShowcase?: ReturnType<typeof createGenshinGroupShowcaseReader>;
   readonly readSelector?: typeof readGenshinShowcaseServer; readonly renderStrongest?: StrongestRenderer;
   readonly readEnemyLevel?: (qq: string) => Promise<number> } = {}) {
@@ -181,7 +182,10 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       const markers = new Map<number, PanelRankMarker>();
       const contributors = new Map<string, ObservedRole>();
       if (ids.length) {
-        const observations = await boundObservations(scope, members, record => ids.some(id => !!record.avatars[String(id)]));
+        const [observations, limit] = await Promise.all([
+          boundObservations(scope, members, record => ids.some(id => !!record.avatars[String(id)])),
+          readLimit("gs", defaultLimit),
+        ]);
         const requesting = observations.find(row => row.qq === scope.qq && row.profileId === profileId && sameRole(role, row.role));
         if (requesting) for (const id of ids) {
           for (const mode of ["artifacts", "damage"] as const) {
@@ -190,7 +194,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
               const avatar = observation.avatars[String(id)];
               return avatar?.[mode] ? [{ ...observation, avatar }] : [];
             });
-            const sorted = rankRows(candidates, mode);
+            const sorted = rankRows(candidates, mode, limit);
             const rank = sorted.findIndex(row => row.qq === scope.qq && row.profileId === profileId && sameRole(role, row.role)) + 1;
             if (!rank || rank >= limit || rank > (markers.get(id)?.rank ?? limit)) continue;
             markers.set(id, { rank, mode });
@@ -275,7 +279,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       });
       if (!results || active.aborted) return;
       const candidates = results.flatMap(result => result.status === "fresh" ? [{ ...result.entry, ...result.value }] : []);
-      const ranked = rankRows(candidates, mode);
+      const ranked = rankRows(candidates, mode, strongest ? 1 : await readLimit("gs", defaultLimit));
       const missing = results.filter(result => result.status === "not-listed").length;
       const failed = results.filter(result => result.status === "failed").length;
       const summary = `本轮查询已登记 UID ${subjects.size} 个，可排名 ${candidates.length} 个，未展示 ${missing} 个，无法刷新或计算 ${failed} 个。` +
