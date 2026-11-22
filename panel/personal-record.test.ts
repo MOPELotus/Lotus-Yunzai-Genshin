@@ -225,6 +225,7 @@ test("探索模型保留七圣等级、持有计数与区域声望，展开层�
       { id: 1, level: 8, exploration_percentage: 991 }, { id: 20, name: "挪德卡莱", offerings: [] }] };
   const optional = { uid: role.uid, nickname: "", level: 8, characterCount: [8, 99] as const, actionCount: [26, 290] as const };
   const result = buildPersonalExploration(role.uid, role.region, raw, optional)!;
+  expect(result.region).toBe("天空岛");
   expect(result.gcg).toBe(optional);
   expect(result.rows[0]?.[2]?.value).toBe("第10幕 圣牌4");
   expect(result.rows[0]?.[3]?.value).toBe("V");

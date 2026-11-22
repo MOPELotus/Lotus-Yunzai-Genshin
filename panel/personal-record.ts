@@ -87,7 +87,7 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
       if (official) revision = official.revision;
       await verify();
       if (includeExploration && official) {
-        const model = buildPersonalExploration(uid, region, official.overview, official.gcg);
+        const model = buildPersonalExploration(uid, region, official.overview, official.gcg, { regionName: source.role.regionName });
         if (!model) return "米游社未返回原神探索统计。";
         const { inlineImageByteLimit } = context;
         const { png } = await explore(model, { signal, qq, inlineImageByteLimit });

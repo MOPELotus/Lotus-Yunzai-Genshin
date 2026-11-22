@@ -1,4 +1,4 @@
-import { normalizeProfileRoleArtworkUrl } from "@lotus-yunzai/account";
+import { gameRegionDisplayName, normalizeProfileRoleArtworkUrl } from "@lotus-yunzai/account";
 import type { GenshinGcgSummary } from "@lotus-yunzai/hoyo-client";
 import { object, text, whole, type Json } from "./model.ts";
 
@@ -34,7 +34,8 @@ function score(rate: number) {
   return ["S", "#f86b1d"] as const;
 }
 
-export function buildPersonalExploration(uid: string, region: string, data: Json, gcg?: GenshinGcgSummary, now = Date.now()) {
+export function buildPersonalExploration(uid: string, region: string, data: Json, gcg?: GenshinGcgSummary,
+  { now = Date.now(), regionName }: { now?: number; regionName?: string } = {}) {
   const stats = object(data.stats);
   if (!stats) return;
   const role = object(data.role);
@@ -111,7 +112,8 @@ export function buildPersonalExploration(uid: string, region: string, data: Json
     }
     regions.push({ id, name: title, details });
   }
-  return { uid, region: name(role?.region) || region, name: name(role?.nickname) || `#${uid}`, level: whole(role?.level, 100),
+  const displayRegion = gameRegionDisplayName("gs", region, name(role?.region_name), name(regionName), name(role?.region));
+  return { uid, region: displayRegion, name: name(role?.nickname) || `#${uid}`, level: whole(role?.level, 100),
     avatar: normalizeProfileRoleArtworkUrl(role?.game_head_icon), rows, regions,
     gcg: gcg?.level && gcg.uid === uid ? gcg : undefined };
 }
