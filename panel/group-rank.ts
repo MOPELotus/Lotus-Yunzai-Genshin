@@ -15,6 +15,7 @@ export interface GroupRankContext {
   readonly group_id?: number;
   readonly user_id?: number;
   readonly isDelegated?: boolean;
+  readonly inlineImageByteLimit?: number;
   readonly listCurrentGroupMembers?: () => Promise<readonly { id: number; name?: string }[] | undefined>;
 }
 
@@ -224,7 +225,10 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       if (!ranked.length) return `本群暂无${character.name}的${rankModeNames[mode]}排行。可在本群查看自己的角色详情加入。`;
       const rows = ranked.map(row => ({ uid: row.role.uid, avatar: row.avatar }));
       let png: Uint8Array | undefined;
-      try { ({ png } = await render(character.name, mode, rows, await loadTheme())); } catch {}
+      try {
+        ({ png } = await render(character.name, mode, rows, await loadTheme(), undefined,
+          { inlineImageByteLimit: context.inlineImageByteLimit, signal }));
+      } catch {}
       const refreshed = await currentMembers(scope, context);
       if (signal.aborted) return;
       if (!refreshed || ranked.some(row => !refreshed.has(row.qq)) || !(await Promise.all(ranked.map(stillCurrent))).every(Boolean)) {

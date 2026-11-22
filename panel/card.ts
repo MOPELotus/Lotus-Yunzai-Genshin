@@ -2,7 +2,6 @@ import { renderGenshinCard } from "../card-render.ts";
 import { renderArtifactCard } from "./artifact-card.ts";
 import type { DamageRow, DamageSummary } from "./damage.ts";
 import type { DailyMaterialGroup } from "./daily-materials.ts";
-import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
 import { renderTrainingStatistics } from "./training-statistics-card.ts";
 import { panelTalentLevels, panelTalentThresholds, travelerIds } from "./talent-levels.ts";
@@ -10,6 +9,8 @@ import {
   artifactProperties, object, propertyLabels, talentKeys, text, whole, type DisplayedTalentLevels, type PanelAvatar, type PanelSnapshot,
 } from "./model.ts";
 import { genshinWeaponTypes as weaponTypes, panelPortrait, panelWeaponPicture as weaponPicture, type PanelTheme, type Picture } from "./theme.ts";
+
+export { renderGroupPanelRank } from "./group-rank-card.ts";
 
 type Context = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
 type RenderMode = Parameters<typeof renderGenshinCard>[3];
@@ -179,92 +180,6 @@ export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: reado
 }: { readonly mode?: RenderMode; readonly offset?: number; readonly total?: number; readonly talentTitle?: string;
   readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal } = {}) {
   return renderTrainingStatistics(snapshot, rows, theme, { mode, offset, total, talent: !!talentTitle, inlineImageByteLimit, signal });
-}
-
-export async function renderGroupPanelRank(name: string, rankMode: RankMode,
-  rows: readonly { readonly uid: string; readonly avatar: RankAvatar }[], theme: PanelTheme, mode: RenderMode = "auto") {
-  const width = 820, rowHeight = 60, rowStart = 217, gap = 6;
-  const height = rowStart + rows.length * (rowHeight + gap) + 32;
-  const element = rows[0]?.avatar.elem || "hydro";
-  const [backdrop, medals, first, talentBadge, people] = await Promise.all([
-    theme.picture("common", "bg", `bg-${element}.webp`),
-    theme.picture("character", "imgs", "mark-icon.png"), theme.picture("character", "imgs", "mark-icon2.png"),
-    theme.picture("common", "bg", `talent-${element}.webp`),
-    Promise.all(rows.map(async ({ avatar }) => {
-      const meta = object(theme.characters[avatar.id]);
-      const thresholds = object(meta?.talentCons);
-      return Promise.all([
-        character(theme, name, "imgs", "face.webp"), weaponPicture(theme, avatar),
-        Promise.all(avatar.sets.map(set => theme.picture("meta-gs", "artifact", "imgs", set, "1.webp"))),
-        Promise.all(talentKeys.map(key => {
-          const cons = whole(thresholds?.[key], 6);
-          if (key === "a" && text(meta?.weapon)) return theme.picture("common", "item", `atk-${text(meta?.weapon)}.webp`);
-          return character(theme, name, "icons", cons ? `cons-${cons}.webp` : `talent-${key}.webp`);
-        })),
-      ]);
-    })),
-  ]);
-  const format = new Intl.NumberFormat("zh-CN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  const badgeSide = rankMode === "damage" ? 0 : 1;
-  const metric = rankMode === "damage" ? "artifacts" : rankMode;
-  const explain = rankMode === "crit" ? "双暴榜按原规则对暴击、暴伤副词条加权，并计入双暴头部主词条。"
-    : rankMode === "valid" ? "有效词条榜按角色评分权重换算全部副词条。"
-    : "综合练度按 103 级目标的期望伤害排序，圣遗物榜按角色评分规则排序。";
-  return renderGenshinCard(width, height, ctx => {
-    frame(ctx, backdrop, element, width, height);
-    label(ctx, `#${name}${rankMode === "damage" ? "" : rankModeNames[rankMode]}排行`, 22, 58, 33, "#fff1d2", 770);
-    block(ctx, "#202331dd", 12, 82, 796, 122);
-    label(ctx, "群排名说明", 29, 112, 18, gold);
-    label(ctx, explain, 29, 143, 13, "#e9e2d6", 761);
-    label(ctx, "排名范围 · 本群当前成员在群内主动查看过的本人角色详情", 29, 170, 13, "#e9e2d6", 760);
-    for (const [title, x] of [["名次", 26], ["角色 / UID", 116], ["天赋", 263], ["武器", 386], ["圣遗物", 575], ["期望伤害", 741]] as const) {
-      label(ctx, title, x, 195, 12, "#c4b69c", 74);
-    }
-    rows.forEach(({ uid, avatar }, index) => {
-      const y = rowStart + index * (rowHeight + gap);
-      const [face, weapon, sets, talents] = people[index]!;
-      block(ctx, "#25262ddd", 12, y, 796, rowHeight);
-      const showFirst = index === 0 && (rankMode === "damage" || rankMode === "artifacts");
-      const medal = showFirst ? first : medals;
-      if (medal) ctx.drawImage(medal, medal.width / 2 * badgeSide, 0, medal.width / 2, medal.height,
-        showFirst ? 17 : 27, y + 17, showFirst ? 45 : 25, 25);
-      if (!medal || !showFirst) label(ctx, String(index + 1), 40, y + 34, 12, "#fff", 24, "center");
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(86, y + 30, 24, 0, 2 * Math.PI);
-      ctx.strokeStyle = "#f1ead6";
-      ctx.stroke();
-      ctx.clip();
-      art(ctx, face, "cover", 62, y + 6, 48, 48);
-      ctx.restore();
-      label(ctx, avatar.name, 116, y + 24, 16, gold, 106);
-      label(ctx, `UID ${uid}${avatar.cons === undefined ? "" : ` · ${avatar.cons}命`}`, 116, y + 45, 10, "#f9f0e0", 112);
-      talents.forEach((picture, i) => {
-        const x = 223 + i * 39;
-        art(ctx, talentBadge, "contain", x, y + 7, 38, 38);
-        if (picture) art(ctx, picture, "contain", x + 9, y + 12, 20, 20);
-        else label(ctx, ["普攻", "战技", "爆发"][i]!, x + 19, y + 29, 8, "#fff", 25, "center");
-        label(ctx, avatar.talents[i]?.toString() ?? "—", x + 19, y + 45, 11, gold, 25, "center");
-      });
-      art(ctx, weapon, "contain", 343, y + 10, 42, 41);
-      if (avatar.weapon) {
-        label(ctx, avatar.weapon.name, 386, y + 24, 14, gold, 134);
-        label(ctx, [avatar.weapon.affix === undefined ? "" : `精${avatar.weapon.affix}`,
-          avatar.weapon.level === undefined ? "" : `Lv.${avatar.weapon.level}`].filter(Boolean).join(" · "), 386, y + 44, 12, "#aaaeba", 132);
-      }
-      sets.forEach((picture, i) => art(ctx, picture, "contain", 527 + i * 23, y + 5, 26, 29));
-      label(ctx, avatar.sets.join(" / "), 580, y + 22, 12, gold, 105);
-      const score = displayedRankScore(avatar, metric);
-      if (score !== undefined) label(ctx, `${avatar.artifacts?.grade ?? ""}  ${format.format(score)}`, 575, y + 45,
-        14, rankMode === "damage" ? "#f9f0e0" : gold, 105);
-      if (avatar.damage) {
-        label(ctx, avatar.damage.title, 796, y + 23, 11, "#d4bd93", 106, "right");
-        label(ctx, `${format.format(avatar.damage.score)}${avatar.damage.percent ? "%" : ""}`, 795, y + 44,
-          16, rankMode === "damage" ? gold : "#f9f0e0", 109, "right");
-      }
-    });
-    footer(ctx, width, height);
-  }, mode);
 }
 
 const summaryRowHeight = 40;

@@ -16,6 +16,7 @@ export interface RankAvatar {
   readonly elem: string;
   readonly cons?: number;
   readonly talents: readonly (number | null)[];
+  readonly originalTalents?: readonly (number | null)[];
   readonly weapon?: { readonly name: string; readonly level?: number; readonly affix?: number };
   readonly sets: readonly string[];
   readonly artifacts?: { readonly score: number; readonly grade?: string };
@@ -77,6 +78,11 @@ export function decodeRankAvatar(value: unknown): RankAvatar | undefined {
     !Array.isArray(raw.talents) || raw.talents.length !== 3 ||
     !Array.isArray(raw.sets) || raw.sets.length > 2) return;
   const talents = raw.talents.map((level: unknown) => whole(level, 15) ?? null);
+  const originalTalents = Array.isArray(raw.originalTalents) && raw.originalTalents.length === 3
+    ? raw.originalTalents.map((level: unknown, index) => {
+      const original = whole(level, 15);
+      return original && original <= (talents[index] ?? 0) ? original : null;
+    }) : undefined;
   const sets = raw.sets.map((set: unknown) => boundedText(set, 48)).filter(Boolean);
   const rawWeapon = object(raw.weapon);
   const weaponName = boundedText(rawWeapon?.name, 48);
@@ -86,7 +92,7 @@ export function decodeRankAvatar(value: unknown): RankAvatar | undefined {
   const crit = measured(object(raw.crit)?.score), valid = measured(object(raw.valid)?.score);
   if (!artScore && !(dmgScore && title) && !crit && !valid) return;
   return {
-    id, name, elem, talents, sets, weapon, cons: whole(raw.cons, 6),
+    id, name, elem, talents, originalTalents, sets, weapon, cons: whole(raw.cons, 6),
     ...(artScore && { artifacts: { score: artScore, grade: boundedText(art?.grade, 8) || undefined } }),
     ...(dmgScore && title && { damage: { score: dmgScore, title, ...(dmg?.percent === true && { percent: true }) } }),
     ...(crit && { crit: { score: crit } }),
@@ -127,9 +133,10 @@ export async function projectRankAvatar(avatar: PanelAvatar, theme: PanelTheme) 
   const sets = new Map<string, number>();
   for (const item of Object.values(avatar.artis)) if (item.set) sets.set(item.set, (sets.get(item.set) ?? 0) + 1);
   const weapon = avatar.weapon && { name: avatar.weapon.name, level: avatar.weapon.level, affix: avatar.weapon.affix };
-  const talents = panelTalentLevels(avatar, object(theme.characters[avatar.id])).map(level => level?.level ?? null);
+  const talents = panelTalentLevels(avatar, object(theme.characters[avatar.id]));
   return decodeRankAvatar({
-    id: avatar.id, name: avatar.name, elem: avatar.elem, cons: avatar.cons, talents, weapon,
+    id: avatar.id, name: avatar.name, elem: avatar.elem, cons: avatar.cons, talents: talents.map(level => level?.level ?? null),
+    originalTalents: talents.map(level => level?.original ?? null), weapon,
     sets: [...sets.entries()].filter(row => row[1] >= 2).sort((a, b) => b[1] - a[1]).map(([name]) => name).slice(0, 2),
     artifacts: artScore && { score: artScore, grade: rating?.rank },
     damage: damageScore && { score: damageScore, title: damage?.title, percent: damage?.unit === "%" || typeof damage?.average === "string" },
