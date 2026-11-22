@@ -1,3 +1,5 @@
+import { gachaImageReply } from "../../lib/gacha-image-reply.ts";
+import type { MessageEvent } from "../../lib/messages.ts";
 import { createGenshinMonthlyArchive } from "./monthly-archive.ts";
 import { createGenshinMonthlyTask, genshinMonthlyTaskCommand } from "./monthly-task.ts";
 import { createGenshinStatisticsQuery, matchGenshinStatistics } from "./monthly-statistics-command.ts";
@@ -98,6 +100,7 @@ function matchGachaQuery(message: string): { profileId: number; view: GachaView;
 interface GachaContext extends GroupRankContext {
   readonly normalizedMessage: string;
   readonly inlineImageByteLimit?: number;
+  readonly forward?: MessageEvent["forward"];
   readonly message?: string | readonly { readonly type: string; readonly qq?: unknown }[];
   readonly sender?: Readonly<Record<string, unknown>>;
   readonly isMaster?: boolean;
@@ -204,7 +207,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     }
   }
 
-  async function view(qq: string, profileId: number, selection: GachaView, all: boolean) {
+  async function view(qq: string, profileId: number, selection: GachaView, all: boolean, context: GachaContext) {
     try {
       const { uid, nickname } = await profiles.savedRole(qq, profileId, "gs");
       const special = "special" in selection ? selection.special : undefined;
@@ -233,24 +236,23 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (!first) return special === "beginner" ? `UID:${uid} 本地暂无旧新手池抽卡记录。`
         : `UID:${uid} 本地暂无该卡池抽卡记录，请先使用 #更新抽卡记录${profileId === 1 ? "" : profileId}。`;
       try {
-        const pages = [];
         const total = first.kind === "special" ? 1 : first.model.pageInfo?.total ?? 1;
-        for (let page = 1; page <= total; page++) {
-          if (signal.aborted) return;
-          const result = page === 1 ? first : buildPage(page);
-          if (!result) throw new Error("原神抽卡记录缺少分页。");
-          const { png } = await (result.kind === "special" ? renderGenshinGachaSpecial(result.model, { themeDirectory })
-            : result.kind === "detail" ? renderGenshinGachaDetail(result.model, { themeDirectory })
-            : renderGenshinGachaVersion(result.model, { themeDirectory }));
-          pages.push({ type: "image" as const, file: png });
-        }
-        if (signal.aborted) return;
-        const current = await profiles.savedRole(qq, profileId, "gs").catch(() => undefined);
-        if (current?.uid !== uid) return "原神档案角色已变化，请重新查询。";
-        if (first.kind === "special" || pages.length === 1) return pages[0];
-        const title = first.kind === "version" ? `${first.model.poolName}统计，共${first.model.pageInfo!.count}期卡池`
-          : `${first.model.poolName}池抽卡记录，共${first.model.gacha.stat.fiveNum}条五星`;
-        return { type: "forward" as const, nodes: [`UID:${uid} ${title}，分${pages.length}张图`, ...pages] };
+        const title = first.kind === "version" ? `${first.model.poolName}统计，共${first.model.pageInfo?.count}期卡池`
+          : first.kind === "detail" ? `${first.model.poolName}池抽卡记录，共${first.model.gacha.stat.fiveNum}条五星` : "";
+        return await gachaImageReply({
+          total, title: `UID:${uid} ${title}，分${total}张图`, signal,
+          inlineImageByteLimit: context.inlineImageByteLimit, forward: context.forward,
+          async verifyRole() { return (await profiles.savedRole(qq, profileId, "gs").catch(() => undefined))?.uid === uid; },
+          changedRoleMessage: "原神档案角色已变化，请重新查询。",
+          render(page, scale) {
+            const result = page === 1 ? first : buildPage(page);
+            if (!result) throw new Error("原神抽卡记录缺少分页。");
+            const options = { themeDirectory, scale };
+            return result.kind === "special" ? renderGenshinGachaSpecial(result.model, options)
+              : result.kind === "detail" ? renderGenshinGachaDetail(result.model, options)
+              : renderGenshinGachaVersion(result.model, options);
+          },
+        });
       } catch {
         if (!signal.aborted) return "原神抽卡记录已读取，原版详情图暂时无法生成。";
       }
@@ -371,7 +373,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
         return exportHistory(qq, profileId, version, context);
       }
       if (external) return syncExternalHistory(qq, profileId, context);
-      if (query) return view(qq, profileId, query.view, query.all);
+      if (query) return view(qq, profileId, query.view, query.all, context);
       try {
         const result = await gachaUpdate(qq, profileId, () =>
           context.reply(`[genshin] 正在更新 Profile ${profileId} 的抽卡记录，会补齐官方范围内的缺档。`));
