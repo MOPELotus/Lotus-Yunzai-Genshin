@@ -266,3 +266,56 @@ test("stops rendering when a forward is rejected or unknown, or when the profile
     expect(await command.main(query, true)).toContain("不支持确认");
   },
 ));
+
+test("旧裸分类可按简称查询，显式分类接受字面保留词和成就后缀，公开查询留给 Atlas", () => fixture(
+  async ({ command, cards }) => {
+    for (const [message, uid] of [
+      ["#尘世巡游", first], ["#尘世巡游成就2", second], ["#成就尘世巡游第三辑成就", first],
+      ["#成就尘世巡游第三辑深境", first], ["#成就尘世巡游第三辑？", first],
+    ] as const) {
+      expect(await command.main({ ...context, normalizedMessage: message }, !message.startsWith("#成就")))
+        .toMatchObject({ type: "forward", nodes: [{ type: "image" }, { type: "image" }] });
+      expect(cards.at(-1)).toMatchObject({ title: categoryName, subtitle: `UID ${uid}` });
+    }
+    for (const message of ["#尘世巡游第三辑深境", "#尘世巡游第三辑？", "#未知分类"]) {
+      expect(await command.main({ ...context, normalizedMessage: message }, true)).toBeUndefined();
+    }
+    expect(await command.main({ ...context, normalizedMessage: "#成就未知分类" })).toContain("「未知分类」");
+    for (const message of ["#成就图鉴 原神 xx", "#成就分类 原神"]) {
+      expect(command.explicit({ ...context, normalizedMessage: message })).toBe(false);
+      expect(await command.main({ ...context, normalizedMessage: message }, true)).toBeUndefined();
+    }
+  },
+));
+
+test("旧椰羊格式的字符串数字状态、命令相邻围栏和已拥有 UID 可一起导入", () => fixture(
+  async ({ command, cards, store }) => {
+    const legacy = JSON.stringify({ source: "椰羊成就", value: { account: { uid: first }, achievements: [
+      { id: 11, status: "3", date: "2025/11/01" }, { id: 103, status: "completed" }, { id: 104, status: "false" },
+    ] } });
+    expect(await command.main({ ...context, normalizedMessage: "#成就录入" + first + "\u0060\u0060\u0060json\n" + legacy + "\n\u0060\u0060\u0060" }))
+      .toMatchObject({ type: "image" });
+    expect(cards.at(-1)?.tables[0]?.rows[0]).toEqual(["2", "0", "0", "1"]);
+    expect((await store.read("42", first))["11"]?.source).toBe("cocogoat");
+    expect((await store.read("42", first))["104"]).toBeUndefined();
+    expect(await command.main({ ...context, normalizedMessage: "#成就导入" + second + " " + legacy })).toContain("指定的原神 UID");
+    const fence = String.fromCharCode(96).repeat(3);
+    expect(await command.main({ ...context, normalizedMessage: "#成就导入 UID：" + second + fence + "json\n" + legacy + "\n" + fence }))
+      .toContain("指定的原神 UID");
+    expect(await command.main({ ...context, normalizedMessage: "#成就导入{" })).toContain("有效的 UTF-8 JSON");
+  },
+));
+
+
+test("旧成就目录的五种入口保留显式档案，缺图鉴时给出恢复入口", () => fixture(
+  async ({ command, cards, setAtlasLanguage }) => {
+    for (const alias of ["", "目录", "索引", "列表", "查漏"]) {
+      expect(await command.main({ ...context, normalizedMessage: "#成就" + alias + "2" })).toMatchObject({ type: "image" });
+      expect(cards.at(-1)).toMatchObject({ title: "原神成就目录", subtitle: `UID ${second}` });
+    }
+    await setAtlasLanguage("한국어");
+    expect(await command.main({ ...context, normalizedMessage: "#成就" })).toContain("#全量更新图鉴");
+    expect(await command.main({ ...context, normalizedMessage: "#成就尘世巡游" })).toContain("#全量更新图鉴");
+    expect(await command.main({ ...context, normalizedMessage: "#尘世巡游" }, true)).toBeUndefined();
+  },
+));

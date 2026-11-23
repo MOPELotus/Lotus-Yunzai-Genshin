@@ -11,11 +11,14 @@ import { achievementCategoryKey, achievementGroups, achievementStats, Achievemen
 
 const hostRoot = new URL("../../", import.meta.url);
 const indexCommand = /^#成就(?:目录|索引|列表|查漏)?(?:\s*(?:档案\s*)?(\d{1,3}))?$/u;
-const importCommand = /^#成就(?:导入|录入)(\d{1,3})?(?=\s|\{|$)\s*([\s\S]*)$/u;
-const categoryCommand = /^#(?!(?:星铁|星穹铁道|绝区零|绝区|崩铁|原神))([^#%*！!？?\r\n]{2,70})$/u;
-const reserved = /图鉴|攻略|面板|配队|材料|素材|抽卡|伤害|排名|排行|练度|签到|兑换|体力|计数器/u;
+const importCommand = /^#成就(?:导入|录入)(?:\s*(?:档案\s*)?(\d{1,3})(?!\d))?\s*([\s\S]*)$/u;
+const categoryCommand = /^#([^#%*\r\n]{2,70})$/u;
+const publicCategory = /^#成就(?:图鉴|分类)/u;
+// Bare category lookups must leave genuine game, utility and personal commands for their own handlers.
+const reserved = /队伍伤害|队伤|体力|树脂|便笺|便签|面板|更新|抽卡|签到|登录|图鉴|帮助|菜单|远程|上传|下载|B站|BBDown|深渊|深境|幻想|幻境|剧诗|真境|幽境|危战|星铁|崩铁|星穹铁道|绝区|攻略|配队|材料|素材|伤害|排名|排行|练度|兑换|计数器|[！!？?]/iu;
 const waitMs = 300_000;
 const categoryPageSize = 25;
+const atlasUnavailable = "原神成就图鉴数据不可用，请执行 #全量更新图鉴 或检查当前图鉴目录。";
 
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Reply = string | Image | { readonly type: "forward"; readonly nodes: readonly (string | Image)[]; readonly batchSize: number };
@@ -57,34 +60,37 @@ function canContinueImport(message: string) {
   return !/^[#＃*＊%％/／]/u.test(message.trim());
 }
 
-function selectCategory(message: string, categories: readonly AchievementCategory[]) {
-  const candidate = categoryCommand.exec(message)?.[1]?.trim();
-  if (!candidate) return;
-  const explicit = candidate.startsWith("成就");
-  const query = candidate.replace(/^成就/u, "").trim();
-  if (!query || reserved.test(query)) return;
-  const key = achievementCategoryKey(query);
-  const exact = categories.find(category => achievementCategoryKey(category.name) === key);
-  if (exact) return { category: exact, profileId: gameCommandProfileId("gs") };
+function parseCategory(message: string, bareOnly: boolean) {
+  if (publicCategory.test(message)) return;
+  const body = categoryCommand.exec(message)?.[1]?.trim();
+  if (!body) return;
+  const explicit = body.startsWith("成就");
+  if (!explicit && (!bareOnly || reserved.test(body))) return;
+  const query = explicit ? body.slice("成就".length).trim() : body;
+  if (!query || /^(?:分类|目录|索引|列表|查漏|导入|录入)$/u.test(query)) return;
+  return { explicit, query };
+}
+
+function selectCategory({ query, explicit }: NonNullable<ReturnType<typeof parseCategory>>, categories: readonly AchievementCategory[]) {
+  const names = categories.map(category => ({ category, key: achievementCategoryKey(category.name) }));
+  const normalize = (label: string) => achievementCategoryKey(label.trim().replace(/(?:成就)+$/u, ""));
   const suffix = /(?:\s*档案\s*|\s*)(\d{1,3})$/u.exec(query);
-  if (suffix && suffix.index > 0) {
-    const name = achievementCategoryKey(query.slice(0, suffix.index));
-    const category = categories.find(category => achievementCategoryKey(category.name) === name);
-    if (category) return { category, profileId: Number(suffix[1]!) };
+  const split = suffix && suffix.index > 0 && !/\d$/u.test(query.slice(0, suffix.index)) ? suffix : undefined;
+  const fullKey = normalize(query);
+  const suffixKey = split && normalize(query.slice(0, split.index));
+  const exact = (key: string) => names.find(item => item.key === key)?.category;
+  const partial = (key: string) => {
+    if (!key || !explicit && [...key].length < 2) return;
+    return names.filter(item => item.key.includes(key) || key.includes(item.key))
+      .sort((a, b) => Math.abs(a.key.length - key.length) - Math.abs(b.key.length - key.length))[0]?.category;
+  };
+  const full = exact(fullKey);
+  if (full) return { category: full, profileId: gameCommandProfileId("gs") };
+  if (split && suffixKey) {
+    const category = exact(suffixKey) ?? partial(suffixKey);
+    if (category) return { category, profileId: gameCommandProfileId("gs", split[1]) };
   }
-  if (explicit && !/^(?:分类|目录|索引|列表|查漏|导入|录入)/u.test(query)) {
-    const partial = (value: string) => {
-      const normalized = achievementCategoryKey(value);
-      if (!normalized) return;
-      return categories.filter(item => {
-        const name = achievementCategoryKey(item.name);
-        return name.includes(normalized) || normalized.includes(name);
-      }).sort((a, b) => Math.abs(achievementCategoryKey(a.name).length - normalized.length) -
-        Math.abs(achievementCategoryKey(b.name).length - normalized.length))[0];
-    };
-    const bySuffix = suffix && suffix.index > 0 ? partial(query.slice(0, suffix.index)) : undefined;
-    return bySuffix ? { category: bySuffix, profileId: Number(suffix?.[1]) } : { category: partial(query), profileId: gameCommandProfileId("gs") };
-  }
+  return { category: partial(fullKey), profileId: gameCommandProfileId("gs") };
 }
 
 function decode(value: string | Uint8Array) {
@@ -196,18 +202,20 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
     const file = jsonAttachment(context);
     const earlier = key ? pending.get(key) : undefined;
     const request = file && canContinueImport(message) ? earlier : undefined;
-    const categoryAction = categoryCommand.test(message) && (bareOnly || /^#成就/u.test(message)) && !reserved.test(message);
+    const categoryAction = parseCategory(message, bareOnly);
     if (bareOnly ? !categoryAction || index || importing : !index && !importing && !request && !categoryAction) return;
     const qq = String(context.user_id);
     let profileId = gameCommandProfileId("gs", index?.[1] ?? importing?.[1] ?? request?.profileId);
     let data: Awaited<ReturnType<typeof catalog>> | undefined;
     let category: AchievementCategory | undefined;
-    if (!index && !importing && !request) {
+    if (!index && !importing && !request && categoryAction) {
       data = await catalog().catch(() => undefined);
-      const selection = selectCategory(message, data?.categories ?? []);
-      if (!selection) return;
+      const selection = selectCategory(categoryAction, data?.categories ?? []);
       category = selection.category;
-      if (!category) return data?.categories.length ? "未找到原神成就分类。" : "原神成就图鉴数据不可用。";
+      if (!category) {
+        if (!categoryAction.explicit) return;
+        return data?.categories.length ? `未找到原神成就分类「${categoryAction.query}」。` : atlasUnavailable;
+      }
       profileId = selection.profileId;
     }
 
@@ -233,14 +241,16 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
 
       if (importing || request) {
         const input = importing?.[2]?.trim() ?? "";
-        const uidHint = /^([1-9]\d{7,9})(?=\s|\{|$)\s*/u.exec(input);
-        if (uidHint && uidHint[1] !== uid) return "指定的原神 UID 与当前档案不一致。";
-        const raw = input.slice(uidHint?.[0].length ?? 0);
-        if (Buffer.byteLength(raw) > maxAchievementBytes) throw new AchievementInputError("成就 JSON 文件最多 4 MiB。");
-        const start = raw.indexOf("{"), end = raw.lastIndexOf("}");
-        const inline = start >= 0 && end > start ? raw.slice(start, end + 1) : undefined;
-        if (context.attachment && !file) return "请发送 .json 格式的成就文件。";
+        if (Buffer.byteLength(input) > maxAchievementBytes) throw new AchievementInputError("成就 JSON 文件最多 4 MiB。");
+        const start = input.indexOf("{"), end = input.lastIndexOf("}");
+        const prefix = start === -1 ? input : input.slice(0, start);
+        for (const [hint] of prefix.matchAll(/(?<!\d)[1-9]\d{7,9}(?!\d)/gu)) {
+          if (hint !== uid) return "指定的原神 UID 与当前档案不一致。";
+        }
+        const inline = start >= 0 && end > start ? input.slice(start, end + 1) : undefined;
+        if (!inline && context.attachment && !file) return "请发送 .json 格式的成就文件。";
         if (!inline && !file) {
+          if (/[{}]/u.test(input)) throw new AchievementInputError("成就文件不是有效的 UTF-8 JSON。");
           if (context.canReadAttachments !== true) return "当前会话暂不支持接收文件，可在 #成就导入 后粘贴 JSON。";
           if (!pending.has(key) && pending.size >= 2048) return "成就导入等待人数过多，请稍后再试。";
           clear(key);
@@ -253,8 +263,8 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
         const bytes = inline ?? await file?.read(signal);
         if (!bytes) throw new AchievementInputError("无法读取成就 JSON 文件，请重新发送。");
         const parsed = parseAchievementExport(decode(bytes), uid);
-        data ??= await catalog();
-        if (!data.categories.length) return "原神成就图鉴数据不可用，进度未修改。";
+        data ??= await catalog().catch(() => undefined);
+        if (!data?.categories.length) return `${atlasUnavailable} 进度未修改。`;
         const result = await store.merge({ qq, uid }, parsed, data.categories, verify);
         if (earlier) clear(key, earlier);
         const info = `椰羊 JSON 扫描 ${result.scanned} 条，完成项 ${result.completedInput} 条；新增 ${result.added} 条，重复 ${result.duplicate} 条，未知 ${result.unknown} 条，系列补全 ${result.inferred} 条。`;
@@ -270,8 +280,8 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
         return reply;
       }
 
-      data ??= await catalog();
-      if (!data.categories.length) return "原神成就图鉴数据不可用。";
+      data ??= await catalog().catch(() => undefined);
+      if (!data?.categories.length) return atlasUnavailable;
       const progress = await store.read(qq, uid);
       const stats = achievementStats(category ? [category] : data.categories, progress);
       if (!category) {
@@ -336,7 +346,7 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
     main,
     explicit(context: AchievementContext) {
       const key = scope(context);
-      return /^#成就/u.test(context.normalizedMessage) || key !== undefined && pending.has(key) &&
+      return /^#成就/u.test(context.normalizedMessage) && !publicCategory.test(context.normalizedMessage) || key !== undefined && pending.has(key) &&
         canContinueImport(context.normalizedMessage) && jsonAttachment(context) !== undefined;
     },
   };

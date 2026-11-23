@@ -144,7 +144,8 @@ export function parseAchievementExport(input: unknown, uid: string) {
     const id = positiveId(item?.id);
     const status = item?.status;
     const completed = cocogoat
-      ? typeof status === "number" ? status >= 2 : status === true || status === "true" || status === "completed"
+      ? typeof status === "number" ? status >= 2 : status === true || status === "true" || status === "completed" ||
+        typeof status === "string" && /^(?:0*[2-9]|0*[1-9]\d+)$/u.test(status)
       : status === 2 || status === 3;
     return id && completed ? [doneRecord(id, item, cocogoat ? "cocogoat" : "cocogoat-uiaf")] : [];
   }) };
