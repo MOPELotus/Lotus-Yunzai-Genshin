@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createProfileStore } from "@lotus-yunzai/account";
-import type { ChatFile } from "../../../lib/chat-files.ts";
+import type { ChatFile, ChatFileResult } from "../../../lib/chat-files.ts";
 import { CommandRegistry } from "../../../lib/commands.ts";
 import { lockFile } from "../../../lib/file-lock.ts";
 import type { MessageEvent } from "../../../lib/messages.ts";
@@ -51,7 +51,7 @@ test("原神导出限定绑定好友私聊及本人所选档案，PlayerData 能
     const calls: ChatFile[] = [];
     const active = new AbortController();
     const ctx = { message_type: "private", self_id: 99, user_id: 42, privateCredentialSignal: active.signal,
-      uploadFile: async (file: ChatFile) => { calls.push(file); return "confirmed"; } } as const;
+      uploadFile: async (file: ChatFile): Promise<ChatFileResult> => { calls.push(file); return "confirmed"; } } as const;
     const profiles = createProfileStore(work);
     const archive = createGenshinPanelArchive(lockFile, { archiveDirectory: archives, legacyDirectory: legacy });
     const run = createGenshinPanelExport(profiles, archive, lifecycle.signal, async () => catalog);
