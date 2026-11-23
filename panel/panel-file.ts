@@ -8,6 +8,7 @@ import type { PanelCatalog, PanelSnapshot } from "./model.ts";
 type ExportContext = Partial<Pick<MessageEvent, "self_id" | "user_id" | "isDelegated" |
   "privateCredentialSignal" | "uploadFile">> & { readonly message_type?: string };
 type ExportArchive = Pick<ReturnType<typeof createGenshinPanelArchive>, "discardedAt" | "readPanel">;
+type SignedExportArchive = Pick<ReturnType<typeof createGenshinPanelArchive>, "discardedAt" | "readLegacy">;
 
 export function matchGenshinPanelExport(message: string) {
   const match = /^#(?:原神)?导出面板\s*(?:([1-9]\d{0,2})|档案\s*([1-9]\d{0,2}))?$/u.exec(message);
@@ -25,6 +26,49 @@ function exportFile(snapshot: PanelSnapshot) {
   const { uid, _profile, _mys } = snapshot;
   const bytes = Buffer.from(JSON.stringify({ uid, _profile, _mys, avatars }, null, 2) + "\n");
   return { name: `${uid}.json`, bytes };
+}
+
+export function createGenshinSignedPanelExport(archive: SignedExportArchive, signal: AbortSignal,
+  readCatalog: () => Promise<PanelCatalog>) {
+  return async ({ uid, authorize }: { uid: string; authorize(uid: string): Promise<boolean> }, context: ExportContext) => {
+    if (signal.aborted) return;
+    const { message_type: messageType, self_id: botId, user_id: userId, isDelegated, privateCredentialSignal, uploadFile } = context;
+    if (messageType !== "private" || isDelegated || !botId || !userId || !privateCredentialSignal) {
+      return "请在机器人好友私聊中导出本人原神面板。";
+    }
+    if (!/^[1-9]\d{8,9}$/u.test(uid)) return "请输入本人原神 UID。";
+    if (!uploadFile) return "当前会话不支持发送原神面板文件。";
+    const active = AbortSignal.any([signal, privateCredentialSignal]);
+    const qq = String(userId);
+    const verify = async () => {
+      active.throwIfAborted();
+      const allowed = await authorize(uid);
+      active.throwIfAborted();
+      return allowed;
+    };
+    const unauthorized = "该 UID 的原神签名验证已失效，请重新验证。";
+    try {
+      if (!await verify()) return unauthorized;
+      if (await archive.discardedAt(qq, uid)) return "暂无可导出的本人原神旧面板。";
+      const catalog = await readCatalog();
+      active.throwIfAborted();
+      const snapshot = await archive.readLegacy(uid, catalog);
+      const file = snapshot?.uid === uid ? exportFile(snapshot) : undefined;
+      if (!await verify()) return unauthorized;
+      if (await archive.discardedAt(qq, uid)) return "原神面板已删除，请重新导出。";
+      active.throwIfAborted();
+      if (!file) return "暂无可导出的本人原神旧面板。";
+      const result = await uploadFile(file);
+      if (active.aborted) return;
+      switch (result) {
+        case "confirmed": return `已导出原神面板 ${file.name}。`;
+        case "rejected": return "原神面板文件发送失败。";
+        case "unknown": return "原神面板文件发送结果未确认，请检查当前私聊。";
+      }
+    } catch {
+      if (!active.aborted) return "原神面板文件暂时无法导出，请稍后再试。";
+    }
+  };
 }
 
 export function createGenshinPanelExport(profiles: GenshinRoleProfiles, archive: ExportArchive, signal: AbortSignal,

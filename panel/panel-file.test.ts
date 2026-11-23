@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createProfileStore } from "@lotus-yunzai/account";
@@ -10,7 +10,7 @@ import type { MessageEvent } from "../../../lib/messages.ts";
 import { createModule } from "../index.ts";
 import { readPanel, type PanelCatalog } from "./model.ts";
 import { createGenshinPanelArchive } from "./panel.ts";
-import { createGenshinPanelExport, matchGenshinPanelExport } from "./panel-file.ts";
+import { createGenshinPanelExport, createGenshinSignedPanelExport, matchGenshinPanelExport } from "./panel-file.ts";
 
 const uid = "100123456";
 const secret = "synthetic-fixture-secret";
@@ -131,4 +131,107 @@ test("正式回退入口校验功能设置和换绑，只向当前私聊投递",
     lifecycle.abort();
     await rm(work, { recursive: true, force: true });
   }
+});
+
+test("原神签名导出只从显式同 UID 的旧面板读取，经边界与授权检查后发送净化文件", async () => {
+  const work = await mkdtemp(join(tmpdir(), "lotus-genshin-signed-panel-file-"));
+  const legacy = join(work, "legacy");
+  const archives = join(work, "panels");
+  const lifecycle = new AbortController();
+  const session = new AbortController();
+  const pathname = join(legacy, `${uid}.json`);
+  try {
+    await mkdir(legacy);
+    const archive = createGenshinPanelArchive(lockFile, { archiveDirectory: archives, legacyDirectory: legacy });
+    for (const qq of ["42", "43"]) {
+      await archive.update({ qq, uid }, async () => {}, () => ({
+        document: { ...stored, avatars: { [avatar.id]: { ...avatar, level: Number(qq) } } }, result: undefined,
+      }));
+    }
+    const readPartitions: string[] = [];
+    const readLegacyUids: string[] = [];
+    const proofs: string[] = [];
+    const calls: ChatFile[] = [];
+    const run = createGenshinSignedPanelExport({
+      async discardedAt(qq, uid) { readPartitions.push(qq); return archive.discardedAt(qq, uid); },
+      async readLegacy(uid, catalog) { readLegacyUids.push(uid); return archive.readLegacy(uid, catalog); },
+    }, lifecycle.signal, async () => catalog);
+    const context = { message_type: "private", user_id: 42, self_id: 99, privateCredentialSignal: session.signal,
+      uploadFile: async (file: ChatFile): Promise<ChatFileResult> => { calls.push(file); return "confirmed"; } };
+    const selection = { uid, authorize: async (candidate: string) => { proofs.push(candidate); return candidate === uid; } };
+    expect(await run(selection, { ...context, message_type: "group" })).toContain("好友私聊");
+    expect(await run(selection, { ...context, isDelegated: true })).toContain("好友私聊");
+    expect(await run(selection, { ...context, privateCredentialSignal: undefined })).toContain("好友私聊");
+    expect(await run({ ...selection, uid: "../100123456" }, context)).toContain("请输入");
+    expect(await run({ ...selection, uid: otherUid }, context)).toContain("重新验证");
+    expect(proofs).toEqual([otherUid]);
+    expect(readPartitions).toHaveLength(0);
+    expect(readLegacyUids).toHaveLength(0);
+
+    expect(await run(selection, context)).toContain("暂无");
+    expect(calls).toHaveLength(0);
+    await writeFile(pathname, JSON.stringify({ ...stored, uid: otherUid }));
+    expect(await run(selection, context)).toContain("无法导出");
+    await rm(pathname);
+    await symlink(join(archives, "43", `${uid}.json`), pathname);
+    expect(await run(selection, context)).toContain("无法导出");
+    expect(calls).toHaveLength(0);
+    await rm(pathname);
+
+    const legacyFile = JSON.stringify({ ...stored, account: { password: secret } });
+    await writeFile(pathname, legacyFile);
+    expect(await run(selection, context)).toContain(`已导出原神面板 ${uid}.json`);
+    expect(readPartitions.every(qq => qq === "42")).toBe(true);
+    expect(readLegacyUids.every(candidate => candidate === uid)).toBe(true);
+    expect(proofs.slice(-2)).toEqual([uid, uid]);
+    expect(calls).toHaveLength(1);
+    const file = calls[0]!;
+    expect(file.name).toBe(`${uid}.json`);
+    const contents = new TextDecoder().decode(file.bytes);
+    expect(contents).not.toContain(secret);
+    const snapshot = readPanel(uid, JSON.parse(contents), catalog, true);
+    expect(Object.keys(snapshot?.avatars ?? {})).toEqual([String(avatar.id)]);
+    expect(snapshot?.avatars[avatar.id]?.level).toBe(90);
+    expect(await readFile(pathname, "utf8")).toBe(legacyFile);
+  } finally { await rm(work, { recursive: true, force: true }); }
+});
+
+test("原神签名导出尊重已有删除，并在读取期间撤权、删档或断开好友会话时取消投递", async () => {
+  const work = await mkdtemp(join(tmpdir(), "lotus-genshin-signed-panel-revoke-"));
+  const lifecycle = new AbortController();
+  const session = new AbortController();
+  try {
+    const archive = createGenshinPanelArchive(lockFile, { archiveDirectory: join(work, "panels"), legacyDirectory: work });
+    await writeFile(join(work, `${uid}.json`), JSON.stringify(stored));
+    const calls: ChatFile[] = [];
+    const context = { message_type: "private", user_id: 42, self_id: 99, privateCredentialSignal: session.signal,
+      uploadFile: async (file: ChatFile): Promise<ChatFileResult> => { calls.push(file); return "confirmed"; } };
+    let proofs = 0;
+    let reads = 0;
+    const run = createGenshinSignedPanelExport({ ...archive, async readLegacy(uid, catalog) {
+      reads++;
+      return archive.readLegacy(uid, catalog);
+    } }, lifecycle.signal, async () => catalog);
+    expect(await run({ uid, authorize: async () => ++proofs === 1 }, context)).toContain("重新验证");
+    expect(proofs).toBe(2);
+
+    const interrupted = new AbortController();
+    const interruptedRead = createGenshinSignedPanelExport({ ...archive, async readLegacy(uid, catalog) {
+      const snapshot = await archive.readLegacy(uid, catalog);
+      interrupted.abort();
+      return snapshot;
+    } }, lifecycle.signal, async () => catalog);
+    expect(await interruptedRead({ uid, authorize: async () => true },
+      { ...context, privateCredentialSignal: interrupted.signal })).toBeUndefined();
+
+    proofs = 0;
+    expect(await run({ uid, async authorize() {
+      if (++proofs === 2) await archive.discard("42", uid, () => 1_900_000_000_000, async () => {});
+      return true;
+    } }, context)).toContain("已删除");
+    expect(reads).toBe(2);
+    expect(await run({ uid, authorize: async () => true }, context)).toContain("暂无");
+    expect(reads).toBe(2);
+    expect(calls).toHaveLength(0);
+  } finally { await rm(work, { recursive: true, force: true }); }
 });
