@@ -3,7 +3,7 @@ import { open } from "node:fs/promises";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { validWishGroup, wishDailyDrawLimit, type WishSettings } from "../../../lib/genshin-wish-settings-model.ts";
 import { record } from "./pools.ts";
-import { createTrssWishLimitImport, wishDailyKey, wishDayMs, wishDayStart, wishRetentionDays, type WishLimitCarry } from "./store.ts";
+import { createTrssWishLimitImport, wishDailyKey, wishDayMs, wishDayStart, wishRetentionDays, type WishLimitCarry, type WishLimitStars, type WishLimitWeek } from "./store.ts";
 
 const prefix = "Yz:genshin:gacha:";
 const retention = wishRetentionDays * wishDayMs;
@@ -69,13 +69,40 @@ function finiteCount(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value % 10 === 0;
 }
 
+function decodeStars(value: unknown, draws: number): WishLimitStars | undefined {
+  if (!Array.isArray(value) || value.length > draws) return;
+  const five = value.length;
+  const preview: WishLimitStars["preview"] = [];
+  for (const raw of value) {
+    const item = record(raw);
+    const name = item?.name;
+    const pity = item?.num;
+    if (typeof name !== "string" || !name || name.length > 120 || /[\x00-\x1F\x7F]/u.test(name) ||
+        typeof pity !== "number" || !Number.isSafeInteger(pity) || pity < 1 || pity > 90) return;
+    if (five < 4) preview.push({ name, pity });
+  }
+  return { five, preview };
+}
+
+function decodeWeek(value: unknown, saved: number, now: number): WishLimitWeek | undefined {
+  const week = record(value);
+  const five = week?.num;
+  const expiry = week?.expire;
+  if (typeof five !== "number" || !Number.isSafeInteger(five) || five < 0 ||
+      typeof expiry !== "number" || !Number.isSafeInteger(expiry) || expiry > Math.floor(Number.MAX_SAFE_INTEGER / 1000)) return;
+  const expiresAt = expiry * 1000 + 999;
+  if (!Number.isSafeInteger(expiresAt) || expiresAt < now || expiresAt - saved > 8 * wishDayMs) return;
+  return { five, expiresAt };
+}
+
 function decoded(raw: string, ttlAt: unknown, captured: number, now: number): SourceResult {
   if (typeof ttlAt !== "number" || !Number.isSafeInteger(ttlAt) || ttlAt <= 0 ||
       Buffer.byteLength(raw, "utf8") > dataMaxBytes) return "invalid";
   const lastSaved = ttlAt - retention;
   if (lastSaved <= 0 || lastSaved > captured || lastSaved > now) return "invalid";
-  let today;
-  try { today = record(record(JSON.parse(raw))?.today); } catch { return "invalid"; }
+  let document;
+  try { document = record(JSON.parse(raw)); } catch { return "invalid"; }
+  const today = record(document?.today);
   const normalDraws = today?.num, weaponDraws = today?.weaponNum, expiry = today?.expire;
   if (!finiteCount(normalDraws) || !finiteCount(weaponDraws) || !Number.isSafeInteger(normalDraws + weaponDraws) ||
       typeof expiry !== "number" || !Number.isSafeInteger(expiry) || expiry <= 0 ||
@@ -90,7 +117,9 @@ function decoded(raw: string, ttlAt: unknown, captured: number, now: number): So
   if (localHour === 0 || lastSaved - limitDayStart < 1000) return "invalid";
   const next = limitDayStart + wishDayMs;
   if (expiry * 1000 !== (localHour < 4 ? next : next - 1000)) return "invalid";
-  return normalDraws === 0 && weaponDraws === 0 ? "empty" : { day, normalDraws, weaponDraws };
+  if (normalDraws === 0 && weaponDraws === 0) return "empty";
+  return { day, normalDraws, weaponDraws, stars: decodeStars(today?.star, normalDraws + weaponDraws),
+    week: decodeWeek(document?.week, lastSaved, now) };
 }
 
 export async function importTrssWishLimits(options: ImportOptions, lockFile: AcquireRoleArchiveLock) {

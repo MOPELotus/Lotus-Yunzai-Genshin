@@ -29,10 +29,22 @@ export interface WishConversation {
   readonly today?: WishToday;
 }
 
+export interface WishLimitStars {
+  readonly five: number;
+  readonly preview: WishToday["preview"];
+}
+
+export interface WishLimitWeek {
+  readonly five: number;
+  readonly expiresAt: number;
+}
+
 export interface WishLimitCarry {
   readonly day: number;
   readonly normalDraws: number;
   readonly weaponDraws: number;
+  readonly stars?: WishLimitStars;
+  readonly week?: WishLimitWeek;
 }
 type WishLimitCarryResult = "carried" | "existing" | "conflict" | "expired";
 
@@ -65,8 +77,17 @@ function validToday(value: unknown): value is WishToday {
 function validLimitCarry(value: unknown): value is WishLimitCarry {
   const row = record(value);
   const max = Number.MAX_SAFE_INTEGER;
-  return !!row && nonnegative(row.day, max) && nonnegative(row.normalDraws, max) &&
-    nonnegative(row.weaponDraws, max) && Number.isSafeInteger(row.normalDraws + row.weaponDraws);
+  if (!row || !nonnegative(row.day, max) || !nonnegative(row.normalDraws, max) ||
+      !nonnegative(row.weaponDraws, max) || !Number.isSafeInteger(row.normalDraws + row.weaponDraws)) return false;
+  if (row.stars !== undefined) {
+    const stars = record(row.stars);
+    if (!stars || !nonnegative(stars.five, row.normalDraws + row.weaponDraws) || !Array.isArray(stars.preview) ||
+        stars.preview.length !== (stars.five < 4 ? stars.five : 0) ||
+        !stars.preview.every(item => typeof item?.name === "string" && item.name.length > 0 &&
+          item.name.length <= 120 && !/[\x00-\x1F\x7F]/u.test(item.name) && nonnegative(item.pity, 90))) return false;
+  }
+  const week = record(row.week);
+  return row.week === undefined || (!!week && nonnegative(week.five, max) && nonnegative(week.expiresAt, max));
 }
 
 function readData(value: unknown): SimulationData {
@@ -165,14 +186,21 @@ export function createTrssWishLimitImport(directory: string, lock: AcquireRoleAr
       const result: Report = { carried: 0, existing: 0, conflict: 0, expired: 0 };
       for (const [scope, incoming] of candidates) {
         if (incoming.day !== day) { result.expired++; continue; }
+        const legacy = data.trssLimits?.[scope];
+        if (legacy?.day === day) {
+          if (legacy.normalDraws !== incoming.normalDraws || legacy.weaponDraws !== incoming.weaponDraws) {
+            result.conflict++;
+          } else if ((!legacy.stars && incoming.stars) || (!legacy.week && incoming.week)) {
+            data.trssLimits![scope] = { ...legacy, stars: legacy.stars ?? incoming.stars, week: legacy.week ?? incoming.week };
+            result.carried++;
+          } else {
+            result.existing++;
+          }
+          continue;
+        }
         const today = data.conversations[scope]?.today;
         if (today?.day === day && (today.normalDraws > 0 || today.weaponDraws > 0)) {
           result.existing++;
-          continue;
-        }
-        const legacy = data.trssLimits?.[scope];
-        if (legacy?.day === day) {
-          result[legacy.normalDraws === incoming.normalDraws && legacy.weaponDraws === incoming.weaponDraws ? "existing" : "conflict"]++;
           continue;
         }
         (data.trssLimits ??= {})[scope] = incoming;
@@ -213,7 +241,7 @@ export function createWishStore(
       if (session.week.key !== weekly) session.week = { key: weekly, five: 0 };
       data.conversations[group] = { activeDay: daily, session, today };
       for (const [scope, carry] of Object.entries(data.trssLimits ?? {})) {
-        if (carry.day !== daily) delete data.trssLimits![scope];
+        if (carry.day !== daily && (!carry.week || now > carry.week.expiresAt)) delete data.trssLimits![scope];
       }
       const result = update(data.balance, session, today, data.trssLimits?.[group]);
       return { document: data, result: { result, issued } };

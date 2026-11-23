@@ -49,16 +49,18 @@ function recall(message: ImageReply | string, seconds: number): WishReply {
   return seconds > 0 ? { type: "recallable", message, seconds } : message;
 }
 
-function wishSummary(today: WishToday, name: string, weapon: boolean, week: number, legacyLimit = false): string {
+function wishSummary(today: WishToday, name: string, weapon: boolean, week: number,
+  legacy?: { readonly starsUnknown: boolean; readonly weekUnknown: boolean }): string {
   const short = Array.from(name).slice(0, 8).join("");
   if (!today.five) {
-    const reason = legacyLimit ? "今日已抽，累计" : "暂时无法抽卡。\n已累计";
-    return `${short}\n${reason}${weapon ? today.weaponDraws : today.normalDraws}抽无五星`;
+    const reason = legacy ? "今日已抽，累计" : "暂时无法抽卡。\n已累计";
+    return `${short}\n${reason}${weapon ? today.weaponDraws : today.normalDraws}抽${legacy?.starsUnknown ? "，旧五星未能核验" : "无五星"}`;
   }
-  const stars = today.five >= (legacyLimit ? 4 : 8) ? `${today.five}个` :
+  const stars = today.five >= (legacy ? 4 : 8) ? `${today.five}个` :
     "\n" + today.preview.map(({ name, pity }) => `${name}(${pity})`).join("\n");
-  const caption = legacyLimit ? "今日五星" : "今日模拟抽卡五星";
-  return `${short}\n${caption}：${stars}${week >= 2 ? `\n本周：${week}个五星` : ""}`;
+  const caption = legacy ? "今日五星" : "今日模拟抽卡五星";
+  const weeklyLabel = legacy?.weekUnknown ? "本周（已核验）" : "本周";
+  return `${short}\n${caption}：${stars}${legacy?.starsUnknown ? "\n另有旧抽数的五星未能核验" : ""}${week >= 2 ? `\n${weeklyLabel}：${week}个五星` : ""}`;
 }
 
 function formatPulls(pulls: readonly WishPull[]) {
@@ -202,13 +204,21 @@ export function createWishCommands({
         }
         const isWeapon = pool.kind === "weapon";
         if (limit && !isOwner()) {
-          const normal = today.normalDraws + (carry?.normalDraws ?? 0);
-          const weapon = today.weaponDraws + (carry?.weaponDraws ?? 0);
+          const oldDay = carry?.day === today.day ? carry : undefined;
+          const normal = today.normalDraws + (oldDay?.normalDraws ?? 0);
+          const weapon = today.weaponDraws + (oldDay?.weaponDraws ?? 0);
           const used = limit.separate ? (isWeapon ? weapon : normal) : normal + weapon;
           const maximum = limit.count * 10;
           if (used >= maximum) {
             const label = limit.separate ? (isWeapon ? "武器池" : "角色与常驻池") : "模拟祈愿";
-            const summary = wishSummary(today, nickname, isWeapon, session.week.five, true);
+            const oldStars = oldDay?.stars;
+            const oldWeek = carry?.week;
+            const weekFive = session.week.five + (oldWeek && now() <= oldWeek.expiresAt ? oldWeek.five : 0);
+            const summary = wishSummary({
+              ...today, normalDraws: normal, weaponDraws: weapon,
+              five: today.five + (oldStars?.five ?? 0),
+              preview: [...oldStars?.preview ?? [], ...today.preview],
+            }, nickname, isWeapon, weekFive, { starsUnknown: !!oldDay && !oldStars, weekUnknown: !!oldDay && !oldWeek });
             return { limitNotice: `${summary}\n今日${label}已达到 ${maximum} 抽上限（已抽 ${used} 抽）。` };
           }
         }
