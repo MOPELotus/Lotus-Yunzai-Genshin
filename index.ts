@@ -145,7 +145,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const panelImages = createPanelImageCommands(lockFile, signal);
   const changeDamageSettings = createDamageSettingsCommand(signal);
   const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal);
-  const payLog = createGenshinPayLogCommand(profiles, signal);
+  const payLog = createGenshinPayLogCommand(profiles, signal, { lockFile });
   const birthdayPhoto = createGenshinBirthdayPhotoCommand(profiles, client, signal);
   const equippedWeapons = createWeaponListQuery(profiles, client, signal);
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
