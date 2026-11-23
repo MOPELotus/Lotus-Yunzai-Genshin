@@ -72,6 +72,7 @@ import { buildGenshinGachaSpecial } from "./gacha-special.ts";
 import { renderGenshinGachaSpecial } from "./gacha-special-card.ts";
 import { createGenshinGachaHistoryStore } from "./gacha-store.ts";
 import { createGenshinGachaSync } from "./gacha-sync.ts";
+import { createGenshinGachaRepair, GenshinGachaRepairCancelledError, gachaRepairCommand } from "./gacha-repair.ts";
 import { exportGenshinUigf, type GenshinUigfExportOptions } from "./gacha-uigf.ts";
 import { buildGenshinGachaVersion, type GenshinGachaVersionOptions } from "./gacha-version.ts";
 import { renderGenshinGachaVersion } from "./gacha-version-card.ts";
@@ -156,6 +157,7 @@ interface GachaContext extends GroupRankContext {
   readonly groupOriginalSignal?: AbortSignal;
   readonly sender?: Readonly<Record<string, unknown>>;
   readonly isMaster?: boolean;
+  readonly isDelegated?: boolean;
   readonly isBotMaster?: (userId: number) => boolean;
   readonly privateCredentialSignal?: AbortSignal;
   readonly verifyOwnGroupMembership?: MessageEvent["verifyOwnGroupMembership"];
@@ -227,7 +229,11 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const worldBossQuery = createWorldBossQuery(profiles, client, worldBossRanking, signal);
   const worldBossRankingQuery = createWorldBossRankingQuery(worldBossRanking, signal);
   const backpackQuery = createGenshinBackpackQuery(profiles, client, signal);
-  const gachaUpdate = createGachaUpdater((qq, profileId) => sync.sync(qq, profileId, { signal }));
+  const repair = createGenshinGachaRepair(
+    fileURLToPath(new URL("../../data/genshin/gacha-repair.sqlite", import.meta.url)), sync.sync, lockFile,
+  );
+  const gachaUpdate = createGachaUpdater((qq, profileId, isDelegated?: boolean) => isDelegated
+    ? sync.sync(qq, profileId, { signal }) : repair.update(qq, profileId, { signal }));
   const externalUpdate = createGachaUpdater((qq, profileId) => sync.syncExternal(qq, profileId, { signal }));
   const importGacha = createGenshinGachaImport(profiles, history, signal);
   const publicPool = createGenshinPublicPoolQuery(signal);
@@ -394,7 +400,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (genshinBackpackCommand.test(message)) return ["[genshin] 背包"];
       if (worldBossCommand.test(message) || worldBossRankingCommand.test(message)) return ["[genshin] 世界 BOSS"];
       const gacha = gachaImportCommand.test(message) || helpCommand.test(message) || deviceHelpCommand.test(message) || updateCommand.test(message) ||
-        externalGachaCommand.test(message) || exportCommand.test(message) || matchGachaQuery(message) ||
+        gachaRepairCommand.test(message) || externalGachaCommand.test(message) || exportCommand.test(message) || matchGachaQuery(message) ||
         (!message.trim() && attachment && /\.json$/iu.test(attachment.name));
       if (gacha) return ["[gacha] 抽卡记录"];
       const customRank = await resolveGroupPanelRank(message);
@@ -511,6 +517,16 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (helpCommand.test(context.normalizedMessage)) return help;
       const deviceHelpMatch = deviceHelpCommand.exec(context.normalizedMessage);
       if (deviceHelpMatch) return deviceGachaHelp(deviceHelpMatch[1]!);
+      const repairMatch = gachaRepairCommand.exec(context.normalizedMessage);
+      if (repairMatch) {
+        if (context.isDelegated || !Number.isSafeInteger(context.user_id) || !context.user_id || context.user_id < 1 ||
+            (context.message_type !== "private" && context.message_type !== "group")) return "请从本人 QQ 会话设置抽卡修复。";
+        try {
+          return repair.set(String(context.user_id), !/^(?:关|off)$/iu.test(repairMatch[1] ?? ""));
+        } catch {
+          return "暂时无法保存抽卡修复设置，请稍后重试。";
+        }
+      }
       const matched = updateCommand.exec(context.normalizedMessage);
       const external = externalGachaCommand.exec(context.normalizedMessage);
       const exportMatch = exportCommand.exec(context.normalizedMessage);
@@ -535,7 +551,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (query) return view(qq, profileId, query.view, query.all, context);
       try {
         const result = await gachaUpdate(qq, profileId, () =>
-          context.reply(`[genshin] 正在更新 Profile ${profileId} 的抽卡记录，会补齐官方范围内的缺档。`));
+          context.reply(`[genshin] 正在更新 Profile ${profileId} 的抽卡记录，会补齐官方范围内的缺档。`), context.isDelegated);
         if (!result) return "该档案的原神抽卡记录正在更新，请稍后再试。";
         try {
           const { png } = await renderGenshinGachaResult(qq, result);
@@ -545,6 +561,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
         }
       } catch (error) {
         if (signal.aborted) return;
+        if (error instanceof GenshinGachaRepairCancelledError) return error.message;
         if (error instanceof ProfileError) {
           if (error.code === "missing" || error.code === "login-required") return `[genshin] 请先登录 profile ${profileId}。`;
           if (error.code === "role-missing") return `[genshin] profile ${profileId} 没有同步原神 UID。`;

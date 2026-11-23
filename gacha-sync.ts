@@ -1,6 +1,6 @@
 import { ProfileError, type createProfileStore } from "@lotus-yunzai/account";
 import type { createHoyoClient, GenshinGachaOptions } from "@lotus-yunzai/hoyo-client";
-import type { createGenshinGachaHistoryStore } from "./gacha-store.ts";
+import type { createGenshinGachaHistoryStore, PublishGenshinGachaRepair } from "./gacha-store.ts";
 
 type GachaClient = Pick<ReturnType<typeof createHoyoClient>, "fetchGenshinGacha" | "fetchGenshinMiniapp">;
 
@@ -9,7 +9,8 @@ export function createGenshinGachaSync(
   client: GachaClient,
   history: ReturnType<typeof createGenshinGachaHistoryStore>,
 ) {
-  async function update(qq: string, profileId: number, options: GenshinGachaOptions, fetch: GachaClient["fetchGenshinGacha"]) {
+  async function update(qq: string, profileId: number, options: GenshinGachaOptions, fetch: GachaClient["fetchGenshinGacha"],
+    publishRepair?: PublishGenshinGachaRepair) {
     const original = await profiles.requestContext(qq, profileId, "gs");
     const uid = original.role.uid;
     const latest = await fetch(original, options);
@@ -18,20 +19,21 @@ export function createGenshinGachaSync(
     async function verifyProfile() {
       options.signal?.throwIfAborted();
       const current = await profiles.requestContext(qq, profileId, "gs", uid).catch(() => undefined);
-      if (current?.revision !== latest.revision || current?.role.uid !== uid) {
+      if (current?.revision !== latest.revision || current?.role.uid !== uid ||
+          current.role.region !== original.role.region || current.role.gameBiz !== original.role.gameBiz) {
         throw new ProfileError("changed", "保存原神抽卡历史时档案已变更，请重新发起请求。");
       }
       options.signal?.throwIfAborted();
     }
 
-    const result = await history.merge({ qq, uid }, latest, verifyProfile);
+    const result = await history.merge({ qq, uid }, latest, verifyProfile, publishRepair);
     const received = new Map(latest.pools.map(({ type, records }) => [type, records.length]));
     const pools = result.pools.map((pool) => ({ ...pool, received: received.get(pool.type) ?? 0 }));
     return { ...result, pools, profileId, refreshedCookie: latest.refreshedCookie };
   }
   return {
-    sync(qq: string, profileId = 1, options: GenshinGachaOptions = {}) {
-      return update(qq, profileId, options, client.fetchGenshinGacha);
+    sync(qq: string, profileId = 1, options: GenshinGachaOptions = {}, publishRepair?: PublishGenshinGachaRepair) {
+      return update(qq, profileId, options, client.fetchGenshinGacha, publishRepair);
     },
     syncExternal(qq: string, profileId = 1, options: Pick<GenshinGachaOptions, "signal"> = {}) {
       return update(qq, profileId, options, client.fetchGenshinMiniapp);

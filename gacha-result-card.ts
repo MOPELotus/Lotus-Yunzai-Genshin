@@ -1,3 +1,4 @@
+import { gameRegionDisplayName } from "@lotus-yunzai/account";
 import { renderStatusCard, type StatusCardOptions } from "@lotus-yunzai/skia/status-card";
 import type { createGenshinGachaSync } from "./gacha-sync.ts";
 
@@ -16,9 +17,11 @@ export function renderGenshinGachaResult(
   at = new Date(),
 ) {
   const added = pools.reduce((sum, pool) => sum + pool.added, 0);
-  const lead = `QQ ${qq} · Profile ${profileId} · UID ${uid}\n新增 ${added} 条记录，已有记录已保留。`;
+  const corrected = pools.some(pool => pool.corrected !== undefined)
+    ? `，修正 ${pools.reduce((sum, pool) => sum + (pool.corrected ?? 0), 0)} 条` : "";
+  const lead = `QQ ${qq} · 档案 ${profileId} · UID ${uid}\n新增 ${added} 条记录${corrected}，已有记录已保留。`;
   return renderStatusCard(title, lead, [
-    "游戏：原神", `Region：${region}`,
+    "游戏：原神", `区服：${gameRegionDisplayName("gs", region)}`,
     ...pools.map((pool) => `${pool.name}：新增 ${pool.added} 条 · 共 ${pool.total} 条`),
   ], at, options);
 }
@@ -32,8 +35,8 @@ export function renderGenshinGachaFailure(
   },
   options?: StatusCardOptions,
 ) {
-  return renderStatusCard(title, `QQ ${qq} · Profile ${profileId}\n${failureMessages[reason]}`, [
-    "阶段：authkey / GachaLog",
-    "建议：检查 profile stoken、UID 和登录状态。",
+  return renderStatusCard(title, `QQ ${qq} · 档案 ${profileId}\n${failureMessages[reason]}`, [
+    "阶段：获取官方抽卡记录",
+    "建议：检查当前档案的登录状态和 UID。",
   ], at, options);
 }

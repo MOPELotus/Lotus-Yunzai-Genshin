@@ -16,6 +16,8 @@ const utf8 = new TextDecoder("utf-8", { fatal: true });
 const digest = /^[0-9a-f]{64}$/u;
 const changed = () => new Error("原神抽卡文件已被其他进程改写，未覆盖现有数据。");
 
+export type PublishGenshinGachaRepair = (publish: () => void) => void;
+
 type Identity = { readonly qq: string; readonly uid: string };
 type Ownership = { readonly uid: number; readonly gid: number; readonly mode: number };
 type Fingerprint = { readonly stamp: string; readonly sha256: string };
@@ -266,7 +268,7 @@ export function createGenshinGachaHistoryStore(directory: string, acquireLock: A
         lock.close();
       }
     },
-    async merge(identity: Identity, latest: GenshinGachaSnapshot, verifyProfile: () => Promise<void>) {
+    async merge(identity: Identity, latest: GenshinGachaSnapshot, verifyProfile: () => Promise<void>, publishRepair?: PublishGenshinGachaRepair) {
       if (identity.uid !== latest.uid) throw new TypeError("原神抽卡快照与档案 UID 不一致。");
       await verifyProfile();
       const role = (await locate(identity, true))!;
@@ -275,10 +277,11 @@ export function createGenshinGachaHistoryStore(directory: string, acquireLock: A
         await verifyProfile();
         await recover(role, identity);
         const { files, values } = await readPools(role);
-        const result = mergeGenshinGachaHistory(values, latest, identity);
+        const result = mergeGenshinGachaHistory(values, latest, identity, !!publishRepair);
         const writes = result.pools.filter(({ changed }) => changed);
         if (!writes.length) {
           await verifyProfile();
+          publishRepair?.(() => {});
           return result;
         }
 
@@ -305,8 +308,12 @@ export function createGenshinGachaHistoryStore(directory: string, acquireLock: A
           }
           await verifyProfile();
           for (const [type, file] of files) if (currentStamp(poolPath(role, type)) !== file?.stamp) throw changed();
-          linkSync(temporary, join(role, journalName));
-          committed = true;
+          const publish = () => {
+            linkSync(temporary, join(role, journalName));
+            committed = true;
+          };
+          if (publishRepair) publishRepair(publish);
+          else publish();
           await syncDirectory(role);
           await recover(role, identity);
           return result;
