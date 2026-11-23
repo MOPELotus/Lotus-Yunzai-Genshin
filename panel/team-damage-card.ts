@@ -1,12 +1,12 @@
 import { Canvas } from "skia-canvas";
-import { renderGenshinCard } from "../card-render.ts";
+import { renderGenshinCardForChat } from "../card-render.ts";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
 import { originalFonts } from "./personal-record-card.ts";
 import type { TeamDamageResult, TeamMember } from "./team-damage-model.ts";
 import type { PanelTheme, Picture } from "./theme.ts";
 
-type Drawing = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
-type Mode = Parameters<typeof renderGenshinCard>[3];
+type Drawing = Parameters<Parameters<typeof renderGenshinCardForChat>[2]>[0];
+type Mode = Parameters<typeof renderGenshinCardForChat>[3];
 type Row = readonly (string | number | undefined)[];
 type Table = { readonly header: readonly string[]; readonly rows: readonly Row[]; readonly widths?: readonly number[];
   readonly faces?: readonly (Picture | undefined)[] };
@@ -47,9 +47,9 @@ function wrap(input: string, limit: number, measure: (value: string) => number) 
 }
 
 export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, {
-  page, pageNumber = 1, totalPages = 1, overview = true, mode = "auto",
+  page, pageNumber = 1, totalPages = 1, overview = true, mode = "auto", inlineImageByteLimit, signal,
 }: { readonly page?: DetailPage; readonly pageNumber?: number; readonly totalPages?: number;
-  readonly overview?: boolean; readonly mode?: Mode } = {}) {
+  readonly overview?: boolean; readonly mode?: Mode; readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal } = {}) {
   const { members, result } = card;
   const directory = Bun.env.LOTUS_GENSHIN_PANEL_THEME_DIR?.trim() || genshinGachaThemeDirectory();
   const [back, cover, font, titleFont, faces] = await Promise.all([
@@ -136,7 +136,7 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
   }
   details.forEach(table);
   const height = cursor + 50;
-  return renderGenshinCard(width, height, ctx => {
+  return renderGenshinCardForChat(width, height, ctx => {
     ctx.fillStyle = "#e8e7e4"; ctx.fillRect(0, 0, width, height);
     if (back) {
       const tile = width * back.height / back.width;
@@ -157,5 +157,5 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
     drawText(ctx, "数据来源：提瓦特小助手", width / 2, cursor + 7, 12, footerColor, "center");
     drawText(ctx, "Lotus-Yunzai", width / 2, cursor + 25, 12, footerColor, "center");
     ctx.restore();
-  }, mode, { displayWidth: 720 });
+  }, mode, { displayWidth: 720, inlineImageByteLimit, signal });
 }

@@ -15,7 +15,8 @@ const help = [
 const localUnavailable = "当前配置要求本地队伍伤害，但原神队伍伤害使用提瓦特小助手。需要恢复原远端计算时，请移除 LOTUS_GENSHIN_GCSIM_MODE=local 或改为 legacy，再重启。";
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Context = { readonly user_id?: number; readonly message_type?: string; readonly isDelegated?: boolean;
-  readonly privateCredentialSignal?: AbortSignal; reply(message: string | Image): unknown };
+  readonly privateCredentialSignal?: AbortSignal; readonly inlineImageByteLimit?: number;
+  reply(message: string | Image): unknown };
 
 export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pick<ReturnType<typeof createGenshinPanelArchive>, "readPanel">,
   lifecycle: AbortSignal, { theme = readPanelTheme, request = readGenshinTeamDamage, render = renderTeamDamage,
@@ -86,7 +87,8 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
           const count = Math.max(1, pages.length);
           for (let index = 0; index < count; index++) {
             await verify();
-            const { png } = await render(card, assets, { page: pages[index], pageNumber: index + 1, totalPages: count, overview: index === 0 });
+            const { png } = await render(card, assets, { page: pages[index], pageNumber: index + 1, totalPages: count,
+              overview: index === 0, inlineImageByteLimit: context.inlineImageByteLimit, signal });
             await verify();
             const image: Image = { type: "image", file: png };
             if (index + 1 === count) return image;
