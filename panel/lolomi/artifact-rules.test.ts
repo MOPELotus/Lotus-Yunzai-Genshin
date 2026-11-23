@@ -12,7 +12,7 @@ function avatar(name: keyof typeof roster, cpct: number, cdmg: number, recharge:
   const [id, elem] = roster[name];
   return { id, name, elem, cons, level: 90, promote: 6, _source: "mysPanel",
     weapon: { name: "训练武器", level: 90, promote: 6, affix: 1 }, talent: { a: 8, e: 9, q: 10 },
-    artis: { 4: { set: "昔日宗室之仪", level: 20, star: 5,
+    artis: { 4: { name: "宗室银瓮", set: "昔日宗室之仪", level: 20, star: 5,
       mainId: physical ? 15015 : 15007, attrIds: ["501201", "501224"] } },
     _lotus: { properties: [{ key: "cpct", value: `${cpct}%` }, { key: "cdmg", value: `${cdmg}%` },
       { key: "recharge", value: `${recharge}%` }] },
