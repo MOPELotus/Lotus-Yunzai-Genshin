@@ -584,11 +584,12 @@ export function createGenshinPanelQuery(
           if (!theaterSelection) return `${monthTitle}\n本地资料缺少已核实的限制元素、开幕或特邀角色。`;
           if (!theaterSelection.avatars.length) return `${monthTitle}\n${theaterSelection.text}\n本档案暂无符合入门条件的角色。`;
         }
-        const statistics = await buildPanelStatistics(snapshot, assets, signal, !talent, theaterSelection);
+        const statistics = await buildPanelStatistics(snapshot, assets, signal, !talent, theaterSelection, command.statisticsFilter);
         const schedule = talent && await buildTalentStatistics(statistics, assets, talent, now(), signal);
         const rows: readonly PanelStatisticRow[] = schedule?.rows ?? statistics;
         await verify();
         if (schedule && !rows.length) return "本档案暂无符合条件的天赋资料。可用 #天赋统计 查看全部。";
+        if (command.statisticsFilter && !rows.length) return "本档案暂无符合所选元素或星级的角色。可用 #练度统计 查看全部。";
         if (!rows.length) return `UID ${uid} 本地暂无原神角色练度资料，请先使用 #更新面板${suffix}。`;
         const talentTitle = schedule && ["天赋统计", schedule.day.label, talent?.star === 5 ? "五星" : talent?.star === 4 ? "四星" : ""]
           .filter(Boolean).join(" · ");

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { readPanel } from "./model.ts";
+import { matchGenshinPanel, readPanel, type PanelAvatar } from "./model.ts";
 import { buildPanelStatistics } from "./statistics.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -23,4 +23,30 @@ test("练度统计保留档案已知的米游社更新时间，缺失好感按�
   expect(result.map(row => [row.avatar.id, row.fetter])).toEqual([
     [10000002, undefined], [10000054, 10], [10000063, 5],
   ]);
+});
+
+test("旧练度指令复用角色练度名单，按元素与星级一起过滤并让行抽卡统计", async () => {
+  expect(matchGenshinPanel("#五星角色汇总")).toEqual({ type: "statistics", profileId: 1, statisticsFilter: { elements: [], star: 5 } });
+  expect(matchGenshinPanel("#角色列表54")).toEqual({ type: "statistics", profileId: 54 });
+  expect(matchGenshinPanel("#原神我的冰水角色列表4星 档案5")).toEqual({
+    type: "statistics", profileId: 5, statisticsFilter: { elements: ["hydro", "cryo"], star: 4 },
+  });
+  for (const command of ["#角色统计2", "#原神武器统计", "#抽卡统计", "#星铁五星角色列表", "#五星角色列表256"]) {
+    expect(matchGenshinPanel(command)).toBeUndefined();
+  }
+  const filter = matchGenshinPanel("#水火5星角色列表force2");
+  expect(filter).toEqual({ type: "statistics", profileId: 2, statisticsFilter: { elements: ["hydro", "pyro"], star: 5 } });
+  const theme: PanelTheme = {
+    characters: { 10000060: { star: 5 } }, artifacts: new Map(), artifactSets: new Map(), async picture() { return; },
+  };
+  const avatars: PanelAvatar[] = [
+    { id: 10000060, name: "夜兰", level: 90, elem: "hydro", _source: "mys", talent: {}, artis: {} },
+    { id: 10000046, name: "胡桃", level: 80, elem: "pyro", star: 5, _source: "enka", talent: {}, artis: {} },
+    { id: 10000083, name: "琳妮特", level: 70, elem: "anemo", star: 4, _source: "mys", talent: {}, artis: {} },
+    { id: 10000025, name: "行秋", level: 70, elem: "hydro", star: 4, _source: "mys", talent: {}, artis: {} },
+    { id: 10000002, name: "神里绫华", level: 70, elem: "cryo", star: 5, _source: "enka", talent: {}, artis: {} },
+  ];
+  const snapshot = { uid: "100000001", avatars: Object.fromEntries(avatars.map(avatar => [avatar.id, avatar])) };
+  const rows = await buildPanelStatistics(snapshot, theme, undefined, false, undefined, filter?.statisticsFilter);
+  expect(rows.map(row => row.avatar.name)).toEqual(["夜兰", "胡桃"]);
 });

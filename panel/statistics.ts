@@ -1,7 +1,7 @@
 import { scorePanelArtifacts } from "./artifact-score.ts";
 import { resolveGrowthMaterials } from "../grow/catalogue.ts";
 import { talentRegions, talentSchedule } from "./miao/talent-schedule.ts";
-import { object, text, whole, type PanelAvatar, type PanelSnapshot, type TalentStatisticsSelection } from "./model.ts";
+import { object, text, whole, type PanelAvatar, type PanelSnapshot, type PanelStatisticsFilter, type TalentStatisticsSelection } from "./model.ts";
 import { panelTalentLevels, travelerIds } from "./talent-levels.ts";
 import { genshinWeaponTypes as types, type PanelTheme } from "./theme.ts";
 
@@ -14,7 +14,7 @@ function completeSets(avatar: PanelAvatar) {
 }
 
 export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: PanelTheme, signal?: AbortSignal, includeRating = true,
-  theaterRoster?: { readonly avatars: readonly PanelAvatar[]; readonly trials: readonly PanelAvatar[] }) {
+  theaterRoster?: { readonly avatars: readonly PanelAvatar[]; readonly trials: readonly PanelAvatar[] }, filter?: PanelStatisticsFilter) {
   const weaponData = new Map<string, { type: string; star: number | undefined; abbr: string }>();
   const weapons = await Promise.all(types.map(type => theme.metadata?.("meta-gs", "weapon", type, "data.json")));
   for (const [index, catalog] of weapons.entries()) {
@@ -32,6 +32,9 @@ export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: Panel
     signal?.throwIfAborted();
     if (["change", "customize", "share"].includes(avatar._source)) continue;
     const meta = object(theme.characters[avatar.id]);
+    const star = avatar.star || whole(meta?.star, 5);
+    if (filter?.star && filter.star !== star) continue;
+    if (filter?.elements.length && !filter.elements.includes(avatar.elem || text(meta?.elem))) continue;
     const talents = panelTalentLevels(avatar, meta);
     const equipped = avatar.weapon && weaponData.get(avatar.weapon.name);
     const weapon = avatar.weapon && {
@@ -39,7 +42,7 @@ export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: Panel
     };
     const rating = includeRating && avatar._source !== "mys" ? (await scorePanelArtifacts(avatar, theme)).rating : undefined;
     result.push({
-      avatar, name: text(meta?.abbr) || avatar.name, star: avatar.star || whole(meta?.star, 5),
+      avatar, name: text(meta?.abbr) || avatar.name, star,
       fetter: travelerIds.has(avatar.id) || avatar.id === 10000117 || avatar.id === 10000118 ? 10 : avatar.fetter,
       talents, weapon, sets: completeSets(avatar),
       rating: rating && { score: rating.total, rank: rating.rank },

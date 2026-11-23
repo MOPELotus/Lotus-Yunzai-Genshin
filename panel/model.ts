@@ -114,6 +114,7 @@ export interface PanelCommand {
   readonly knownCharacterOnly?: true;
   readonly theaterMonth?: string;
   readonly talentStatistics?: TalentStatisticsSelection;
+  readonly statisticsFilter?: PanelStatisticsFilter;
   readonly materialDay?: TalentStatisticsSelection["day"];
   readonly equipmentChange?: EquipmentChangeSelection;
   readonly constellationChange?: number;
@@ -391,6 +392,8 @@ export function matchConstellationEquipment(message: string): PanelCommand | und
 }
 
 export type TalentStatisticsSelection = { readonly day?: number | "today" | "tomorrow"; readonly star?: 4 | 5 };
+export type PanelStatisticsFilter = { readonly elements: readonly string[]; readonly star?: 4 | 5 };
+const statisticsElements = { 风: "anemo", 岩: "geo", 雷: "electro", 草: "dendro", 水: "hydro", 火: "pyro", 冰: "cryo" } as const;
 
 function statisticsDay(when?: string): TalentStatisticsSelection["day"] {
   if (when === "今日" || when === "今天") return "today";
@@ -448,6 +451,16 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
   }
   const statistics = /^#(?:原神)?(?:面板)?练度统计\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
   if (statistics) return statisticsCommand(statistics[1]);
+  const practice = /^#(?:原神)?((?:我的)?([风岩雷草水火冰]*)(?:武器|角色|练度|[五四54星])+(?:汇总|统计|列表)(?:force|[五四54星])*?)\s*((?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
+  if (practice) {
+    const [, body = "", elementNames = "", target] = practice;
+    if (body === "角色统计" || body === "武器统计") return;
+    const selection = statisticsCommand(target);
+    if (!selection) return;
+    const elements = Object.entries(statisticsElements).filter(([label]) => elementNames.includes(label)).map(([, elem]) => elem);
+    const star = /[五5]星/u.test(body) ? 5 : /星/u.test(body) ? 4 : undefined;
+    return elements.length || star ? { ...selection, statisticsFilter: { elements, star } } : selection;
+  }
 
   const artifactList = /^#(?:原神)?圣遗物列表\s*([1-9]\d{8,9}|[1-9]\d{0,2})?$/u.exec(message);
   if (artifactList) {
