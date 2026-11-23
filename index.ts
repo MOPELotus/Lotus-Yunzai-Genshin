@@ -1,3 +1,4 @@
+import { createCharacterVoiceCommands, genshinVoiceFeature } from "./voice/command.ts";
 import type { LegacyPanelRecoveryOffer } from "../../lib/legacy-panel-recovery-flow.ts";
 import { matchPanelTransferCommand, type PanelTransferAccess } from "../../lib/panel-transfer-command.ts";
 import { createGenshinPanelTransfer } from "./panel/panel-transfer.ts";
@@ -125,6 +126,7 @@ function matchGachaQuery(message: string): { profileId: number; view: GachaView;
 interface GachaContext extends GroupRankContext {
   readonly normalizedMessage: string;
   readonly inlineImageByteLimit?: number;
+  readonly sub_type?: MessageEvent["sub_type"];
   readonly forward?: MessageEvent["forward"];
   readonly message?: string | readonly { readonly type: string; readonly qq?: unknown; readonly id?: unknown }[];
   readonly reply_id?: MessageEvent["reply_id"];
@@ -137,13 +139,13 @@ interface GachaContext extends GroupRankContext {
   readonly privateCredentialSignal?: AbortSignal;
   readonly verifyOwnGroupMembership?: MessageEvent["verifyOwnGroupMembership"];
   readonly message_id?: MessageEvent["message_id"];
-  readonly sub_type?: MessageEvent["sub_type"];
   readonly attachment?: { readonly name: string; read(signal?: AbortSignal): Promise<Uint8Array | undefined> };
   readonly canReadAttachments?: boolean;
   readonly uploadFile?: (file: { readonly name: string; readonly bytes: Uint8Array }) => Promise<"confirmed" | "rejected" | "unknown">;
   readonly panelTransfer?: PanelTransferAccess;
   readonly offerLegacyPanelRecovery?: LegacyPanelRecoveryOffer;
-  reply(message: string | { readonly type: "image"; readonly file: Uint8Array }): unknown;
+  reply(message: string | { readonly type: "image"; readonly file: Uint8Array } |
+    { readonly type: "record"; readonly file: Uint8Array }): unknown;
 }
 
 export function createModule({ signal, lockFile, runtimeVersion }: {
@@ -152,6 +154,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   runtimeVersion?: { readonly version?: string; readonly revision?: string };
 }) {
   const wish = createWishCommands({ lockFile, signal });
+  const voice = createCharacterVoiceCommands(signal);
   const characterAliases = createGameCharacterAliasCommands(lockFile, signal);
   const publicRank = createGenshinCustomRank(signal);
   const profiles = createProfileStore(Bun.env.LOTUS_PROFILE_DIR || undefined);
@@ -324,6 +327,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     panelRebuild: panel.rebuild,
     async fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      if (voice.features(message, context)) return [genshinVoiceFeature];
       if (matchPanelTransferCommand(message)?.game === "gs") return ["[genshin] 角色面板"];
       const customRankCommand = matchArkRankCommand(message);
       if (customRankCommand && (!customRankCommand.game || customRankCommand.game === "gs")) return ["[genshin] 角色面板"];
@@ -369,6 +373,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return [];
     },
     async fallback(_message: string, context: GachaContext) {
+      const spoken = await voice.fallback(context.normalizedMessage, context);
+      if (spoken !== undefined) return spoken;
       const transfer = matchPanelTransferCommand(context.normalizedMessage);
       if (transfer?.game === "gs") return transferPanel(transfer, context);
       const customRankCommand = matchArkRankCommand(context.normalizedMessage);
