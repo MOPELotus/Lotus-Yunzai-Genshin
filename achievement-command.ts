@@ -1,8 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
-import { createAtlasRuntimeCatalog } from "@lotus-yunzai/atlas/catalog";
+import { createAtlasRuntimeCatalog, defaultAtlasLocale, parseAtlasLocale } from "@lotus-yunzai/atlas/catalog";
 import { readLotusGlobalConfig } from "../../lib/lotus-global-config.ts";
-import { defaultAtlasLocale, parseAtlasLocale } from "../atlas/locale.ts";
 import { readAtlasGalleryImage } from "@lotus-yunzai/atlas/gallery";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "./owned-role.ts";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
