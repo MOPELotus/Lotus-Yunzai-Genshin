@@ -22,6 +22,11 @@ import { createGenshinBirthdayPhotoCommand, matchGenshinBirthdayPhoto } from "./
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
 import { createPersonalHardChallengeQuery, matchPersonalHardChallenge } from "./panel/personal-hard-challenge.ts";
 import { createStygianConsentCommand, createStygianConsentStore, matchStygianConsentCommand, stygianConsentDirectory } from "./panel/stygian-consent.ts";
+import { createStygianGroupRank } from "./panel/stygian-group-rank.ts";
+import { matchStygianGroupRank } from "./panel/stygian-rank-period.ts";
+import { renderStygianRankCard } from "./panel/stygian-rank-card.ts";
+import { readGroupPanelRankLimit } from "../../lib/group-panel-rank-settings.ts";
+import { isDeepStrictEqual } from "node:util";
 import { createGenshinTarotCards, matchGenshinTarotCards } from "./panel/tarot-cards.ts";
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
 import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createGenshinPanelQuery, matchLegacyGenshinExtremePanel } from "./panel/panel.ts";
@@ -169,6 +174,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const personalHardChallenge = createPersonalHardChallengeQuery(profiles, client, signal);
   const stygianConsentStore = createStygianConsentStore(stygianConsentDirectory, lockFile);
   const stygianConsent = createStygianConsentCommand(profiles, stygianConsentStore, signal);
+  const stygianGroupRank = createStygianGroupRank(profiles, stygianConsentStore, signal);
   const tarotCards = createGenshinTarotCards(tarotCardsDirectory, profiles, client, lockFile, signal);
   const fetchShowcase = createGenshinShowcaseClient();
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
@@ -334,7 +340,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinBirthdayPhoto(message)) return ["[genshin] 生日留影"];
       if (matchGenshinTarotCards(message)) return ["[genshin] 月谕圣牌"];
       if (matchPersonalHardChallenge(message)) return ["[genshin] 幽境危战", "[genshin] 角色查询"];
-      if (matchStygianConsentCommand(message)) return ["[genshin] 幽境危战群榜"];
+      if (matchStygianConsentCommand(message) || matchStygianGroupRank(message)) return ["[genshin] 幽境危战群榜"];
       if (matchGenshinCommission(message) !== undefined) return ["[genshin] 委托查询"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
@@ -387,6 +393,22 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (hardChallenge) return personalHardChallenge(hardChallenge, context);
       const stygianCommand = matchStygianConsentCommand(context.normalizedMessage);
       if (stygianCommand) return stygianConsent(stygianCommand, context);
+      const stygianRank = matchStygianGroupRank(context.normalizedMessage);
+      if (stygianRank) {
+        const result = await stygianGroupRank(stygianRank.version, context);
+        if (!result) return [];
+        if ("message" in result) return result.message;
+        try {
+          const [theme, limit] = await Promise.all([readPanelTheme(), readGroupPanelRankLimit("gs", 15)]);
+          const png = await renderStygianRankCard({ ...result.board, rows: result.board.rows.slice(0, limit) }, theme,
+            { signal: result.signal, inlineImageByteLimit: context.inlineImageByteLimit });
+          if (result.signal.aborted) return [];
+          if (!isDeepStrictEqual(await result.verify(), result.board)) return "幽境危战群榜的成员授权或档案已变化，请重新查询。";
+          return { type: "image", file: png.png } as const;
+        } catch {
+          return result.signal.aborted ? [] : "幽境危战成绩已读取，暂时无法生成群榜图片。";
+        }
+      }
       const challenge = matchPersonalChallenge(context.normalizedMessage);
       if (challenge) return personalChallenge(challenge, context);
       const tarot = matchGenshinTarotCards(context.normalizedMessage);
