@@ -1,9 +1,9 @@
-import { MAX_PROFILE_ID, ProfileError, type ProfileRequestContext, type createProfileStore } from "@lotus-yunzai/account";
+import { MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type GenshinGcgSummary } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import type { ReplyOptions } from "../../../lib/messages.ts";
-import { genshinLoginAccount, ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
+import { findOwnedGenshinUid, ownedGenshinRole, readOwnedGenshinUid, type GenshinRoleDirectory } from "../owned-role.ts";
 import { officialPanel, text, type Json, type PanelSnapshot } from "./model.ts";
 import { createGenshinPanelArchive } from "./panel.ts";
 import { renderPersonalExploration } from "./personal-exploration-card.ts";
@@ -63,29 +63,7 @@ interface MessageContext {
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Reply = string | Image;
 
-type PersonalRecordProfiles = GenshinRoleProfiles & Pick<ReturnType<typeof createProfileStore>, "listIds">;
-
-async function readRosterUid(profiles: GenshinRoleProfiles, qq: string, profileId: number, uid: string) {
-  const source = await profiles.requestContext(qq, profileId, "gs", uid);
-  const accountId = genshinLoginAccount(source);
-  if (!accountId || source.role.uid !== uid || !source.role.region || !source.role.gameBiz) {
-    throw new ProfileError("invalid", "档案没有已验证的原神角色。");
-  }
-  return { source, accountId };
-}
-
-async function findRosterUid(profiles: PersonalRecordProfiles, qq: string, uid: string, signal: AbortSignal) {
-  for (const profileId of await profiles.listIds(qq)) {
-    signal.throwIfAborted();
-    try {
-      return await readRosterUid(profiles, qq, profileId, uid);
-    } catch (error) {
-      if (!(error instanceof ProfileError) || !["missing", "login-required", "role-missing", "invalid"].includes(error.code)) throw error;
-    }
-  }
-}
-
-export function createPersonalRecordQuery(profiles: PersonalRecordProfiles, client: Client, lockFile: AcquireRoleArchiveLock,
+export function createPersonalRecordQuery(profiles: GenshinRoleDirectory, client: Client, lockFile: AcquireRoleArchiveLock,
   lifecycle: AbortSignal, {
     archive = createGenshinPanelArchive(lockFile),
     theme = readPanelTheme,
@@ -111,7 +89,7 @@ export function createPersonalRecordQuery(profiles: PersonalRecordProfiles, clie
     const requestedUid = type === "roster" ? command.uid : undefined;
     const rarity = type === "roster" ? command.star : undefined;
     try {
-      const owned = requestedUid ? await findRosterUid(profiles, qq, requestedUid, signal) : await ownedGenshinRole(profiles, qq, profileId);
+      const owned = requestedUid ? await findOwnedGenshinUid(profiles, qq, requestedUid, signal) : await ownedGenshinRole(profiles, qq, profileId);
       if (!owned) return "只可查询本人已登录且已同步的原神 UID。";
       const { source, accountId } = owned;
       profileId = source.profileId;
@@ -119,7 +97,7 @@ export function createPersonalRecordQuery(profiles: PersonalRecordProfiles, clie
       let revision = source.revision;
       async function verify() {
         signal.throwIfAborted();
-        const latest = await (requestedUid ? readRosterUid(profiles, qq, profileId, requestedUid) :
+        const latest = await (requestedUid ? readOwnedGenshinUid(profiles, qq, profileId, requestedUid) :
           ownedGenshinRole(profiles, qq, profileId)).catch(() => undefined);
         if (latest?.accountId !== accountId || latest.source.revision !== revision || latest.source.role.uid !== uid ||
           latest.source.role.region !== region || latest.source.role.gameBiz !== gameBiz) {

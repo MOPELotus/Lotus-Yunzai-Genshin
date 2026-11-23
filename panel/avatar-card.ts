@@ -6,7 +6,7 @@ import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunza
 import { characterAliasKey } from "../../../lib/game-character-aliases.ts";
 import type { DeliveryCommandReply } from "../../../lib/commands.ts";
 import type { MessageReply } from "../../../lib/messages.ts";
-import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
+import { findOwnedGenshinUid, ownedGenshinRole, readOwnedGenshinUid, type GenshinRoleDirectory } from "../owned-role.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import { createAvatarPhotoLedger, type AvatarPhotoContext, type AvatarPhotoStorage } from "./avatar-card-original.ts";
 import { renderAvatarCard } from "./avatar-card-render.ts";
@@ -39,15 +39,27 @@ const male = [
 const children = "可莉,七七,迪奥娜,早柚,派蒙,瑶瑶,纳西妲,希格雯,卡齐娜,爱诺,布伦妮";
 const eligibleNames: Readonly<Record<Relation, string>> = { wife: female, gf: female, husband: male, bf: male, daughter: children, son: "" };
 const defaultDirectory = fileURLToPath(new URL("../../../data/genshin/avatar-card-preferences/", import.meta.url));
-type Command =
-  { readonly kind: "named"; readonly profileId: number; readonly input: string } |
+type NamedCard = { readonly kind: "named"; readonly profileId: number; readonly input: string; readonly uid?: string };
+type Command = NamedCard |
   { readonly kind: "card" | "photo" | "list" | "set" | "add"; readonly profileId: number; readonly relation: Relation; readonly input: string };
 type Choices = Partial<Record<Relation, readonly string[]>>;
 type AvatarContext = AvatarPhotoContext & {
   readonly groupActivitySignal?: AbortSignal; readonly inlineImageByteLimit?: number;
 };
 
+export function matchLegacyGenshinAvatarCard(message: string): NamedCard | undefined {
+  const match = /^#(原神)?\s*([^#\r\n]{1,72})$/u.exec(message.trim().replace(/^＃/u, "#"));
+  const text = match?.[2]?.trim();
+  if (!text || /^(?:星铁|崩铁|绝区零)/u.test(text)) return;
+  const uid = /(?<!\d)(18\d{8}|[1-9]\d{8})(?!\d)/u.exec(text)?.[1];
+  if (!uid && match?.[1]) return;
+  const name = uid ? text.replace(uid, "").replace(/老婆|老公|卡片/gu, "").trim() : text;
+  if (name && findRankCharacter(name)) return { kind: "named", profileId: 1, input: name, ...(uid && { uid }) };
+}
+
 export function matchGenshinAvatarCard(message: string): Command | undefined {
+  const legacy = matchLegacyGenshinAvatarCard(message);
+  if (legacy) return legacy;
   const match = /^#(?:原神)?\s*([^#\r\n]{1,128}?)\s*(?:(?:档案|profile)\s*([1-9]\d{0,2}))?$/iu.exec(message.trim().replace(/^＃/u, "#"));
   if (!match || /^(?:星铁|崩铁|绝区零)/u.test(match[1]!)) return;
   const text = match[1]!.trim();
@@ -112,7 +124,7 @@ function resolve(name: string, assets: PanelTheme) {
   return findRankCharacter(name) ?? findRankCharacter(assets.customAliases?.get(characterAliasKey(name)) ?? "");
 }
 
-export function createGenshinAvatarCards(profiles: GenshinRoleProfiles, client: Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinPersonalRecord">,
+export function createGenshinAvatarCards(profiles: GenshinRoleDirectory, client: Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinPersonalRecord">,
   lock: AcquireRoleArchiveLock, lifecycle: AbortSignal, {
     directory = defaultDirectory,
     legacySource = Bun.env.LOTUS_GENSHIN_PANEL_LEGACY_REDIS_URL?.trim(),
@@ -134,16 +146,21 @@ export function createGenshinAvatarCards(profiles: GenshinRoleProfiles, client: 
     if (context.isDelegated || !user || !Number.isSafeInteger(user) || user < 1 || !["private", "group"].includes(context.message_type ?? "")) return;
     const signal = AbortSignal.any([lifecycle, ...[context.privateCredentialSignal, context.groupActivitySignal].filter(value => value !== undefined)]);
     if (signal.aborted) return;
-    const { profileId } = command;
+    let { profileId } = command;
     if (profileId < 1 || profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
     const qq = String(user);
+    const explicitUid = command.kind === "named" ? command.uid : undefined;
     try {
-      const { source, accountId } = await ownedGenshinRole(profiles, qq, profileId);
+      const owned = explicitUid ? await findOwnedGenshinUid(profiles, qq, explicitUid, signal) : await ownedGenshinRole(profiles, qq, profileId);
+      if (!owned) return "只可查询本人已登录且已同步的原神 UID。公开角色资料请使用 #角色名图鉴。";
+      const { source, accountId } = owned;
+      profileId = source.profileId;
       const { uid, region, gameBiz } = source.role;
       let revision = source.revision;
       async function verify() {
         signal.throwIfAborted();
-        const current = await ownedGenshinRole(profiles, qq, profileId);
+        const current = explicitUid ? await readOwnedGenshinUid(profiles, qq, profileId, explicitUid) :
+          await ownedGenshinRole(profiles, qq, profileId);
         if (current.accountId !== accountId || current.source.revision !== revision || current.source.role.uid !== uid ||
           current.source.role.region !== region || current.source.role.gameBiz !== gameBiz) {
           throw new ProfileError("changed", "原神角色档案已变化。");
@@ -220,7 +237,7 @@ export function createGenshinAvatarCards(profiles: GenshinRoleProfiles, client: 
       if (!original || !context.self_id) return message;
       return { type: "delivery", message, async onDelivered(confirmed) {
         await verify();
-        await photos.delivered(context, confirmed, original, { profileId, uid, region, gameBiz, accountId });
+        await photos.delivered(context, confirmed, original, { profileId, uid, region, gameBiz, accountId, ...(explicitUid && { explicitUid: true }) });
       } };
     } catch (error) {
       if (signal.aborted) return;
@@ -240,7 +257,9 @@ export function createGenshinAvatarCards(profiles: GenshinRoleProfiles, client: 
         if (!record || !context.user_id || !session || session.aborted || lifecycle.aborted) return;
         const { owner } = record;
         async function verify() {
-          const { accountId, source } = await ownedGenshinRole(profiles, String(context.user_id), owner.profileId);
+          const qq = String(context.user_id);
+          const { accountId, source } = owner.explicitUid ? await readOwnedGenshinUid(profiles, qq, owner.profileId, owner.uid) :
+            await ownedGenshinRole(profiles, qq, owner.profileId);
           const { uid, region, gameBiz } = source.role;
           return !session?.aborted && !lifecycle.aborted && owner.accountId === accountId && owner.uid === uid &&
             owner.region === region && owner.gameBiz === gameBiz;

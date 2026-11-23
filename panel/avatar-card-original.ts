@@ -15,6 +15,7 @@ interface Owner {
   readonly region: string;
   readonly gameBiz: string;
   readonly accountId: string;
+  readonly explicitUid?: true;
 }
 
 interface Receipt {
@@ -60,6 +61,7 @@ function decode(value: unknown, now: number): Receipt | undefined {
     const owner = record?.owner;
     if (record && owner && isPanelPhoto(record.photo) && positive(owner.profileId) && owner.profileId <= 255 &&
         [owner.uid, owner.region, owner.gameBiz, owner.accountId].every(field => typeof field === "string" && field.length <= 64) &&
+        (owner.explicitUid === undefined || owner.explicitUid === true) &&
         (record.source === "card" || record.source === "request") && positive(record.expiresAt) &&
         record.expiresAt > now && record.expiresAt <= now + lifetime * 1000) return record as Receipt;
   } catch {

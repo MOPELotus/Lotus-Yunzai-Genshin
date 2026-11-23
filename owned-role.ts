@@ -2,6 +2,7 @@ import { ProfileError, type createProfileStore, type ProfileRequestContext } fro
 import { previewRedeemIdentity } from "@lotus-yunzai/hoyo-client/redeem-submit";
 
 export type GenshinRoleProfiles = Pick<ReturnType<typeof createProfileStore>, "requestContext" | "savedRole">;
+export type GenshinRoleDirectory = GenshinRoleProfiles & Pick<ReturnType<typeof createProfileStore>, "listIds">;
 
 export function genshinLoginAccount(source: ProfileRequestContext) {
   const accountId = source.account?.stuid || source.account?.ltuid;
@@ -23,4 +24,24 @@ export async function ownedGenshinRole(profiles: GenshinRoleProfiles, qq: string
     throw new ProfileError("invalid", "档案的登录凭据与账号不一致。");
   }
   return { source, accountId };
+}
+
+export async function readOwnedGenshinUid(profiles: GenshinRoleProfiles, qq: string, profileId: number, uid: string) {
+  const source = await profiles.requestContext(qq, profileId, "gs", uid);
+  const accountId = genshinLoginAccount(source);
+  if (!accountId || source.role.uid !== uid || !source.role.region || !source.role.gameBiz) {
+    throw new ProfileError("invalid", "档案没有已验证的原神角色。");
+  }
+  return { source, accountId };
+}
+
+export async function findOwnedGenshinUid(profiles: GenshinRoleDirectory, qq: string, uid: string, signal: AbortSignal) {
+  for (const profileId of await profiles.listIds(qq)) {
+    signal.throwIfAborted();
+    try {
+      return await readOwnedGenshinUid(profiles, qq, profileId, uid);
+    } catch (error) {
+      if (!(error instanceof ProfileError) || !["missing", "login-required", "role-missing", "invalid"].includes(error.code)) throw error;
+    }
+  }
 }

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createProfileStore } from "@lotus-yunzai/account";
 import { createModule } from "../index.ts";
-import { createGenshinAvatarCards, matchGenshinAvatarCard } from "./avatar-card.ts";
+import { createGenshinAvatarCards, matchGenshinAvatarCard, matchLegacyGenshinAvatarCard } from "./avatar-card.ts";
 import type { PanelTheme } from "./theme.ts";
 
 const lock = async () => ({ close() {} });
@@ -68,6 +68,65 @@ test("旧关系偏好本人读取、追加、随机和照片查询", async () =>
     expect(await query("#女儿设置钟离")).toContain("未找到");
     expect(renders).toEqual(["胡桃:10000046:90:true", "胡桃:10000046:90:false"]);
     expect(remote).toBe(0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("原神旧裸名和 UID 角色卡保持精确分流，星铁与图鉴不被接管", () => {
+  const uid = "100004042";
+  expect(matchLegacyGenshinAvatarCard("#核桃")).toEqual({ kind: "named", input: "核桃", profileId: 1 });
+  for (const command of [`#${uid}胡桃`, `#胡桃${uid}`, `#${uid}胡桃卡片`, `#胡桃卡片${uid}`]) {
+    expect(matchLegacyGenshinAvatarCard(command)).toEqual({ kind: "named", input: "胡桃", profileId: 1, uid });
+  }
+  for (const command of ["胡桃", "#胡桃图鉴", "#胡桃面板", "#角色卡片", "#原神胡桃", "*卡芙卡",
+    "#星铁卡芙卡", "#100004042", "#100004042胡桃100004043", "#胡桃100004042图鉴"]) {
+    expect(matchLegacyGenshinAvatarCard(command)).toBeUndefined();
+  }
+});
+
+test("显式 UID 只读本人同步角色，回执在角色移除后失效", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "lotus-avatar-owned-uid-"));
+  const uid = "100004042", active = "100007042", foreign = "100004043";
+  const profile = (qq: string, roles: string[], selected: string, profileId: number) => Bun.YAML.stringify({
+    user: { qq }, profile: { id: profileId }, account: {
+      stuid: qq, ltuid: qq, stoken: "synthetic", ltoken: "synthetic", cookie: `account_id=${qq};cookie_token=synthetic`,
+      game_roles: { gs: roles.map(uid => ({ uid, region: "cn_gf01", game_biz: "hk4e_cn" })) }, current_uid: { gs: selected },
+    },
+  });
+  try {
+    await writeFile(join(directory, "42.yaml"), profile("42", [active], active, 1));
+    await writeFile(join(directory, "42-3.yaml"), profile("42", [active, uid], active, 3));
+    await writeFile(join(directory, "43.yaml"), profile("43", [foreign], foreign, 1));
+    let archiveReads = 0;
+    let privateRequests = 0;
+    const query = createGenshinAvatarCards(createProfileStore(directory), {
+      async fetchGenshinPersonalRecord() { privateRequests++; throw Error("unexpected official request"); },
+    }, lock, signal, {
+      archive: { async readPanel(user, selected) {
+        archiveReads++;
+        expect([user, selected]).toEqual(["42", uid]);
+        return { uid, avatars: { [avatar.id]: avatar } };
+      } },
+      theme: async () => ({ ...theme, async readPhoto() { return image.file; } }),
+      render: async () => ({ ...image, original: { root: "gallery", path: ["胡桃", "画.png"], sha256: "1".repeat(64) } }),
+    });
+    const context = { message_type: "group", user_id: 42, self_id: 99, group_id: 77, message_id: 55, groupOriginalSignal: signal };
+    expect(await query.query(matchGenshinAvatarCard("#胡桃"), { ...context, user_id: 44 })).toContain("请先登录");
+    expect(await query.query(matchGenshinAvatarCard(`#${foreign}胡桃卡片`), context)).toContain("只可查询本人");
+    expect(await query.query(matchGenshinAvatarCard(`#胡桃${uid}`), { ...context, isDelegated: true })).toBeUndefined();
+    expect(archiveReads).toBe(0);
+    const delivered = await query.query(matchGenshinAvatarCard(`#胡桃卡片${uid}`), context);
+    expect(delivered).toMatchObject({ type: "delivery", message: image });
+    if (typeof delivered !== "object" || !("onDelivered" in delivered)) throw Error("缺少角色卡回执");
+    await delivered.onDelivered(56);
+    const quoted = { ...context, reply_id: "56", message: [{ type: "reply", id: "56" }],
+      async lookupMediaReply() { return { user_id: 99, message: [{ type: "image" as const, file: "art.png" }] }; } };
+    expect(await query.original(quoted)).toEqual(image);
+    await writeFile(join(directory, "42-3.yaml"), profile("42", [active], active, 3));
+    expect(await query.original(quoted)).toBeUndefined();
+    expect(archiveReads).toBe(1);
+    expect(privateRequests).toBe(0);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
