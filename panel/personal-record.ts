@@ -1,9 +1,9 @@
-import { MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
+import { MAX_PROFILE_ID, ProfileError, type ProfileRequestContext, type createProfileStore } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type GenshinGcgSummary } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import type { ReplyOptions } from "../../../lib/messages.ts";
-import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
+import { genshinLoginAccount, ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { officialPanel, text, type Json, type PanelSnapshot } from "./model.ts";
 import { createGenshinPanelArchive } from "./panel.ts";
 import { renderPersonalExploration } from "./personal-exploration-card.ts";
@@ -13,18 +13,38 @@ import { personalRosterColumns, renderPersonalOverview, renderPersonalRoster } f
 import { buildPanelStatistics } from "./statistics.ts";
 import { readPanelTheme } from "./theme.ts";
 
-const suffix = /^(#(?:原神)?(?:角色查询|查询角色|角色|人物|查询)|#?(?:原神)?角色卡片)(?:\s*(?:(?:档案|profile)\s*)?(\d{1,3}))?$/iu;
+const suffix = /^(#(?:原神)?([五四54星]*)(?:角色查询|查询角色|角色|人物|查询)|#?(?:原神)?角色卡片)(?:\s*(?:(?:档案|profile)\s*)?(\d{1,3}))?$/iu;
+const rosterUid = /^#(?:原神)?([五四54星]*)(?:角色查询|查询角色|角色|人物|查询)[ |]*(18\d{8}|[1-9]\d{8})$/u;
+const bareUid = /^(?:#*(?:uid|UID)\+*|#[+|＋]*)(18\d{8}|[1-9]\d{8})$/u;
 
 const exploration = /^#(?:宝箱|尘歌壶|家园|探索|探险|声望|探险度|探索度)(?:\s+(?:档案|profile)\s*(\d{1,3}))?$/iu;
 
-export function matchPersonalRecord(message: string) {
+type Rarity = 4 | 5;
+type Command =
+  | { readonly type: "overview" | "exploration"; readonly profileId: number }
+  | { readonly type: "roster"; readonly profileId: number; readonly star?: Rarity; readonly uid?: string };
+
+function rosterRarity(filter = ""): Rarity | undefined {
+  return /[五5]星/u.test(filter) ? 5 : filter.includes("星") ? 4 : undefined;
+}
+
+export function matchPersonalRecord(message: string): Command | undefined {
   const command = message.trim().replace(/^＃/u, "#");
-  if (command === "角色") return { profileId: 1, type: "overview" } as const;
+  if (command === "角色") return { profileId: 1, type: "overview" };
   const explore = exploration.exec(command);
-  if (explore) return { profileId: Number(explore[1] ?? 1), type: "exploration" } as const;
+  if (explore) return { profileId: Number(explore[1] ?? 1), type: "exploration" };
+  const target = rosterUid.exec(command);
+  const uid = target?.[2] ?? bareUid.exec(command)?.[1];
+  if (uid) {
+    const star = rosterRarity(target?.[1]);
+    return { profileId: 1, type: "roster", uid, ...(star && { star }) };
+  }
   const match = suffix.exec(command);
   if (!match) return;
-  return { profileId: Number(match[2] ?? 1), type: match[1]!.endsWith("卡片") ? "overview" as const : "roster" as const };
+  const profileId = Number(match[3] ?? 1);
+  if (match[1]!.endsWith("卡片")) return { profileId, type: "overview" };
+  const star = rosterRarity(match[2]);
+  return { profileId, type: "roster", ...(star && { star }) };
 }
 
 interface Client {
@@ -43,7 +63,29 @@ interface MessageContext {
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Reply = string | Image;
 
-export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client: Client, lockFile: AcquireRoleArchiveLock,
+type PersonalRecordProfiles = GenshinRoleProfiles & Pick<ReturnType<typeof createProfileStore>, "listIds">;
+
+async function readRosterUid(profiles: GenshinRoleProfiles, qq: string, profileId: number, uid: string) {
+  const source = await profiles.requestContext(qq, profileId, "gs", uid);
+  const accountId = genshinLoginAccount(source);
+  if (!accountId || source.role.uid !== uid || !source.role.region || !source.role.gameBiz) {
+    throw new ProfileError("invalid", "档案没有已验证的原神角色。");
+  }
+  return { source, accountId };
+}
+
+async function findRosterUid(profiles: PersonalRecordProfiles, qq: string, uid: string, signal: AbortSignal) {
+  for (const profileId of await profiles.listIds(qq)) {
+    signal.throwIfAborted();
+    try {
+      return await readRosterUid(profiles, qq, profileId, uid);
+    } catch (error) {
+      if (!(error instanceof ProfileError) || !["missing", "login-required", "role-missing", "invalid"].includes(error.code)) throw error;
+    }
+  }
+}
+
+export function createPersonalRecordQuery(profiles: PersonalRecordProfiles, client: Client, lockFile: AcquireRoleArchiveLock,
   lifecycle: AbortSignal, {
     archive = createGenshinPanelArchive(lockFile),
     theme = readPanelTheme,
@@ -59,19 +101,26 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
     if (context.isDelegated || (scene !== "private" && scene !== "group") || !user || !Number.isSafeInteger(user) || user < 1) {
       return "请在本人 QQ 会话中查询原神角色。";
     }
-    const { profileId, type } = command;
+    const { type } = command;
+    let { profileId } = command;
     const qq = String(user);
     if (profileId < 1 || profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
     const signal = context.privateCredentialSignal ? AbortSignal.any([lifecycle, context.privateCredentialSignal]) : lifecycle;
     const includeRoster = type === "roster";
     const includeExploration = type === "exploration";
+    const requestedUid = type === "roster" ? command.uid : undefined;
+    const rarity = type === "roster" ? command.star : undefined;
     try {
-      const { source, accountId } = await ownedGenshinRole(profiles, qq, profileId);
+      const owned = requestedUid ? await findRosterUid(profiles, qq, requestedUid, signal) : await ownedGenshinRole(profiles, qq, profileId);
+      if (!owned) return "只可查询本人已登录且已同步的原神 UID。";
+      const { source, accountId } = owned;
+      profileId = source.profileId;
       const { uid, region, gameBiz } = source.role;
       let revision = source.revision;
       async function verify() {
         signal.throwIfAborted();
-        const latest = await ownedGenshinRole(profiles, qq, profileId).catch(() => undefined);
+        const latest = await (requestedUid ? readRosterUid(profiles, qq, profileId, requestedUid) :
+          ownedGenshinRole(profiles, qq, profileId)).catch(() => undefined);
         if (latest?.accountId !== accountId || latest.source.revision !== revision || latest.source.role.uid !== uid ||
           latest.source.role.region !== region || latest.source.role.gameBiz !== gameBiz) {
           throw new ProfileError("changed", "原神角色档案已变化。");
@@ -126,13 +175,15 @@ export function createPersonalRecordQuery(profiles: GenshinRoleProfiles, client:
       } else if (official) {
         return "米游社没有返回原神角色列表。";
       }
-      const rows = snapshot && await buildPanelStatistics(snapshot, assets, signal, false);
-      if (!snapshot || !rows?.length) return "暂未获得原神角色数据，请使用 #更新面板 或刷新当前档案后重试。";
-      const gold = rows.reduce((total, { avatar, star, weapon }) => total +
+      const statistics = snapshot && await buildPanelStatistics(snapshot, assets, signal, false);
+      if (!snapshot || !statistics?.length) return "暂未获得原神角色数据，请使用 #更新面板 或刷新当前档案后重试。";
+      const rows = rarity ? statistics.filter(row => row.star === rarity) : statistics;
+      if (!rows.length) return `本档案暂无 ${rarity} 星原神角色。`;
+      const gold = statistics.reduce((total, { avatar, star, weapon }) => total +
         (star === 5 && avatar.id !== 10000005 && avatar.id !== 10000007 ? (avatar.cons ?? 0) + 1 : 0) +
         (weapon?.star === 5 ? weapon.affix ?? 0 : 0), 0);
-      const fiveStars = rows.filter(row => row.star === 5).length;
-      const options = { overview: summary, count: rows.length, fiveStars, gold,
+      const fiveStars = statistics.filter(row => row.star === 5).length;
+      const options = { overview: summary, count: statistics.length, fiveStars, gold,
         firstName: rows[0]?.avatar.name, inlineImageByteLimit: context.inlineImageByteLimit, signal };
       try {
         const { png } = await roster(snapshot, rows, assets, { ...options, page: 1, pages: 1 });

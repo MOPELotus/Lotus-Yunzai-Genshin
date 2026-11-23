@@ -38,9 +38,64 @@ test("legacy card remains native and actual hash-less/numbered commands follow o
   expect(matchPersonalRecord("＃角色查询 档案255")).toEqual({ profileId: 255, type: "roster" });
   for (const message of ["角色", "#角色卡片", "角色卡片"]) expect(matchPersonalRecord(message)).toEqual({ profileId: 1, type: "overview" });
   expect(matchPersonalRecord("#角色卡片 档案3")).toEqual({ profileId: 3, type: "overview" });
-  for (const message of ["#星铁角色", "#绝区零角色", "#角色统计", "#角色列表", "#角色排名", "#角色100000001", "#角色 @某人", "#喵喵角色"]) {
+  for (const message of ["#星铁角色", "#绝区零角色", "#角色统计", "#角色列表", "#角色排名", "#角色 @某人", "#喵喵角色",
+    "#刻晴图鉴", "#上期深渊100000001", "#100000001面板", "#UID100000001脉络", "#角色100000000000"]) {
     expect(matchPersonalRecord(message)).toBeUndefined();
   }
+});
+
+test("旧名册星级、UID 及其组合只命中原神名册", () => {
+  for (const term of ["四星角色", "4星查询", "星人物"]) {
+    expect(matchPersonalRecord(`#${term}`)).toEqual({ profileId: 1, type: "roster", star: 4 });
+  }
+  for (const term of ["五星角色", "5星查询角色", "55星人物"]) {
+    expect(matchPersonalRecord(`#${term}`)).toEqual({ profileId: 1, type: "roster", star: 5 });
+  }
+  expect(matchPersonalRecord("#五角色")).toEqual({ profileId: 1, type: "roster" });
+  expect(matchPersonalRecord("#原神四星角色 档案3")).toEqual({ profileId: 3, type: "roster", star: 4 });
+  for (const prefix of ["#角色", "#查询角色 ", "#查询|", "UID+", "#UID", "##uid++", "#", "#+", "#＋", "#|"]) {
+    expect(matchPersonalRecord(`${prefix}${role.uid}`)).toEqual({ profileId: 1, type: "roster", uid: role.uid });
+  }
+  expect(matchPersonalRecord("#五星角色 1800000001")).toEqual({ profileId: 1, type: "roster", star: 5, uid: "1800000001" });
+});
+
+test("显式 UID 只读取自己的已登录档案，星级仅裁名册，原选择和汇总保留", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "lotus-roster-uid-"));
+  try {
+    const save = async (qq: string, slot: number, selected: typeof role, roles: (typeof role)[]) => {
+      await writeFile(join(directory, slot === 1 ? `${qq}.yaml` : `${qq}-${slot}.yaml`), Bun.YAML.stringify({
+        user: { qq }, profile: { id: slot },
+        account: { ...cookie("900000001"), game_roles: { gs: roles }, current_uid: { gs: selected.uid } },
+      }));
+    };
+    const distinct = { ...role, uid: "100000003" };
+    await save("42", 1, distinct, [distinct]);
+    await save("42", 3, other, [role, other]);
+    const store = createProfileStore(directory);
+    const lisa = { id: 10000006, name: "丽莎", level: 80, rarity: 4, element: "Electro" };
+    const theme = { ...assets, characters: { ...assets.characters, [lisa.id]: { name: lisa.name, star: 4, elem: "electro" } } };
+    const requests: [number, string][] = [];
+    const displayed: string[][] = [];
+    const query = createPersonalRecordQuery(store, { async fetchGenshinPersonalRecord(source) {
+      requests.push([source.profileId, source.role.uid]);
+      return { overview: data, revision: source.revision, avatars: [{ base: furina }, { base: lisa }] };
+    } }, lockFile, new AbortController().signal, {
+      archive: { async readPanel() { return undefined; } }, theme: async () => theme,
+      async roster(_snapshot, rows, _theme, options) {
+        displayed.push(rows.map(row => row.avatar.name));
+        expect([options.count, options.fiveStars]).toEqual([2, 1]);
+        return { png: Buffer.from("image"), engine: {} as never };
+      },
+    });
+    expect(await query(matchPersonalRecord("#四星角色 100000001")!, context)).toMatchObject({ type: "image" });
+    expect(await query(matchPersonalRecord("#5星角色")!, context)).toMatchObject({ type: "image" });
+    expect(await query(matchPersonalRecord("#UID100000001")!, { ...context, user_id: 43 })).toContain("本人");
+    expect(await query(matchPersonalRecord("#＋100000001")!, { ...context, isDelegated: true })).toContain("本人");
+    expect(await query(matchPersonalRecord("#查询角色 100000099")!, context)).toContain("本人");
+    expect(requests).toEqual([[3, role.uid], [1, distinct.uid]]);
+    expect(displayed).toEqual([["丽莎"], ["芙宁娜"]]);
+    expect(await store.savedRole("42", 3, "gs")).toMatchObject({ uid: other.uid });
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
 test("native card keeps old metric count, descending regions, first eight and traveler names", () => {
