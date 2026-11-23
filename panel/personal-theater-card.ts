@@ -14,8 +14,8 @@ type Write = ReturnType<typeof typeset>["write"];
 // miao-plugin 2860761, resources/stat/role-summary.{html,css} and resources/common/tpl/avatar-card.html (MIT).
 const width = 970, left = 15, panelWidth = 940, teamWidth = 447, roundX = 30;
 const gold = "#d3bc8e", light = "#fff", muted = "#aaa", dark = "#333";
-const cardHeight = 187.5;
-const cardWidths: Readonly<Record<number, readonly number[]>> = {
+export const challengeAvatarCardHeight = 187.5;
+export const challengeAvatarCardWidths: Readonly<Record<number, readonly number[]>> = {
   1: [447], 2: [219, 219], 3: [219, 105, 105], 4: [105, 105, 105, 105],
 };
 const consColors = ["", "#5cbac2", "#339d61", "#3e95b9", "#3955b7", "#531ba9cf", "#ff5722"];
@@ -42,7 +42,9 @@ function trimPortrait(ctx: Drawing, player: Picture, x: number, y: number, radiu
   ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.stroke();
 }
 
-async function prepareAvatar(theme: PanelTheme, avatar: ChallengeAvatar, uid: string, details?: Json) {
+export async function prepareChallengeAvatar(theme: PanelTheme,
+  avatar: Pick<ChallengeAvatar, "id" | "name" | "rarity" | "level" | "type" | "constellation">, uid: string,
+  details?: Json, officialPortrait?: Picture, recordStats = false) {
   const meta = object(theme.characters[avatar.id ?? -1]);
   const name = text(meta?.name) || avatar.name;
   const abbr = text(meta?.abbr) || name || "—";
@@ -53,7 +55,8 @@ async function prepareAvatar(theme: PanelTheme, avatar: ChallengeAvatar, uid: st
   }
   const type = text(meta?.weapon).toLowerCase();
   const rarity = (owned?.star ?? avatar.rarity ?? meta?.star) === 4 ? 4 : 5;
-  const tag = avatar.type === 2 ? "试用" : avatar.type === 3 ? "助演" : (owned?.cons ?? avatar.constellation);
+  const tag = avatar.type === 2 ? "试用" : avatar.type === 3 ? "助演" : recordStats
+    ? (avatar.constellation ?? owned?.cons) : (owned?.cons ?? avatar.constellation);
   const sets = new Map<string, { count: number; star: number }>();
   for (const item of Object.values(owned?.artis ?? {})) {
     if (!item.set) continue;
@@ -78,12 +81,14 @@ async function prepareAvatar(theme: PanelTheme, avatar: ChallengeAvatar, uid: st
       theme.picture("meta-gs", "artifact", "imgs", set, "5.webp"))),
     genshinWeaponTypes.includes(type) ? item(`atk-${type}.webp`) : undefined,
   ]);
-  return { abbr, level: owned?.level ?? avatar.level, face, gacha, portraitBg, tag,
+  return { abbr, level: recordStats ? (avatar.level ?? owned?.level) : (owned?.level ?? avatar.level),
+    face: face ?? officialPortrait, gacha, portraitBg, tag,
     talents: owned ? panelTalentLevels(owned, meta) : undefined, weapon, weaponBg, refinement: owned?.weapon?.affix,
     artifact, artifactBg: artifactBg || undefined, setIcons, weaponType, equipmentKnown: Boolean(owned) };
 }
 
-function paintAvatar(ctx: Drawing, write: Write, whom: Awaited<ReturnType<typeof prepareAvatar>>, x: number, y: number, w: number) {
+export function paintChallengeAvatar(ctx: Drawing, write: Write, whom: Awaited<ReturnType<typeof prepareChallengeAvatar>>,
+  x: number, y: number, w: number) {
   const mini = w === 105, portraitWidth = mini ? w : w === 447 ? 219 : 114;
   const portraitHeight = mini ? w : 189;
   const infoX = mini ? x : x + portraitWidth + (w === 447 ? 7.5 : 0);
@@ -92,8 +97,8 @@ function paintAvatar(ctx: Drawing, write: Write, whom: Awaited<ReturnType<typeof
     ? "#d9767c" : inputTag === "助演" ? "#4889bf" : undefined;
   const badgeWidth = typeof inputTag === "string" ? 45 : 27;
   const level = `Lv${whom.level ?? "—"}`;
-  ctx.save(); clip(ctx, x, y, w, cardHeight, 10.5);
-  fill(ctx, "#e7e5d9", [x, y, w, cardHeight]);
+  ctx.save(); clip(ctx, x, y, w, challengeAvatarCardHeight, 10.5);
+  fill(ctx, "#e7e5d9", [x, y, w, challengeAvatarCardHeight]);
   ctx.save(); clip(ctx, x, y, portraitWidth, portraitHeight, mini ? 8 : 0);
   fill(ctx, "#536481", [x, y, portraitWidth, portraitHeight]);
   if (whom.portraitBg) ctx.drawImage(whom.portraitBg, x, y, portraitWidth, portraitHeight);
@@ -195,7 +200,7 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
     statImage("medal"), statImage("nomedal"), statImage(`role-record-heraldry-${(model.heraldry ?? 0) <= 6 ? model.heraldry ?? 0 : 0}`),
     statImage("role-splendour-crown"), officialPictures(model, loadArt, signal),
     Promise.all([...characters].map(async ([key, avatar]) => [key,
-      await prepareAvatar(theme, avatar, model.uid, rows.get(String(avatar.id)))] as const)),
+      await prepareChallengeAvatar(theme, avatar, model.uid, rows.get(String(avatar.id)))] as const)),
   ]);
   if (!bg || !footer || !texture || !medal || !missingMedal || !trophy || !crown) {
     throw new PersonalTheaterThemeError("原神剧诗原版资源不完整，请检查原神面板资源目录。");
@@ -205,7 +210,7 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
     const blessingColumns = Math.min(4, round.blessings.length + 1);
     const blessingHeight = 33 + Math.ceil((round.blessings.length + 1) / blessingColumns) * 69;
     const supportHeight = 77 + Math.max(0, Math.ceil(round.choices.length / 9) - 1) * 39;
-    const teamHeight = Math.max(1, Math.ceil(round.avatars.length / 4)) * cardHeight + (round.avatars.length > 4 ? 8 : 0);
+    const teamHeight = Math.max(1, Math.ceil(round.avatars.length / 4)) * challengeAvatarCardHeight + (round.avatars.length > 4 ? 8 : 0);
     return { blessingColumns, blessingHeight, supportHeight, height: Math.max(teamHeight, blessingHeight + supportHeight + 8) + 64 };
   });
   const roundsTop = 295;
@@ -304,9 +309,9 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
         const members = round.avatars.slice(offset, offset + 4);
         let x = roundX;
         members.forEach((avatar, slot) => {
-          const w = cardWidths[members.length]![slot]!;
+          const w = challengeAvatarCardWidths[members.length]![slot]!;
           const who = avatars.get(keyOf(avatar));
-          if (who) paintAvatar(ctx, write, who, x, rowY + Math.floor(offset / 4) * (cardHeight + 8), w);
+          if (who) paintChallengeAvatar(ctx, write, who, x, rowY + Math.floor(offset / 4) * (challengeAvatarCardHeight + 8), w);
           x += w + 9;
         });
       }

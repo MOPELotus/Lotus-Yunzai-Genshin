@@ -15,6 +15,7 @@ import { matchGenshinPanelHelp, renderGenshinPanelHelp } from "./panel/help-card
 import { createGenshinPayLogCommand, matchGenshinPayLog } from "./pay-log-command.ts";
 import { createGenshinBirthdayPhotoCommand, matchGenshinBirthdayPhoto } from "./birthday-photo.ts";
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
+import { createPersonalHardChallengeQuery, matchPersonalHardChallenge } from "./panel/personal-hard-challenge.ts";
 import { createGenshinTarotCards, matchGenshinTarotCards } from "./panel/tarot-cards.ts";
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
 import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createGenshinPanelQuery, matchLegacyGenshinExtremePanel } from "./panel/panel.ts";
@@ -147,6 +148,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const birthdayPhoto = createGenshinBirthdayPhotoCommand(profiles, client, signal);
   const equippedWeapons = createWeaponListQuery(profiles, client, signal);
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
+  const personalHardChallenge = createPersonalHardChallengeQuery(profiles, client, signal);
   const tarotCards = createGenshinTarotCards(tarotCardsDirectory, profiles, client, lockFile, signal);
   const fetchShowcase = createGenshinShowcaseClient();
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
@@ -305,6 +307,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinPayLog(message)) return ["[genshin] 充值记录"];
       if (matchGenshinBirthdayPhoto(message)) return ["[genshin] 生日留影"];
       if (matchGenshinTarotCards(message)) return ["[genshin] 月谕圣牌"];
+      if (matchPersonalHardChallenge(message)) return ["[genshin] 幽境危战", "[genshin] 角色查询"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
       if (achievements.explicit(context)) return [];
@@ -345,6 +348,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       const publicPanel = matchGenshinShowcase(context.normalizedMessage);
       if (publicPanel && (typeof publicPanel === "string" || !publicPanel.characterName ||
           await resolveGenshinCharacter(publicPanel.characterName))) return showcase(publicPanel, context);
+      const hardChallenge = matchPersonalHardChallenge(context.normalizedMessage);
+      if (hardChallenge) return personalHardChallenge(hardChallenge, context);
       const challenge = matchPersonalChallenge(context.normalizedMessage);
       if (challenge) return personalChallenge(challenge, context);
       const tarot = matchGenshinTarotCards(context.normalizedMessage);
