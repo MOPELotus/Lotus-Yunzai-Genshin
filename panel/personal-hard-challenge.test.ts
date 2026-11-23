@@ -31,6 +31,8 @@ function profile(current = uid) {
 
 test("aliases select exactly one personal period and mode without intercepting Atlas or another UID", () => {
   expect(matchPersonalHardChallenge("#幽境危战")).toEqual({ scheduleType: 1, mode: "best", profileId: 1 });
+  expect(matchPersonalHardChallenge("#上期幽境危战组队数据2")).toEqual({ scheduleType: 2, mode: "mp", profileId: 2 });
+  expect(matchPersonalHardChallenge("#当期危战单挑数据2")).toEqual({ scheduleType: 1, mode: "single", profileId: 2 });
   expect(matchPersonalHardChallenge("＃原神上期幽境合作数据 档案3")).toEqual({ scheduleType: 2, mode: "mp", profileId: 3 });
   expect(matchPersonalHardChallenge("本期危战单挑 3数据")).toEqual({ scheduleType: 1, mode: "single", profileId: 3 });
   expect(matchPersonalHardChallenge("#原神往期危战最佳")).toEqual({ scheduleType: 2, mode: "best", profileId: 1 });

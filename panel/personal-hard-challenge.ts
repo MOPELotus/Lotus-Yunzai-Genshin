@@ -8,7 +8,7 @@ import type { GroupRankContext } from "./group-rank.ts";
 import type { RecordPersonalStygianScore } from "./stygian-personal-score.ts";
 import type { Json } from "./model.ts";
 
-const command = /^#?(?:原神)?(?:(本期|上期|往期))?(?:幽境危战|幽境|危战)(单人|单挑|组队|多人|合作|最佳)?(?:\s*(\d{1,3})(?:数据)?|(?:数据)?(?:\s*(?:档案|profile)\s*(\d{1,3}))?)$/iu;
+const command = /^#?(?:原神)?(?:(本期|当期|上期|往期))?(?:幽境危战|幽境|危战)(单人|单挑|组队|多人|合作|最佳)?(?:\s*(\d{1,3})(?:数据)?|(?:数据)?(?:\s*(?:(?:档案|profile)\s*)?(\d{1,3}))?)$/iu;
 type Command = HardChallengeSelection & { readonly profileId: number };
 
 export function matchPersonalHardChallenge(message: string): Command | undefined {
