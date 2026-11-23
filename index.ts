@@ -58,6 +58,7 @@ import { buildGenshinGachaDetail } from "./gacha-detail.ts";
 import { renderGenshinGachaDetail } from "./gacha-detail-card.ts";
 import { genshinGachaThemeDirectory, readGenshinGachaSources, readGenshinUigfItems } from "./gacha-detail-source.ts";
 import { createGenshinGachaImport, gachaImportCommand } from "./gacha-import.ts";
+import { createGenshinPublicStatistics } from "./public-statistics.ts";
 import { createGenshinPublicPoolQuery } from "./gacha-pool-command.ts";
 import { createGenshinGrowQuery } from "./grow/command.ts";
 import { createGenshinBlueprintQuery, matchGenshinBlueprint } from "./grow/blueprint.ts";
@@ -206,6 +207,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const externalUpdate = createGachaUpdater((qq, profileId) => sync.syncExternal(qq, profileId, { signal }));
   const importGacha = createGenshinGachaImport(profiles, history, signal);
   const publicPool = createGenshinPublicPoolQuery(signal);
+  const publicStatistics = createGenshinPublicStatistics(signal);
   const grow = createGenshinGrowQuery(profiles, lockFile, signal, { client });
   const blueprint = createGenshinBlueprintQuery(profiles, client, signal);
 
@@ -454,6 +456,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (replica) return blueprint(replica, context);
       const growth = await grow(context.normalizedMessage, context);
       if (growth !== undefined) return growth;
+      const publicStats = await publicStatistics(context.normalizedMessage, context.inlineImageByteLimit);
+      if (publicStats !== undefined) return publicStats;
       const pool = await publicPool(context.normalizedMessage);
       if (pool !== undefined) return pool;
       const rankStats = await queryRankStats(context.normalizedMessage, signal);
