@@ -12,7 +12,7 @@ import { characterDamageRules } from "./miao/damage/character-rules.ts";
 import { artifactStatRecord, characterLevelBreakpoints, object, propertyLabels, talentKeys, text,
   type DisplayedTalentLevels, type Json, type PanelAvatar, type PanelProperty } from "./model.ts";
 import { panelTalentLevels, travelerIds } from "./talent-levels.ts";
-import { damageSettings } from "./lolomi/config.ts";
+import { damageSettings, type DamageSettings } from "./lolomi/config.ts";
 import { nativeRules } from "./lolomi/sources.ts";
 import { miaoWithNativeRule, nativeArtifactEffects, nativeAttr, nativeCalc, nativeWeaponEffects,
   readNativeRule, readNativeTables } from "./lolomi/native.ts";
@@ -314,7 +314,7 @@ const resultValue = (value: unknown): number | string | undefined => {
   return typeof value === "string" && /^\d+(?:\.\d+)?%$/u.test(value) ? value : undefined;
 };
 
-async function panelInputs(avatar: PanelAvatar, theme: PanelTheme, selectEngine = false) {
+async function panelInputs(avatar: PanelAvatar, theme: PanelTheme, engine?: DamageSettings["engineMode"]) {
   if (!Object.hasOwn(elementNames, avatar.elem)) throw new Unavailable("面板缺少有效的角色元素。");
   const cons = avatar.cons;
   const equippedWeapon = avatar.weapon;
@@ -322,12 +322,13 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme, selectEngine 
     throw new Unavailable("伤害估算需要武器精炼、命座和圣遗物词条，请先更新面板。");
   }
   const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+  const selectEngine = engine !== undefined;
   const [catalog, selected] = await Promise.all([
     selectEngine ? readNativeTables(name, avatar) : undefined,
     selectEngine && damageSettings.lolomicalc ? readNativeRule(name) : undefined,
   ]);
-  const native = !!catalog && damageSettings.engineMode !== "miao";
-  if (selectEngine && damageSettings.engineMode === "lolomi" && !native) {
+  const native = !!catalog && engine !== "miao";
+  if (engine === "lolomi" && !native) {
     throw new Unavailable("指定伤害引擎没有当前角色的数值表。");
   }
   const inherited = Object.hasOwn(formulas, name) ? formulas[name]!() : undefined;
@@ -453,11 +454,31 @@ export async function readChangedPanelProperties(avatar: PanelAvatar, theme: Pan
   }
 }
 
+interface EstimateOptions {
+  readonly includeComparison?: boolean;
+  readonly ranking?: boolean;
+  readonly displayedTalent?: DisplayedTalentLevels;
+  readonly useMiao?: boolean;
+}
+
 export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme, row?: number,
-  enemyLevel = genshinDamageEnemyLevel, { includeComparison = true, ranking = false, displayedTalent, useMiao = false }:
-    { readonly includeComparison?: boolean; readonly ranking?: boolean; readonly displayedTalent?: DisplayedTalentLevels; readonly useMiao?: boolean } = {}): Promise<DamageEstimate> {
+  enemyLevel = genshinDamageEnemyLevel, options: EstimateOptions = {}): Promise<DamageEstimate> {
+  return estimateWithEngine(avatar, theme, row, enemyLevel, options, options.useMiao ? undefined : damageSettings.engineMode);
+}
+
+async function estimateWithEngine(avatar: PanelAvatar, theme: PanelTheme, row: number | undefined, enemyLevel: number,
+  options: EstimateOptions, engine: DamageSettings["engineMode"] | undefined): Promise<DamageEstimate> {
+  const { includeComparison = true, ranking = false, displayedTalent } = options;
+  let tryMiao = engine === "auto";
+  const retry = async () => {
+    if (!tryMiao) return;
+    const result = await estimateWithEngine(avatar, theme, row, enemyLevel, options, "miao").catch(() => undefined);
+    if (result && "rows" in result) return result;
+  };
   try {
-    const { cons, rule, tables, gear, weapon, allBuffs, starting, native, catalog, usesNativeRule } = await panelInputs(avatar, theme, !useMiao);
+    const { cons, rule, tables, gear, weapon, allBuffs, starting, native, catalog, usesNativeRule } =
+      await panelInputs(avatar, theme, engine);
+    tryMiao &&= native;
     const talentData = native && catalog ? catalog.detail : tables.detail;
     const archiveMeta = object(theme.characters[avatar.id]);
     const talent = talents(avatar, talentData, archiveMeta, displayedTalent, !!native);
@@ -516,7 +537,9 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
     if (row !== undefined && (row < 1 || row > titles.length)) {
       return { message: `序号输入错误：${avatar.name}最多只支持${titles.length}种伤害计算哦。` };
     }
-    if (!titles.some(entry => !entry.unavailable)) return { message: "旧伤害规则缺少该面板所需的倍率或条件数据。" };
+    if (!titles.some(entry => !entry.unavailable)) {
+      return await retry() ?? { message: "旧伤害规则缺少该面板所需的倍率或条件数据。" };
+    }
     const selected = row === undefined ? (preferred < 0 ? titles.findIndex(entry => !entry.unavailable) : preferred) : row - 1;
     let comparison: DamageComparison | undefined;
     const selectedScenario = scenarios[selected];
@@ -588,6 +611,8 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
       .filter(name => name && name !== "喵喵");
     return { rows: titles, selected, enemyLevel, enemyName: text(rule.enemyName) || "小宝", ruleAuthors, comparison, constellation };
   } catch (error) {
+    const fallback = await retry();
+    if (fallback) return fallback;
     if (error instanceof Unavailable) return { message: error.message };
     throw error;
   }

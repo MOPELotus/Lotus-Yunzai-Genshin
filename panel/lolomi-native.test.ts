@@ -1,5 +1,6 @@
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
 import { estimatePanelDamage } from "./damage.ts";
+import { nativeCalc } from "./lolomi/native.ts";
 import type { PanelAvatar } from "./model.ts";
 import type { PanelTheme } from "./theme.ts";
 
@@ -33,4 +34,19 @@ test("原神固定新反应按原规则返回数值", async () => {
   const model = await estimatePanelDamage(actor, theme, undefined, 103, { includeComparison: false });
   if (!("rows" in model)) throw new Error(model.message);
   expect(model.rows.some(row => row.title.includes("星超导") && typeof row.average === "number" && row.average > 0)).toBe(true);
+});
+
+test("自动引擎在原生伤害场景全部失败时用喵喵执行同一规则", async () => {
+  const getDamage = spyOn(nativeCalc, "getDmgFn").mockImplementation(() => { throw new Error("合成原生场景失败"); });
+  try {
+    const model = await estimatePanelDamage(ayaka, theme, 2, 103, { includeComparison: false });
+    if (!("rows" in model)) throw new Error(model.message);
+    expect(getDamage).toHaveBeenCalled();
+    expect(model.selected).toBe(1);
+    expect(model.rows[1]).toMatchObject({ title: "「神里流·冰华」伤害", crit: expect.any(Number), average: expect.any(Number) });
+    expect(model.ruleAuthors).toEqual(["洛洛米"]);
+    expect(model.constellation).toBeUndefined();
+  } finally {
+    getDamage.mockRestore();
+  }
 });
