@@ -7,6 +7,7 @@ import { createGenshinMonthlyTask, genshinMonthlyTaskCommand } from "./monthly-t
 import { createGenshinStatisticsQuery, matchGenshinStatistics } from "./monthly-statistics-command.ts";
 import { createGenshinMonthlyQuery, matchGenshinMonthly } from "./monthly-command.ts";
 import { createDamageSettingsCommand, matchDamageSettingsCommand } from "./panel/lolomi/settings-command.ts";
+import { createGenshinPanelExport, matchGenshinPanelExport } from "./panel/panel-file.ts";
 import { createPanelImageCommands, panelImageCommand } from "./panel/image-commands.ts";
 import { createAchievementCommand } from "./achievement-command.ts";
 import { matchGenshinCommission } from "./commission-command.ts";
@@ -146,6 +147,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const monthlyStatistics = createGenshinStatisticsQuery(profiles, client, monthlyArchive, signal);
   const sevenSaintsDecks = createSevenSaintsDeckQuery(profiles, client, signal);
   const panelArchive = createGenshinPanelArchive(lockFile);
+  const exportPanel = createGenshinPanelExport(profiles, panelArchive, signal, readPanelTheme);
   const avatarCards = createGenshinAvatarCards(profiles, client, lockFile, signal, { archive: panelArchive });
   const panelPreferences = createGenshinPanelDamagePreferences(lockFile, signal);
   const teamDamage = createTeamDamageQuery(profiles, panelArchive, signal);
@@ -311,6 +313,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchLegacyGenshinExtremePanel(message)) return ["[genshin] 角色面板"];
       if (isAvatarOriginal(message)) return ["[genshin] 角色卡片"];
       if (matchGenshinAvatarCard(message)) return ["[genshin] 角色卡片"];
+      if (matchGenshinPanelExport(message)) return ["[genshin] 角色面板"];
       if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       if (matchPublicDamageRank(message, "gs")) return ["[genshin] 角色面板"];
@@ -338,6 +341,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return [];
     },
     async fallback(_message: string, context: GachaContext) {
+      const panelExportMatch = matchGenshinPanelExport(context.normalizedMessage);
+      if (panelExportMatch) return exportPanel(panelExportMatch, context);
       const aliases = matchGameCharacterAliasCommand(context.normalizedMessage);
       if (aliases && aliases.game !== "sr") return characterAliases(aliases, context);
       if (matchLegacyGenshinExtremePanel(context.normalizedMessage)) return panel(context.normalizedMessage, context);
