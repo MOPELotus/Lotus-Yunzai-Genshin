@@ -8,6 +8,7 @@ import { createGenshinMonthlyQuery, matchGenshinMonthly } from "./monthly-comman
 import { createDamageSettingsCommand, matchDamageSettingsCommand } from "./panel/lolomi/settings-command.ts";
 import { createPanelImageCommands, panelImageCommand } from "./panel/image-commands.ts";
 import { createAchievementCommand } from "./achievement-command.ts";
+import { matchGenshinCommission } from "./commission-command.ts";
 import { queryRankStats, resolveGenshinCharacter } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
@@ -308,6 +309,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinBirthdayPhoto(message)) return ["[genshin] 生日留影"];
       if (matchGenshinTarotCards(message)) return ["[genshin] 月谕圣牌"];
       if (matchPersonalHardChallenge(message)) return ["[genshin] 幽境危战", "[genshin] 角色查询"];
+      if (matchGenshinCommission(message) !== undefined) return ["[genshin] 委托查询"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
       if (achievements.explicit(context)) return [];
@@ -366,6 +368,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
         const achievement = await achievements.main(context);
         if (achievement !== undefined) return achievement;
       }
+      const commission = matchGenshinCommission(context.normalizedMessage);
+      if (commission !== undefined) return commission;
       const replica = matchGenshinBlueprint(context.normalizedMessage);
       if (replica) return blueprint(replica, context);
       const growth = await grow(context.normalizedMessage, context);
