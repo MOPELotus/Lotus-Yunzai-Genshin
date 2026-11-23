@@ -2,7 +2,7 @@ import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { Canvas } from "skia-canvas";
 import { renderGenshinCard } from "../card-render.ts";
 import type { EquipmentNotice } from "./card.ts";
-import type { DamageComparison, DamageEstimate, DamageRow } from "./damage.ts";
+import { damageTrialLabel, type DamageComparison, type DamageEstimate, type DamageRow } from "./damage.ts";
 import type { PanelAvatar, PanelSnapshot } from "./model.ts";
 import { originalProfileData } from "./original-profile.ts";
 import {
@@ -91,11 +91,18 @@ function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined,
       grid(ctx, y, 40, combined ? [x, columns[1]!, columns[2]!, x + width] : columns);
       write(index + 1, columns[1]! - 15, y + 26, 15, { color: selected ? "#ffe699" : gold, align: "right" });
       fit(ctx, writer, row.title, columns[2]! - 15, y + 26, 15, 178, "right", selected ? "#ffe699" : gold);
-      if (combined) fit(ctx, writer, row.unavailable ? "数据不全" : display(row.average, row.unit), (columns[2]! + columns[4]!) / 2,
-        y + 27, 18, 250, "center", row.unavailable ? muted : bright);
+      const damageCell = (key: "average" | "crit", left: number, maxWidth: number) => {
+        const delta = row.trial?.[key];
+        const change = damageTrialLabel(delta);
+        fit(ctx, writer, row.unavailable ? "数据不全" : display(row[key], row.unit), left,
+          y + (change ? 18 : 27), 18, maxWidth, "center", row.unavailable ? muted : bright);
+        if (delta !== undefined && change) fit(ctx, writer, change, left, y + 35, 13, maxWidth, "center",
+          delta === 0 ? muted : delta > 0 ? "#9de4b3" : "#ffad9e");
+      };
+      if (combined) damageCell("average", (columns[2]! + columns[4]!) / 2, 250);
       else {
-        fit(ctx, writer, display(row.crit, row.unit), center(2), y + 27, 18, 128, "center");
-        fit(ctx, writer, display(row.average, row.unit), center(3), y + 27, 18, 128, "center");
+        damageCell("crit", center(2), 128);
+        damageCell("average", center(3), 128);
       }
     });
     const footer = top + height - 35;

@@ -80,6 +80,7 @@ export type DamageRow = {
   readonly unit?: "%";
   readonly unavailable?: true;
   readonly buffs: readonly string[];
+  readonly trial?: { readonly average?: number; readonly crit?: number };
 };
 export interface DamageComparison {
   readonly axes: readonly string[];
@@ -94,7 +95,7 @@ export interface DamageSummary {
   readonly constellation?: readonly DamageRow[];
 }
 export type DamageEstimate =
-  | (DamageSummary & { readonly selected: number; readonly comparison?: DamageComparison })
+  | (DamageSummary & { readonly selected: number; readonly comparison?: DamageComparison; readonly engine?: "lolomi" | "miao" })
   | { readonly message: string };
 
 class Unavailable extends Error {}
@@ -466,6 +467,45 @@ export async function estimatePanelDamage(avatar: PanelAvatar, theme: PanelTheme
   return estimateWithEngine(avatar, theme, row, enemyLevel, options, options.useMiao ? undefined : damageSettings.engineMode);
 }
 
+function trialPercent(current: DamageRow["average"], baseline: DamageRow["average"]) {
+  const percentLabel = /^\d+(?:\.\d+)?%$/u;
+  if (typeof current === "string" && typeof baseline === "string" && percentLabel.test(current) && percentLabel.test(baseline)) {
+    current = Number(current.slice(0, -1));
+    baseline = Number(baseline.slice(0, -1));
+  }
+  if (typeof current !== "number" || typeof baseline !== "number" || baseline <= 0) return;
+  const percent = (current - baseline) / baseline * 100;
+  if (Number.isFinite(percent)) return Number(percent.toFixed(1));
+}
+
+export function damageTrialLabel(percent: number | undefined) {
+  if (percent === undefined) return;
+  const direction = percent > 0 ? "↑ " : percent < 0 ? "↓ " : "";
+  return `${direction}${Math.abs(percent).toFixed(1)}%`;
+}
+
+export async function estimateTrialDamage(original: PanelAvatar, avatar: PanelAvatar, theme: PanelTheme, row?: number,
+  enemyLevel = genshinDamageEnemyLevel, options: EstimateOptions = {}): Promise<DamageEstimate> {
+  const current = await estimatePanelDamage(avatar, theme, row, enemyLevel, options);
+  if (!("rows" in current)) return current;
+  const baseline = await estimateWithEngine(original, theme, undefined, enemyLevel,
+    { ...options, displayedTalent: undefined, includeComparison: false }, options.useMiao ? undefined : current.engine);
+  if (!("rows" in baseline) || baseline.engine !== current.engine || baseline.enemyName !== current.enemyName) return current;
+  const byTitle = Map.groupBy(baseline.rows, value => value.title);
+  const currentByTitle = Map.groupBy(current.rows, value => value.title);
+  const occurrences = new Map<string, number>();
+  const rows = current.rows.map(value => {
+    const next = occurrences.get(value.title) ?? 0;
+    occurrences.set(value.title, next + 1);
+    const matches = byTitle.get(value.title);
+    const before = matches?.length === currentByTitle.get(value.title)?.length ? matches?.[next] : undefined;
+    if (!before || before.unavailable || value.unavailable || before.unit !== value.unit) return value;
+    const average = trialPercent(value.average, before.average), crit = trialPercent(value.crit, before.crit);
+    return average === undefined && crit === undefined ? value : { ...value, trial: { average, crit } };
+  });
+  return { ...current, rows };
+}
+
 async function estimateWithEngine(avatar: PanelAvatar, theme: PanelTheme, row: number | undefined, enemyLevel: number,
   options: EstimateOptions, engine: DamageSettings["engineMode"] | undefined): Promise<DamageEstimate> {
   const { includeComparison = true, ranking = false, displayedTalent } = options;
@@ -609,7 +649,8 @@ async function estimateWithEngine(avatar: PanelAvatar, theme: PanelTheme, row: n
     }
     const ruleAuthors = text(rule.createdBy || (usesNativeRule ? "洛洛米" : "")).split("&").map(name => name.trim())
       .filter(name => name && name !== "喵喵");
-    return { rows: titles, selected, enemyLevel, enemyName: text(rule.enemyName) || "小宝", ruleAuthors, comparison, constellation };
+    return { rows: titles, selected, enemyLevel, enemyName: text(rule.enemyName) || "小宝", ruleAuthors, comparison, constellation,
+      engine: native ? "lolomi" : "miao" };
   } catch (error) {
     const fallback = await retry();
     if (fallback) return fallback;

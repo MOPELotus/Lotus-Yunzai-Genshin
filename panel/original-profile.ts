@@ -80,7 +80,7 @@ function formatDamage(damage: DamageSummary | undefined, number: FormatNumber) {
   return {
     enemyLv: damage?.enemyLevel, enemyName: damage?.enemyName, createdBy: damage?.ruleAuthors.join("、"),
     dmgData: damage && [...damage.rows, ...damage.constellation ?? []].filter(row => !row.unavailable).map(row => ({
-      title: row.title, dmg: rowNumber(row.crit), avg: rowNumber(row.average), unit: row.unit,
+      title: row.title, dmg: rowNumber(row.crit), avg: rowNumber(row.average), unit: row.unit, trial: row.trial,
     })),
   };
 }

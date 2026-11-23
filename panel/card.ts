@@ -1,6 +1,6 @@
 import { renderGenshinCard } from "../card-render.ts";
 import { renderArtifactCard } from "./artifact-card.ts";
-import type { DamageRow, DamageSummary } from "./damage.ts";
+import { damageTrialLabel, type DamageRow, type DamageSummary } from "./damage.ts";
 import type { DailyMaterialGroup } from "./daily-materials.ts";
 import type { PanelStatisticRow } from "./statistics.ts";
 import { renderTrainingStatistics } from "./training-statistics-card.ts";
@@ -221,14 +221,21 @@ function drawDamageSummary(ctx: Context, model: DamageSummary, texture: Picture 
     ctx.fillRect(x, top, width, 1);
     ctx.fillRect(x + typeWidth, top, 1, summaryRowHeight);
     label(ctx, row.title, x + typeWidth - 15, top + 26, 15, "#d3bc8e", typeWidth - 21, "right");
+    const damageCell = (key: "average" | "crit", left: number, maxWidth: number) => {
+      const delta = row.trial?.[key];
+      const change = damageTrialLabel(delta);
+      label(ctx, row.unavailable ? "数据不全" : displayDamage(row[key], row.unit), left,
+        top + (change ? 18 : 27), 18, row.unavailable ? "#cecad7" : "#fff", maxWidth, "center");
+      if (delta !== undefined && change) label(ctx, change, left, top + 35, 13,
+        delta === 0 ? "#cecad7" : delta > 0 ? "#9de4b3" : "#ffad9e", maxWidth, "center");
+    };
     if (row.crit === undefined) {
-      label(ctx, row.unavailable ? "数据不全" : displayDamage(row.average, row.unit), x + typeWidth + valueWidth,
-        top + 27, 18, row.unavailable ? "#cecad7" : "#fff", valueWidth * 2 - 20, "center");
+      damageCell("average", x + typeWidth + valueWidth, valueWidth * 2 - 20);
     } else {
       ctx.fillStyle = "#ffffff36";
       ctx.fillRect(x + typeWidth + valueWidth, top, 1, summaryRowHeight);
-      label(ctx, displayDamage(row.crit, row.unit), critCenter, top + 27, 18, "#fff", valueWidth - 15, "center");
-      label(ctx, displayDamage(row.average, row.unit), averageCenter, top + 27, 18, "#fff", valueWidth - 15, "center");
+      damageCell("crit", critCenter, valueWidth - 15);
+      damageCell("average", averageCenter, valueWidth - 15);
     }
   });
   ctx.fillStyle = "#0008";

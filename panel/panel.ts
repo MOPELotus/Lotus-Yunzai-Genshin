@@ -14,7 +14,7 @@ import { matchBareEquipment, matchCharacterLevelChange, matchConstellationChange
   matchGenshinPanelDiscard, object, officialPanel, propertyLabels, readPanel,
   matchCharacterLevelCombination, matchConstellationTalent, matchNamedWeaponArtifacts, matchTalentArtifacts, matchTalentChange, matchTalentWeapon, selectAvatar, text,
   type PanelAvatar, type PanelCatalog, type PanelCommand, type PanelSnapshot } from "./model.ts";
-import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
+import { damageTrialLabel, estimatePanelDamage, estimateTrialDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
 import { createDailyMaterialRefresh, type DailyMaterialClient } from "./daily-material-refresh.ts";
 import { buildDailyMaterials, paginateDailyMaterials } from "./daily-materials.ts";
@@ -383,9 +383,10 @@ export function createGenshinPanelQuery(
         const enemyLevel = mode === "damage" || mode === "profile"
           ? user && Number.isSafeInteger(user) && user > 0 ? await preferences.level(String(user)) : undefined
           : undefined;
-        const model = mode === "damage" || mode === "profile" ? await estimatePanelDamage(
-          avatar, assets, command.damageRow, enemyLevel, { includeComparison: mode === "damage" },
-        ) : undefined;
+        const estimateOptions = { includeComparison: mode === "damage" };
+        const model = mode === "damage" || mode === "profile" ? changed
+          ? await estimateTrialDamage(original, avatar, assets, command.damageRow, enemyLevel, estimateOptions)
+          : await estimatePanelDamage(avatar, assets, command.damageRow, enemyLevel, estimateOptions) : undefined;
         signal.throwIfAborted();
         let png: Uint8Array;
         if (mode === "damage") {
@@ -768,7 +769,7 @@ export function createGenshinPanelQuery(
         if ("message" in replacement) return replacement.message;
         const avatar = replacement.avatar;
         const level = await preferences.level(qq);
-        const estimate = await estimatePanelDamage(avatar, assets, command.damageRow, level,
+        const estimate = await estimateTrialDamage(original, avatar, assets, command.damageRow, level,
           { includeComparison: mode === "damage", displayedTalent });
         const change = { command: text(message), equipped: replacement.equipped, constellation: constellation !== undefined,
           displayedTalent, characterLevel: characterLevel !== undefined,
@@ -783,9 +784,14 @@ export function createGenshinPanelQuery(
           } catch {}
           await verify();
           if (png) return { type: "image", file: png };
-          return [title, ...estimate.rows.map(row =>
-            `${row.title} · ${row.unavailable ? "数据不全" : [row.average !== undefined && `期望 ${displayNumber(row.average)}`,
-              row.crit !== undefined && `暴击 ${displayNumber(row.crit)}`].filter(Boolean).join(" / ")}`)].join("\n");
+          return [title, ...estimate.rows.map(row => {
+            const values = ([['average', '期望'], ['crit', '暴击']] as const).flatMap(([key, label]) => {
+              if (row[key] === undefined) return [];
+              const delta = damageTrialLabel(row.trial?.[key]);
+              return [`${label} ${displayNumber(row[key])}${row.unit ?? ""}${delta ? `（${delta}）` : ""}`];
+            });
+            return `${row.title} · ${row.unavailable ? "数据不全" : values.join(" / ")}`;
+          })].join("\n");
         }
         const properties = await readChangedPanelProperties(avatar, assets);
         const projected = { ...avatar, _lotus: { properties } };

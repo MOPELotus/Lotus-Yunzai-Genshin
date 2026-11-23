@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { nativeImageRasterScale } from "@lotus-yunzai/skia";
 import { Canvas, FontLibrary } from "skia-canvas";
 import { renderGenshinCard, renderGenshinCardForChat } from "../card-render.ts";
+import { damageTrialLabel } from "./damage.ts";
 import type { originalProfileData } from "./original-profile.ts";
 import type { PanelTheme, Picture } from "./theme.ts";
 
@@ -460,8 +461,15 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
         for (const x of [10, 240, 424]) fill(ctx, "#fff4", [x, y, .65, 40]);
         fill(ctx, "#fff4", [10, y, 575, .65]);
         write(row.title, 225, y + 26, 15, { align: "right", color: gold, maxWidth: 210 });
-        if (row.dmg) write(row.dmg + (row.unit ?? ""), 332, y + 27, 18, { align: "center" });
-        write(row.avg + (row.unit ?? ""), row.dmg ? 504.5 : 412.5, y + 27, 18, { align: "center" });
+        const damageCell = (value: string, left: number, delta: number | undefined) => {
+          const change = damageTrialLabel(delta);
+          write(value + (row.unit ?? ""), left, y + (change ? 18 : 27), 18, { align: "center" });
+          if (delta !== undefined && change) write(change, left, y + 35, 13, {
+            align: "center", color: delta === 0 ? "#aaa" : delta > 0 ? "#9de4b3" : "#ffad9e",
+          });
+        };
+        if (row.dmg) damageCell(row.dmg, 332, row.trial?.crit);
+        damageCell(row.avg, row.dmg ? 504.5 : 412.5, row.trial?.average);
       });
       const y = damageTop + damageHeight - 35;
       fill(ctx, "#0008", [10, y, 575, 35]);
