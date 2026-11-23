@@ -62,7 +62,7 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
           assets = await theme();
           const snapshot = await archive.readPanel(qq, uid, assets, false, accountId);
           if (!snapshot) return "当前档案没有原神角色面板，请先使用 #更新面板。";
-          team = selectTeam(command.tokens, snapshot);
+          team = selectTeam(command.tokens, snapshot, assets.customAliases);
           ({ members, payload } = await buildTeamDamagePayload(uid, region, team, assets));
         } catch (error) {
           if (error instanceof TypeError) return error.message;

@@ -145,15 +145,17 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
     }
     if (cover) ctx.drawImage(cover, 0, -25, width, width * cover.height / cover.width);
     ctx.save();
-    ctx.shadowColor = "#0008"; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
-    drawText(ctx, "原神队伍伤害", 35, 30, 34, "#fff", "left", titleFont);
-    drawText(ctx, `UID ${card.uid} · 档案 ${card.profileId}${totalPages > 1 ? ` · ${pageNumber}/${totalPages}` : ""}`, 35, 75, 16, "#fff");
+    if (back || cover) { ctx.shadowColor = "#0008"; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1; }
+    const titleColor = back || cover ? "#fff" : "#252521";
+    drawText(ctx, "原神队伍伤害", 35, 30, 34, titleColor, "left", titleFont);
+    drawText(ctx, `UID ${card.uid} · 档案 ${card.profileId}${totalPages > 1 ? ` · ${pageNumber}/${totalPages}` : ""}`, 35, 75, 16, titleColor);
     ctx.restore();
     drawings.forEach(draw => draw(ctx));
     ctx.save();
-    ctx.shadowColor = "#000"; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
-    drawText(ctx, "数据来源：提瓦特小助手", width / 2, cursor + 7, 12, "#fff", "center");
-    drawText(ctx, "Lotus-Yunzai", width / 2, cursor + 25, 12, "#fff", "center");
+    if (back) { ctx.shadowColor = "#000"; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1; }
+    const footerColor = back ? "#fff" : "#35342f";
+    drawText(ctx, "数据来源：提瓦特小助手", width / 2, cursor + 7, 12, footerColor, "center");
+    drawText(ctx, "Lotus-Yunzai", width / 2, cursor + 25, 12, footerColor, "center");
     ctx.restore();
   }, mode, { displayWidth: 720 });
 }

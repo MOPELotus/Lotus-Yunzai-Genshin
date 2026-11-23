@@ -48,6 +48,10 @@ test("original team aliases, adjacent profile and same-role UID syntax, with dis
   expect(parseTeamDamage("#星铁队伍伤害")).toBeUndefined();
   const snapshot = readPanel(uid, stored, theme)!;
   expect(selectTeam([], snapshot).map(avatar => avatar.id)).toEqual([furina]);
+  const aliases = new Map([["枫丹茶会的水神", "芙宁娜"]]);
+  expect(selectTeam(["枫丹茶会的水神"], snapshot, aliases).map(avatar => avatar.id)).toEqual([furina]);
+  expect(() => selectTeam(["芙芙", "枫丹茶会的水神"], snapshot, aliases)).toThrow("只能");
+  expect(() => selectTeam(["枫丹茶会的水神万叶"], snapshot, aliases)).toThrow("枫原万叶 的面板");
   expect(() => selectTeam(["芙芙旅行者"], snapshot)).toThrow(/旅行者暂不支持/);
   expect(() => selectTeam(["芙芙万叶"], snapshot)).toThrow(/枫原万叶 的面板/);
   const lineup: PanelSnapshot = { ...snapshot, avatars: Object.fromEntries(
@@ -132,6 +136,7 @@ test("same QQ and selected profile, notice precedes release, third-party data is
     } };
     expect(await query("#队伍伤害帮助", scene)).toContain("提瓦特小助手");
     expect(await query(`#队伍伤害3 ${otherUid} 芙芙`, scene)).toContain("UID 与当前档案");
+    expect(await query("#队伍伤害3芙宁娜 芙芙", scene)).toContain("只能");
     expect(await query("#队伍伤害3芙芙", { ...scene, user_id: 43 })).toContain("先登录档案 3");
     expect(await query("#队伍伤害3芙芙", { ...scene, isDelegated: true })).toContain("本人 QQ");
     expect(await query("#队伍伤害3芙芙", { ...scene, reply: () => false })).toContain("提示未能送出");

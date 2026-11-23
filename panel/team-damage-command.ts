@@ -1,4 +1,5 @@
 import { gameCommandProfileId, MAX_PROFILE_ID } from "@lotus-yunzai/account";
+import { characterAliasKey } from "../../../lib/game-character-aliases.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import type { PanelSnapshot } from "./model.ts";
 import { travelerIds } from "./talent-levels.ts";
@@ -78,20 +79,14 @@ export function parseTeamDamage(message: string) {
 
 type Character = NonNullable<ReturnType<typeof findRankCharacter>>;
 const travelerName = /^(旅行者|空|荧|萤)$/u;
-const resolveName = (name: string) => {
-  const role = findRankCharacter(name);
-  if (travelerName.test(name) || (role && travelerIds.has(role.id))) throw new TypeError("旅行者暂不支持队伍伤害计算。");
-  return role;
-};
-
-function segment(token: string) {
+function segment(token: string, lookup: typeof findRankCharacter, maxLength: number) {
   const result: Character[] = [];
   for (let at = 0; at < token.length;) {
     let current: Character | undefined;
-    for (let length = Math.min(6, token.length - at); length >= 1; length--) {
+    for (let length = Math.min(maxLength, token.length - at); length >= 1; length--) {
       // Check complete aliases before looking for a single known character segment.
       const piece = token.slice(at, at + length);
-      current = findRankCharacter(piece);
+      current = lookup(piece);
       if (current) { at += length; break; }
     }
     if (!current) return [];
@@ -108,7 +103,7 @@ function findTeamAlias(name: string) {
   }
 }
 
-export function selectTeam(tokens: readonly string[], snapshot: PanelSnapshot) {
+export function selectTeam(tokens: readonly string[], snapshot: PanelSnapshot, customAliases?: ReadonlyMap<string, string>) {
   const owned = Object.values(snapshot.avatars).filter(avatar => !["change", "customize", "share", "mys"].includes(avatar._source));
   const named = tokens.length === 1 ? findTeamAlias(tokens[0]!) ?? tokens : tokens;
   if (!named.length) {
@@ -117,16 +112,20 @@ export function selectTeam(tokens: readonly string[], snapshot: PanelSnapshot) {
     if (team.some(avatar => travelerIds.has(avatar.id))) throw new TypeError("旅行者暂不支持队伍伤害计算。");
     return team;
   }
+  const lookup = (name: string) => findRankCharacter(name) ?? findRankCharacter(customAliases?.get(characterAliasKey(name)) ?? "");
+  const maxAliasLength = customAliases?.size ? 24 : 6;
   const candidates = named.flatMap(token => {
-    if (findRankCharacter(token) || travelerName.test(token)) return [token];
-    const pieces = segment(token);
+    if (lookup(token) || travelerName.test(token)) return [token];
+    const pieces = segment(token, lookup, maxAliasLength);
     return pieces.length >= 2 ? pieces.map(role => role.name) : [token];
   }).slice(0, 4);
   const roles = candidates.map(name => {
-    const character = resolveName(name);
+    const character = lookup(name);
+    if (travelerName.test(name) || (character && travelerIds.has(character.id))) throw new TypeError("旅行者暂不支持队伍伤害计算。");
     if (!character) throw new TypeError(`无法识别角色：${name}`);
     return character;
   });
+  if (new Set(roles.map(role => role.id)).size !== roles.length) throw new TypeError("同一角色只能在队伍中安排一次。");
   const matching = roles.map(role => owned.find(avatar => avatar.id === role.id));
   const missing = roles.filter((_, index) => !matching[index]).map(role => role.name);
   if (missing.length) throw new TypeError(`当前档案缺少 ${missing.join("、")} 的面板数据，请先使用 #更新面板。`);
