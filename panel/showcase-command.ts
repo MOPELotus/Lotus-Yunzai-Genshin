@@ -77,7 +77,7 @@ export function createGenshinShowcaseCommand(profiles: GenshinRoleProfiles, lock
       const baseline = await storage.baseline(qq, target.uid);
       await context.reply(`正在通过 ${showcaseNames[target.provider]} 查询公开展板，仅发送游戏 UID。`);
       await verify();
-      const result = await fetchShowcase(target, signal);
+      const result = await fetchShowcase(target, signal, { fresh: true });
       await verify();
       const assets = await theme();
       const snapshot = await decodeGenshinShowcaseResponse(target, result, assets);

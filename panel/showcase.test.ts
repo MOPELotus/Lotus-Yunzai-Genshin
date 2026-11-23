@@ -189,6 +189,64 @@ const makeProfile = (role: TestRole) => Bun.YAML.stringify({ user: { qq: "42" },
   current_uid: { gs: role.uid }, game_roles: { gs: [{ uid: role.uid, game_biz: role.gameBiz, region: role.region }] },
 } });
 const own = { user_id: 42, message_type: "group" };
+test("连续手动更新始终重查公开展板，保留同 UID 并发保护和来源退避", async () => {
+  const root = await mkdtemp(join(tmpdir(), "lotus-showcase-fresh-"));
+  const began = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  let now = 1000, requests = 0, limited = false;
+  try {
+    await writeFile(join(root, "42.yaml"), makeProfile(cn));
+    const profiles = createProfileStore(root);
+    const storage = createGenshinShowcaseStorage(join(root, "private"), lockFile, join(root, "public"));
+    const refresh = createGenshinShowcaseCommand(profiles, lockFile, signal, {
+      storage, readSelector: async () => "0", theme: async () => theme,
+      async render() { return { png: Buffer.from("image"), engine: {} as never }; },
+      fetchShowcase: createGenshinShowcaseClient((async (endpoint, options) => {
+        expect(String(endpoint)).toBe(`https://profile.microgg.cn/api/uid/${uid}`);
+        expect(options).toMatchObject({ method: "GET", credentials: "omit", redirect: "error" });
+        expect(options?.body).toBeUndefined();
+        const headers = new Headers(options?.headers);
+        expect(headers.has("cookie") || headers.has("authorization")).toBe(false);
+        const sequence = ++requests;
+        if (sequence === 1) {
+          began.resolve();
+          await release.promise;
+        }
+        if (limited) return new Response(null, { status: 429, headers: { "Retry-After": "12" } });
+        const data = payload();
+        data.avatarInfoList[0] = { ...actor, propMap: { ...actor.propMap, 4001: { val: sequence === 1 ? "90" : "81" } } };
+        return Response.json(data);
+      }) as typeof fetch, () => now),
+    });
+    const context = { ...own, reply() {} };
+    const command = matchGenshinShowcase("#展板更新面板")!;
+    const first = refresh(command, context);
+    await began.promise;
+    try {
+      expect(await refresh(command, context)).toContain("正在查询");
+      expect(requests).toBe(1);
+    } finally {
+      release.resolve();
+    }
+    expect(await first).toMatchObject({ type: "image" });
+    expect((await storage.read("42", uid, theme))?.avatars[furina]?.level).toBe(90);
+    expect(await refresh(command, context)).toMatchObject({ type: "image" });
+    expect(requests).toBe(2);
+    expect((await storage.read("42", uid, theme))?.avatars[furina]?.level).toBe(81);
+    limited = true;
+    expect(await refresh(command, context)).toContain("请求过于频繁");
+    expect(await refresh(command, context)).toContain("请求过于频繁");
+    expect(requests).toBe(3);
+    expect((await storage.read("42", uid, theme))?.avatars[furina]?.level).toBe(81);
+    now += 12_000;
+    limited = false;
+    expect(await refresh(command, context)).toMatchObject({ type: "image" });
+    expect(requests).toBe(4);
+  } finally {
+    release.resolve();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("public archive and local panel stay distinct across selected-role changes, concurrent clear and real private reads", async () => {
   const root = await mkdtemp(join(tmpdir(), "lotus-showcase-"));
   try {
