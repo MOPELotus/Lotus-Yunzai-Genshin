@@ -21,6 +21,7 @@ import { createGenshinPayLogCommand, matchGenshinPayLog } from "./pay-log-comman
 import { createGenshinBirthdayPhotoCommand, matchGenshinBirthdayPhoto } from "./birthday-photo.ts";
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
 import { createPersonalHardChallengeQuery, matchPersonalHardChallenge } from "./panel/personal-hard-challenge.ts";
+import { createStygianConsentCommand, createStygianConsentStore, matchStygianConsentCommand, stygianConsentDirectory } from "./panel/stygian-consent.ts";
 import { createGenshinTarotCards, matchGenshinTarotCards } from "./panel/tarot-cards.ts";
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
 import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createGenshinPanelQuery, matchLegacyGenshinExtremePanel } from "./panel/panel.ts";
@@ -125,6 +126,9 @@ interface GachaContext extends GroupRankContext {
   readonly isMaster?: boolean;
   readonly isBotMaster?: (userId: number) => boolean;
   readonly privateCredentialSignal?: AbortSignal;
+  readonly verifyOwnGroupMembership?: MessageEvent["verifyOwnGroupMembership"];
+  readonly message_id?: MessageEvent["message_id"];
+  readonly sub_type?: MessageEvent["sub_type"];
   readonly attachment?: { readonly name: string; read(signal?: AbortSignal): Promise<Uint8Array | undefined> };
   readonly canReadAttachments?: boolean;
   readonly uploadFile?: (file: { readonly name: string; readonly bytes: Uint8Array }) => Promise<"confirmed" | "rejected" | "unknown">;
@@ -163,6 +167,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const equippedWeapons = createWeaponListQuery(profiles, client, signal);
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
   const personalHardChallenge = createPersonalHardChallengeQuery(profiles, client, signal);
+  const stygianConsentStore = createStygianConsentStore(stygianConsentDirectory, lockFile);
+  const stygianConsent = createStygianConsentCommand(profiles, stygianConsentStore, signal);
   const tarotCards = createGenshinTarotCards(tarotCardsDirectory, profiles, client, lockFile, signal);
   const fetchShowcase = createGenshinShowcaseClient();
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
@@ -328,6 +334,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinBirthdayPhoto(message)) return ["[genshin] 生日留影"];
       if (matchGenshinTarotCards(message)) return ["[genshin] 月谕圣牌"];
       if (matchPersonalHardChallenge(message)) return ["[genshin] 幽境危战", "[genshin] 角色查询"];
+      if (matchStygianConsentCommand(message)) return ["[genshin] 幽境危战群榜"];
       if (matchGenshinCommission(message) !== undefined) return ["[genshin] 委托查询"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
@@ -378,6 +385,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
           await resolveGenshinCharacter(publicPanel.characterName))) return showcase(publicPanel, context);
       const hardChallenge = matchPersonalHardChallenge(context.normalizedMessage);
       if (hardChallenge) return personalHardChallenge(hardChallenge, context);
+      const stygianCommand = matchStygianConsentCommand(context.normalizedMessage);
+      if (stygianCommand) return stygianConsent(stygianCommand, context);
       const challenge = matchPersonalChallenge(context.normalizedMessage);
       if (challenge) return personalChallenge(challenge, context);
       const tarot = matchGenshinTarotCards(context.normalizedMessage);
