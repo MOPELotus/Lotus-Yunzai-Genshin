@@ -1,4 +1,4 @@
-import { renderPng, ImageSizeLimitError } from "@lotus-yunzai/skia";
+import { renderExactPng, ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { object, talentKeys, text, whole, type PanelAvatar } from "./model.ts";
 import { contain, profileFonts, typeset } from "./original-profile-skia.ts";
@@ -12,7 +12,7 @@ const timestamp = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai", 
 export async function renderAvatarCard(name: string, id: number, uid: string, avatar: PanelAvatar | undefined, theme: PanelTheme, {
   photo, inlineImageByteLimit, signal, mode = "auto",
 }: { readonly photo: boolean; readonly inlineImageByteLimit?: number; readonly signal: AbortSignal;
-  readonly mode?: Parameters<typeof renderPng>[3] }): Promise<{ readonly type: "image"; readonly file: Uint8Array; readonly original?: PanelPhoto } | undefined> {
+  readonly mode?: Parameters<typeof renderExactPng>[3] }): Promise<{ readonly type: "image"; readonly file: Uint8Array; readonly original?: PanelPhoto } | undefined> {
   const role = { name, id, costume: avatar?.costume };
   const asset = await panelPortraitAsset(theme, role);
   const picture = asset?.image;
@@ -24,7 +24,7 @@ export async function renderAvatarCard(name: string, id: number, uid: string, av
       const width = Math.max(1, Math.round(picture.width * ratio));
       const height = Math.max(1, Math.round(picture.height * ratio));
       signal.throwIfAborted();
-      const { png } = await renderPng(width, height, ctx => ctx.drawImage(picture, 0, 0, width, height), mode);
+      const { png } = await renderExactPng(width, height, ctx => ctx.drawImage(picture, 0, 0, width, height), mode);
       if (inlineImageByteLimit === undefined || png.byteLength <= inlineImageByteLimit) return { type: "image" as const, file: png };
     }
     throw new ImageSizeLimitError("角色照片超过当前会话的图片大小上限。");

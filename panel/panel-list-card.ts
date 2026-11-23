@@ -1,3 +1,4 @@
+import { nativeImageRasterScale } from "@lotus-yunzai/skia";
 import { renderGenshinCard } from "../card-render.ts";
 import type { PanelRankMarker } from "./group-rank.ts";
 import { object, text, type PanelAvatar, type PanelSnapshot } from "./model.ts";
@@ -200,7 +201,7 @@ export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly
   }, mode, { displayWidth, scale: outputScale, allowHalfScale: true });
   const full = await render(scale);
   if (inlineImageByteLimit === undefined || full.png.byteLength <= inlineImageByteLimit) return full;
-  const reduced = scale === 2 || full.reducedScaleReason ? full : await render(2);
+  const reduced = nativeImageRasterScale() === 1 || scale === 2 || full.reducedScaleReason ? full : await render(2);
   if (reduced.png.byteLength > inlineImageByteLimit) throw new PanelListImageLimitError(reduced.png.byteLength);
   return { ...reduced, reducedScaleReason: "四倍原神面板图片超过当前协议发送上限。" };
 }

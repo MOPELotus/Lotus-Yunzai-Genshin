@@ -1,5 +1,6 @@
 import { loadOfficialArtwork, loadPublicQqAvatar } from "@lotus-yunzai/account";
 import { loadImage } from "skia-canvas";
+import { nativeImageRasterScale } from "@lotus-yunzai/skia";
 import { renderGenshinCard } from "../card-render.ts";
 import { nativeGenshinResourcesDirectory, originalFonts } from "./personal-record-card.ts";
 import type { ExplorationMetric, PersonalExploration } from "./personal-exploration-model.ts";
@@ -187,7 +188,7 @@ export async function renderPersonalExploration(model: PersonalExploration, {
     });
   }, mode, { displayWidth, scale });
   const full = await render(4);
-  if (inlineImageByteLimit === undefined || full.png.byteLength <= inlineImageByteLimit) return full;
+  if (nativeImageRasterScale() === 1 || inlineImageByteLimit === undefined || full.png.byteLength <= inlineImageByteLimit) return full;
   signal?.throwIfAborted();
   return render(2);
 }
