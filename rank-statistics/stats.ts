@@ -1,5 +1,5 @@
 import { characterAliasKey, readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
-import { fetchRankStats as fetchPublicRankStats, rankPercentiles, type RankStatsTransport } from "../../../lib/rank-statistics.ts";
+import { fetchRankStats as fetchPublicRankStats, queryPublicDamageRank, rankPercentiles, type RankStatsTransport } from "../../../lib/rank-statistics.ts";
 import { alias } from "../panel/miao/character-alias.ts";
 import characterMetadata from "../panel/miao/character-artifact-base.json";
 import { renderRankStats } from "./stats-card.ts";
@@ -41,6 +41,8 @@ export async function fetchRankStats(id: number, signal: AbortSignal, transport?
 }
 
 export async function queryRankStats(message: string, signal: AbortSignal) {
+  const rank = await queryPublicDamageRank(message, "gs", resolveGenshinCharacter, signal);
+  if (rank !== undefined) return rank;
   const name = rankStatsName(message);
   if (!name || signal.aborted) return;
   const character = await resolveGenshinCharacter(name);

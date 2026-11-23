@@ -1,3 +1,4 @@
+import { matchPublicDamageRank } from "../../lib/rank-statistics.ts";
 import { gachaImageReply } from "../../lib/gacha-image-reply.ts";
 import type { MessageEvent } from "../../lib/messages.ts";
 import { createGameCharacterAliasCommands, matchGameCharacterAliasCommand } from "../../lib/game-character-aliases.ts";
@@ -312,6 +313,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinAvatarCard(message)) return ["[genshin] 角色卡片"];
       if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
+      if (matchPublicDamageRank(message, "gs")) return ["[genshin] 角色面板"];
       if (matchWeaponList(message)) return ["[genshin] 武器查询"];
       if (matchGenshinBlueprint(message)) return ["[genshin] 尘歌壶模数"];
       if (matchGenshinPayLog(message)) return ["[genshin] 充值记录"];
