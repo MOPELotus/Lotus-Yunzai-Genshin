@@ -32,7 +32,8 @@ export function createPersonalHardChallengeQuery(profiles: GenshinRoleProfiles,
   client: Pick<HoyoClient, "fetchGenshinHardChallenge"> & Partial<Pick<HoyoClient, "fetchGenshinTalents">>,
   lifecycle: AbortSignal, render = renderPersonalHardChallenge, recordSolo?: RecordPersonalStygianScore) {
   return async (selection: Command, context: MessageContext) => {
-    const signal = context.privateCredentialSignal ? AbortSignal.any([lifecycle, context.privateCredentialSignal]) : lifecycle;
+    const connection = context.message_type === "group" ? context.groupActivitySignal : context.privateCredentialSignal;
+    const signal = connection ? AbortSignal.any([lifecycle, connection]) : lifecycle;
     if (signal.aborted) return;
     const user = context.user_id;
     if (context.isDelegated || (context.message_type !== "private" && context.message_type !== "group") ||

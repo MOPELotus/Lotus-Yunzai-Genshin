@@ -164,22 +164,29 @@ export function createStygianGroupRank(profiles: GenshinRoleProfiles,
         const result = await readLocal(scope, period, uid);
         if (result) local.set(uid, result);
       }
+      const personal = new Map<Grant, Score>();
+      if (readPersonal) for (const grant of grants) {
+        if (signal.aborted) return;
+        const result = await readPersonal(scope, grant.qq, period, grant).catch(() => undefined);
+        if (result) personal.set(grant, result);
+      }
       const verifiedBoard = async () => {
         if (signal.aborted) return;
-        const current = await eligible(scope, context, signal);
-        if (!current) return;
         const enabled = await readEnabled(scope.group);
-        if (signal.aborted) return;
-        const stillAuthorized = current.filter(grant => grants.some(previous => identicalGrant(previous, grant)));
+        const current = await eligible(scope, context, signal);
+        if (!current || signal.aborted) return;
+        const stillAuthorized: Grant[] = [];
         const combined = new Map<string, Score>();
         const localSources = { personal: false, legacy: false };
-        for (const grant of stillAuthorized) {
+        for (const grant of current) {
+          const initial = grants.find(previous => identicalGrant(previous, grant));
+          if (!initial) continue;
+          stillAuthorized.push(grant);
           const legacy = local.get(grant.uid);
-          const personal = await readPersonal?.(scope, grant.qq, period, grant).catch(() => undefined);
-          if (signal.aborted) return;
+          const own = personal.get(initial);
           if (legacy) localSources.legacy = true;
-          if (personal) localSources.personal = true;
-          const candidate = [combined.get(grant.uid), legacy, personal].filter(score => score !== undefined).sort(order)[0];
+          if (own) localSources.personal = true;
+          const candidate = [combined.get(grant.uid), legacy, own].filter(score => score !== undefined).sort(order)[0];
           if (candidate) combined.set(grant.uid, candidate);
         }
         const available = new Map([...matches].filter(([site]) => enabled.includes(site)));

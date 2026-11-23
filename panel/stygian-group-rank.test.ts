@@ -130,3 +130,28 @@ test("Ark 旧版位置回包无法核实身份时逐人查询，期间撤回的 
     expect(result).toMatchObject({ board: { rows: [{ uid: uid(42), difficulty: 6, seconds: 90, ark: { rank: 56 } }] } });
   });
 });
+
+test("读取本地成绩期间撤回的成员不出现在榜图", async () => {
+  await isolated(async profiles => {
+    let authorized = true;
+    const signal = new AbortController().signal;
+    const query = createStygianGroupRank(profiles, {
+      async list() { return [42]; },
+      async read() { return authorized ? [grant(42, "ark")] : []; },
+    }, signal, {
+      readPeriod: async () => period,
+      readEnabled: async () => [],
+      readLocal: async () => undefined,
+      readPersonal: async () => {
+        authorized = false;
+        return { difficulty: 6, seconds: 55 };
+      },
+    });
+    const result = await query(undefined, {
+      message_type: "group", adapter: "onebot", self_id: 99, group_id: 701, user_id: 42, groupActivitySignal: signal,
+      async listCurrentGroupMembers() { return [{ id: 99 }, { id: 42 }]; },
+    });
+    expect(result?.board).toBeUndefined();
+    expect(result?.message).toContain("暂无可展示的幽境危战成绩");
+  });
+});
