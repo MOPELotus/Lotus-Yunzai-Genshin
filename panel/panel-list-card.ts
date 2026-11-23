@@ -120,15 +120,18 @@ function rankLegend(ctx: Context, writer: Writer, symbols: Picture | undefined, 
 
 export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly PanelAvatar[], theme: PanelTheme, {
   updated = false, profileId = 1, mode = "auto", rankMarkers, rankParticipating = Boolean(rankMarkers?.size),
-  inlineImageByteLimit, page = 1, pageCount = 1, scale = 4,
+  inlineImageByteLimit, page = 1, pageCount = 1, scale = 4, qFace = true,
 }: { readonly updated?: boolean; readonly profileId?: number; readonly mode?: Mode;
   readonly rankMarkers?: ReadonlyMap<number, PanelRankMarker>; readonly rankParticipating?: boolean;
-  readonly inlineImageByteLimit?: number; readonly page?: number; readonly pageCount?: number; readonly scale?: 2 | 4 } = {}) {
+  readonly inlineImageByteLimit?: number; readonly page?: number; readonly pageCount?: number; readonly scale?: 2 | 4; readonly qFace?: boolean } = {}) {
   const [faces, backdrop, texture, portraits, starBackgrounds, legend, damageBadges, artifactBadges] = await Promise.all([
     profileFonts(theme.resourceRoot), theme.picture("common", "bg", "bg-hydro.webp"),
     theme.picture("common", "cont", "card-bg.png"),
-    Promise.all(avatars.map(async ({ name }) => await theme.picture("meta-gs", "character", name, "imgs", "face-q.webp") ??
-      await theme.picture("meta-gs", "character", name, "imgs", "face.webp"))),
+    Promise.all(avatars.map(async ({ name, costume }) => {
+      const preferred = qFace ? "face-q.webp" : costume ? "face2.webp" : undefined;
+      return (preferred ? await theme.picture("meta-gs", "character", name, "imgs", preferred) : undefined) ??
+        await theme.picture("meta-gs", "character", name, "imgs", "face.webp");
+    })),
     Promise.all(Array.from({ length: 5 }, (_, index) => theme.picture("common", "item", `bg${index + 1}.png`))),
     rankMarkers && theme.picture("character", "imgs", "mark-icon.png"),
     rankMarkers?.size ? theme.picture("character", "imgs", "dmg-rank-bg.png") : undefined,

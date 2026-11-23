@@ -68,10 +68,11 @@ export function createPersonalRecordQuery(profiles: GenshinRoleDirectory, client
     archive = createGenshinPanelArchive(lockFile),
     theme = readPanelTheme,
     roster = renderPersonalRoster,
+    qFace = true,
     overview = renderPersonalOverview,
     explore = renderPersonalExploration,
   }: { readonly archive?: Pick<ReturnType<typeof createGenshinPanelArchive>, "readPanel">; readonly theme?: typeof readPanelTheme;
-    readonly roster?: typeof renderPersonalRoster; readonly overview?: typeof renderPersonalOverview; readonly explore?: typeof renderPersonalExploration } = {},
+    readonly roster?: typeof renderPersonalRoster; readonly overview?: typeof renderPersonalOverview; readonly explore?: typeof renderPersonalExploration; readonly qFace?: boolean } = {},
 ) {
   return async (command: NonNullable<ReturnType<typeof matchPersonalRecord>>, context: MessageContext): Promise<Reply | undefined> => {
     const { user_id: user, message_type: scene } = context;
@@ -161,7 +162,7 @@ export function createPersonalRecordQuery(profiles: GenshinRoleDirectory, client
         (star === 5 && avatar.id !== 10000005 && avatar.id !== 10000007 ? (avatar.cons ?? 0) + 1 : 0) +
         (weapon?.star === 5 ? weapon.affix ?? 0 : 0), 0);
       const fiveStars = statistics.filter(row => row.star === 5).length;
-      const options = { overview: summary, count: statistics.length, fiveStars, gold,
+      const options = { overview: summary, count: statistics.length, fiveStars, gold, qFace,
         firstName: rows[0]?.avatar.name, inlineImageByteLimit: context.inlineImageByteLimit, signal };
       try {
         const { png } = await roster(snapshot, rows, assets, { ...options, page: 1, pages: 1 });

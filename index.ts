@@ -173,10 +173,11 @@ interface GachaContext extends GroupRankContext {
     { readonly type: "record"; readonly file: Uint8Array }): unknown;
 }
 
-export function createModule({ signal, lockFile, runtimeVersion }: {
+export function createModule({ signal, lockFile, runtimeVersion, roleQFace = true }: {
   signal: AbortSignal;
   lockFile: Parameters<typeof createGenshinGachaHistoryStore>[1];
   runtimeVersion?: { readonly version?: string; readonly revision?: string };
+  roleQFace?: boolean;
 }) {
   const wishRoot = new URL("../../", import.meta.url);
   const reincarnation = createWishReincarnation({ signal, lockFile, readSettings: () => readGenshinWishSettings(wishRoot) });
@@ -206,7 +207,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const refreshTalent = createGenshinTalentRefresh(profiles, client, panelArchive, signal);
   const panelImages = createPanelImageCommands(lockFile, signal);
   const changeDamageSettings = createDamageSettingsCommand(signal);
-  const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal);
+  const personalRecord = createPersonalRecordQuery(profiles, client, lockFile, signal, { qFace: roleQFace });
   const payLog = createGenshinPayLogCommand(profiles, signal, { lockFile });
   const birthdayPhoto = createGenshinBirthdayPhotoCommand(profiles, client, signal);
   const equippedWeapons = createWeaponListQuery(profiles, client, signal);
@@ -224,7 +225,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       readEnemyLevel: panelPreferences.level });
   const groupRankMatches = new WeakMap<GachaContext, Awaited<ReturnType<typeof resolveGroupPanelRank>>>();
   const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase, groupRank });
-  const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank, preferences: panelPreferences, readPanelDeletionBoundary: panelArchive.discardedAt });
+  const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank, preferences: panelPreferences, readPanelDeletionBoundary: panelArchive.discardedAt, qFace: roleQFace });
   const abyssTeams = createGenshinAbyssTeams(profiles, panelArchive, panel.trainingRoster, signal);
   const sync = createGenshinGachaSync(profiles, client, history);
   const worldBossRanking = createGenshinWorldBossRanking(rankingDirectory, lockFile);
@@ -314,7 +315,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
         (saved && !saved.discarded
           ? gachaPortraitCharacter(characters.values(), (await readLegacyPlayerPortrait("gs", uid, signal).catch(() => undefined))?.face)
           : undefined);
-      const { face, avatar } = await readGachaPlayerArt(themeDirectory, "gs", nickname || "旅行者", character, officialAvatar, signal);
+      const { face, avatar } = await readGachaPlayerArt(themeDirectory, "gs", nickname || "旅行者", character, officialAvatar, signal, roleQFace);
       const options = { uid, records, face, now: new Date(), ...sources };
       const display = !special ? await readGachaDisplaySettings(new URL("../../", import.meta.url)) : undefined;
       function buildPage(page?: number) {
@@ -344,7 +345,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
           render(page, scale) {
             const result = page === 1 ? first : buildPage(page);
             if (!result) throw new Error("原神抽卡记录缺少分页。");
-            const options = { themeDirectory, scale, avatar };
+            const options = { themeDirectory, scale, avatar, qFace: roleQFace };
             return result.kind === "special" ? renderGenshinGachaSpecial(result.model, options)
               : result.kind === "detail" ? renderGenshinGachaDetail(result.model, options)
               : renderGenshinGachaVersion(result.model, options);

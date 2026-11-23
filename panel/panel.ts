@@ -175,12 +175,13 @@ export function createGenshinPanelQuery(
     legacyPreferences = Bun.env.LOTUS_GENSHIN_PANEL_LEGACY_REDIS_URL?.trim(),
     preferences = createGenshinPanelDamagePreferences(lockFile, signal, archiveDirectory, legacyPreferences),
     groupRank,
+    qFace = true,
     readPanelDeletionBoundary,
     render = { list: renderPanelList, detail: renderDetail, damage: renderDamageCard, artifactList: renderArtifactList },
     theme = readPanelTheme,
     now = Date.now,
   }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly extremePanelFile?: string;
-    readonly legacyPreferences?: string; readonly render?: Renderers;
+    readonly legacyPreferences?: string; readonly render?: Renderers; readonly qFace?: boolean;
     readonly preferences?: ReturnType<typeof createGenshinPanelDamagePreferences>;
     readonly readPanelDeletionBoundary?: ReadPanelDeletionBoundary;
     readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "observe"> &
@@ -381,7 +382,7 @@ export function createGenshinPanelQuery(
         signal.throwIfAborted();
         if (command.type === "list") {
           const { png } = await render.list(snapshot, panelListOrder(snapshot), assets, {
-            inlineImageByteLimit: context.inlineImageByteLimit,
+            qFace, inlineImageByteLimit: context.inlineImageByteLimit,
           });
           signal.throwIfAborted();
           return { type: "image", file: png };
@@ -878,7 +879,7 @@ export function createGenshinPanelQuery(
       const ranking = source ? await groupRank?.listMarkers?.(context, profileId, role,
         avatars.map(avatar => avatar.id)).catch(() => undefined) : undefined;
       const renderList = async (marks?: typeof ranking): Promise<Image[]> => {
-        const listOpts = { updated, profileId, rankMarkers: marks?.markers, rankParticipating: marks?.participating,
+        const listOpts = { updated, profileId, qFace, rankMarkers: marks?.markers, rankParticipating: marks?.participating,
           inlineImageByteLimit: context.inlineImageByteLimit };
         try {
           const { png } = await render.list(selectedPanel, avatars, assets, listOpts);

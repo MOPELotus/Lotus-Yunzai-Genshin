@@ -73,8 +73,8 @@ function crop(ctx: Drawing, radius: number, [x, y, w, h]: Box) {
 }
 
 const picture = (theme: PanelTheme, name: string, file: string) => theme.picture("meta-gs", "character", name, "imgs", file);
-const face = async (theme: PanelTheme, name: string) =>
-  await picture(theme, name, "face-q.webp") ?? await picture(theme, name, "face.webp");
+const face = async (theme: PanelTheme, name: string, qFace = true) =>
+  (qFace ? await picture(theme, name, "face-q.webp") : undefined) ?? await picture(theme, name, "face.webp");
 
 export const nativeGenshinResourcesDirectory = () => Bun.env.LOTUS_GENSHIN_GACHA_RESOURCES_DIR?.trim() || nativeResources;
 
@@ -183,17 +183,17 @@ function rosterTime(stamp: number | undefined) {
 }
 
 export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readonly PanelStatistic[], theme: PanelTheme, {
-  overview, count, fiveStars, gold, page, pages, mode = "auto", firstName, inlineImageByteLimit, signal, scale,
+  overview, count, fiveStars, gold, page, pages, mode = "auto", firstName, inlineImageByteLimit, signal, scale, qFace = true,
 }: { readonly overview?: PersonalOverview; readonly count: number; readonly fiveStars: number;
   readonly gold: number; readonly page: number; readonly pages: number; readonly mode?: Mode; readonly firstName?: string;
-  readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal; readonly scale?: 2 }) {
+  readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal; readonly scale?: 2; readonly qFace?: boolean }) {
   const width = 740, columns = personalRosterColumns, box = 105;
   const hasAreas = !!overview?.areasByName.has("蒙德"), hasChests = !!overview?.chests.some(chest => chest.value !== undefined);
   const alias = rosterPortraitName(theme, snapshot.rosterFace) || firstName || rows[0]?.avatar.name;
   const [backdrop, userBanner, userFace, cities, chests, unknownRelic, stars, mini, family] = await Promise.all([
     theme.picture("common", "bg", "bg-hydro.webp"),
     alias && picture(theme, alias, "banner.webp"),
-    (async () => alias ? await face(theme, alias) ?? await theme.picture("common", "item", "face.webp") :
+    (async () => alias ? await face(theme, alias, qFace) ?? await theme.picture("common", "item", "face.webp") :
       theme.picture("common", "item", "face.webp"))(),
     hasAreas && theme.picture("character", "imgs", "exploration.webp"),
     hasChests && theme.picture("character", "imgs", "chest.webp"),
