@@ -81,10 +81,10 @@ import { createWorldBossQuery, createWorldBossRankingQuery, worldBossCommand, wo
 const updateCommand = /^#(?:原神)?更新抽卡记录([1-9]\d{0,2})?$/u;
 const externalGachaCommand = /^#(?:原神)?同步外部抽卡记录([1-9]\d{0,2})?$/u;
 const exportCommand = /^#?(?:原神)?(强制)?导出记录(?:json)?(v2|v4)?([1-9]\d{0,2})?$/u;
-const poolCommand = /^#(?:原神)?(全部)?(抽卡|抽奖|角色|武器|常驻|集录|up)池?(全部)?(记录|祈愿|分析|统计)([1-9]\d{0,2})?$/u;
+const poolCommand = /^#?(?:原神)?(全部)?(抽卡|抽奖|角色|武器|常驻|集录|up)池?(全部)?(记录|祈愿|分析|统计)([1-9]\d{0,2})?$/u;
 const versionCommand = /^#(?:原神)?(版本(?:全部)?|全部)统计([1-9]\d{0,2})?$/u;
-const specialCommand = /^#(?:原神)?(?:(新手|全部新手)池?(?:全部)?(?:记录|祈愿|分析|统计)|全部(?:记录|祈愿|分析))([1-9]\d{0,2})?$/u;
-const helpCommand = /^#(?:原神)?(?:抽卡|记录)帮助$/u;
+const specialCommand = /^#?(?:原神)?(?:(新手|全部新手)池?(?:全部)?(?:记录|祈愿|分析|统计)|全部(?:记录|祈愿|分析))([1-9]\d{0,2})?$/u;
+const helpCommand = /^#?(?:原神)?(?:抽卡|记录)帮助$/u;
 const detailPools = new Map<string, GenshinGachaPool>([["武器", 302], ["常驻", 200], ["集录", 500]]);
 type VersionPool = NonNullable<GenshinGachaVersionOptions["type"]>;
 const versionPools = new Map<string, VersionPool>([["角色", "char"], ["武器", "weapon"], ["常驻", "normal"], ["集录", "mix"]]);
