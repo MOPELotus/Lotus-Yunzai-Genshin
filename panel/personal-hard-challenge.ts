@@ -3,7 +3,9 @@ import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient 
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { PersonalHardChallengeThemeError, renderPersonalHardChallenge } from "./personal-hard-challenge-card.ts";
-import { buildPersonalHardChallenge, type HardChallengeSelection } from "./personal-hard-challenge-model.ts";
+import { buildPersonalHardChallenge, readPersonalStygianSolo, type HardChallengeSelection } from "./personal-hard-challenge-model.ts";
+import type { GroupRankContext } from "./group-rank.ts";
+import type { RecordPersonalStygianScore } from "./stygian-personal-score.ts";
 import type { Json } from "./model.ts";
 
 const command = /^#?(?:原神)?(?:(本期|上期|往期))?(?:幽境危战|幽境|危战)(单人|单挑|组队|多人|合作|最佳)?(?:\s*(\d{1,3})(?:数据)?|(?:数据)?(?:\s*(?:档案|profile)\s*(\d{1,3}))?)$/iu;
@@ -20,18 +22,15 @@ export function matchPersonalHardChallenge(message: string): Command | undefined
   };
 }
 
-interface MessageContext {
-  readonly user_id?: number;
-  readonly message_type?: string;
-  readonly isDelegated?: boolean;
+interface MessageContext extends GroupRankContext {
+  readonly sub_type?: string;
   readonly privateCredentialSignal?: AbortSignal;
-  readonly inlineImageByteLimit?: number;
 }
 
 type HoyoClient = ReturnType<typeof createProfileHoyoClient>;
 export function createPersonalHardChallengeQuery(profiles: GenshinRoleProfiles,
   client: Pick<HoyoClient, "fetchGenshinHardChallenge"> & Partial<Pick<HoyoClient, "fetchGenshinTalents">>,
-  lifecycle: AbortSignal, render = renderPersonalHardChallenge) {
+  lifecycle: AbortSignal, render = renderPersonalHardChallenge, recordSolo?: RecordPersonalStygianScore) {
   return async (selection: Command, context: MessageContext) => {
     const signal = context.privateCredentialSignal ? AbortSignal.any([lifecycle, context.privateCredentialSignal]) : lifecycle;
     if (signal.aborted) return;
@@ -78,6 +77,13 @@ export function createPersonalHardChallengeQuery(profiles: GenshinRoleProfiles,
       }
       const { png } = await render(model, signal, { owned, inlineImageByteLimit: context.inlineImageByteLimit });
       await verify();
+      if (recordSolo && context.message_type === "group") {
+        const observation = readPersonalStygianSolo(result.challenge, selection.scheduleType);
+        if (observation) {
+          await recordSolo(context, observation, verify).catch(() => undefined);
+          await verify();
+        }
+      }
       return { type: "image", file: png } as const;
     } catch (error) {
       if (signal.aborted) return;

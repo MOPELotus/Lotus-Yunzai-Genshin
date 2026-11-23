@@ -5,6 +5,7 @@ import type { GroupRankContext } from "./group-rank.ts";
 import { matchesStygianConsentProfile, type StygianConsentGrant, type StygianConsentScope,
   type createStygianConsentStore } from "./stygian-consent.ts";
 import { readStygianRankPeriod } from "./stygian-rank-period.ts";
+import type { StygianPersonalScoreReader } from "./stygian-personal-score.ts";
 
 type Grant = StygianConsentGrant & { readonly qq: number; readonly nickname: string };
 type Scope = StygianConsentScope & { readonly requester: number };
@@ -69,11 +70,12 @@ function boardRows(grants: readonly Grant[], local: ReadonlyMap<string, Score>, 
 
 export function createStygianGroupRank(profiles: GenshinRoleProfiles,
   store: Pick<ReturnType<typeof createStygianConsentStore>, "list" | "read">, lifecycle: AbortSignal, {
-    readPeriod = readStygianRankPeriod, readLocal = readLegacyScore, query = queryStygianRank,
+    readPeriod = readStygianRankPeriod, readLocal = readLegacyScore, readPersonal, query = queryStygianRank,
     readEnabled = async () => readStygianRankSites(),
   }: {
     readonly readPeriod?: typeof readStygianRankPeriod;
     readonly readLocal?: typeof readLegacyScore;
+    readonly readPersonal?: StygianPersonalScoreReader;
     readonly query?: typeof queryStygianRank;
     readonly readEnabled?: (group: number) => Promise<readonly StygianRankSite[]>;
   } = {}) {
@@ -169,11 +171,22 @@ export function createStygianGroupRank(profiles: GenshinRoleProfiles,
         const enabled = await readEnabled(scope.group);
         if (signal.aborted) return;
         const stillAuthorized = current.filter(grant => grants.some(previous => identicalGrant(previous, grant)));
+        const combined = new Map<string, Score>();
+        const localSources = { personal: false, legacy: false };
+        for (const grant of stillAuthorized) {
+          const legacy = local.get(grant.uid);
+          const personal = await readPersonal?.(scope, grant.qq, period, grant).catch(() => undefined);
+          if (signal.aborted) return;
+          if (legacy) localSources.legacy = true;
+          if (personal) localSources.personal = true;
+          const candidate = [combined.get(grant.uid), legacy, personal].filter(score => score !== undefined).sort(order)[0];
+          if (candidate) combined.set(grant.uid, candidate);
+        }
         const available = new Map([...matches].filter(([site]) => enabled.includes(site)));
         const verifiedStates = { ...states };
         for (const site of sites) if (!enabled.includes(site)) verifiedStates[site] = "disabled";
-        const rows = boardRows(stillAuthorized, local, available);
-        return { version: period.version, period: { start: period.start, end: period.end }, rows, sites: verifiedStates };
+        const rows = boardRows(stillAuthorized, combined, available);
+        return { version: period.version, period: { start: period.start, end: period.end }, rows, sites: verifiedStates, localSources };
       };
       const board = await verifiedBoard();
       if (!board) return;

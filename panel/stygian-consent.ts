@@ -239,6 +239,7 @@ export function createStygianConsentCommand(profiles: GenshinRoleProfiles, store
           return {
             type: "delivery",
             message: `授权后，群 ${scope.group} 查询幽境群榜时，当前机器人可把档案 ${command.profileId} 的原神 UID ${uid} 及查询需要的期数信息发送给 ${destinations}，并在该群显示你的难度、用时和排名。\n` +
+              "你在该群成功查询本人的幽境危战时，机器人也会为本群更新能核对期数的单人战绩。\n" +
               `确认请在本私聊发送 #幽境群榜确认 ${scope.group} ${draft.code}，有效期两分钟。可随时用 #幽境群榜撤回 ${scope.group} 撤回。`,
             onDelivered() {
               if (!signal.aborted && current.get(key) === pending && now() < pending.expires) draft.delivered = true;

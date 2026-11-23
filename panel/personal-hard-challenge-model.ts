@@ -1,5 +1,6 @@
 import { normalizeProfileRoleArtworkUrl } from "@lotus-yunzai/account";
 import { avatarId, object, text, whole, type Json } from "./model.ts";
+import { stygianObservationVersion } from "./stygian-rank-period.ts";
 
 export type HardChallengeSelection = { readonly scheduleType: 1 | 2; readonly mode: "single" | "mp" | "best" };
 const timeFormat = new Intl.DateTimeFormat("en-CA", {
@@ -18,6 +19,19 @@ function best(row?: Json) {
   const difficulty = whole(record?.difficulty, 99);
   const time = seconds(record?.second);
   if (difficulty && time !== undefined) return { difficulty, time };
+}
+
+export function readPersonalStygianSolo(challenge: Json, scheduleType: HardChallengeSelection["scheduleType"]) {
+  const season = object(Array.isArray(challenge.data) ? challenge.data[scheduleType - 1] : undefined);
+  const schedule = object(season?.schedule);
+  const starts = whole(schedule?.start_time, 253402300799), ends = whole(schedule?.end_time, 253402300799);
+  const score = best(object(season?.single));
+  if (!starts || !ends || !score || score.difficulty > 6 || score.time > 2047) return;
+  const reported = [schedule?.version, season?.version].filter(value => value !== undefined && value !== null && value !== "");
+  const versions = new Set(reported.map(stygianObservationVersion));
+  if (versions.size > 1 || versions.has(undefined)) return;
+  const [version] = versions;
+  return { starts, ends, version, difficulty: score.difficulty, seconds: score.time };
 }
 
 function avatar(row: Json) {

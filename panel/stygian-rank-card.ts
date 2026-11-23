@@ -22,6 +22,7 @@ export interface StygianRankCard {
   readonly period?: { readonly start?: string; readonly end?: string };
   readonly rows: readonly StygianRankCardRow[];
   readonly sites?: Partial<Record<Site, StygianRankCardSiteState>>;
+  readonly localSources?: { readonly personal?: boolean; readonly legacy?: boolean };
   readonly maskUid?: boolean;
 }
 
@@ -100,7 +101,9 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
   const sourceStates = sites.map(site => ({ site, state: stateFor(site) }));
   const columns = sourceStates.filter(({ state }) => state !== "disabled" && state !== "not-requested");
   const sources = sourceStates.map(({ site, state }) =>
-    state === "ok" ? siteNames[site] : `${siteNames[site]}（${states[state]}）`).join(" | ");
+    state === "ok" ? siteNames[site] : `${siteNames[site]}（${states[state]}）`);
+  if (data.localSources?.personal) sources.push("本地米游社记录");
+  if (data.localSources?.legacy) sources.push("旧本地成绩");
   const width = 580 + 140 * columns.length;
   const displayWidth = Math.round(width * 1.4);
   const height = rowTop + Math.max(1, data.rows.length) * (rowHeight + rowGap) + 29;
@@ -129,7 +132,7 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
       const lines = [
         ["幽境危战版本", clean(data.version, 40) || "未提供"],
         ["统计周期", [clean(data.period?.start, 40), clean(data.period?.end, 40)].filter(Boolean).join(" - ") || "未提供"],
-        ["数据源", sources],
+        ["数据源", sources.join(" | ")],
       ] as const;
       lines.forEach(([title, value], index) => {
         const y = infoTop + 62 + index * 19, x = 57;

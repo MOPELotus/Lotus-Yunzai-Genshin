@@ -25,6 +25,7 @@ import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/pe
 import { createPersonalHardChallengeQuery, matchPersonalHardChallenge } from "./panel/personal-hard-challenge.ts";
 import { createStygianConsentCommand, createStygianConsentStore, matchStygianConsentCommand, stygianConsentDirectory } from "./panel/stygian-consent.ts";
 import { createStygianGroupRank } from "./panel/stygian-group-rank.ts";
+import { createPersonalStygianScoreRecorder, createStygianPersonalScoreStore, stygianPersonalScoreDirectory } from "./panel/stygian-personal-score.ts";
 import { matchStygianGroupRank } from "./panel/stygian-rank-period.ts";
 import { renderStygianRankCard } from "./panel/stygian-rank-card.ts";
 import { readGroupPanelRankLimit } from "../../lib/group-panel-rank-settings.ts";
@@ -175,10 +176,12 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const birthdayPhoto = createGenshinBirthdayPhotoCommand(profiles, client, signal);
   const equippedWeapons = createWeaponListQuery(profiles, client, signal);
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
-  const personalHardChallenge = createPersonalHardChallengeQuery(profiles, client, signal);
   const stygianConsentStore = createStygianConsentStore(stygianConsentDirectory, lockFile);
   const stygianConsent = createStygianConsentCommand(profiles, stygianConsentStore, signal);
-  const stygianGroupRank = createStygianGroupRank(profiles, stygianConsentStore, signal);
+  const stygianScores = createStygianPersonalScoreStore(stygianPersonalScoreDirectory, lockFile);
+  const recordStygianScore = createPersonalStygianScoreRecorder(stygianConsentStore, stygianScores);
+  const personalHardChallenge = createPersonalHardChallengeQuery(profiles, client, signal, undefined, recordStygianScore);
+  const stygianGroupRank = createStygianGroupRank(profiles, stygianConsentStore, signal, { readPersonal: stygianScores.read });
   const tarotCards = createGenshinTarotCards(tarotCardsDirectory, profiles, client, lockFile, signal);
   const fetchShowcase = createGenshinShowcaseClient();
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
