@@ -44,8 +44,10 @@ test("旧日期和素材入口保留养成及个人天赋命令的边界", () =>
     ["#明日我的材料", "tomorrow"], ["#周四素材", 4], ["#明天周二素材", 2],
     ["#每日天赋", "today"], ["#我的每日天赋", "today"], ["#明日每日天赋", "tomorrow"], ["#明日周日每日天赋", 7],
     ["#今日天赋", "today"], ["#今天天赋", "today"], ["#明日天赋", "tomorrow"], ["#明天天赋", "tomorrow"],
-    ["#周一天赋", 1], ["#周2天赋", 2], ["#周日天赋", 7],
+    ["#周一天赋", 1], ["#周2天赋", 2], ["#周日天赋", 7], ["#今天我的天赋", "today"],
+    ["#我的明日天赋", "tomorrow"], ["#明日周二天赋", 2], ["#周二周三天赋", 2], ["#我的我的天赋", "today"],
   ] as const) expect(matchGenshinPanel(raw)).toMatchObject({ type: "daily-materials", materialDay: expected });
+  expect(matchGenshinPanel("#明天周四天赋2")).toMatchObject({ type: "daily-materials", materialDay: 4, profileId: 2 });
   expect(matchGenshinPanel("#原神周2材料 档案2")).toMatchObject({ profileId: 2, materialDay: 2 });
   expect(matchGenshinPanel(`#今天材料${uid}`)).toMatchObject({ uid });
   expect(matchGenshinPanel("#原神周2每日天赋 档案2")).toMatchObject({ type: "daily-materials", profileId: 2, materialDay: 2 });
@@ -100,8 +102,11 @@ test("联机失败仍回退同档旧资料，周日不需档案且发图前复�
       archiveDirectory: join(path, "new"), legacyDirectory: path, theme: async () => theme,
       now: () => time,
       render: { async list() { throw Error("list"); }, async detail() { throw Error("detail"); },
-        async dailyMaterials(currentUid, day, groups) {
+        async dailyMaterials(currentUid, day, groups, _theme, mode, options) {
           expect(currentUid).toBe(uid);
+          expect(mode).toBe("auto");
+          expect(options?.inlineImageByteLimit).toBe(123456);
+          expect(options?.signal?.aborted).toBe(false);
           calls.push({ day, names: groups.map(item => item.name) });
           if (change) revision = "new";
           return { png };
@@ -110,11 +115,12 @@ test("联机失败仍回退同档旧资料，周日不需档案且发图前复�
     expect(await query("#周日素材", { user_id: 42 })).toContain("全部天赋与武器突破素材");
     expect(await query("#周日天赋", {})).toContain("全部天赋与武器突破素材");
     expect(accounts).toBe(0);
-    for (const message of ["#每日材料 档案2", "#今日天赋"]) {
-      expect(await query(message, { user_id: 42 })).toEqual({ type: "image", file: png });
+    const chat = { user_id: 42, inlineImageByteLimit: 123456 };
+    for (const message of ["#每日材料 档案2", "#今天我的天赋"]) {
+      expect(await query(message, chat)).toEqual({ type: "image", file: png });
     }
     time += 1000;
-    expect(await query("#每日天赋 档案2", { user_id: 42 })).toEqual({ type: "image", file: png });
+    expect(await query("#每日天赋 档案2", chat)).toEqual({ type: "image", file: png });
     expect(calls).toEqual([
       { day: "周一", names: ["远海夷地的金枝"] },
       { day: "周一", names: ["远海夷地的金枝"] },
@@ -122,7 +128,7 @@ test("联机失败仍回退同档旧资料，周日不需档案且发图前复�
     ]);
     expect(await query("#每日天赋100999999", { user_id: 42 })).toContain("当前档案绑定");
     change = true;
-    expect(await query("#每日天赋 档案2", { user_id: 42 })).toContain("档案已变化");
+    expect(await query("#每日天赋 档案2", chat)).toContain("档案已变化");
     expect(attempts).toBe(4);
     expect(await readFile(file, "utf8")).toBe(previous);
   } finally {

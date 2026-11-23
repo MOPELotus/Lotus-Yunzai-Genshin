@@ -649,10 +649,15 @@ export function createGenshinPanelQuery(
         if (!result) return "本地暂无可核对的原神素材目录。";
         if (!result.length) return `本档案暂无${materialDay.label}可列出的角色和武器素材。`;
         const pages: (string | Image)[] = [];
-        for (const groups of paginateDailyMaterials(result)) {
+        const materialPages = paginateDailyMaterials(result);
+        const imageLimit = context.inlineImageByteLimit === undefined ? undefined
+          : Math.floor(context.inlineImageByteLimit / materialPages.length);
+        const active = context.privateCredentialSignal ? AbortSignal.any([signal, context.privateCredentialSignal]) : signal;
+        for (const groups of materialPages) {
           await verify();
           try {
-            const { png } = await (render.dailyMaterials ?? renderDailyMaterialCard)(uid, materialDay.label, groups, assets);
+            const { png } = await (render.dailyMaterials ?? renderDailyMaterialCard)(uid, materialDay.label, groups, assets, "auto",
+              { inlineImageByteLimit: imageLimit, signal: active });
             pages.push({ type: "image", file: png });
           } catch {
             pages.push(groups.map(group => `${group.region} · ${group.name}\n${group.items.map(({ owner }) =>

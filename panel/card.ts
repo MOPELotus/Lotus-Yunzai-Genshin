@@ -1,6 +1,6 @@
 import { layoutTrialDamageTitles, trialDamageTitleLineHeight } from "../../../lib/panel-trial-display.ts";
 import { Canvas } from "skia-canvas";
-import { renderGenshinCard } from "../card-render.ts";
+import { renderGenshinCard, renderGenshinCardForChat } from "../card-render.ts";
 import { renderArtifactCard } from "./artifact-card.ts";
 import { damageTrialLabel, type DamageRow, type DamageSummary } from "./damage.ts";
 import type { DailyMaterialGroup } from "./daily-materials.ts";
@@ -83,7 +83,7 @@ const character = (theme: PanelTheme, name: string, ...rest: string[]) => theme.
 export const panelStatisticsPageSize = 48;
 
 export async function renderDailyMaterialCard(uid: string, day: string, groups: readonly DailyMaterialGroup[], theme: PanelTheme,
-  mode: RenderMode = "auto") {
+  mode: RenderMode = "auto", options: Parameters<typeof renderGenshinCardForChat>[4] = {}) {
   const width = 700;
   const groupsHeight = groups.map(group => 60 + Math.ceil(group.items.length / (group.kind === "talent" ? 6 : 8)) *
     (group.kind === "talent" ? 128 : 111));
@@ -101,7 +101,7 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
     }))),
   ]);
   const ink = "#504c49", muted = "#6d655d";
-  return renderGenshinCard(width, height, ctx => {
+  return renderGenshinCardForChat(width, height, ctx => {
     ctx.fillStyle = "#f5f1eb";
     ctx.fillRect(0, 0, width, height);
     ctx.fillStyle = "#d3bc8d";
@@ -174,7 +174,7 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
     });
     label(ctx, "仅显示已装备的武器 · 资料来自当前档案", 16, height - 23, 12, muted, 532);
     label(ctx, "Lotus-Yunzai", 683, height - 23, 11, muted, 100, "right");
-  }, mode);
+  }, mode, options);
 }
 
 export async function renderPanelStatistics(snapshot: PanelSnapshot, rows: readonly PanelStatisticRow[], theme: PanelTheme, {

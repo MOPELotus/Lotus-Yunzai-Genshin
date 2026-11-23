@@ -422,6 +422,8 @@ export function matchGenshinPanelDiscard(message: string) {
   if (match) return { uid: match[1], profileId: gameCommandProfileId("gs", match[2] ?? match[3]) };
 }
 
+const talentStatisticsCommand = /^#(?:原神)?(?:我的)?(今日|今天|明日|明天|周[1-7一二三四五六日天])?([五四54]星)?(?:技能|天赋)(?:汇总|统计|列表)?\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u;
+
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
   const reload = /^#(?:原神)?(?:加载|重新加载|重载)面板\s*(?:([1-9]\d{8,9})(?:\s+档案\s*([1-9]\d{0,2}))?|(?:档案\s*)?([1-9]\d{0,2}))?$/u.exec(message);
   if (reload) return { type: "reload", profileId: gameCommandProfileId("gs", reload[2] ?? reload[3]), ...(reload[1] && { uid: reload[1] }) };
@@ -436,14 +438,14 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
   const materials = /^#(?:原神)?((?:每日|我的|今日|今天|明日|明天|周[1-7一二三四五六日天])*)(素材|材料|天赋)\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
   if (materials) {
     const [, markers = "", kind, target] = materials;
-    const datedTalent = !target && /^(?:今日|今天|明日|明天|周[1-7一二三四五六日天])$/u.test(markers);
-    if (kind !== "天赋" || markers.includes("每日") || datedTalent) {
+    const datedTalent = !target && /今日|今天|明日|明天|周[1-7一二三四五六日天]/u.test(markers);
+    if (kind !== "天赋" || markers.includes("每日") || datedTalent || !talentStatisticsCommand.test(message)) {
       const selection = statisticsCommand(target);
       const day = /周[1-7一二三四五六日天]/u.exec(markers)?.[0] ?? /明日|明天/u.exec(markers)?.[0];
       return selection && { ...selection, type: "daily-materials", materialDay: statisticsDay(day) ?? "today" };
     }
   }
-  const talents = /^#(?:原神)?(?:我的)?(今日|今天|明日|明天|周[1-7一二三四五六日天])?([五四54]星)?(?:技能|天赋)(?:汇总|统计|列表)?\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
+  const talents = talentStatisticsCommand.exec(message);
   if (talents) {
     const [, when, rarity, target] = talents;
     const day = statisticsDay(when);
