@@ -3,13 +3,14 @@ import { renderGenshinCardForChat } from "../card-render.ts";
 import { profileFonts } from "../panel/original-profile-skia.ts";
 import type { PanelTheme, Picture } from "../panel/theme.ts";
 import type { GrowthShortfall } from "./inventory.ts";
+import type { LegacyGrowthCard } from "./legacy-card.ts";
 import type { GrowthResult, GrowthStar } from "./model.ts";
 
 type Context = Parameters<Parameters<typeof renderGenshinCardForChat>[2]>[0];
 type Mode = Parameters<typeof renderGenshinCardForChat>[3];
 export type GrowthCard = GrowthResult & { readonly title: string; readonly star: GrowthStar; readonly icon: string;
   readonly elem?: string; readonly isWeapon: boolean; readonly uid?: string; readonly notice: readonly string[];
-  readonly shortfall?: GrowthShortfall; readonly inventoryMora?: number };
+  readonly legacy?: LegacyGrowthCard; readonly shortfall?: GrowthShortfall; readonly inventoryMora?: number };
 
 const width = 600;
 const columns = 6;

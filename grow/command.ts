@@ -10,6 +10,7 @@ import { createGenshinPanelArchive } from "../panel/panel.ts";
 import { readPanelTheme } from "../panel/theme.ts";
 import { renderGrowthCard, type GrowthCard } from "./card.ts";
 import { loadGrowthTarget, resolveGrowthMaterials } from "./catalogue.ts";
+import { renderLegacyGrowthCard, type LegacyGrowthCard } from "./legacy-card.ts";
 import { growthInventoryPlan, growthShortfall, type GrowthShortfall } from "./inventory.ts";
 import { calculateCharacterGrowth, calculateWeaponGrowth, characterTarget, currentCharacter, equippedWeaponTarget, exceedsTarget,
   growthHelp, matchGrowthCommand, publicCharacterGrowth, weaponTarget, type GrowthResult } from "./model.ts";
@@ -34,7 +35,9 @@ type ProfileStore = ReturnType<typeof createProfileStore>;
 type QueryProfiles = Pick<ProfileStore, "savedRole"> & Partial<Pick<ProfileStore, "requestContext">>;
 export function createGenshinGrowQuery(profiles: QueryProfiles,
   lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
-    render = renderGrowthCard, loadTheme = readPanelTheme, loadCatalogue = readGenshinGachaCatalogue,
+    render = (model, theme, mode, options) => model.legacy
+      ? renderLegacyGrowthCard(model, model.legacy, theme, mode, options)
+      : renderGrowthCard(model, theme, mode, options), loadTheme = readPanelTheme, loadCatalogue = readGenshinGachaCatalogue,
     archive = createGenshinPanelArchive(lockFile), client,
   }: { readonly render?: Render; readonly loadTheme?: typeof readPanelTheme;
     readonly loadCatalogue?: typeof readGenshinGachaCatalogue;
@@ -61,6 +64,7 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
       const material = resolveGrowthMaterials(await theme.metadata?.("meta-gs", "material", "data.json"));
       const notice: string[] = [];
       let result, uid: string | undefined;
+      let legacy: LegacyGrowthCard | undefined;
       let verify = async () => !signal.aborted;
       const qq = id(user_id) ? String(user_id) : undefined;
       if (target.type === "weapon") {
@@ -106,19 +110,23 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
               : "暂无本地角色面板，按公开基线等级1、天赋1/1/1计算。");
           }
           if (request.legacy) {
+            legacy = { characterId: target.id, cons: saved?.cons };
             const equipped = saved?.weapon;
             const weapon = equipped && await loadGrowthTarget("weapon", equipped.name, catalogue, theme);
             const weaponPlan = weapon && equipped?.level !== undefined &&
               equippedWeaponTarget(equipped.level, equipped.promote, request.legacy.weaponLevel, weapon.star);
             if (weapon && weaponPlan) {
               weaponGrowth = calculateWeaponGrowth(weapon.materials, weapon.star, weaponPlan.from, weaponPlan.to, material, theme.commaGroup);
-              if (weaponGrowth) notice.push(`武器按当前装备「${weapon.name}」计算。`);
+              if (weaponGrowth) {
+                legacy = { ...legacy, weapon: { name: weapon.name, icon: weapon.icon, star: weapon.star, result: weaponGrowth } };
+                notice.push(`武器按当前装备「${weapon.name}」计算。`);
+              }
             }
             if (!weaponGrowth) notice.push(equipped ? "当前武器的养成资料不完整，未计入武器材料。"
               : "未取得该角色的现用武器，未计入武器材料。");
           }
           if (qq && role && (start !== publicCharacterGrowth || live || weaponGrowth)) {
-            if (start !== publicCharacterGrowth || weaponGrowth) uid = role.uid;
+            if (start !== publicCharacterGrowth || weaponGrowth || live) uid = role.uid;
             verify = async () => {
               if (signal.aborted) return false;
               const latest = await profiles.savedRole(qq, request.profileId, "gs").catch(() => undefined);
@@ -177,7 +185,7 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
         }
       }
       const model = { ...result, title: target.name, star: target.star, elem: target.elem, icon: target.icon,
-        isWeapon: target.type === "weapon", uid, notice, shortfall, inventoryMora };
+        isWeapon: target.type === "weapon", uid, notice, legacy, shortfall, inventoryMora };
       if (!await verify()) return signal.aborted ? undefined : changed;
       let png: Uint8Array | undefined;
       try { ({ png } = await render(model, theme, "auto", { inlineImageByteLimit, signal })); } catch {}
