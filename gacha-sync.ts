@@ -20,7 +20,8 @@ export function createGenshinGachaSync(
       options.signal?.throwIfAborted();
       const current = await profiles.requestContext(qq, profileId, "gs", uid).catch(() => undefined);
       if (current?.revision !== latest.revision || current?.role.uid !== uid ||
-          current.role.region !== original.role.region || current.role.gameBiz !== original.role.gameBiz) {
+          (current.role.region && current.role.region !== latest.region) ||
+          (current.role.gameBiz && current.role.gameBiz !== "hk4e_cn")) {
         throw new ProfileError("changed", "保存原神抽卡历史时档案已变更，请重新发起请求。");
       }
       options.signal?.throwIfAborted();

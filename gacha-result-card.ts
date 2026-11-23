@@ -6,7 +6,7 @@ type GachaResult = Awaited<ReturnType<ReturnType<typeof createGenshinGachaSync>[
 const title = "抽卡记录";
 const failureMessages = {
   "rate-limited": "访问过于频繁，请稍后再试。",
-  "profile-changed": "保存原神抽卡历史时档案已变更，请重新发起请求。",
+  "profile-changed": "原神档案已变更，本次未更新抽卡记录，请重新发起请求。",
   "request-failed": "原神抽卡记录更新失败。",
 } as const;
 
