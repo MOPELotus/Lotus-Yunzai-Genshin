@@ -8,7 +8,9 @@ import { renderPersonalChallenge } from "./personal-challenge-card.ts";
 import { PersonalTheaterThemeError } from "./personal-theater-card.ts";
 
 const abyss = /^#?(?:原神)?(?:(本期|上期|往期))?(?:深境螺旋|深渊|深境)(?:(本期|上期|往期))?(?:第?(9|10|11|12|九|十|十一|十二)层)?(?:\s*(\d{9,10}))?(?:\s*(?:档案|profile)\s*(\d{1,3}))?$/iu;
-const theater = /^#(?:原神)?(?:(本期|上期|往期))?(?:幻想真境剧诗|剧诗|幻想|幻境)(?:数据)?(?:\s*(?:档案|profile)\s*(\d{1,3}))?$/iu;
+const summarySuffix = String.raw`(?:(\d{1,3})(?:数据)?|(?:数据)?(?:(?:\s*(?:档案|profile))?\s*(\d{1,3}))?)$`;
+const abyssSummary = new RegExp(`^#(?:原神)?(?:上传)?(?:(本期|上期|往期))?(?:深境螺旋|深渊|深境)${summarySuffix}`, "iu");
+const theater = new RegExp(`^#(?:原神)?(?:(本期|上期|往期))?(?:幻想真境剧诗|剧诗|幻想|幻境)${summarySuffix}`, "iu");
 const floorNumbers: Readonly<Record<string, number>> = { 九: 9, 十: 10, 十一: 11, 十二: 12 };
 
 type Command = ChallengeSelection & { readonly profileId: number; readonly uid?: string };
@@ -22,8 +24,10 @@ export function matchPersonalChallenge(message: string): Command | undefined {
     return { mode: "abyss", scheduleType: period(cycle[1] ?? cycle[2]), profileId: Number(cycle[5] ?? 1),
       ...(cycle[4] && { uid: cycle[4] }), ...(floor && { floor }) };
   }
+  const summary = abyssSummary.exec(input);
+  if (summary) return { mode: "abyss", scheduleType: period(summary[1]), profileId: Number(summary[2] ?? summary[3] ?? 1) };
   const play = theater.exec(input);
-  if (play) return { mode: "theater", scheduleType: period(play[1]), profileId: Number(play[2] ?? 1) };
+  if (play) return { mode: "theater", scheduleType: period(play[1]), profileId: Number(play[2] ?? play[3] ?? 1) };
 }
 
 interface MessageContext {

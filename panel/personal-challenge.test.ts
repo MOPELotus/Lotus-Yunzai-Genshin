@@ -49,7 +49,10 @@ test("bare personal current, previous and floor routes coexist with public Atlas
   expect(matchPersonalChallenge("#深渊往期第十二层 profile3")).toEqual({ mode: "abyss", scheduleType: 2, floor: 12, profileId: 3 });
   expect(matchPersonalChallenge("深渊12层")).toEqual({ mode: "abyss", scheduleType: 1, floor: 12, profileId: 1 });
   expect(matchPersonalChallenge("#深渊12层100000001 档案3")).toEqual({ mode: "abyss", scheduleType: 1, profileId: 3, uid, floor: 12 });
+  expect(matchPersonalChallenge("#上传深渊")).toEqual({ mode: "abyss", scheduleType: 1, profileId: 1 });
+  expect(matchPersonalChallenge("#原神深渊数据3")).toEqual({ mode: "abyss", scheduleType: 1, profileId: 3 });
   expect(matchPersonalChallenge("#幻想真境剧诗")).toEqual({ mode: "theater", scheduleType: 1, profileId: 1 });
+  expect(matchPersonalChallenge("#幻想2")).toEqual({ mode: "theater", scheduleType: 1, profileId: 2 });
   expect(matchPersonalChallenge("#上期剧诗数据 档案3")).toEqual({ mode: "theater", scheduleType: 2, profileId: 3 });
   for (const input of ["#挑战图鉴 原神 深渊 本期", "#本期深渊图鉴", "#上期幻想真境剧诗图鉴",
     "#深渊组队", "#202611幻想真境剧诗练度统计", "#深渊14层", "#深渊 上期 @某人"]) {
