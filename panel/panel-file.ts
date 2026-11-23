@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import type { MessageEvent } from "../../../lib/messages.ts";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { canRefreshTalent } from "./refreshed-talents.ts";
@@ -12,7 +12,7 @@ type SignedExportArchive = Pick<ReturnType<typeof createGenshinPanelArchive>, "d
 
 export function matchGenshinPanelExport(message: string) {
   const match = /^#(?:原神)?导出面板\s*(?:([1-9]\d{0,2})|档案\s*([1-9]\d{0,2}))?$/u.exec(message);
-  return match ? { profileId: Number(match[1] ?? match[2] ?? 1) } : undefined;
+  return match ? { profileId: gameCommandProfileId("gs", match[1] ?? match[2]) } : undefined;
 }
 
 function exportFile(snapshot: PanelSnapshot) {

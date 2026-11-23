@@ -55,7 +55,7 @@ import { matchesTeamDamage } from "./panel/team-damage-command.ts";
 import { createSevenSaintsDeckQuery, matchSevenSaintsCollection, matchSevenSaintsDecks } from "./panel/seven-saints-decks.ts";
 import { readPanelTheme } from "./panel/theme.ts";
 import { fileURLToPath } from "node:url";
-import { createProfileStore, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, createProfileStore, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createGachaUpdater } from "@lotus-yunzai/gacha/update";
 import { createProfileHoyoClient, HoyoRequestError, type GenshinGachaPool } from "@lotus-yunzai/hoyo-client";
 import { createGenshinBackpackQuery, genshinBackpackCommand } from "./backpack.ts";
@@ -127,12 +127,12 @@ function deviceGachaHelp(input: string) {
 function matchGachaQuery(message: string): { profileId: number; view: GachaView; all: boolean } | undefined {
   const special = specialCommand.exec(message);
   if (special) {
-    return { profileId: Number(special[2] ?? 1), view: { special: special[1] ? "beginner" : "all" }, all: false };
+    return { profileId: gameCommandProfileId("gs", special[2]), view: { special: special[1] ? "beginner" : "all" }, all: false };
   }
   const version = versionCommand.exec(message);
   if (version) {
     return {
-      profileId: Number(version[2] ?? 1),
+      profileId: gameCommandProfileId("gs", version[2]),
       view: { version: version[1] === "全部" ? "all" : "up" },
       all: version[1] === "版本全部",
     };
@@ -142,7 +142,7 @@ function matchGachaQuery(message: string): { profileId: number; view: GachaView;
   const name = pool[2]!;
   const view = pool[4] === "统计" ? { version: versionPools.get(name) ?? "up" }
     : { detail: detailPools.get(name) ?? 301 };
-  return { profileId: Number(pool[5] ?? 1), view, all: !!(pool[1] || pool[3]) };
+  return { profileId: gameCommandProfileId("gs", pool[5]), view, all: !!(pool[1] || pool[3]) };
 }
 
 interface GachaContext extends GroupRankContext {
@@ -505,10 +505,10 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       const simulation = await wish(context.normalizedMessage, context);
       if (simulation !== undefined) return simulation;
       const worldBoss = worldBossCommand.exec(context.normalizedMessage);
-      if (worldBoss) return worldBossQuery(Number(worldBoss[1] ?? 1), context);
+      if (worldBoss) return worldBossQuery(gameCommandProfileId("gs", worldBoss[1]), context);
       if (worldBossRankingCommand.test(context.normalizedMessage)) return worldBossRankingQuery(context);
       const backpack = genshinBackpackCommand.exec(context.normalizedMessage);
-      if (backpack) return backpackQuery(Number(backpack[1] ?? 1), context);
+      if (backpack) return backpackQuery(gameCommandProfileId("gs", backpack[1]), context);
       const importMatch = gachaImportCommand.exec(context.normalizedMessage);
       if (importMatch || context.attachment) {
         const imported = await importGacha(context, importMatch);
@@ -532,7 +532,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       const exportMatch = exportCommand.exec(context.normalizedMessage);
       const query = matched || external || exportMatch ? undefined : matchGachaQuery(context.normalizedMessage);
       if (!matched && !external && !exportMatch && !query) return achievements.main(context, true);
-      const profileId = query?.profileId ?? Number(matched?.[1] ?? external?.[1] ?? exportMatch?.[3] ?? 1);
+      const profileId = query?.profileId ?? gameCommandProfileId("gs", matched?.[1] ?? external?.[1] ?? exportMatch?.[3]);
       if (profileId > MAX_PROFILE_ID) return;
       const { user_id } = context;
       if (typeof user_id !== "number" || !Number.isSafeInteger(user_id) || user_id < 1) {

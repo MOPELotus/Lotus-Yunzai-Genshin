@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { alias } from "./miao/character-alias.ts";
 import { artifactMainIdMapping, propertyType2attrName } from "./miao/property-mappings.ts";
 import { attrIdMap, attrPct, basicNum, mainIdMap } from "./miao/artifact-tables.ts";
@@ -155,7 +155,7 @@ function matchNamedEquipment(message: string, bare = false): PanelCommand | unde
   const match = namedEquipmentCommand.exec(message);
   if (!match) return;
   const [, firstUid, target, damage, row, lastUid, raw, profile] = match;
-  const profileId = Number(profile ?? 1);
+  const profileId = gameCommandProfileId("gs", profile);
   if (!target?.trim() || !raw || (firstUid && lastUid) || profileId > MAX_PROFILE_ID) return;
   let input = raw.trim();
   let level: number | undefined, affix: number | undefined;
@@ -189,7 +189,7 @@ export function matchConstellationChange(message: string): PanelCommand | undefi
   if (!match) return;
   const [, leadingUid, target, damage, row, trailingUid, raw, profile] = match;
   const cons = /^([0-6零一二三四五六满])(?:命|星魂|魂)$/u.exec(raw?.trim() ?? "")?.[1];
-  const profileId = Number(profile ?? 1);
+  const profileId = gameCommandProfileId("gs", profile);
   if (!target?.trim() || !cons || (leadingUid && trailingUid) || profileId > MAX_PROFILE_ID) return;
   const constellationChange = /^\d$/u.test(cons) ? Number(cons) : "零一二三四五六".indexOf(cons === "满" ? "六" : cons);
   return { type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
@@ -204,7 +204,7 @@ export function matchTalentChange(message: string): PanelCommand | undefined {
   const input = /^(?:天赋|技能|行迹)([\d ]+)$/u.exec(raw?.trim() ?? "")?.[1];
   const levels = input && (input.includes(" ") ? /^(1[0-5]|[1-9]) (1[0-5]|[1-9]) (1[0-5]|[1-9])$/u
     : /^(1[0-5]|[1-9])(1[0-5]|[1-9])(1[0-5]|[1-9])$/u).exec(input);
-  const profileId = Number(profile ?? 1);
+  const profileId = gameCommandProfileId("gs", profile);
   if (!target?.trim() || !levels || (leadingUid && trailingUid) || profileId > MAX_PROFILE_ID) return;
   return { type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
     mode: damage ? "damage" : "profile", damageRow: row ? Number(row) : undefined,
@@ -219,7 +219,7 @@ export function matchCharacterLevelChange(message: string): PanelCommand | undef
   const level = /^(?:等级[ :：]([1-9]\d{0,2})|([1-9]\d{0,2})级)$/u.exec(raw?.trim() ?? "");
   if (!level) return;
   const characterLevelChange = Number(level[1] ?? level[2]);
-  const profileId = Number(profile ?? 1);
+  const profileId = gameCommandProfileId("gs", profile);
   if (!target?.trim() || (characterLevelChange > 90 && characterLevelChange !== 95 && characterLevelChange !== 100) ||
     (leadingUid && trailingUid) || profileId > MAX_PROFILE_ID) return;
   return { type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
@@ -295,7 +295,7 @@ function matchTemporaryEquipment(message: string): PanelCommand | undefined {
   if (!match) return;
   const [, leadingUid, target, damage, row, trailingUid, donorLeadingUid, donor, donorTrailingUid, slots, profile] = match;
   if (!target?.trim() || !donor?.trim() || !slots || (leadingUid && trailingUid) || (donorLeadingUid && donorTrailingUid)) return;
-  const profileId = Number(profile ?? 1);
+  const profileId = gameCommandProfileId("gs", profile);
   if (profileId > MAX_PROFILE_ID) return;
   const [slot, ...extraSlots] = slots.split("+").map(name => equipmentSlots[name]!);
   if (!slot || new Set([slot, ...extraSlots]).size !== extraSlots.length + 1) return;
@@ -402,10 +402,11 @@ function statisticsDay(when?: string): TalentStatisticsSelection["day"] {
 }
 
 function statisticsCommand(value: string | undefined, talentStatistics?: TalentStatisticsSelection): PanelCommand | undefined {
-  const input = value ?? "1";
   const extra = talentStatistics && { talentStatistics };
-  if (/^\d{9,10}$/u.test(input)) return { type: "statistics", profileId: 1, uid: input, ...extra };
-  const profileId = Number(input.replace("档案", ""));
+  if (value && /^\d{9,10}$/u.test(value)) {
+    return { type: "statistics", profileId: gameCommandProfileId("gs"), uid: value, ...extra };
+  }
+  const profileId = gameCommandProfileId("gs", value?.replace("档案", ""));
   if (profileId <= MAX_PROFILE_ID) return { type: "statistics", profileId, ...extra };
 }
 
@@ -418,12 +419,12 @@ function profileQueryName(raw: string, knownOnly = false) {
 
 export function matchGenshinPanelDiscard(message: string) {
   const match = /^#(?:原神)?(?:删除全部面板|删除面板(?:数据)?)\s*(?:([1-9]\d{8,9})(?:\s+档案\s*([1-9]\d{0,2}))?|(?:档案\s*)?([1-9]\d{0,2}))?$/u.exec(message);
-  if (match) return { uid: match[1], profileId: Number(match[2] ?? match[3] ?? 1) };
+  if (match) return { uid: match[1], profileId: gameCommandProfileId("gs", match[2] ?? match[3]) };
 }
 
 export function matchGenshinPanel(message: string): PanelCommand | undefined {
   const reload = /^#(?:原神)?(?:加载|重新加载|重载)面板\s*(?:([1-9]\d{8,9})(?:\s+档案\s*([1-9]\d{0,2}))?|(?:档案\s*)?([1-9]\d{0,2}))?$/u.exec(message);
-  if (reload) return { type: "reload", profileId: Number(reload[2] ?? reload[3] ?? 1), ...(reload[1] && { uid: reload[1] }) };
+  if (reload) return { type: "reload", profileId: gameCommandProfileId("gs", reload[2] ?? reload[3]), ...(reload[1] && { uid: reload[1] }) };
   if (/^#(?:原神)?(?:加载|重新加载|重载)面板/u.test(message)) return;
   if (message.includes("换")) return matchTemporaryEquipment(message);
   const theater = /^#(?:原神)?(20\d{2}(?:0[1-9]|1[0-2]))(?:幻想真境剧诗|幻想真境|真境|剧诗|幻想)(?:角色|练度)?(?:汇总|统计|列表)?\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
@@ -465,8 +466,8 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
   const artifactList = /^#(?:原神)?圣遗物列表\s*([1-9]\d{8,9}|[1-9]\d{0,2})?$/u.exec(message);
   if (artifactList) {
     const value = artifactList[1];
-    if (value && value.length >= 9) return { type: "artifact-list", profileId: 1, uid: value };
-    const profileId = Number(value ?? 1);
+    if (value && value.length >= 9) return { type: "artifact-list", profileId: gameCommandProfileId("gs"), uid: value };
+    const profileId = gameCommandProfileId("gs", value);
     if (profileId <= MAX_PROFILE_ID) return { type: "artifact-list", profileId };
     return;
   }
@@ -478,7 +479,7 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
   if (damage) {
     const [, rawName, operation, firstUid, row, archive, lastUid] = damage;
     const target = profileQueryName(rawName!, operation === "武器" || leadingUid !== undefined);
-    const profileId = Number(archive ?? 1);
+    const profileId = gameCommandProfileId("gs", archive);
     const trailingUid = firstUid ?? lastUid;
     if (target && profileId <= MAX_PROFILE_ID && !(firstUid && lastUid) && !(leadingUid && trailingUid)) {
       return { type: "detail", profileId, uid: leadingUid ?? trailingUid, ...target, mode: "damage",
@@ -489,7 +490,9 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
 
   const root = /^#?(?:米游社|mys)?\s*(?:原神)?\s*(全部面板更新|更新全部面板|获取游戏角色详情|更新面板|面板更新|面[板版](?:列表)?|角色面板(?:列表)?|面板角色(?:列表)?)\s*([1-9]\d{8,9}|[1-9]\d{0,2})?$/iu.exec(message);
   const detail = /^#(?:原神)?\s*([^#]{1,24}?)\s*(面[板版]|详细|详情|圣遗物|武器)\s*(?:([1-9]\d{8,9})|(?:档案\s*)?([1-9]\d{0,2}))?$/u.exec(detailMessage);
-  const suffix = (value?: string) => value && value.length >= 9 ? { profileId: 1, uid: value } : { profileId: Number(value ?? 1) };
+  const suffix = (value?: string) => value && value.length >= 9
+    ? { profileId: gameCommandProfileId("gs"), uid: value }
+    : { profileId: gameCommandProfileId("gs", value) };
   if (root) {
     const opts = suffix(root[2]);
     if (opts.profileId > MAX_PROFILE_ID) return;

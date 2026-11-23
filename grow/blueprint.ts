@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
@@ -12,7 +12,7 @@ export function matchGenshinBlueprint(message: string) {
   const input = message.trim().replace(/^＃/u, "#");
   if (help.test(input)) return { type: "help" as const };
   const match = query.exec(input);
-  if (match) return { type: "query" as const, code: match[1]!, profileId: Number(match[2] ?? 1) };
+  if (match) return { type: "query" as const, code: match[1]!, profileId: gameCommandProfileId("gs", match[2]) };
 }
 
 interface MessageContext {

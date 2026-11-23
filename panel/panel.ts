@@ -314,8 +314,7 @@ export function createGenshinPanelQuery(
       try {
         if (!target) {
           const { source } = await ownedGenshinRole(profiles, qq, profileId);
-          const suffix = profileId === 1 ? "" : ` 档案${profileId}`;
-          return `你确认要删除面板数据吗？请回复 #删除面板${source.role.uid}${suffix} 以删除面板数据。`;
+          return `你确认要删除面板数据吗？请回复 #删除面板${source.role.uid} 档案${profileId} 以删除面板数据。`;
         }
         const source = await profiles.requestContext(qq, profileId, "gs", target);
         const { role } = source;

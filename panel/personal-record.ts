@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type GenshinGcgSummary } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -30,9 +30,9 @@ function rosterRarity(filter = ""): Rarity | undefined {
 
 export function matchPersonalRecord(message: string): Command | undefined {
   const command = message.trim().replace(/^＃/u, "#");
-  if (command === "角色") return { profileId: 1, type: "overview" };
+  if (command === "角色") return { profileId: gameCommandProfileId("gs"), type: "overview" };
   const explore = exploration.exec(command);
-  if (explore) return { profileId: Number(explore[1] ?? 1), type: "exploration" };
+  if (explore) return { profileId: gameCommandProfileId("gs", explore[1]), type: "exploration" };
   const target = rosterUid.exec(command);
   const uid = target?.[2] ?? bareUid.exec(command)?.[1];
   if (uid) {
@@ -41,7 +41,7 @@ export function matchPersonalRecord(message: string): Command | undefined {
   }
   const match = suffix.exec(command);
   if (!match) return;
-  const profileId = Number(match[3] ?? 1);
+  const profileId = gameCommandProfileId("gs", match[3]);
   if (match[1]!.endsWith("卡片")) return { profileId, type: "overview" };
   const star = rosterRarity(match[2]);
   return { profileId, type: "roster", ...(star && { star }) };

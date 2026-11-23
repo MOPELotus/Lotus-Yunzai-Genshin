@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type GenshinDeckList, type GenshinGcgCollection, type GenshinGcgCollectionScope } from "@lotus-yunzai/hoyo-client";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { collectionPages, deckDetailPages, deckHint, deckIndexPages, renderSevenSaintsDeck } from "./seven-saints-deck-card.ts";
@@ -7,7 +7,7 @@ const command = /^#*(?:原神)?七圣(?:召唤)?(?:查询[牌卡]组(?:列表)?(
 export function matchSevenSaintsDecks(message: string) {
   const match = command.exec(message.trim().replace(/^＃/u, "#"));
   if (!match) return;
-  return { id: match[1] === undefined ? undefined : Number(match[1]), profileId: Number(match[2] ?? 1) };
+  return { id: match[1] === undefined ? undefined : Number(match[1]), profileId: gameCommandProfileId("gs", match[2]) };
 }
 
 const collectionCommand = /^#*(?:原神)?七圣(?:召唤)?查询(角色|行动)?(?:卡)?牌(?:列表)?(?:\s+(?:档案|profile)\s*(\d{1,3}))?$/iu;
@@ -15,7 +15,7 @@ export function matchSevenSaintsCollection(message: string) {
   const match = collectionCommand.exec(message.trim().replace(/^＃/u, "#"));
   if (!match) return;
   const scope: GenshinGcgCollectionScope = match[1] === "角色" ? "character" : match[1] === "行动" ? "action" : "all";
-  return { scope, profileId: Number(match[2] ?? 1) };
+  return { scope, profileId: gameCommandProfileId("gs", match[2]) };
 }
 
 type Image = { readonly type: "image"; readonly file: Uint8Array };

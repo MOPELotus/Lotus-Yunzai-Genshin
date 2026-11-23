@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import type { createGenshinMonthlyArchive } from "./monthly-archive.ts";
 import { genshinRecentMonthlyPeriods } from "./monthly-command.ts";
@@ -10,7 +10,7 @@ const statisticsCommand = /^(?:#|＃)?(今年|去年|\d{4}年)?(?:原石|札记)
 
 export function matchGenshinStatistics(message: string) {
   const matched = statisticsCommand.exec(message.trim());
-  return matched ? { selection: matched[1], profileId: Number(matched[2] ?? 1) } : undefined;
+  return matched ? { selection: matched[1], profileId: gameCommandProfileId("gs", matched[2]) } : undefined;
 }
 
 type StatisticsContext = Parameters<ReturnType<typeof import("./monthly-command.ts").createGenshinMonthlyQuery>>[1];

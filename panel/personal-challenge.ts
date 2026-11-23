@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
@@ -21,13 +21,13 @@ export function matchPersonalChallenge(message: string): Command | undefined {
   const cycle = abyss.exec(input);
   if (cycle && (input.startsWith("#") || cycle[3]) && (!cycle[1] || !cycle[2])) {
     const floor = cycle[3] && (floorNumbers[cycle[3]] ?? Number(cycle[3]));
-    return { mode: "abyss", scheduleType: period(cycle[1] ?? cycle[2]), profileId: Number(cycle[5] ?? 1),
+    return { mode: "abyss", scheduleType: period(cycle[1] ?? cycle[2]), profileId: gameCommandProfileId("gs", cycle[5]),
       ...(cycle[4] && { uid: cycle[4] }), ...(floor && { floor }) };
   }
   const summary = abyssSummary.exec(input);
-  if (summary) return { mode: "abyss", scheduleType: period(summary[1]), profileId: Number(summary[2] ?? summary[3] ?? 1) };
+  if (summary) return { mode: "abyss", scheduleType: period(summary[1]), profileId: gameCommandProfileId("gs", summary[2] ?? summary[3]) };
   const play = theater.exec(input);
-  if (play) return { mode: "theater", scheduleType: period(play[1]), profileId: Number(play[2] ?? play[3] ?? 1) };
+  if (play) return { mode: "theater", scheduleType: period(play[1]), profileId: gameCommandProfileId("gs", play[2] ?? play[3]) };
 }
 
 interface MessageContext {

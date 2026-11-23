@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
@@ -18,7 +18,7 @@ export function matchPersonalHardChallenge(message: string): Command | undefined
   return {
     scheduleType: period === "上期" || period === "往期" ? 2 : 1,
     mode: mode === "单人" || mode === "单挑" ? "single" : mode === "组队" || mode === "多人" || mode === "合作" ? "mp" : "best",
-    profileId: Number(bareId ?? namedId ?? 1),
+    profileId: gameCommandProfileId("gs", bareId ?? namedId),
   };
 }
 

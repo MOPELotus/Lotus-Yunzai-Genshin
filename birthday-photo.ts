@@ -1,3 +1,4 @@
+import { gameCommandProfileId } from "@lotus-yunzai/account";
 import {
   loadOfficialArtwork, MAX_PROFILE_ID, normalizeProfileRoleArtworkUrl, ProfileError, type ProfileRequestContext,
 } from "@lotus-yunzai/account";
@@ -14,7 +15,7 @@ const expiredRetcodes = new Set([-100, 10001, 10101, 10102, 10103]);
 
 export function matchGenshinBirthdayPhoto(message: string) {
   const match = birthdayCommand.exec(message.trim().replace(/^＃/u, "#"));
-  if (match) return { profileId: Number(match[1] ?? 1) };
+  if (match) return { profileId: gameCommandProfileId("gs", match[1]) };
 }
 
 interface BirthdayContext {

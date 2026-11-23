@@ -1,5 +1,5 @@
 import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
-import { MAX_PROFILE_ID } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { charExp, charMaxLv, charPromote, items, promoteLvs, talentCost, talentKeys, talentMax, weaponExp, weaponPromote, weaponPromoteStar } from "./tables.ts";
 
 export interface GrowthLevel { readonly level: number; readonly promote: number }
@@ -57,7 +57,7 @@ export function matchGrowthCommand(message: string): GrowthRequest | "help" | un
     const [level = "90", weapon = "90", a = "10", e = "10", q = "10", ...extra] = legacy[2]!.match(/\d+/gu) ?? [];
     const capped = (value: string, max: number) => String(Math.min(Number(value), max));
     return { name, numbers: [capped(level, 90), capped(a, 10), capped(e, 10), capped(q, 10), ...extra],
-      profileId: 1, explicitProfile: false, legacy: { weaponLevel: Number(capped(weapon, 90)) } };
+      profileId: gameCommandProfileId("gs"), explicitProfile: false, legacy: { weaponLevel: Number(capped(weapon, 90)) } };
   }
   let body = message.slice(start[0].length).trim();
   if (body.length > 192) return "help";
@@ -65,7 +65,7 @@ export function matchGrowthCommand(message: string): GrowthRequest | "help" | un
   const deductInventory = deduct.test(body);
   if (deductInventory) body = body.replace(deduct, "").trim();
   const profile = /\s+档案\s*([1-9]\d{0,2})$/u.exec(body);
-  const profileId = Number(profile?.[1] ?? 1);
+  const profileId = gameCommandProfileId("gs", profile?.[1]);
   if (profileId > MAX_PROFILE_ID) return "help";
   if (profile) body = body.slice(0, profile.index).trimEnd();
   const uidPattern = /(?<!\d)([1-9]\d{8,9})(?!\d)/gu;

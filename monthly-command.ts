@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { HoyoRequestError, type createProfileHoyoClient, type GenshinMonthlySnapshot } from "@lotus-yunzai/hoyo-client";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "./owned-role.ts";
 import type { createGenshinMonthlyArchive } from "./monthly-archive.ts";
@@ -12,7 +12,7 @@ export function matchGenshinMonthly(message: string) {
   const capture = monthlyCommand.exec(message.trim());
   if (!capture) return;
   const [, month, profile] = capture;
-  return { month: month === undefined ? undefined : namedMonths.get(month) ?? Number(month), profileId: Number(profile ?? 1) };
+  return { month: month === undefined ? undefined : namedMonths.get(month) ?? Number(month), profileId: gameCommandProfileId("gs", profile) };
 }
 
 export function genshinMonthlyPeriod(month: number | undefined, now: number) {

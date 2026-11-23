@@ -2,7 +2,7 @@ import { randomInt } from "node:crypto";
 import { readdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import type { DeliveryCommandReply } from "../../../lib/commands.ts";
 import type { MessageEvent } from "../../../lib/messages.ts";
@@ -164,7 +164,7 @@ export function matchStygianConsentCommand(message: string): ConsentCommand | un
   } else if (capture[1] === "授权") {
     const match = /^([1-9]\d*)\s+(Ark|Akasha|双站)(?:\s+档案\s*([1-9]\d{0,2}))?$/iu.exec(args);
     const group = Number(match?.[1]);
-    const profileId = Number(match?.[3] ?? 1);
+    const profileId = gameCommandProfileId("gs", match?.[3]);
     const selected = match && parseSites(match[2]);
     if (selected && isId(group) && isProfile(profileId)) return { kind: "authorize", group, sites: selected, profileId };
   } else {

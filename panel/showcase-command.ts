@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import type { GenshinRoleProfiles } from "../owned-role.ts";
 import { renderPanelList } from "./card.ts";
@@ -19,11 +19,16 @@ const defaultPanelDirectory = fileURLToPath(new URL("../../../data/genshin/panel
 export function matchGenshinShowcase(message: string) {
   const normalized = message.trim().replace(/^＃/u, "#");
   const result = showcase.exec(normalized);
-  if (result) return { uid: result[1], profileId: Number(result[2] ?? result[3] ?? 1), explicitProfile: !!(result[2] ?? result[3]) };
+  if (result) {
+    const selected = result[2] ?? result[3];
+    const uid = result[1];
+    const profileId = uid && selected === undefined ? 1 : gameCommandProfileId("gs", selected);
+    return { uid, profileId, explicitProfile: selected !== undefined };
+  }
   if (reserved.test(normalized)) return "用法：#展板更新面板 [UID] [档案编号]" as const;
   const named = namedShowcase.exec(normalized);
   const characterName = named?.[1]?.trim();
-  if (characterName) return { characterName, uid: undefined, profileId: Number(named?.[2] ?? 1), explicitProfile: !!named?.[2] };
+  if (characterName) return { characterName, uid: undefined, profileId: gameCommandProfileId("gs", named?.[2]), explicitProfile: !!named?.[2] };
 }
 
 interface ShowcaseContext extends GroupRankContext {

@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { genshinDamageEnemyLevel } from "./damage.ts";
 import { object } from "./model.ts";
@@ -6,7 +6,7 @@ import { object } from "./model.ts";
 export function matchEnemyLevel(message: string) {
   const match = /^#(?:原神)?(?:敌人|怪物)等级\s*(\d{1,3})(?:\s+档案\s*([1-9]\d{0,2}))?\s*$/u.exec(message);
   if (!match) return;
-  const profileId = Number(match[2] ?? 1);
+  const profileId = gameCommandProfileId("gs", match[2]);
   if (profileId <= MAX_PROFILE_ID) return { profileId, enemyLevel: Number(match[1]) };
 }
 

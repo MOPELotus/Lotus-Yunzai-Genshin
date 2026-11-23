@@ -1,6 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { MAX_PROFILE_ID, ProfileError, type createProfileStore, type ProfileRequestContext } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError, type createProfileStore, type ProfileRequestContext } from "@lotus-yunzai/account";
 import { GameRecordRequestError, genshinCnRecordRegion, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
@@ -17,7 +17,7 @@ const exchangeHelp = "本群暂无可互相交换的「月谕圣牌」用户。\
 export function matchGenshinTarotCards(message: string) {
   const match = commandPattern.exec(message.trim().replace(/^＃/u, "#"));
   if (!match) return;
-  return { exchange: /^(?:交换|互换|换牌)$/u.test(match[1] ?? ""), profileId: Number(match[2] ?? match[4] ?? 1), uid: match[3] };
+  return { exchange: /^(?:交换|互换|换牌)$/u.test(match[1] ?? ""), profileId: gameCommandProfileId("gs", match[2] ?? match[4]), uid: match[3] };
 }
 
 type TarotProfiles = GenshinRoleProfiles & Pick<ReturnType<typeof createProfileStore>, "loginIdentity">;

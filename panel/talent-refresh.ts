@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { avatarId, object, panelElement, talentKeys, whole, type Json, type PanelAvatar } from "./model.ts";
@@ -10,7 +10,7 @@ import { readPanelTheme } from "./theme.ts";
 const command = /^#(?:原神)?(?:强制)?(?:刷新|更新)(?:所有|角色)*(?:天赋|技能|行迹)(?:\s*(?:(?:档案|profile)\s*)?(\d{1,3}))?$/iu;
 export function matchGenshinTalentRefresh(message: string) {
   const match = command.exec(message.trim().replace(/^＃/u, "#"));
-  return match ? { profileId: Number(match[1] ?? 1) } : undefined;
+  return match ? { profileId: gameCommandProfileId("gs", match[1]) } : undefined;
 }
 
 export function fetchedTalentLevels(row: Json, avatar: PanelAvatar, meta: Json) {

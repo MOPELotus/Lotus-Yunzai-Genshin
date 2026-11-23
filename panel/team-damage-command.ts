@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import type { PanelSnapshot } from "./model.ts";
 import { travelerIds } from "./talent-levels.ts";
@@ -55,7 +55,7 @@ export function parseTeamDamage(message: string) {
   const mode = match[1];
   let body = match[2] ?? "";
   if (body.length > 200) throw new TypeError("队伍伤害指令过长。");
-  let profileId = 1;
+  let profileId = gameCommandProfileId("gs");
   const inline = /^(\d+)(?=\D|$)/u.exec(body);
   const explicit = /(?:^|\s)(?:档案|profile)\s*(\d+)\s*$/iu.exec(body);
   if (inline && explicit) throw new TypeError("请只指定一个原神档案编号。");

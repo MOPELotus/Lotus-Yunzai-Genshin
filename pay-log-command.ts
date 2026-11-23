@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { open, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GenshinPayLogError, genshinPayLogAuthorization, readOnlineGenshinPayLog } from "@lotus-yunzai/hoyo-client/genshin-pay-log";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "./owned-role.ts";
@@ -20,13 +20,13 @@ const authorizationLifetime = 24 * 3_600_000;
 export function matchGenshinPayLog(message: string) {
   const input = message.trim().replace(/^＃/u, "#");
   const match = readCommand.exec(input);
-  if (match) return { kind: "read", profileId: Number(match[1] ?? 1) } as const;
+  if (match) return { kind: "read", profileId: gameCommandProfileId("gs", match[1]) } as const;
   if (guide.test(input)) return { kind: "help" } as const;
   const refresh = update.exec(input);
-  if (refresh) return { kind: "update", profileId: Number(refresh[1] ?? 1) } as const;
+  if (refresh) return { kind: "update", profileId: gameCommandProfileId("gs", refresh[1]) } as const;
   const link = /^(\S+)(?:\s+(?:档案|profile)\s*(\d{1,3}))?$/iu.exec(input);
   const authorization = link && genshinPayLogAuthorization(link[1]!);
-  if (authorization) return { kind: "authorize", authorization, profileId: Number(link[2] ?? 1) } as const;
+  if (authorization) return { kind: "authorize", authorization, profileId: gameCommandProfileId("gs", link[2]) } as const;
 }
 
 async function readArchive(directory: string, qq: string, uid: string, signal: AbortSignal) {

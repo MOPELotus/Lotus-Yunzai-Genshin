@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createAtlasRuntimeCatalog, defaultAtlasLocale, parseAtlasLocale } from "@lotus-yunzai/atlas/catalog";
 import { legacyLotusDirectories, readLotusGlobalConfig } from "../../lib/lotus-global-config.ts";
 import { readAtlasGalleryImage } from "@lotus-yunzai/atlas/gallery";
@@ -65,7 +65,7 @@ function selectCategory(message: string, categories: readonly AchievementCategor
   if (!query || reserved.test(query)) return;
   const key = achievementCategoryKey(query);
   const exact = categories.find(category => achievementCategoryKey(category.name) === key);
-  if (exact) return { category: exact, profileId: 1 };
+  if (exact) return { category: exact, profileId: gameCommandProfileId("gs") };
   const suffix = /(?:\s*档案\s*|\s*)(\d{1,3})$/u.exec(query);
   if (suffix && suffix.index > 0) {
     const name = achievementCategoryKey(query.slice(0, suffix.index));
@@ -83,7 +83,7 @@ function selectCategory(message: string, categories: readonly AchievementCategor
         Math.abs(achievementCategoryKey(b.name).length - normalized.length))[0];
     };
     const bySuffix = suffix && suffix.index > 0 ? partial(query.slice(0, suffix.index)) : undefined;
-    return bySuffix ? { category: bySuffix, profileId: Number(suffix?.[1]) } : { category: partial(query), profileId: 1 };
+    return bySuffix ? { category: bySuffix, profileId: Number(suffix?.[1]) } : { category: partial(query), profileId: gameCommandProfileId("gs") };
   }
 }
 
@@ -199,7 +199,7 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
     const categoryAction = categoryCommand.test(message) && (bareOnly || /^#成就/u.test(message)) && !reserved.test(message);
     if (bareOnly ? !categoryAction || index || importing : !index && !importing && !request && !categoryAction) return;
     const qq = String(context.user_id);
-    let profileId = Number(index?.[1] ?? importing?.[1] ?? request?.profileId ?? 1);
+    let profileId = gameCommandProfileId("gs", index?.[1] ?? importing?.[1] ?? request?.profileId);
     let data: Awaited<ReturnType<typeof catalog>> | undefined;
     let category: AchievementCategory | undefined;
     if (!index && !importing && !request) {

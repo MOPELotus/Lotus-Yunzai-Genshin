@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError } from "@lotus-yunzai/hoyo-client";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { renderAbyssTeams } from "./abyss-team-card.ts";
@@ -11,7 +11,7 @@ const command = /^#(?:原神)?深渊(?:组队|配队|配对)(?:\s*(?:(?:档案|p
 
 export function matchGenshinAbyssTeam(message: string) {
   const match = command.exec(message.trim());
-  if (match) return { profileId: Number(match[1] ?? 1) };
+  if (match) return { profileId: gameCommandProfileId("gs", match[1]) };
 }
 
 type Context = {

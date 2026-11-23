@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import type { createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { characterAliasKey, readGameCharacterAliases, validCharacterAlias } from "../../../lib/game-character-aliases.ts";
@@ -54,7 +54,7 @@ function legacyGenshinAvatarInput(message: string): NamedCard | undefined {
   const uid = /(?<!\d)(18\d{8}|[1-9]\d{8})(?!\d)/u.exec(text)?.[1];
   if (!uid && match?.[1]) return;
   const name = uid ? text.replace(uid, "").replace(/老婆|老公|卡片/gu, "").trim() : text;
-  if (name) return { kind: "named", profileId: 1, input: name, ...(uid && { uid }) };
+  if (name) return { kind: "named", profileId: uid ? 1 : gameCommandProfileId("gs"), input: name, ...(uid && { uid }) };
 }
 
 export function matchLegacyGenshinAvatarCard(message: string): NamedCard | undefined {
@@ -78,7 +78,7 @@ export function matchGenshinAvatarCard(message: string): Command | undefined {
   const match = /^#(?:原神)?\s*([^#\r\n]{1,128}?)\s*(?:(?:档案|profile)\s*([1-9]\d{0,2}))?$/iu.exec(message.trim().replace(/^＃/u, "#"));
   if (!match || /^(?:星铁|崩铁|绝区零)/u.test(match[1]!)) return;
   const text = match[1]!.trim();
-  const profileId = Number(match[2] ?? 1);
+  const profileId = gameCommandProfileId("gs", match[2]);
   const cardName = /^(.{1,24}?)\s*卡片$/u.exec(text)?.[1];
   const relationName = /^(?:老婆|老公)\s*(.{1,24})$/u.exec(text)?.[1] ??
     /^(.{1,24}?)\s*(?:老婆|老公)$/u.exec(text)?.[1];

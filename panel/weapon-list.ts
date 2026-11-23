@@ -1,4 +1,4 @@
-import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
+import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
@@ -12,7 +12,7 @@ export function matchWeaponList(message: string) {
   const match = weaponList.exec(message.trim().replace(/^＃/u, "#"));
   if (!match) return;
   const rarity = match[1]?.startsWith("四") || match[1]?.startsWith("4") ? 4 as const : match[1] ? 5 as const : undefined;
-  return { rarity, uid: match[2], profileId: Number(match[3] ?? match[4] ?? 1) };
+  return { rarity, uid: match[2], profileId: gameCommandProfileId("gs", match[3] ?? match[4]) };
 }
 
 interface MessageContext {
