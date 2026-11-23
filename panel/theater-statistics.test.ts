@@ -8,6 +8,10 @@ test("剧诗练度保留日期入口，不接管公共图鉴或个人战绩", ()
   expect(matchGenshinPanel("#202611幻想真境剧诗练度统计")).toMatchObject({ type: "statistics", theaterMonth: "202611", profileId: 1 });
   expect(matchGenshinPanel("#202407幻想练度统计 档案 2")).toMatchObject({ type: "statistics", theaterMonth: "202407", profileId: 2 });
   expect(matchGenshinPanel("#202611剧诗练度统计 100000123")).toMatchObject({ type: "statistics", uid: "100000123", profileId: 1 });
+  for (const input of ["#202407幻想", "#202407真境", "#202407剧诗汇总", "#202407幻想真境剧诗角色", "#202407幻想角色列表"]) {
+    expect(matchGenshinPanel(input)).toMatchObject({ type: "statistics", theaterMonth: "202407", profileId: 1 });
+  }
+  expect(matchGenshinPanel("#202407幻想角色列表2")).toMatchObject({ type: "statistics", theaterMonth: "202407", profileId: 2 });
   for (const other of ["#202613剧诗练度统计", "#202611幻想真境剧诗图鉴", "#幻想", "#幻想真境剧诗练度统计", "#本期幻想图鉴"]) {
     expect(matchGenshinPanel(other)).toBeUndefined();
   }

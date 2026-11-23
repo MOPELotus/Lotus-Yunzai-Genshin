@@ -43,11 +43,13 @@ test("旧日期和素材入口保留养成及个人天赋命令的边界", () =>
     ["#今日素材", "today"], ["#我的材料", "today"], ["#每日材料", "today"], ["#明天材料", "tomorrow"],
     ["#明日我的材料", "tomorrow"], ["#周四素材", 4], ["#明天周二素材", 2],
     ["#每日天赋", "today"], ["#我的每日天赋", "today"], ["#明日每日天赋", "tomorrow"], ["#明日周日每日天赋", 7],
+    ["#今日天赋", "today"], ["#今天天赋", "today"], ["#明日天赋", "tomorrow"], ["#明天天赋", "tomorrow"],
+    ["#周一天赋", 1], ["#周2天赋", 2], ["#周日天赋", 7],
   ] as const) expect(matchGenshinPanel(raw)).toMatchObject({ type: "daily-materials", materialDay: expected });
   expect(matchGenshinPanel("#原神周2材料 档案2")).toMatchObject({ profileId: 2, materialDay: 2 });
   expect(matchGenshinPanel(`#今天材料${uid}`)).toMatchObject({ uid });
   expect(matchGenshinPanel("#原神周2每日天赋 档案2")).toMatchObject({ type: "daily-materials", profileId: 2, materialDay: 2 });
-  for (const msg of ["#今日天赋", "#明日天赋统计", "#周二五星天赋", "#天赋统计", "#我的天赋"]) {
+  for (const msg of ["#今日天赋2", "#周二天赋2", "#明日天赋统计", "#周二五星天赋", "#天赋统计", "#我的天赋"]) {
     expect(matchGenshinPanel(msg)).toMatchObject({ type: "statistics" });
   }
   for (const msg of ["#星铁素材", "#绫华素材", "#养成材料", "#周二素材 档案256"]) expect(matchGenshinPanel(msg)).toBeUndefined();
@@ -106,9 +108,9 @@ test("联机失败仍回退同档旧资料，周日不需档案且发图前复�
         } },
     });
     expect(await query("#周日素材", { user_id: 42 })).toContain("全部天赋与武器突破素材");
-    expect(await query("#周日每日天赋", {})).toContain("全部天赋与武器突破素材");
+    expect(await query("#周日天赋", {})).toContain("全部天赋与武器突破素材");
     expect(accounts).toBe(0);
-    for (const message of ["#每日材料 档案2", "#每日天赋 档案2"]) {
+    for (const message of ["#每日材料 档案2", "#今日天赋"]) {
       expect(await query(message, { user_id: 42 })).toEqual({ type: "image", file: png });
     }
     time += 1000;

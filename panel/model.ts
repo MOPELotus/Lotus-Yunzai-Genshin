@@ -423,19 +423,21 @@ export function matchGenshinPanel(message: string): PanelCommand | undefined {
   if (reload) return { type: "reload", profileId: Number(reload[2] ?? reload[3] ?? 1), ...(reload[1] && { uid: reload[1] }) };
   if (/^#(?:原神)?(?:加载|重新加载|重载)面板/u.test(message)) return;
   if (message.includes("换")) return matchTemporaryEquipment(message);
-  const theater = /^#(?:原神)?(20\d{2}(?:0[1-9]|1[0-2]))(?:幻想真境剧诗|幻想真境|剧诗|幻想)练度统计\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
+  const theater = /^#(?:原神)?(20\d{2}(?:0[1-9]|1[0-2]))(?:幻想真境剧诗|幻想真境|真境|剧诗|幻想)(?:角色|练度)?(?:汇总|统计|列表)?\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
   if (theater) {
     const selection = statisticsCommand(theater[2]);
     if (selection) return { ...selection, theaterMonth: theater[1] };
     return;
   }
   const materials = /^#(?:原神)?((?:每日|我的|今日|今天|明日|明天|周[1-7一二三四五六日天])*)(素材|材料|天赋)\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
-  if (materials && (materials[2] !== "天赋" || materials[1]?.includes("每日"))) {
-    const [, markers = "", , target] = materials;
-    const selection = statisticsCommand(target);
-    const day = /周[1-7一二三四五六日天]/u.exec(markers)?.[0] ?? /明日|明天/u.exec(markers)?.[0];
-    if (selection) return { ...selection, type: "daily-materials", materialDay: statisticsDay(day) ?? "today" };
-    return;
+  if (materials) {
+    const [, markers = "", kind, target] = materials;
+    const datedTalent = !target && /^(?:今日|今天|明日|明天|周[1-7一二三四五六日天])$/u.test(markers);
+    if (kind !== "天赋" || markers.includes("每日") || datedTalent) {
+      const selection = statisticsCommand(target);
+      const day = /周[1-7一二三四五六日天]/u.exec(markers)?.[0] ?? /明日|明天/u.exec(markers)?.[0];
+      return selection && { ...selection, type: "daily-materials", materialDay: statisticsDay(day) ?? "today" };
+    }
   }
   const talents = /^#(?:原神)?(?:我的)?(今日|今天|明日|明天|周[1-7一二三四五六日天])?([五四54]星)?(?:技能|天赋)(?:汇总|统计|列表)?\s*([1-9]\d{8,9}|(?:档案\s*)?[1-9]\d{0,2})?$/u.exec(message);
   if (talents) {
