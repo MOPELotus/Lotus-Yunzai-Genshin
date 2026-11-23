@@ -103,8 +103,9 @@ async function assetsForRow(avatar: RankAvatar, theme: PanelTheme) {
 
 export async function renderGroupPanelRank(name: string, rankMode: RankMode,
   rows: readonly { readonly uid: string; readonly avatar: RankAvatar }[], theme: PanelTheme, mode: RenderMode = "auto",
-  { signal, inlineImageByteLimit, refreshSummary, aggregateTitle }: { readonly signal?: AbortSignal; readonly inlineImageByteLimit?: number;
-    readonly refreshSummary?: string; readonly aggregateTitle?: string } = {}) {
+  { signal, inlineImageByteLimit, refreshSummary, aggregateTitle, publicRanking }: { readonly signal?: AbortSignal; readonly inlineImageByteLimit?: number;
+    readonly refreshSummary?: string; readonly aggregateTitle?: string;
+    readonly publicRanking?: { readonly filters: string; readonly count: number } } = {}) {
   const element = aggregateTitle ? "hydro" : rows[0]?.avatar.elem ?? "hydro";
   const [fonts, backdrop, texture, medals, first, talentBadge, crown, emptyRelic, aliases, rarity, people] = await Promise.all([
     profileFonts(theme.resourceRoot),
@@ -145,18 +146,24 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
     ctx.shadowColor = "#000";
     ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 4;
-    write(aggregateTitle ?? `#${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`, 20, 74, 36, { title: true, maxWidth: 780 });
+    write(aggregateTitle ?? `#${publicRanking ? "自定义" : ""}${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`, 20, 74, 36, { title: true, maxWidth: 780 });
     ctx.restore();
     panel(ctx, texture, [10, 97, 795, 166 + extra], () => {
       fill(ctx, "#0006", [10, 97, 795, 40]);
       fill(ctx, "#ffffff46", [10, 137, 795, 1]);
-      write("群排名说明", 30, 124, 16, { color: gold });
+      write(publicRanking ? "全服自定义排行说明" : "群排名说明", 30, 124, 16, { color: gold });
       fill(ctx, "#0006", [10, 138, 795, 124 + extra]);
-      explanations.forEach(([title, body], index) => {
+      const notes = publicRanking ? [
+        ["排序", (rankMode === "damage" ? "伤害均值" : "圣遗物评分") + "降序"],
+        ["筛选", publicRanking.filters], ["数量", `最多 ${publicRanking.count} 名，本次 ${rows.length} 名`],
+        ["面板", "引用本消息发送 #排行面板1 查看前 20 名中的指定一名。"],
+        ["范围", "排名服务的公开展板。"],
+      ] : explanations;
+      notes.forEach(([title, body], index) => {
         const y = 161 + index * 20;
         write("•", 36, y, 13);
-        if (index < 4) medal(ctx, medals, index > 0, [53, y - 14, 16, 16]);
-        const x = index < 4 ? 75 : 54;
+        if (!publicRanking && index < 4) medal(ctx, medals, index > 0, [53, y - 14, 16, 16]);
+        const x = !publicRanking && index < 4 ? 75 : 54;
         const heading = title + "：";
         write(heading, x, y, 13, { color: gold });
         font(13);

@@ -116,9 +116,9 @@ function formatArtifacts(avatar: PanelAvatar, { rating, missing }: Awaited<Retur
 }
 
 export async function originalProfileData(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme, {
-  damage, change, displayedTalent, allowMissingTheme = false,
+  damage, change, displayedTalent, sourceLabel, allowMissingTheme = false,
 }: { readonly damage?: DamageSummary; readonly change?: string; readonly displayedTalent?: DisplayedTalentLevels;
-  readonly allowMissingTheme?: boolean } = {}) {
+  readonly sourceLabel?: string; readonly allowMissingTheme?: boolean } = {}) {
   if (!theme.resourceRoot && !allowMissingTheme) return;
   const number: FormatNumber = (value, digits = 1) => groupPanelNumber(value.toLocaleString("en-US", {
     minimumFractionDigits: digits, maximumFractionDigits: digits,
@@ -158,7 +158,7 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
   return {
     scale: 4, uid: snapshot.uid, elem: avatar.elem, changeProfile: change,
     data: { name: avatar.name, abbr: text(meta?.abbr) || avatar.name, cons: avatar.cons ?? 0,
-      level: avatar.level, talent: { a, e, q }, dataSource: sourceNames[avatar._source] ?? avatar._source,
+      level: avatar.level, talent: { a, e, q }, dataSource: sourceLabel ?? sourceNames[avatar._source] ?? avatar._source,
       updateTime: avatar._time ? new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai", dateStyle: "short", timeStyle: "short" }).format(avatar._time) : "",
       costumeSplash, gallerySplash, imgs: { a: gameWeapon ? resource("common", "item", `atk-${gameWeapon}.webp`) : "",
         e: talentIcon("e"), q: talentIcon("q"),

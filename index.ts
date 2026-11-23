@@ -1,3 +1,5 @@
+import { matchArkRankCommand } from "../../lib/ark-custom-rank-command.ts";
+import { createGenshinCustomRank } from "./rank-statistics/custom-rank.ts";
 import { matchPublicDamageRank } from "../../lib/rank-statistics.ts";
 import { gachaImageReply } from "../../lib/gacha-image-reply.ts";
 import type { MessageEvent } from "../../lib/messages.ts";
@@ -136,6 +138,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
 }) {
   const wish = createWishCommands({ lockFile, signal });
   const characterAliases = createGameCharacterAliasCommands(lockFile, signal);
+  const publicRank = createGenshinCustomRank(signal);
   const profiles = createProfileStore(Bun.env.LOTUS_PROFILE_DIR || undefined);
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const achievements = createAchievementCommand(profiles, lockFile, signal);
@@ -300,6 +303,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     panelRebuild: panel.rebuild,
     async fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      const customRankCommand = matchArkRankCommand(message);
+      if (customRankCommand && (!customRankCommand.game || customRankCommand.game === "gs")) return ["[genshin] 角色面板"];
       const aliases = matchGameCharacterAliasCommand(message);
       if (aliases && aliases.game !== "sr") return ["[genshin] 角色别名"];
       if (genshinMonthlyTaskCommand.test(message)) return ["[genshin] 原石任务"];
@@ -341,6 +346,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return [];
     },
     async fallback(_message: string, context: GachaContext) {
+      const customRankCommand = matchArkRankCommand(context.normalizedMessage);
+      if (customRankCommand) return publicRank(customRankCommand, context);
       const panelExportMatch = matchGenshinPanelExport(context.normalizedMessage);
       if (panelExportMatch) return exportPanel(panelExportMatch, context);
       const aliases = matchGameCharacterAliasCommand(context.normalizedMessage);
