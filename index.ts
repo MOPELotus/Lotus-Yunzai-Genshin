@@ -15,6 +15,7 @@ import { matchGenshinPanelHelp, renderGenshinPanelHelp } from "./panel/help-card
 import { createGenshinPayLogCommand, matchGenshinPayLog } from "./pay-log-command.ts";
 import { createGenshinBirthdayPhotoCommand, matchGenshinBirthdayPhoto } from "./birthday-photo.ts";
 import { createPersonalChallengeQuery, matchPersonalChallenge } from "./panel/personal-challenge.ts";
+import { createGenshinTarotCards, matchGenshinTarotCards } from "./panel/tarot-cards.ts";
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
 import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createGenshinPanelQuery, matchLegacyGenshinExtremePanel } from "./panel/panel.ts";
 import { createGenshinShowcaseCommand, matchGenshinShowcase } from "./panel/showcase-command.ts";
@@ -68,6 +69,7 @@ const legacyMonthlyDirectory = fileURLToPath(new URL("../../data/NoteData/", imp
 const historyDirectory = fileURLToPath(new URL("../../data/gachaJson/", import.meta.url));
 const rankingDirectory = fileURLToPath(new URL("../../data/genshinWorldBossRecords/", import.meta.url));
 const groupPanelRankDirectory = fileURLToPath(new URL("../../data/genshin/panel-ranks/", import.meta.url));
+const tarotCardsDirectory = fileURLToPath(new URL("../../data/genshin/tarot-cards/", import.meta.url));
 const help = [
   "原神抽卡记录",
   "#登录列表 可查看档案，#同步角色 可同步原神角色。",
@@ -145,6 +147,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const birthdayPhoto = createGenshinBirthdayPhotoCommand(profiles, client, signal);
   const equippedWeapons = createWeaponListQuery(profiles, client, signal);
   const personalChallenge = createPersonalChallengeQuery(profiles, client, signal);
+  const tarotCards = createGenshinTarotCards(tarotCardsDirectory, profiles, client, lockFile, signal);
   const fetchShowcase = createGenshinShowcaseClient();
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
     { discardedAt: panelArchive.discardedAt, readShowcase: createGenshinGroupShowcaseReader(fetchShowcase),
@@ -301,6 +304,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinBlueprint(message)) return ["[genshin] 尘歌壶模数"];
       if (matchGenshinPayLog(message)) return ["[genshin] 充值记录"];
       if (matchGenshinBirthdayPhoto(message)) return ["[genshin] 生日留影"];
+      if (matchGenshinTarotCards(message)) return ["[genshin] 月谕圣牌"];
       const personal = matchPersonalRecord(message);
       if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
       if (achievements.explicit(context)) return [];
@@ -343,6 +347,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
           await resolveGenshinCharacter(publicPanel.characterName))) return showcase(publicPanel, context);
       const challenge = matchPersonalChallenge(context.normalizedMessage);
       if (challenge) return personalChallenge(challenge, context);
+      const tarot = matchGenshinTarotCards(context.normalizedMessage);
+      if (tarot) return tarotCards(tarot, context);
       const payment = matchGenshinPayLog(context.normalizedMessage);
       if (payment) return payLog(payment, context);
       const birthday = matchGenshinBirthdayPhoto(context.normalizedMessage);
