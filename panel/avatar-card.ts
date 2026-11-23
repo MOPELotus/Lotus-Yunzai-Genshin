@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import type { createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
-import { characterAliasKey } from "../../../lib/game-character-aliases.ts";
+import { characterAliasKey, readGameCharacterAliases, validCharacterAlias } from "../../../lib/game-character-aliases.ts";
 import type { DeliveryCommandReply } from "../../../lib/commands.ts";
 import type { MessageReply } from "../../../lib/messages.ts";
 import { findOwnedGenshinUid, ownedGenshinRole, readOwnedGenshinUid, type GenshinRoleDirectory } from "../owned-role.ts";
@@ -47,14 +47,29 @@ type AvatarContext = AvatarPhotoContext & {
   readonly groupActivitySignal?: AbortSignal; readonly inlineImageByteLimit?: number;
 };
 
-export function matchLegacyGenshinAvatarCard(message: string): NamedCard | undefined {
+function legacyGenshinAvatarInput(message: string): NamedCard | undefined {
   const match = /^#(原神)?\s*([^#\r\n]{1,72})$/u.exec(message.trim().replace(/^＃/u, "#"));
   const text = match?.[2]?.trim();
   if (!text || /^(?:星铁|崩铁|绝区零)/u.test(text)) return;
   const uid = /(?<!\d)(18\d{8}|[1-9]\d{8})(?!\d)/u.exec(text)?.[1];
   if (!uid && match?.[1]) return;
   const name = uid ? text.replace(uid, "").replace(/老婆|老公|卡片/gu, "").trim() : text;
-  if (name && findRankCharacter(name)) return { kind: "named", profileId: 1, input: name, ...(uid && { uid }) };
+  if (name) return { kind: "named", profileId: 1, input: name, ...(uid && { uid }) };
+}
+
+export function matchLegacyGenshinAvatarCard(message: string): NamedCard | undefined {
+  const card = legacyGenshinAvatarInput(message);
+  if (card && findRankCharacter(card.input)) return card;
+}
+
+export async function resolveLegacyGenshinAvatarMessage(message: string) {
+  const card = legacyGenshinAvatarInput(message);
+  if (!card) return;
+  if (findRankCharacter(card.input)) return message;
+  const key = characterAliasKey(card.input);
+  if (!validCharacterAlias(key)) return;
+  const alias = (await readGameCharacterAliases("gs")).get(key);
+  if (alias && findRankCharacter(alias)) return `#${alias}${card.uid ?? ""}`;
 }
 
 export function matchGenshinAvatarCard(message: string): Command | undefined {
