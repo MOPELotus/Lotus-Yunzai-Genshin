@@ -1,3 +1,5 @@
+import { matchPanelTransferCommand, type PanelTransferAccess } from "../../lib/panel-transfer-command.ts";
+import { createGenshinPanelTransfer } from "./panel/panel-transfer.ts";
 import { matchArkRankCommand } from "../../lib/ark-custom-rank-command.ts";
 import { createGenshinCustomRank } from "./rank-statistics/custom-rank.ts";
 import { matchPublicDamageRank } from "../../lib/rank-statistics.ts";
@@ -137,6 +139,7 @@ interface GachaContext extends GroupRankContext {
   readonly attachment?: { readonly name: string; read(signal?: AbortSignal): Promise<Uint8Array | undefined> };
   readonly canReadAttachments?: boolean;
   readonly uploadFile?: (file: { readonly name: string; readonly bytes: Uint8Array }) => Promise<"confirmed" | "rejected" | "unknown">;
+  readonly panelTransfer?: PanelTransferAccess;
   reply(message: string | { readonly type: "image"; readonly file: Uint8Array }): unknown;
 }
 
@@ -160,6 +163,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const sevenSaintsDecks = createSevenSaintsDeckQuery(profiles, client, signal);
   const panelArchive = createGenshinPanelArchive(lockFile);
   const exportPanel = createGenshinPanelExport(profiles, panelArchive, signal, readPanelTheme);
+  const transferPanel = createGenshinPanelTransfer(profiles, panelArchive, signal, readPanelTheme);
   const avatarCards = createGenshinAvatarCards(profiles, client, lockFile, signal, { archive: panelArchive });
   const panelPreferences = createGenshinPanelDamagePreferences(lockFile, signal);
   const teamDamage = createTeamDamageQuery(profiles, panelArchive, signal);
@@ -315,6 +319,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     panelRebuild: panel.rebuild,
     async fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
+      if (matchPanelTransferCommand(message)?.game === "gs") return ["[genshin] 角色面板"];
       const customRankCommand = matchArkRankCommand(message);
       if (customRankCommand && (!customRankCommand.game || customRankCommand.game === "gs")) return ["[genshin] 角色面板"];
       const aliases = matchGameCharacterAliasCommand(message);
@@ -359,6 +364,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return [];
     },
     async fallback(_message: string, context: GachaContext) {
+      const transfer = matchPanelTransferCommand(context.normalizedMessage);
+      if (transfer?.game === "gs") return transferPanel(transfer, context);
       const customRankCommand = matchArkRankCommand(context.normalizedMessage);
       if (customRankCommand) return publicRank(customRankCommand, context);
       const panelExportMatch = matchGenshinPanelExport(context.normalizedMessage);
