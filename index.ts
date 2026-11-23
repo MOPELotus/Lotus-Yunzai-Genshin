@@ -21,6 +21,7 @@ import { createGenshinTarotCards, matchGenshinTarotCards } from "./panel/tarot-c
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
 import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createGenshinPanelQuery, matchLegacyGenshinExtremePanel } from "./panel/panel.ts";
 import { createGenshinAvatarCards, matchGenshinAvatarCard } from "./panel/avatar-card.ts";
+import { isAvatarOriginal } from "./panel/avatar-card-original.ts";
 import { createGenshinShowcaseCommand, matchGenshinShowcase } from "./panel/showcase-command.ts";
 import { matchGenshinPanelDiscard } from "./panel/model.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
@@ -111,7 +112,11 @@ interface GachaContext extends GroupRankContext {
   readonly normalizedMessage: string;
   readonly inlineImageByteLimit?: number;
   readonly forward?: MessageEvent["forward"];
-  readonly message?: string | readonly { readonly type: string; readonly qq?: unknown }[];
+  readonly message?: string | readonly { readonly type: string; readonly qq?: unknown; readonly id?: unknown }[];
+  readonly reply_id?: MessageEvent["reply_id"];
+  readonly lookupReply?: MessageEvent["lookupReply"];
+  readonly lookupMediaReply?: MessageEvent["lookupMediaReply"];
+  readonly groupOriginalSignal?: AbortSignal;
   readonly sender?: Readonly<Record<string, unknown>>;
   readonly isMaster?: boolean;
   readonly isBotMaster?: (userId: number) => boolean;
@@ -304,6 +309,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
       if (matchLegacyGenshinExtremePanel(message)) return ["[genshin] 角色面板"];
+      if (isAvatarOriginal(message)) return ["[genshin] 角色卡片"];
       if (matchGenshinAvatarCard(message)) return ["[genshin] 角色卡片"];
       if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message) || matchGroupPanelRank(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
@@ -334,6 +340,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       const aliases = matchGameCharacterAliasCommand(context.normalizedMessage);
       if (aliases && aliases.game !== "sr") return characterAliases(aliases, context);
       if (matchLegacyGenshinExtremePanel(context.normalizedMessage)) return panel(context.normalizedMessage, context);
+      if (isAvatarOriginal(context.normalizedMessage)) return avatarCards.original(context);
       const avatarCard = matchGenshinAvatarCard(context.normalizedMessage);
       if (avatarCard) return avatarCards.query(avatarCard, context);
       if (matchGenshinPanelDiscard(context.normalizedMessage)) return panel(context.normalizedMessage, context);

@@ -57,7 +57,7 @@ test("旧关系偏好本人读取、追加、随机，以及戳一戳送达与�
         return { wife: ["胡桃"] };
       },
     });
-    const context = { message_type: "private", user_id: qq, privateCredentialSignal: signal };
+    const context = { message_type: "private" as const, user_id: qq, privateCredentialSignal: signal };
     const query = (message: string, options = context) => card.query(matchGenshinAvatarCard(message), options);
     expect(await query("#老婆列表")).toContain("胡桃");
     expect(await card.query(matchGenshinAvatarCard("#老婆设置芙芙"), { ...context, isDelegated: true })).toBeUndefined();

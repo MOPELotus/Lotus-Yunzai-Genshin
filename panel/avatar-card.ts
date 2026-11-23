@@ -4,9 +4,11 @@ import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import type { createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { characterAliasKey } from "../../../lib/game-character-aliases.ts";
-import type { MessageReply } from "../../../lib/messages.ts";
+import type { DeliveryCommandReply } from "../../../lib/commands.ts";
+import type { MessageReply, ReplyOptions } from "../../../lib/messages.ts";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
+import { createAvatarPhotoLedger, type AvatarPhotoContext, type AvatarPhotoStorage } from "./avatar-card-original.ts";
 import { renderAvatarCard } from "./avatar-card-render.ts";
 import { object, officialPanel } from "./model.ts";
 import { createGenshinPanelArchive } from "./panel.ts";
@@ -41,9 +43,8 @@ type Command =
   { readonly kind: "named"; readonly profileId: number; readonly input: string } |
   { readonly kind: "card" | "photo" | "list" | "set" | "add"; readonly profileId: number; readonly relation: Relation; readonly input: string };
 type Choices = Partial<Record<Relation, readonly string[]>>;
-type AvatarContext = {
-  readonly user_id?: number; readonly message_type?: string; readonly isDelegated?: boolean;
-  readonly privateCredentialSignal?: AbortSignal; readonly groupActivitySignal?: AbortSignal; readonly inlineImageByteLimit?: number;
+type AvatarContext = AvatarPhotoContext & {
+  readonly groupActivitySignal?: AbortSignal; readonly inlineImageByteLimit?: number;
 };
 
 export function matchGenshinAvatarCard(message: string): Command | undefined {
@@ -119,15 +120,19 @@ export function createGenshinAvatarCards(profiles: GenshinRoleProfiles, client: 
     theme = readPanelTheme,
     render = renderAvatarCard,
     readLegacy = readLegacyChoices,
+    photoStorage = { async get(key) { return globalThis.redis?.get(key); },
+      async set(key, value, expiry) { return globalThis.redis?.set(key, value, { EX: expiry }); } },
     pokeEnabled = !/^(?:false|off|0)$/iu.test(Bun.env.LOTUS_GENSHIN_AVATAR_POKE?.trim() ?? ""),
   }: { readonly directory?: string; readonly legacySource?: string; readonly archive?: Pick<ReturnType<typeof createGenshinPanelArchive>, "readPanel">;
     readonly theme?: typeof readPanelTheme; readonly render?: typeof renderAvatarCard; readonly readLegacy?: typeof readLegacyChoices;
+    readonly photoStorage?: AvatarPhotoStorage;
     readonly pokeEnabled?: boolean } = {},
 ) {
   const settings = createRoleJsonArchive(directory, lock, { subject: "原神角色偏好", lockSuffix: "avatar-choices", maxBytes: 65536, rejectNull: true });
+  const photos = createAvatarPhotoLedger(photoStorage, lifecycle);
   const pokeUntil = new Map<number, number>();
   const maximumAge = 60_000;
-  async function query(command: Command | undefined, context: AvatarContext, poke?: AbortSignal): Promise<MessageReply | undefined> {
+  async function query(command: Command | undefined, context: AvatarContext, poke?: AbortSignal): Promise<MessageReply | DeliveryCommandReply | undefined> {
     if (!command && !poke) return;
     const user = context.user_id;
     if (context.isDelegated || !user || !Number.isSafeInteger(user) || user < 1 || !["private", "group"].includes(context.message_type ?? "")) return;
@@ -214,7 +219,13 @@ export function createGenshinAvatarCards(profiles: GenshinRoleProfiles, client: 
         photo: command?.kind === "photo", inlineImageByteLimit: context.inlineImageByteLimit, signal,
       });
       await verify();
-      return reply ?? (poke ? undefined : `${named.name}暂无可用照片。`);
+      if (!reply) return poke ? undefined : `${named.name}暂无可用照片。`;
+      const { original, ...message } = reply;
+      if (!original || !context.self_id) return message;
+      return { type: "delivery", message, async onDelivered(confirmed) {
+        await verify();
+        await photos.delivered(context, confirmed, original, { profileId, uid, region, gameBiz, accountId });
+      } };
     } catch (error) {
       if (signal.aborted || poke) return;
       if (error instanceof ProfileError) {
@@ -226,18 +237,41 @@ export function createGenshinAvatarCards(profiles: GenshinRoleProfiles, client: 
   }
   return {
     query,
+    async original(context: AvatarContext): Promise<MessageReply | undefined> {
+      try {
+        const record = await photos.find(context);
+        const session = context.message_type === "group" ? context.groupOriginalSignal : context.privateCredentialSignal;
+        if (!record || !context.user_id || !session || session.aborted || lifecycle.aborted) return;
+        const { owner } = record;
+        async function verify() {
+          const { accountId, source } = await ownedGenshinRole(profiles, String(context.user_id), owner.profileId);
+          const { uid, region, gameBiz } = source.role;
+          return !session?.aborted && !lifecycle.aborted && owner.accountId === accountId && owner.uid === uid &&
+            owner.region === region && owner.gameBiz === gameBiz;
+        }
+        if (!await verify()) return;
+        const file = await (await theme()).readPhoto?.(record.photo);
+        if (!file || !await verify()) return;
+        if (context.inlineImageByteLimit !== undefined && file.byteLength > context.inlineImageByteLimit) return "原神角色卡片原图超过当前会话的图片大小上限。";
+        return { type: "image", file };
+      } catch { return; }
+    },
     async handleAvatarPoke(input: { readonly actorId: number; readonly signal: AbortSignal; readonly allowed: () => boolean;
-      readonly reply: (message: MessageReply) => Promise<unknown> }) {
-      const { actorId, signal, allowed, reply } = input;
+      readonly scope?: AvatarPhotoContext; readonly reply: (message: MessageReply, onDelivered?: ReplyOptions["onDelivered"]) => Promise<unknown> }) {
+      const { actorId, signal, scope, allowed, reply } = input;
       if (!pokeEnabled || signal.aborted || !allowed() || (pokeUntil.get(actorId) ?? 0) > Date.now()) return false;
+      if (scope && scope.user_id !== actorId) return false;
       pokeUntil.set(actorId, Date.now() + maximumAge);
       if (pokeUntil.size > 4096) pokeUntil.delete(pokeUntil.keys().next().value!);
-      const result = await query(undefined, { message_type: "private", user_id: actorId }, signal);
+      const result = await query(undefined, scope ?? { message_type: "private", user_id: actorId }, signal);
       if (!result || !allowed() || signal.aborted) {
         pokeUntil.delete(actorId);
         return false;
       }
-      try { await reply(result); } catch { /* Delivery might already have been accepted. */ }
+      try {
+        if (typeof result === "object" && "type" in result && result.type === "delivery") await reply(result.message, result.onDelivered);
+        else await reply(result);
+      } catch { /* Delivery might already have been accepted. */ }
       return true;
     },
   };

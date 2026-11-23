@@ -1,7 +1,7 @@
-import { randomInt } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 import { constants } from "node:fs";
 import { open, readdir, readFile, realpath, stat } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { loadImage } from "skia-canvas";
 import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
 import { readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
@@ -18,11 +18,20 @@ const safeSegment = (part: string) => part && part !== "." && part !== ".." && !
 
 export type Picture = Awaited<ReturnType<typeof loadImage>>;
 type PortraitAvatar = Pick<PanelAvatar, "id" | "name" | "costume">;
+export interface PanelPhoto {
+  readonly root: "theme" | "gallery" | "retained" | "managed";
+  readonly path: readonly string[];
+  readonly sha256: string;
+}
+type Asset = { readonly image: Picture; readonly photo?: PanelPhoto };
 export interface PanelTheme extends PanelCatalog {
   readonly resourceRoot?: string;
   readonly metadata?: (...parts: string[]) => Promise<Json>;
   readonly weaponNames?: () => Promise<readonly Readonly<Record<string, string>>[]>;
   readonly galleryPortrait?: (avatar: PortraitAvatar, special?: boolean) => Promise<Picture | undefined>;
+  readonly galleryAsset?: (avatar: PortraitAvatar) => Promise<Asset | undefined>;
+  readonly pictureAsset?: (...parts: string[]) => Promise<Asset | undefined>;
+  readonly readPhoto?: (photo: PanelPhoto) => Promise<Uint8Array | undefined>;
   readonly picture: (...parts: string[]) => Promise<Picture | undefined>;
 }
 
@@ -43,17 +52,36 @@ export async function panelWeaponPicture(theme: PanelTheme, avatar: Pick<PanelAv
 }
 
 export async function panelPortrait(theme: PanelTheme, avatar: PortraitAvatar) {
+  return (await selectPortrait(theme, avatar, false))?.image;
+}
+
+export async function panelPortraitAsset(theme: PanelTheme, avatar: PortraitAvatar) {
+  return selectPortrait(theme, avatar, true);
+}
+
+async function selectPortrait(theme: PanelTheme, avatar: PortraitAvatar, keepPhoto: boolean): Promise<Asset | undefined> {
   const name = text(object(theme.characters[avatar.id])?.name);
   if (name ? name !== avatar.name :
     Object.values(theme.characters).some(row => text(object(row)?.name) === avatar.name)) return;
-  const selected = await theme.galleryPortrait?.(avatar);
-  if (selected) return selected;
+  if (keepPhoto && theme.galleryAsset) {
+    const asset = await theme.galleryAsset(avatar);
+    if (asset) return asset;
+  } else {
+    const image = await theme.galleryPortrait?.(avatar);
+    if (image) return { image };
+  }
   const files = avatar.costume
     ? ["splash2.webp", "splash.webp", "gacha.webp", "face2.webp", "face.webp"]
     : ["splash.webp", "gacha.webp", "face.webp"];
   for (const file of files) {
-    const image = await theme.picture("meta-gs", "character", avatar.name, "imgs", file);
-    if (image) return image;
+    const parts = ["meta-gs", "character", avatar.name, "imgs", file];
+    if (keepPhoto && theme.pictureAsset) {
+      const asset = await theme.pictureAsset(...parts);
+      if (asset) return asset;
+    } else {
+      const image = await theme.picture(...parts);
+      if (image) return { image };
+    }
   }
 }
 
@@ -76,7 +104,7 @@ async function galleryCandidates(base: string, name: string) {
   ];
 }
 
-async function galleryImage(file: string) {
+async function galleryBytes(file: string) {
   try {
     if (await realpath(file) !== file) return;
     const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
@@ -89,13 +117,26 @@ async function galleryImage(file: string) {
         if (!bytesRead) return;
         offset += bytesRead;
       }
-      return await decode(data);
+      return data;
     } finally {
       await handle.close();
     }
   } catch {
     return;
   }
+}
+
+const photoHash = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+
+export function isPanelPhoto(value: unknown): value is PanelPhoto {
+  const photo = object(value);
+  if (!photo || !["theme", "gallery", "retained", "managed"].includes(text(photo.root)) ||
+      !Array.isArray(photo.path) || photo.path.length < 1 || photo.path.length > 6 ||
+      !photo.path.every(part => typeof part === "string" && part.length <= 255 && safeSegment(part)) ||
+      !/\.(?:webp|png|jpe?g)$/iu.test(photo.path.at(-1)) || !/^[a-f0-9]{64}$/u.test(text(photo.sha256))) return false;
+  const [first, second, , fourth] = photo.path;
+  return photo.root !== "theme" || first === "profile" ||
+    (first === "meta-gs" && second === "character" && fourth === "imgs" && photo.path.length === 5);
 }
 
 async function json(path: string): Promise<Json> {
@@ -144,7 +185,16 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
       }
     }
   }
-  async function gallery(avatar: PortraitAvatar, special = false) {
+  const roots = { theme: installed, gallery: publicGallery[0], retained, managed: managed ? managedDirectory : undefined };
+  function source(file: string, data: Buffer): PanelPhoto | undefined {
+    for (const [key, base] of Object.entries(roots)) {
+      if (base && file.startsWith(base + sep)) {
+        const photo = { root: key, path: relative(base, file).split(sep), sha256: photoHash(data) };
+        if (isPanelPhoto(photo)) return photo;
+      }
+    }
+  }
+  async function gallery(avatar: PortraitAvatar, special = false, keepPhoto = false): Promise<Asset | undefined> {
     const name = text(object(characters[avatar.id])?.name);
     if (name !== avatar.name || name === "旅行者" || !safeSegment(name) || characterNames.get(name) !== 1) return;
     const owned = managed && await ownsPanelImages(managedDirectory, name);
@@ -157,14 +207,41 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
       const candidates = (await Promise.all(bases.map(base => galleryCandidates(base, name)))).flat();
       while (candidates.length) {
         const [file] = candidates.splice(randomInt(candidates.length), 1);
-        const image = await galleryImage(file!);
-        if (image) return image;
+        const data = await galleryBytes(file!);
+        const image = data && await decode(data).catch(() => undefined);
+        if (image && data) return { image, ...(keepPhoto && { photo: source(file!, data) }) };
       }
+    }
+  }
+  async function picture(...parts: string[]) {
+    if (!parts.every(safeSegment)) return;
+    try {
+      const file = join(root, ...parts);
+      const info = await stat(file);
+      if (!info.isFile() || info.size > imageLimit) return;
+      return await decode(await readFile(file));
+    } catch {
+      return;
     }
   }
   return {
     characters, artifacts, artifactSets, resourceRoot: installed, customAliases,
-    galleryPortrait: gallery,
+    async galleryPortrait(avatar, special) { return (await gallery(avatar, special))?.image; },
+    galleryAsset: avatar => gallery(avatar, false, true),
+    async pictureAsset(...parts) {
+      if (!installed || !parts.every(safeSegment)) return;
+      const file = join(installed, ...parts);
+      const data = await galleryBytes(file);
+      const image = data ? await decode(data).catch(() => undefined) : await picture(...parts);
+      if (image) return { image, photo: data && source(file, data) };
+    },
+    async readPhoto(photo) {
+      if (!isPanelPhoto(photo)) return;
+      const base = roots[photo.root];
+      if (!base) return;
+      const bytes = await galleryBytes(join(base, ...photo.path));
+      if (bytes && photoHash(bytes) === photo.sha256) return bytes;
+    },
     async weaponNames() {
       const file = join(root, "meta-gs", "weapon", "alias.js");
       try {
@@ -178,16 +255,6 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
     async metadata(...parts) {
       return parts.every(safeSegment) ? json(join(root, ...parts)) : {};
     },
-    async picture(...parts) {
-      if (!parts.every(safeSegment)) return;
-      try {
-        const file = join(root, ...parts);
-        const info = await stat(file);
-        if (!info.isFile() || info.size > imageLimit) return;
-        return await decode(await readFile(file));
-      } catch {
-        return;
-      }
-    },
+    picture,
   };
 }

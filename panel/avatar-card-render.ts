@@ -3,7 +3,7 @@ import { renderGenshinCardForChat } from "../card-render.ts";
 import { object, talentKeys, text, whole, type PanelAvatar } from "./model.ts";
 import { contain, profileFonts, typeset } from "./original-profile-skia.ts";
 import { panelTalentLevels, panelTalentThresholds, travelerIds } from "./talent-levels.ts";
-import { panelPortrait, panelWeaponPicture, type PanelTheme, type Picture } from "./theme.ts";
+import { panelPortraitAsset, panelWeaponPicture, type PanelPhoto, type PanelTheme, type Picture } from "./theme.ts";
 
 const sources: Readonly<Record<string, string>> = { miao: "角色面板 API", enka: "Enka.Network", mgg: "MiniGG API", mys: "米游社",
   mysPanel: "米游社", hutao: "Hutao-Enka", homo: "Mihomo" };
@@ -12,9 +12,10 @@ const timestamp = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai", 
 export async function renderAvatarCard(name: string, id: number, uid: string, avatar: PanelAvatar | undefined, theme: PanelTheme, {
   photo, inlineImageByteLimit, signal, mode = "auto",
 }: { readonly photo: boolean; readonly inlineImageByteLimit?: number; readonly signal: AbortSignal;
-  readonly mode?: Parameters<typeof renderPng>[3] }): Promise<{ readonly type: "image"; readonly file: Uint8Array } | undefined> {
+  readonly mode?: Parameters<typeof renderPng>[3] }): Promise<{ readonly type: "image"; readonly file: Uint8Array; readonly original?: PanelPhoto } | undefined> {
   const role = { name, id, costume: avatar?.costume };
-  const picture = await panelPortrait(theme, role);
+  const asset = await panelPortraitAsset(theme, role);
+  const picture = asset?.image;
   if (photo) {
     if (!picture) return;
     const largest = Math.max(picture.width, picture.height);
@@ -115,5 +116,5 @@ export async function renderAvatarCard(name: string, id: number, uid: string, av
     }
     write("Lotus-Yunzai", width - 10, height - 8, 13, { align: "right", color: "#edeae2" });
   }, mode, { inlineImageByteLimit, signal });
-  return { type: "image" as const, file: png };
+  return { type: "image" as const, file: png, original: asset?.photo };
 }
