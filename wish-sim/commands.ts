@@ -43,17 +43,22 @@ interface WishContext {
 type ImageReply = { readonly type: "image"; readonly file: Uint8Array };
 type WishReply = string | ImageReply | CommandForward | RecallableCommandReply;
 interface LackOfTickets { readonly notice: string; readonly summary?: string }
+interface ReachedDailyLimit { readonly limitNotice: string }
 
 function recall(message: ImageReply | string, seconds: number): WishReply {
   return seconds > 0 ? { type: "recallable", message, seconds } : message;
 }
 
-function wishSummary(today: WishToday, name: string, weapon: boolean, week: number): string {
+function wishSummary(today: WishToday, name: string, weapon: boolean, week: number, legacyLimit = false): string {
   const short = Array.from(name).slice(0, 8).join("");
-  if (!today.five) return `${short}\n暂时无法抽卡。\n已累计${weapon ? today.weaponDraws : today.normalDraws}抽无五星`;
-  const stars = today.five >= 8 ? `${today.five}个` :
+  if (!today.five) {
+    const reason = legacyLimit ? "今日已抽，累计" : "暂时无法抽卡。\n已累计";
+    return `${short}\n${reason}${weapon ? today.weaponDraws : today.normalDraws}抽无五星`;
+  }
+  const stars = today.five >= (legacyLimit ? 4 : 8) ? `${today.five}个` :
     "\n" + today.preview.map(({ name, pity }) => `${name}(${pity})`).join("\n");
-  return `${short}\n今日模拟抽卡五星：${stars}${week >= 2 ? `\n本周：${week}个五星` : ""}`;
+  const caption = legacyLimit ? "今日五星" : "今日模拟抽卡五星";
+  return `${short}\n${caption}：${stars}${week >= 2 ? `\n本周：${week}个五星` : ""}`;
 }
 
 function formatPulls(pulls: readonly WishPull[]) {
@@ -167,7 +172,7 @@ export function createWishCommands({
       const nickname = name?.trim() || "旅行者";
       const pool = draw || track ? await poolSource(track ? "weapon" : draw!.kind, time, qq, settings) : undefined;
       if ((draw || track) && !pool) return "当前卡池没有第二个角色活动祈愿。";
-      const { result, issued } = await update<string | WishCardOptions | LackOfTickets>(qq, group, now, allowance, (balance, session, today) => {
+      const { result, issued } = await update<string | WishCardOptions | LackOfTickets | ReachedDailyLimit>(qq, group, now, allowance, (balance, session, today) => {
         if (wallet) return `今日你还有${balance.pink}个纠缠之缘和${balance.blue}个相遇之缘。`;
         if (track && pool) {
           prepareWeaponPath(session.weapon, pool);
@@ -201,8 +206,8 @@ export function createWishCommands({
           const maximum = limit.count * 10;
           if (used >= maximum) {
             const label = limit.separate ? (isWeapon ? "武器池" : "角色与常驻池") : "模拟祈愿";
-            return { notice: `今日${label}已达到 ${maximum} 抽上限（已抽 ${used} 抽）。`,
-              summary: wishSummary(today, nickname, isWeapon, session.week.five) };
+            const summary = wishSummary(today, nickname, isWeapon, session.week.five, true);
+            return { limitNotice: `${summary}\n今日${label}已达到 ${maximum} 抽上限（已抽 ${used} 抽）。` };
           }
         }
         balance[currency] += context.isMaster ? draw.count : -draw.count;
@@ -224,6 +229,14 @@ export function createWishCommands({
       if (signal.aborted) return;
       const received = issued && !track ? `今日成功领取${issued.pink}个纠缠之缘和${issued.blue}个相遇之缘。\n` : "";
       if (typeof result === "string") return received + result;
+      if ("limitNotice" in result) {
+        if (received && context.reply) {
+          await context.reply(received.trimEnd());
+          if (signal.aborted) return;
+          return recall(result.limitNotice, allowance.recallSeconds);
+        }
+        return recall(received + result.limitNotice, allowance.recallSeconds);
+      }
       if ("notice" in result) {
         if (!result.summary) return received + result.notice;
         if (!context.reply) return `${received}${result.notice}\n${result.summary}`;
