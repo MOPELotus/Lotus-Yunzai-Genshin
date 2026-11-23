@@ -27,7 +27,7 @@ test("具名角色卡和旧关系动作通过实际注册，原名册与面板�
   }
 });
 
-test("旧关系偏好本人读取、追加、随机，以及戳一戳送达与回退", async () => {
+test("旧关系偏好本人读取、追加、随机和照片查询", async () => {
   const directory = await mkdtemp(join(tmpdir(), "lotus-avatar-cards-"));
   const uid = "100004042", qq = 42;
   const id = "900000042";
@@ -39,7 +39,7 @@ test("旧关系偏好本人读取、追加、随机，以及戳一戳送达与�
   try {
     await writeFile(join(directory, "42.yaml"), profile);
     const renders: string[] = [];
-    let sends = 0, remote = 0;
+    let remote = 0;
     const card = createGenshinAvatarCards(createProfileStore(directory), { async fetchGenshinPersonalRecord() {
       remote++;
       throw new Error("unexpected official request");
@@ -66,13 +66,7 @@ test("旧关系偏好本人读取、追加、随机，以及戳一戳送达与�
     expect(await query("#老婆照片")).toEqual(image);
     expect(await query("#胡桃卡片")).toEqual(image);
     expect(await query("#女儿设置钟离")).toContain("未找到");
-    const request = { actorId: qq, signal, allowed: () => true, async reply() { sends++; } };
-    expect(await card.handleAvatarPoke({ ...request, allowed: () => false })).toBe(false);
-    expect(await card.handleAvatarPoke({ ...request, actorId: 45 })).toBe(false);
-    expect(await card.handleAvatarPoke({ ...request, async reply() { sends++; throw new Error("结果未知"); } })).toBe(true);
-    expect(await card.handleAvatarPoke(request)).toBe(false);
-    expect(sends).toBe(1);
-    expect(renders).toEqual(["胡桃:10000046:90:true", "胡桃:10000046:90:false", "胡桃:10000046:90:false"]);
+    expect(renders).toEqual(["胡桃:10000046:90:true", "胡桃:10000046:90:false"]);
     expect(remote).toBe(0);
   } finally {
     await rm(directory, { recursive: true, force: true });

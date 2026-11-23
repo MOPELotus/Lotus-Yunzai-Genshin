@@ -295,7 +295,6 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     commands: {},
     gachaUpdate,
     panelRebuild: panel.rebuild,
-    handleAvatarPoke: avatarCards.handleAvatarPoke,
     async fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
       const aliases = matchGameCharacterAliasCommand(message);
