@@ -66,3 +66,38 @@ bun plugins/genshin/wish-sim/import-legacy-cli.ts --apply 授权.json data/gensh
 - `#转生`、`#原神转生` 随机抽取角色身份，显示名字、神之眼、称号和身份。QQ 的冷却在群聊和私聊间共用，重启后仍生效，机器人主人可在冷却中使用。转生不会发放或扣除模拟球数。
 - 默认冷却 120 分钟，可在管理面板「业务设置 → 原神模拟祈愿」设置为 1–1440 分钟。新值从下一次转生起生效。迁移时继承旧配置中的有效 `relifeCD`。设置 `LOTUS_GENSHIN_WISH_LEGACY_DIR` 后，也可沿用该目录中的角色身份与元素配色。
 - 角色底图和立绘沿用已有原神面板主题，可通过 `LOTUS_GENSHIN_PANEL_THEME_DIR` 指定。字体读取授权旧 Flower 根目录的 `resources/font` 或面板主题的 `common/font`；缺资源时仍能显示角色信息。
+
+## 续接旧 TRSS 当日限抽
+
+旧 Genshin `0290a17` 的同日次数可由已经停写的 Valkey 副本续接。先在目标安装中迁入或启用会话的每日抽数限制，停止目标模拟祈愿写入，再准备保留绝对到期时间的隔离副本。副本用 `127.0.0.1` 上的独立非默认端口和带密码的具名账号，仅授权所列旧键的 `GET`、`PEXPIRETIME` 及选择数据库和建立连接所需的权限。旧键格式为 `Yz:genshin:gacha:<群号或private>:<QQ>`。
+
+授权 JSON 的 `source` 为 `trss-genshin-0290a17`，`timeZone` 为 `Asia/Shanghai`，`capturedAt` 填副本停写采样时的 Unix 毫秒时间戳，`accounts` 明确列出各 QQ 的会话。只有写入 `private` 才读取该 QQ 的私聊。
+
+```json
+{
+  "source": "trss-genshin-0290a17",
+  "timeZone": "Asia/Shanghai",
+  "capturedAt": 1795485600000,
+  "accounts": [{ "qq": "123456789", "conversations": ["876543210", "private"] }]
+}
+```
+
+在目标 Lotus-Yunzai 安装中以 `LOTUS_GENSHIN_TRSS_WISH_SNAPSHOT_URL` 指定隔离副本和数据库编号。首次迁移时可把授权 JSON 一同交给宿主。在北京时间 04:00 日界之前完成预检和迁移。
+
+```sh
+bun run migrate:plan /旧安装副本 --trss-wish-authorization /授权.json
+bun run migrate /旧安装副本 --trss-wish-authorization /授权.json
+```
+
+预检只报告聚合数量，不创建目标档案。正式迁移将限抽随配置和其他数据一起发布。授权会话读不到时，检查副本及权限后重新运行迁移。用于检查暂存内容的 `migrate:stage` 也接受同一个参数。首次暂存完成后，宿主重试发布可复用该批数据，也可以关闭隔离副本。未提供授权参数时按普通流程迁移。
+
+已经手工安装的目标仍可单独运行下列命令。完成其他旧 Flower 导入后再续接 TRSS。
+
+```sh
+bun plugins/genshin/wish-sim/import-legacy-cli.ts --trss-daily 授权.json data/genshin/wish-sim
+bun plugins/genshin/wish-sim/import-legacy-cli.ts --trss-daily --apply 授权.json data/genshin/wish-sim
+```
+
+只有启用限抽的会话才读取。续接从旧绝对到期时间反推最后写入时间，并核对当天和旧业务到期秒。旧代码在 00:00–00:59 会把业务到期延长一天，04:00 首秒也可能把昨日累计带入，这两个时段保存的快照会跳过。若旧端随后再次保存并重写了合法到期时间，单份快照只能看到旧端当时实际累计的次数。
+
+新版或已导入的 Flower 当日抽数优先。同日重复导入保留已保存的续接，不同计数会报告冲突。续接次数只参与对应会话的限抽，下个北京时间 04:00 失效。模拟票数、保底、周统计和普通当日抽卡摘要依旧由各自的档案提供。

@@ -172,7 +172,7 @@ export function createWishCommands({
       const nickname = name?.trim() || "旅行者";
       const pool = draw || track ? await poolSource(track ? "weapon" : draw!.kind, time, qq, settings) : undefined;
       if ((draw || track) && !pool) return "当前卡池没有第二个角色活动祈愿。";
-      const { result, issued } = await update<string | WishCardOptions | LackOfTickets | ReachedDailyLimit>(qq, group, now, allowance, (balance, session, today) => {
+      const { result, issued } = await update<string | WishCardOptions | LackOfTickets | ReachedDailyLimit>(qq, group, now, allowance, (balance, session, today, carry) => {
         if (wallet) return `今日你还有${balance.pink}个纠缠之缘和${balance.blue}个相遇之缘。`;
         if (track && pool) {
           prepareWeaponPath(session.weapon, pool);
@@ -202,7 +202,9 @@ export function createWishCommands({
         }
         const isWeapon = pool.kind === "weapon";
         if (limit && !isOwner()) {
-          const used = limit.separate ? (isWeapon ? today.weaponDraws : today.normalDraws) : today.normalDraws + today.weaponDraws;
+          const normal = today.normalDraws + (carry?.normalDraws ?? 0);
+          const weapon = today.weaponDraws + (carry?.weaponDraws ?? 0);
+          const used = limit.separate ? (isWeapon ? weapon : normal) : normal + weapon;
           const maximum = limit.count * 10;
           if (used >= maximum) {
             const label = limit.separate ? (isWeapon ? "武器池" : "角色与常驻池") : "模拟祈愿";

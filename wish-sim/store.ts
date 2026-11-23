@@ -29,10 +29,18 @@ export interface WishConversation {
   readonly today?: WishToday;
 }
 
+export interface WishLimitCarry {
+  readonly day: number;
+  readonly normalDraws: number;
+  readonly weaponDraws: number;
+}
+type WishLimitCarryResult = "carried" | "existing" | "conflict" | "expired";
+
 interface SimulationData {
   balance: WishBalance;
   conversations: Record<string, WishConversation>;
   flowerImported?: true;
+  trssLimits?: Record<string, WishLimitCarry>;
 }
 
 function nonnegative(value: unknown, maximum: number): value is number {
@@ -52,6 +60,13 @@ function validToday(value: unknown): value is WishToday {
     nonnegative(state.weaponDraws, max) && nonnegative(state.five, max) &&
     Array.isArray(state.preview) && state.preview.length === Math.min(8, state.five) &&
     state.preview.every(row => typeof row?.name === "string" && row.name.length <= 120 && nonnegative(row.pity, 90));
+}
+
+function validLimitCarry(value: unknown): value is WishLimitCarry {
+  const row = record(value);
+  const max = Number.MAX_SAFE_INTEGER;
+  return !!row && nonnegative(row.day, max) && nonnegative(row.normalDraws, max) &&
+    nonnegative(row.weaponDraws, max) && Number.isSafeInteger(row.normalDraws + row.weaponDraws);
 }
 
 function readData(value: unknown): SimulationData {
@@ -83,10 +98,16 @@ function readData(value: unknown): SimulationData {
   if (root?.flowerImported !== undefined && root.flowerImported !== true) {
     throw new TypeError("模拟祈愿迁移记录无效。");
   }
-  return { balance, conversations, flowerImported: root?.flowerImported } as unknown as SimulationData;
+  const trssLimits = record(root?.trssLimits);
+  if (root?.trssLimits !== undefined && (!trssLimits || Object.entries(trssLimits).some(([key, carry]) =>
+    !/^(?:private|[1-9]\d*)$/u.test(key) || !validLimitCarry(carry)))) {
+    throw new TypeError("旧模拟祈愿次数存档无效。");
+  }
+  return { balance, conversations, flowerImported: root?.flowerImported, trssLimits } as unknown as SimulationData;
 }
 
 export const wishDailyKey = (time: number) => Math.floor((time + 4 * hour) / wishDayMs);
+export const wishDayStart = (day: number) => day * wishDayMs - 4 * hour;
 export const wishWeeklyKey = (daily: number) => Math.floor((daily + 3) / 7);
 
 function wishArchive(directory: string, lock: AcquireRoleArchiveLock) {
@@ -114,6 +135,10 @@ export function createLegacyWishImport(directory: string, lock: AcquireRoleArchi
       for (const [key, value] of Object.entries(legacy.conversations)) {
         if (current.conversations[key]) continue;
         current.conversations[key] = value;
+        const carry = current.trssLimits?.[key];
+        if (carry && value.today?.day === carry.day && (value.today.normalDraws > 0 || value.today.weaponDraws > 0)) {
+          delete current.trssLimits![key];
+        }
         sessions++;
       }
       current.flowerImported = true;
@@ -130,6 +155,36 @@ export function createLegacyWishImport(directory: string, lock: AcquireRoleArchi
   };
 }
 
+export function createTrssWishLimitImport(directory: string, lock: AcquireRoleArchiveLock, signal: AbortSignal) {
+  const archive = wishArchive(directory, lock);
+  return async (qq: string, candidates: ReadonlyMap<string, WishLimitCarry>, clock: () => number, apply: boolean) => {
+    type Report = Record<WishLimitCarryResult, number>;
+    function merge(snapshot: unknown): { document?: SimulationData; result: Report } {
+      const data = readData(snapshot);
+      const day = wishDailyKey(clock());
+      const result: Report = { carried: 0, existing: 0, conflict: 0, expired: 0 };
+      for (const [scope, incoming] of candidates) {
+        if (incoming.day !== day) { result.expired++; continue; }
+        const today = data.conversations[scope]?.today;
+        if (today?.day === day && (today.normalDraws > 0 || today.weaponDraws > 0)) {
+          result.existing++;
+          continue;
+        }
+        const legacy = data.trssLimits?.[scope];
+        if (legacy?.day === day) {
+          result[legacy.normalDraws === incoming.normalDraws && legacy.weaponDraws === incoming.weaponDraws ? "existing" : "conflict"]++;
+          continue;
+        }
+        (data.trssLimits ??= {})[scope] = incoming;
+        result.carried++;
+      }
+      return result.carried ? { document: data, result } : { result };
+    }
+    if (!apply) return merge(await archive.read(qq, "1")).result;
+    return archive.update({ qq, uid: "1" }, async () => signal.throwIfAborted(), merge);
+  };
+}
+
 export function createWishStore(
   directory: string, lock: AcquireRoleArchiveLock, signal: AbortSignal,
 ) {
@@ -137,7 +192,7 @@ export function createWishStore(
 
   return async <T>(
     qq: string, group: string, clock: () => number, { pink, blue }: WishAllowance,
-    update: (balance: WishBalance, session: WishSession, today: WishToday) => T,
+    update: (balance: WishBalance, session: WishSession, today: WishToday, carry?: WishLimitCarry) => T,
   ): Promise<{ result: T; issued?: { pink: number; blue: number } }> => {
     const grants = { pink, blue };
     return archive.update({ qq, uid: "1" }, async () => signal.throwIfAborted(), (snapshot) => {
@@ -157,7 +212,10 @@ export function createWishStore(
         { day: daily, normalDraws: 0, weaponDraws: 0, five: 0, preview: [] };
       if (session.week.key !== weekly) session.week = { key: weekly, five: 0 };
       data.conversations[group] = { activeDay: daily, session, today };
-      const result = update(data.balance, session, today);
+      for (const [scope, carry] of Object.entries(data.trssLimits ?? {})) {
+        if (carry.day !== daily) delete data.trssLimits![scope];
+      }
+      const result = update(data.balance, session, today, data.trssLimits?.[group]);
       return { document: data, result: { result, issued } };
     });
   };
