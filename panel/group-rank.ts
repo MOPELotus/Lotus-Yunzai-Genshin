@@ -167,6 +167,38 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
     return observations;
   }
 
+  async function record(context: GroupRankContext, profileId: number, selectedRole: Role, observedAt: number,
+    verifyProfile: () => Promise<void>, project?: () => Promise<{ id: number; ranked?: RankAvatar }>) {
+    const scope = scopeOf(context), role = publicRole(selectedRole);
+    const inactive = () => signal.aborted || context.groupActivitySignal?.aborted;
+    if (!scope || !role || !isRankProfile(profileId) || !rankId(observedAt) || inactive() || !await isEnabled(scope)) return;
+    if (!(await currentMembers(scope, context)) || !(await stillBound({ qq: scope.qq, profileId, role })) || inactive()) return;
+    const item = await project?.();
+    const verify = async () => {
+      await verifyProfile();
+      if (inactive() || !await isEnabled(scope) || (!item && !await currentMembers(scope, context)) || inactive()) {
+        throw new Error("原神群榜登记已失效。");
+      }
+    };
+    await archive(scope).update({ qq: String(scope.group), uid: String(scope.qq) }, verify, async input => {
+      const boundary = await discardedAt?.(String(scope.qq), role.uid) ?? 0;
+      if (observedAt <= boundary) return { result: undefined };
+      const existing = readObservations(input, scope, scope.qq);
+      const previous = existing[String(profileId)];
+      if (previous && previous.observedAt > observedAt) return { result: undefined };
+      const prior = previous && previous.observedAt > boundary && sameRole(previous.role, role) ? previous : undefined;
+      if (!item && prior) return { result: undefined };
+      const avatars = { ...prior?.avatars };
+      if (item) {
+        if (item.ranked) avatars[String(item.id)] = item.ranked;
+        else if (previous) delete avatars[String(item.id)];
+        else return { result: undefined };
+      }
+      existing[String(profileId)] = { profileId, observedAt, role, avatars };
+      return { document: { version: 1, adapter: scope.adapter, bot: scope.bot, group: scope.group, qq: scope.qq, profiles: existing }, result: undefined };
+    });
+  }
+
   return {
     async listMarkers(context: GroupRankContext, profileId: number, selectedRole: Role, characterIds: readonly number[]) {
       const scope = scopeOf(context), role = publicRole(selectedRole);
@@ -177,7 +209,8 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       const store = archive(scope);
       const own = await store.read(String(scope.group), String(scope.qq))
         .then(input => readObservations(input, scope, scope.qq)[String(profileId)]).catch(() => undefined);
-      const ids = own && sameRole(role, own.role) && await stillCurrent({ qq: scope.qq, ...own })
+      const participating = !!own && sameRole(role, own.role) && await stillCurrent({ qq: scope.qq, ...own });
+      const ids = participating
         ? characterIds.filter(id => own.avatars[String(id)]?.damage || own.avatars[String(id)]?.artifacts) : [];
       const markers = new Map<number, PanelRankMarker>();
       const contributors = new Map<string, ObservedRole>();
@@ -211,35 +244,20 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
           (await Promise.all([...contributors.values()].map(row => refreshed.has(row.qq) && stillCurrent(row)))).every(Boolean) &&
           await isEnabled(scope) && !signal.aborted;
       };
-      return { markers, participating: ids.length > 0, validate };
+      return { markers, participating, validate };
     },
     async allows(context: GroupRankContext) {
       const scope = scopeOf(context);
-      return !!scope && context.listCurrentGroupMembers !== undefined && !signal.aborted && await isEnabled(scope) && !signal.aborted;
+      return !!scope && context.listCurrentGroupMembers !== undefined && !signal.aborted && !context.groupActivitySignal?.aborted &&
+        await isEnabled(scope) && !signal.aborted && !context.groupActivitySignal?.aborted;
+    },
+    register(context: GroupRankContext, profileId: number, role: Role, observedAt: number, verify: () => Promise<void>) {
+      return record(context, profileId, role, observedAt, verify);
     },
     async observe(context: GroupRankContext, profileId: number, selectedRole: Role, avatar: PanelAvatar, theme: PanelTheme,
       observedAt: number, verifyProfile: () => Promise<void>) {
-      const scope = scopeOf(context), role = publicRole(selectedRole);
-      if (!scope || !role || !isRankProfile(profileId) || !rankId(observedAt) || signal.aborted || !await isEnabled(scope)) return;
-      if (!(await currentMembers(scope, context)) || !(await stillBound({ qq: scope.qq, profileId, role }))) return;
-      const ranked = await projectRankAvatar(avatar, theme);
-      const verify = async () => {
-        await verifyProfile();
-        if (!await isEnabled(scope) || signal.aborted) throw new Error("本群未启用原神群面板排名。");
-      };
-      await archive(scope).update({ qq: String(scope.group), uid: String(scope.qq) }, verify, async input => {
-        const boundary = await discardedAt?.(String(scope.qq), role.uid) ?? 0;
-        if (observedAt <= boundary) return { result: undefined };
-        const existing = readObservations(input, scope, scope.qq);
-        const previous = existing[String(profileId)];
-        if (previous && previous.observedAt > observedAt) return { result: undefined };
-        const avatars = previous && previous.observedAt > boundary && sameRole(previous.role, role) ? { ...previous.avatars } : {};
-        if (ranked) avatars[String(avatar.id)] = ranked;
-        else delete avatars[String(avatar.id)];
-        if (!previous && !ranked) return { result: undefined };
-        existing[String(profileId)] = { profileId, observedAt, role, avatars };
-        return { document: { version: 1, adapter: scope.adapter, bot: scope.bot, group: scope.group, qq: scope.qq, profiles: existing }, result: undefined };
-      });
+      await record(context, profileId, selectedRole, observedAt, verifyProfile, async () =>
+        ({ id: avatar.id, ranked: await projectRankAvatar(avatar, theme) }));
     },
     async query(rank: string | Awaited<ReturnType<typeof resolveGroupPanelRank>>, context: GroupRankContext, loadTheme: () => Promise<PanelTheme>) {
       if (signal.aborted) return;

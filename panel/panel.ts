@@ -160,7 +160,7 @@ export function createGenshinPanelQuery(
     readonly preferences?: ReturnType<typeof createGenshinPanelDamagePreferences>;
     readonly readPanelDeletionBoundary?: ReadPanelDeletionBoundary;
     readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "observe"> &
-      Partial<Pick<ReturnType<typeof createGroupPanelRank>, "listMarkers">> &
+      Partial<Pick<ReturnType<typeof createGroupPanelRank>, "listMarkers" | "register">> &
       { allows(context: GroupRankContext): boolean | Promise<boolean> };
     readonly theme?: typeof readPanelTheme; readonly now?: () => number } = {},
 ) {
@@ -494,7 +494,9 @@ export function createGenshinPanelQuery(
       }
       if (!command) return;
       const { name, type, mode } = command;
-      const observedAt = type === "detail" && source && mode === "profile" && await groupRank?.allows(context) ? now() : undefined;
+      const observeDetail = type === "detail" && mode === "profile";
+      const registerList = !command.uid && (type === "list" || type === "update" || type === "reload") && groupRank?.register;
+      const observedAt = (observeDetail || registerList) && source && await groupRank?.allows(context) ? now() : undefined;
       const assets = preflight ?? await theme();
       const displayNumber = (value: string | number | undefined) => groupPanelNumber(String(value), assets.commaGroup);
       let snapshot: PanelSnapshot | undefined;
@@ -773,6 +775,10 @@ export function createGenshinPanelQuery(
 
       const selectedPanel = snapshot;
       const avatars = panelListOrder(selectedPanel, updated);
+      if (observedAt !== undefined && registerList && avatars.some(avatar => !["customize", "change", "share"].includes(avatar._source))) {
+        await registerList(context, profileId, role, observedAt, verify).catch(() => undefined);
+        await verify();
+      }
       const ranking = source ? await groupRank?.listMarkers?.(context, profileId, role,
         avatars.map(avatar => avatar.id)).catch(() => undefined) : undefined;
       const renderList = async (marks?: typeof ranking): Promise<Image[]> => {

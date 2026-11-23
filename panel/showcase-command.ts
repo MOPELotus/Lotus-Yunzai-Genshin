@@ -9,6 +9,7 @@ import { readGenshinShowcaseServer } from "./showcase-config.ts";
 import { createGenshinShowcaseStorage, type ReadPanelDeletionBoundary } from "./showcase-storage.ts";
 import { readPanelTheme } from "./theme.ts";
 import { decodeGenshinShowcaseResponse } from "./showcase-reader.ts";
+import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
 
 const showcase = /^#(?:原神)?\s*(?:展板|备用)\s*(?:全部面板更新|更新全部面板|获取游戏角色详情|更新面板|面板更新)\s*(?:((?:18|[1-9])\d{8})(?:\s+(?:档案|profile)\s*([1-9]\d{0,2}))?|(?:(?:档案|profile)\s*)?([1-9]\d{0,2}))?$/iu;
 const reserved = /^#(?:原神)?\s*(?:展板|备用)\s*(?:全部面板更新|更新全部面板|获取游戏角色详情|更新面板|面板更新)/u;
@@ -25,10 +26,7 @@ export function matchGenshinShowcase(message: string) {
   if (characterName) return { characterName, uid: undefined, profileId: Number(named?.[2] ?? 1), explicitProfile: !!named?.[2] };
 }
 
-interface ShowcaseContext {
-  readonly user_id?: number;
-  readonly message_type?: string;
-  readonly isDelegated?: boolean;
+interface ShowcaseContext extends GroupRankContext {
   readonly privateCredentialSignal?: AbortSignal;
   reply(text: string): unknown;
 }
@@ -39,11 +37,13 @@ export function createGenshinShowcaseCommand(profiles: GenshinRoleProfiles, lock
   storage = createGenshinShowcaseStorage(privateDirectory, lock, undefined, readPanelDeletionBoundary),
   fetchShowcase = createGenshinShowcaseClient(),
   readSelector = readGenshinShowcaseServer,
+  groupRank,
   theme = readPanelTheme,
   render = renderPanelList,
 }: {
   readonly readPanelDeletionBoundary?: ReadPanelDeletionBoundary; readonly privateDirectory?: string; readonly storage?: ReturnType<typeof createGenshinShowcaseStorage>;
   readonly fetchShowcase?: ReturnType<typeof createGenshinShowcaseClient>; readonly readSelector?: typeof readGenshinShowcaseServer;
+  readonly groupRank?: Pick<ReturnType<typeof createGroupPanelRank>, "register">;
   readonly theme?: typeof readPanelTheme; readonly render?: typeof renderPanelList;
 } = {}) {
   return async (command: NonNullable<ReturnType<typeof matchGenshinShowcase>>, context: ShowcaseContext) => {
@@ -77,6 +77,7 @@ export function createGenshinShowcaseCommand(profiles: GenshinRoleProfiles, lock
       const baseline = await storage.baseline(qq, target.uid);
       await context.reply(`正在通过 ${showcaseNames[target.provider]} 查询公开展板，仅发送游戏 UID。`);
       await verify();
+      const requestedAt = Date.now();
       const result = await fetchShowcase(target, signal, { fresh: true });
       await verify();
       const assets = await theme();
@@ -86,6 +87,11 @@ export function createGenshinShowcaseCommand(profiles: GenshinRoleProfiles, lock
       if (!written) return "原神公开展板已变更，请重新查询。";
       const avatars = Object.values(snapshot.avatars).sort((a, b) =>
         (b.star ?? 0) - (a.star ?? 0) || b.level - a.level || b.id - a.id);
+      if (groupRank && bound && !uid && !("characterName" in command)) {
+        await groupRank.register(context, profileId, bound, requestedAt, async () => {
+          if (!await isCurrent()) throw new ProfileError("changed", "原神公开展板已变更。");
+        }).catch(() => undefined);
+      }
       try {
         const { png } = await render(snapshot, avatars, assets, { updated: true, profileId });
         await verify();

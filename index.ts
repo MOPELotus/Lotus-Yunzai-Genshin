@@ -163,7 +163,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     { discardedAt: panelArchive.discardedAt, readShowcase: createGenshinGroupShowcaseReader(fetchShowcase),
       readEnemyLevel: panelPreferences.level });
   const groupRankMatches = new WeakMap<GachaContext, Awaited<ReturnType<typeof resolveGroupPanelRank>>>();
-  const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase });
+  const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase, groupRank });
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank, preferences: panelPreferences, readPanelDeletionBoundary: panelArchive.discardedAt });
   const sync = createGenshinGachaSync(profiles, client, history);
   const worldBossRanking = createGenshinWorldBossRanking(rankingDirectory, lockFile);

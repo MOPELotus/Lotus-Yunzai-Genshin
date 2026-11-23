@@ -156,6 +156,90 @@ test("Miao source model fields preserve actor, costume, talent, weapon, rolls an
   expect(JSON.stringify(normalized)).not.toContain("do not persist");
 });
 
+test("群内普通面板列表、米游社更新和本人展板全量更新登记，手工 UID 与代查不入榜", async () => {
+  const root = await mkdtemp(join(tmpdir(), "lotus-gs-rank-panel-entry-"));
+  const meta = join(root, "theme", "meta-gs", "character");
+  const env = {
+    LOTUS_PROFILE_DIR: root,
+    LOTUS_GENSHIN_PANEL_DIR: join(root, "panels"),
+    LOTUS_GENSHIN_SHOWCASE_DIR: join(root, "showcases"),
+    LOTUS_GENSHIN_PANEL_THEME_DIR: join(root, "theme"),
+    LOTUS_GENSHIN_PANEL_RANK_DIR: join(root, "rank"),
+    LOTUS_GENSHIN_PANEL_RANK_GROUPS: "77001,77002,77003",
+    LOTUS_GENSHIN_SHOWCASE_SERVER: "0",
+  };
+  const previous = Object.keys(env).map(key => [key, Bun.env[key]] as const);
+  const originalFetch = globalThis.fetch;
+  const requested: { readonly path: string; readonly cookie: string | null }[] = [];
+  try {
+    Object.assign(Bun.env, env);
+    await mkdir(meta, { recursive: true });
+    await writeFile(join(meta, "data.json"), JSON.stringify(theme.characters));
+    const swords = join(root, "theme", "meta-gs", "weapon", "sword");
+    await mkdir(swords, { recursive: true });
+    await writeFile(join(swords, "data.json"), JSON.stringify({ 11513: { name: "静水流涌之辉" } }));
+    await writeFile(join(root, "42.yaml"), `version: 1
+user: { qq: '42' }
+profile: { id: 1 }
+account:
+  ltuid: '12'
+  stuid: '12'
+  stoken: synthetic-stoken
+  stoken_cookie: 'stuid=12; stoken=synthetic-stoken'
+  cookie: 'account_id=12; cookie_token=synthetic-cookie'
+  game_roles: { gs: [{ uid: '${uid}', region: ${cn.region}, game_biz: ${cn.gameBiz} }] }
+  current_uid: { gs: '${uid}' }
+`);
+    globalThis.fetch = Object.assign(async (input: URL | Request | string, options?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      const cookie = new Headers(options?.headers).get("cookie");
+      requested.push({ path: url.pathname, cookie });
+      if (url.hostname === "profile.microgg.cn") {
+        expect(cookie).toBeNull();
+        return Response.json(payload());
+      }
+      if (url.pathname.endsWith("/character/list")) return Response.json({ retcode: 0, data: { list: [{ id: furina }] } });
+      if (url.pathname.endsWith("/character/detail")) return Response.json({ retcode: 0, data: {
+        list: [{ base: { id: furina, name: "芙宁娜", level: 90, rarity: 5, element: "Hydro" } }],
+      } });
+      return new Response(null, { status: 404 });
+    }, { preconnect: originalFetch.preconnect });
+    const registry = new CommandRegistry();
+    registry.registerModule({ name: "@lotus-yunzai/genshin", ...createModule({ signal, lockFile }) });
+    const dispatch = (group_id: number, msg: string, isDelegated = false) => registry.dispatchFallback(
+      normalizeGameCommand({ msg, raw_message: msg, message: msg, post_type: "message", group_id, user_id: 42, self_id: 99,
+        message_type: "group", isGroup: true, isPrivate: false, isMaster: false, isDelegated,
+        listCurrentGroupMembers: async () => [{ id: 99 }, { id: 42 }], reply: () => true }),
+      () => true, () => false,
+    );
+    const ranking = "#芙宁娜排行";
+    expect(await dispatch(77001, ranking)).toContain("暂无已登记");
+    expect(await dispatch(77001, `#展板更新面板${uid}`)).toMatchObject({ type: "image" });
+    expect(await dispatch(77001, ranking)).toContain("暂无已登记");
+    expect(await dispatch(77001, "#展板更新面板", true)).toContain("本人");
+    expect(await dispatch(77001, "#更新面板")).toMatchObject({ type: "image" });
+    await dispatch(77001, ranking);
+    expect(requested.filter(entry => entry.path === `/api/uid/${uid}`)).toHaveLength(2);
+    expect(requested.filter(entry => entry.path.includes("/character/")).map(entry => entry.cookie))
+      .toEqual(["account_id=12; cookie_token=synthetic-cookie", "account_id=12; cookie_token=synthetic-cookie"]);
+    expect(await dispatch(77002, ranking)).toContain("暂无已登记");
+    expect(await dispatch(77002, "#展板更新面板")).toMatchObject({ type: "image" });
+    await dispatch(77002, ranking);
+    expect(requested.filter(entry => entry.path === `/api/uid/${uid}`)).toHaveLength(4);
+    expect(await dispatch(77003, ranking)).toContain("暂无已登记");
+    expect(await dispatch(77003, "#面板")).toMatchObject({ type: "image" });
+    await dispatch(77003, ranking);
+    expect(requested.filter(entry => entry.path === `/api/uid/${uid}`)).toHaveLength(5);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of previous) {
+      if (value === undefined) delete Bun.env[key];
+      else Bun.env[key] = value;
+    }
+    await rm(root, { recursive: true, force: true });
+  }
+}, 30_000);
+
 test("public service receives UID only, obeys TTL and rate signals, and rejects another UID", async () => {
   let requests = 0, now = 1000, result = Response.json(payload());
   const fetchShowcase = createGenshinShowcaseClient((async (endpoint: URL, options: RequestInit) => {
