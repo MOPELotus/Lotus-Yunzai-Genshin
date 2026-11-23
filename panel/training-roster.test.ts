@@ -230,3 +230,102 @@ test("天赋列表首次读取同档名册，续接过期 Cookie 后按稀有度
   expect(await query(message, context)).toBe(localReply);
   expect(trace).toEqual([]);
 }));
+
+test("按月剧诗练度先续接并更新本人名册，再使用当月规则，普通练度共用缓存", async () => fixture(async root => {
+  const profiles = join(root, "profiles");
+  const archive = join(root, "panels");
+  const atlas = join(root, "atlas");
+  await mkdir(profiles);
+  await mkdir(join(atlas, "items"), { recursive: true });
+  await writeFile(join(profiles, "42.yaml"), Bun.YAML.stringify({ ...login(), profile: { id: 1 } }));
+  await writeFile(join(profiles, "42-3.yaml"), Bun.YAML.stringify(login()));
+  const opening = 10000046, invited = 10000035;
+  const rows = [
+    { id: "31", begin: "2026-11-01 04:00:00", end: "2026-12-01 03:59:59", element: 3 },
+    { id: "32", begin: "2026-12-01 04:00:00", end: "2027-01-01 03:59:59", element: 2 },
+  ];
+  const version = "7.2.52";
+  const records = Object.fromEntries(rows.map(({ id }) => [id, { id, name: id, path: `items/${id}.json` }]));
+  await writeFile(join(atlas, "map.json"), JSON.stringify({ games: { gi: { locales: { zh: { pages: {
+    rolecombat: { version, recordCount: rows.length, records },
+  } } } } } }));
+  for (const { id, begin, end, element } of rows) {
+    await writeFile(join(atlas, "items", `${id}.json`), JSON.stringify({
+      meta: { gameId: "gi", pageId: "rolecombat", recordId: id, version },
+      content: { list: { live_begin: begin, live_end: end }, detail: {
+        avatar_config: { element_list: [element], buff_avatar_list: [opening], invite_avatar_list: [invited] },
+        difficulty_config: { 1: { room: { 1: {} } } },
+      } },
+    }));
+  }
+
+  const store = createProfileStore(profiles);
+  const time = Date.UTC(2026, 10, 24);
+  const requests: string[] = [];
+  let exchanges = 0;
+  let offline = false;
+  const client = createHoyoClient(async (input, options) => {
+    const url = new URL(input);
+    const endpoint = url.pathname.split("/").at(-1)!;
+    const body = options?.body ? JSON.parse(String(options.body)) : undefined;
+    expect(url.searchParams.get("role_id") ?? body?.role_id).toBe(uid);
+    requests.push(endpoint);
+    if (offline) throw new TypeError("隔离网络断开");
+    if (endpoint === "index") return Response.json({ retcode: 0, data: { uid } });
+    if (endpoint === "list") return Response.json({ retcode: 0, data: { list: [{ id: furina.id }, { id: amber.id }] } });
+    if (new Headers(options?.headers).get("Cookie")?.includes("cookie_token=old")) return Response.json({ retcode: -100 });
+    return Response.json({ retcode: 0, data: { list: [furina, amber].filter(row => body.character_ids.includes(row.id)).map(base => ({
+      base, skills: [1, 2, 3].map(skill_id => ({ skill_id, skill_type: 1, level_original: 5 })),
+    })) } });
+  }, { profiles: store, async exchange() {
+    exchanges++;
+    return { ...login(accountId, "fresh").account, ltuid: accountId, ltoken: "isolated-test" };
+  } });
+  const rendered: Array<Record<number, readonly (number | undefined)[]>> = [];
+  const image = { type: "image", file: Uint8Array.of(1) } as const;
+  const query = createGenshinPanelQuery(store, client, lockFile, new AbortController().signal, {
+    archiveDirectory: archive, legacyDirectory: join(root, "missing-legacy"), now: () => time,
+    theme: async () => ({ ...themes, characters: { ...themes.characters,
+      [opening]: { name: "胡桃", elem: "pyro", star: 5 }, [invited]: { name: "七七", elem: "cryo", star: 5 },
+    } }),
+    render: { async list() { throw Error("请使用练度渲染"); }, async detail() { throw Error("请使用练度渲染"); },
+      async statistics(snapshot, rows) {
+        expect(snapshot._mys).toBe(time);
+        rendered.push(Object.fromEntries(rows.map(({ avatar, talents }) => [avatar.id, talents.map(level => level?.original)])));
+        return { png: image.file };
+      } },
+  });
+  const november = "#202611剧诗练度统计 档案3";
+  const december = "#202612幻想角色列表3";
+  const previous = Bun.env.LOTUS_ATLAS_DATA_DIR;
+  Bun.env.LOTUS_ATLAS_DATA_DIR = atlas;
+  try {
+    expect(await query(november, { ...context, isDelegated: true })).toContain("本人 QQ");
+    expect(await query(november, { ...context, privateCredentialSignal: AbortSignal.abort() })).toBeUndefined();
+    expect(await query("#202611剧诗练度统计 100000002", context)).toContain("不一致");
+    expect(requests).toEqual([]);
+
+    expect(await query(november, context)).toEqual({ type: "forward", nodes: [
+      "2026-11 幻想真境剧诗 · 角色练度统计\n限制元素：水\n开幕角色：胡桃\n特邀角色：七七", image,
+    ] });
+    expect(requests.splice(0)).toEqual(["index", "list", "detail", "detail"]);
+    expect(exchanges).toBe(1);
+    expect(rendered.at(-1)).toEqual({ [furina.id]: [5, 5, 5] });
+
+    expect(await query("#练度统计3", context)).toEqual(image);
+    expect(requests.splice(0)).toEqual(["index"]);
+    expect(rendered.at(-1)).toEqual({ [amber.id]: [5, 5, 5], [furina.id]: [5, 5, 5] });
+
+    offline = true;
+    expect(await query(december, context)).toEqual({ type: "forward", nodes: [
+      "2026-12 幻想真境剧诗 · 角色练度统计\n限制元素：火\n开幕角色：胡桃\n特邀角色：七七", image,
+    ] });
+    expect(requests.splice(0)).toEqual(["index"]);
+    expect(rendered.at(-1)).toEqual({ [amber.id]: [5, 5, 5], [opening]: [8, 8, 8] });
+    expect(exchanges).toBe(1);
+    expect(await Bun.file(join(archive, "42", uid + ".json")).exists()).toBe(false);
+  } finally {
+    if (previous === undefined) delete Bun.env.LOTUS_ATLAS_DATA_DIR;
+    else Bun.env.LOTUS_ATLAS_DATA_DIR = previous;
+  }
+}));

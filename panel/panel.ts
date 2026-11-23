@@ -431,7 +431,7 @@ export function createGenshinPanelQuery(
     if (materialDay?.selected === 7) return "周日全部天赋与武器突破素材均开放。";
     const { profileId } = selection;
     const reload = command?.type === "reload";
-    const canReadRoster = command?.type === "statistics" && !command.theaterMonth &&
+    const canReadRoster = command?.type === "statistics" &&
       typeof client.fetchGenshinPersonalRecord === "function";
     const talentRoster = canReadRoster && !!command?.talentStatistics;
     const training = canReadRoster && !talentRoster;
