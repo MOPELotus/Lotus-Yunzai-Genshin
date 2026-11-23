@@ -38,6 +38,13 @@ test("原角色面板从展柜旧档恢复基础属性、武器精炼和圣遗�
     } } });
     expect(model?.artisDetail.mark).not.toBe("—");
     expect(model?.artisDetail.artis["1"]?.img).toContain("artifact/imgs/");
+    const grouped = await originalProfileData({ uid, avatars: { [id]: avatar } }, avatar, { ...theme, commaGroup: 4 }, {
+      damage: { enemyLevel: 100, enemyName: "训练目标", ruleAuthors: [], rows: [
+        { title: "期望伤害", average: 12345678, crit: 23456789, buffs: [] },
+      ] },
+    });
+    expect(grouped?.attr).toMatchObject({ hpBase: "1,2858", atkBase: "1016.0", cdmg: "132.5%" });
+    expect(grouped?.dmgCalc.dmgData).toMatchObject([{ dmg: "2345,6789", avg: "1234,5678" }]);
     const { rating } = await scorePanelArtifacts({ ...avatar, artis: {
       ...avatar.artis,
       2: { name: "宗室之翎", set: "昔日宗室之仪", level: 20, star: 5, mainId: 10003, attrIds: ["501201"] },

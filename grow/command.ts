@@ -1,6 +1,7 @@
 import { ProfileError, type createProfileStore } from "@lotus-yunzai/account";
 import type { createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
+import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { genshinGachaThemeDirectory, readGenshinGachaCatalogue } from "../gacha-detail-source.ts";
 import { resolveGenshinCatalogTarget } from "../gacha-pool.ts";
 import { genshinLoginAccount } from "../owned-role.ts";
@@ -15,8 +16,8 @@ import { calculateCharacterGrowth, calculateWeaponGrowth, characterTarget, curre
 const changed = "原神档案角色已变化，请重新计算。";
 const id = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 
-function fallback(model: GrowthCard) {
-  const fmt = (num: number) => num.toLocaleString("zh-CN");
+function fallback(model: GrowthCard, commaGroup?: number) {
+  const fmt = (num: number) => groupPanelNumber(num.toLocaleString("zh-CN"), commaGroup);
   const shortage = model.shortfall && (model.shortfall.rows.length
     ? `还需材料 · ${model.shortfall.rows.map(row => `${row.label} × ${fmt(row.num)}`).join("、")}`
     : model.shortfall.complete ? "背包材料已足够" : "官方缺口资料不完整");
@@ -60,7 +61,7 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
       if (target.type === "weapon") {
         const plan = weaponTarget(request, target.star);
         if (!plan) return `${growthHelp}\n${target.name}的等级或突破超出该武器范围。`;
-        result = calculateWeaponGrowth(target.materials, target.star, plan.from, plan.to, material);
+        result = calculateWeaponGrowth(target.materials, target.star, plan.from, plan.to, material, theme.commaGroup);
         if (!request.from) notice.push("默认从1级开始计算，可指定起始等级。");
         notice.push("80 表示升至80级未突破，80+ 表示80级已突破。");
       } else {
@@ -101,7 +102,7 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
               : "暂无本地角色面板，按公开基线等级1、天赋1/1/1计算。");
           }
         }
-        result = calculateCharacterGrowth(target.materials, start, plan, material);
+        result = calculateCharacterGrowth(target.materials, start, plan, material, theme.commaGroup);
         notice.push("天赋按不含命座加成的等级计算，经验未扣除当前等级内已有经验。",
           `可指定方向：#养成计算 ${target.name} 等级89 天赋 10 9 10（80+ 表示80级已突破）`);
       }
@@ -150,7 +151,7 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
       let png: Uint8Array | undefined;
       try { ({ png } = await render(model, theme, "auto", { inlineImageByteLimit, signal })); } catch {}
       if (!await verify()) return signal.aborted ? undefined : changed;
-      return png ? { type: "image" as const, file: png } : fallback(model);
+      return png ? { type: "image" as const, file: png } : fallback(model, theme.commaGroup);
     } catch {
       if (!signal.aborted) return "暂时无法读取原神养成资料，请检查本地主题和面板。";
     }

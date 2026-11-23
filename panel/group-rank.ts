@@ -2,7 +2,7 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createGroupRankRefresh, type GameRole } from "@lotus-yunzai/account";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
-import { readGroupPanelRankEnabled, readGroupPanelRankLimit } from "../../../lib/group-panel-rank-settings.ts";
+import { groupPanelNumber, readGroupPanelRankEnabled, readGroupPanelRankLimit } from "../../../lib/group-panel-rank-settings.ts";
 import { availableRankMode, decodeRankAvatar, displayedRankScore, isRankProfile, resolveGroupPanelRank, projectRankAvatar, rankId, rankModeNames,
   rankUid, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { renderGroupPanelRank } from "./card.ts";
@@ -313,7 +313,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       return [`${character.name} · 本群${rankModeNames[mode]}排行`, summary, ...rows.map(({ uid, avatar }, index) => {
         const score = displayedRankScore(avatar, mode)!;
         const formatted = mode === "crit" || mode === "valid" ? score.toFixed(1) : String(score);
-        return `${index + 1}. UID ${uid} · ${formatted}${mode === "damage" && avatar.damage?.percent ? "%" : ""}`;
+        return `${index + 1}. UID ${uid} · ${groupPanelNumber(formatted, theme.commaGroup)}${mode === "damage" && avatar.damage?.percent ? "%" : ""}`;
       })].join("\n");
     },
   };

@@ -1,3 +1,4 @@
+import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
 import { object, talentKeys, text, whole } from "./model.ts";
@@ -211,12 +212,13 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
         const grade = avatar.artifacts?.grade;
         const score = displayedRankScore(avatar, metric);
         if (grade) badge(ctx, writer, grade, grades[grade] ?? "#aaa", [499, y + 34, 27, 15]);
-        if (score !== undefined) write(number.format(score), grade ? 532 : 499, y + 47, 16, { maxWidth: 43 });
+        if (score !== undefined) write(groupPanelNumber(number.format(score), theme.commaGroup), grade ? 532 : 499, y + 47, 16, { maxWidth: 43 });
         columnDivider(ctx, 574, y + 9);
         columnDivider(ctx, 675, y + 9);
         if (avatar.damage) {
           write(avatar.damage.title, 586, y + 24, 12, { color: grey, maxWidth: 82 });
-          write(`${number.format(avatar.damage.score)}${avatar.damage.percent ? "%" : ""}`, 586, y + 47, 18, { maxWidth: 82 });
+          write(`${groupPanelNumber(number.format(avatar.damage.score), theme.commaGroup)}${avatar.damage.percent ? "%" : ""}`,
+            586, y + 47, 18, { maxWidth: 82 });
         }
       });
     });

@@ -1,3 +1,4 @@
+import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { Canvas } from "skia-canvas";
 import { renderGenshinCard } from "../card-render.ts";
 import type { EquipmentNotice } from "./card.ts";
@@ -29,10 +30,7 @@ const legacyAxisTitles: Readonly<Record<string,string>> = {
 };
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
-function display(value: DamageRow["average"], unit?: DamageRow["unit"]) {
-  if (value === undefined) return "—";
-  return (typeof value === "number" ? number.format(value) : value) + (unit ?? "");
-}
+type DisplayDamage = (value: DamageRow["average"], unit?: DamageRow["unit"]) => string;
 
 function fit(ctx: Context, { font, write }: Writer, value: string, left: number, y: number, size: number,
   maxWidth: number, align: CanvasTextAlign, color = bright) {
@@ -67,7 +65,7 @@ function splitLine(ctx: Context, value: string, available: number) {
   return lines;
 }
 
-function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined, model: Result, top: number, profileId: number) {
+function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined, model: Result, top: number, profileId: number, display: DisplayDamage) {
   const { write } = writer;
   const entries = [...model.rows, ...model.constellation ?? []];
   const height = 115 + entries.length * 40;
@@ -121,7 +119,7 @@ function matrixNotes(abbr: string) {
 }
 
 function drawMatrix(ctx: Context, writer: Writer, texture: Picture | undefined, comparison: DamageComparison,
-  selected: DamageRow, index: number, abbr: string, notes: readonly (readonly string[])[], top: number, height: number) {
+  selected: DamageRow, index: number, abbr: string, notes: readonly (readonly string[])[], top: number, height: number, display: DisplayDamage) {
   const { write } = writer;
   const count = comparison.axes.length;
   const first = Math.min(185, Math.max(100, width / (count + .1)));
@@ -200,6 +198,8 @@ function drawBuffs(ctx: Context, writer: Writer, texture: Picture | undefined,
 
 export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme, model: Result,
   { mode = "auto", profileId = 1, change }: { readonly mode?: Mode; readonly profileId?: number; readonly change?: EquipmentNotice } = {}) {
+  const display: DisplayDamage = (value, unit) => value === undefined ? "—" :
+    (typeof value === "number" ? groupPanelNumber(number.format(value), theme.commaGroup) : value) + (unit ?? "");
   const profile = await originalProfileData(snapshot, avatar, theme, { allowMissingTheme: true,
     change: change?.command, displayedTalent: change?.displayedTalent });
   if (!profile) throw new Error("原神伤害详情无法读取基础面板。");
@@ -244,8 +244,8 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
       write(`当前替换命令 ${change.command}`, x + 15, 551, 12, { color: muted, maxWidth: 545 });
       if (change.reason) write(change.reason, x + 15, 568, 12, { color: muted, maxWidth: 545 });
     });
-    damageTable(ctx, writer, texture, model, tableTop, profileId);
-    if (comparison && selected) drawMatrix(ctx, writer, texture, comparison, selected, model.selected, profile.data.abbr, notes, matrixTop, matrixHeight);
+    damageTable(ctx, writer, texture, model, tableTop, profileId, display);
+    if (comparison && selected) drawMatrix(ctx, writer, texture, comparison, selected, model.selected, profile.data.abbr, notes, matrixTop, matrixHeight, display);
     drawBuffs(ctx, writer, texture, buffs, buffsTop, buffsHeight);
     ctx.save();
     shadow(ctx, "#000", 1, 1);

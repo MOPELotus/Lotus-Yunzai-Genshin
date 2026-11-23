@@ -1,3 +1,4 @@
+import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { charExp, charMaxLv, charPromote, items, promoteLvs, talentCost, talentKeys, talentMax, weaponExp, weaponPromote, weaponPromoteStar } from "./tables.ts";
 
@@ -159,14 +160,14 @@ function materialGroup(title: string, resolve: ResolveMaterial) {
   };
 }
 
-const fmt = (number: number) => number.toLocaleString("zh-CN");
+const fmt = (number: number, commaGroup?: number) => groupPanelNumber(number.toLocaleString("zh-CN"), commaGroup);
 const experience = (table: readonly number[], from: number, to: number) => table.slice(from - 1, to - 1).reduce((a, b) => a + b, 0);
 const levelRows = (curr: GrowthLevel, to: GrowthLevel): GrowthRow[] => [
   { title: "等级", from: `Lv.${curr.level}`, to: `Lv.${to.level}` }, { title: "突破", from: curr.promote, to: to.promote },
 ];
 
 export function calculateCharacterGrowth(materials: MaterialNames, current: CharacterGrowth, request: Target,
-  resolve: ResolveMaterial): (GrowthResult & { readonly curr: CharacterGrowth; readonly to: CharacterGrowth }) | undefined {
+  resolve: ResolveMaterial, commaGroup?: number): (GrowthResult & { readonly curr: CharacterGrowth; readonly to: CharacterGrowth }) | undefined {
   const all = !request.level && !request.talent;
   const goal = request.level ?? (all ? { level: charMaxLv, promote: 6 } : current);
   const talents = request.talent ?? (all ? allTalents : current);
@@ -192,7 +193,7 @@ export function calculateCharacterGrowth(materials: MaterialNames, current: Char
     levels.addMora(Math.ceil(exp / items.charExp.mora));
     if (request.level || all || to.promote > current.promote || to.level > current.level) {
       const talentAscension = to.promote > Math.max(current.promote, goal.promote, getPromote(goal.level));
-      groups.push(levels.finish(`Lv.${current.level} → Lv.${to.level}，需经验 ${fmt(exp)}${talentAscension ? `，天赋${maxTalent}级需突破至${to.promote}阶` : ""}`));
+      groups.push(levels.finish(`Lv.${current.level} → Lv.${to.level}，需经验 ${fmt(exp, commaGroup)}${talentAscension ? `，天赋${maxTalent}级需突破至${to.promote}阶` : ""}`));
     }
     const skills = materialGroup("天赋升级", resolve);
     for (const key of names) for (let level = current[key] + 1; level <= to[key]; level++) {
@@ -210,7 +211,7 @@ export function calculateCharacterGrowth(materials: MaterialNames, current: Char
 }
 
 export function calculateWeaponGrowth(materials: MaterialNames, star: GrowthStar, current: GrowthLevel, target: GrowthLevel,
-  resolve: ResolveMaterial): GrowthResult | undefined {
+  resolve: ResolveMaterial, commaGroup?: number): GrowthResult | undefined {
   const level = Math.max(current.level, target.level);
   const to = { level, promote: Math.max(current.promote, target.promote, getPromote(level)) };
   const group = materialGroup("突破与升级", resolve);
@@ -226,5 +227,6 @@ export function calculateWeaponGrowth(materials: MaterialNames, star: GrowthStar
   const exp = experience(weaponExp[star], current.level, to.level);
   group.item("weaponExp", Math.ceil(exp / items.weaponExp.exp), 8);
   group.addMora(Math.ceil(exp / items.weaponExp.mora));
-  return { curr: current, to, rows: levelRows(current, to), groups: [group.finish(`Lv.${current.level} → Lv.${to.level}，需经验 ${fmt(exp)}`)], moraTotal: group.mora };
+  return { curr: current, to, rows: levelRows(current, to), groups: [group.finish(`Lv.${current.level} → Lv.${to.level}，需经验 ${fmt(exp, commaGroup)}`)],
+    moraTotal: group.mora };
 }

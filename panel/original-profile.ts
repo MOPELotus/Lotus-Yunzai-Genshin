@@ -1,5 +1,6 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
+import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { drawOriginalProfile } from "./original-profile-skia.ts";
 import { scorePanelArtifacts } from "./artifact-score.ts";
 import { readOriginalPanelNumbers, readOriginalWeapon, type DamageSummary } from "./damage.ts";
@@ -20,10 +21,7 @@ const artifactTitles: Readonly<Record<string, string>> = {
   cryo: "冰伤加成", electro: "雷伤加成", dendro: "草伤加成", anemo: "风伤加成",
 };
 const scalar: Readonly<Record<string, number>> = attrPct;
-const number = (value: number, digits = 1) => value.toLocaleString("en-US", {
-  minimumFractionDigits: digits, maximumFractionDigits: digits,
-});
-const display = (key: string, value: number) => number(value) + (percent.has(key) ? "%" : "");
+type FormatNumber = (value: number, digits?: number) => string;
 const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
 function resource(...parts: string[]) {
@@ -34,7 +32,7 @@ function valueOf(value: string | undefined) {
   const clean = value?.replace(/[,％%\s]/gu, "");
   if (clean && /^[-+]?\d+(?:\.\d+)?$/u.test(clean)) return Number(clean);
 }
-function formatStats(avatar: PanelAvatar, stats: Awaited<ReturnType<typeof readOriginalPanelNumbers>>) {
+function formatStats(avatar: PanelAvatar, stats: Awaited<ReturnType<typeof readOriginalPanelNumbers>>, number: FormatNumber) {
   const recorded = new Map(avatar._lotus?.properties?.map(property => [property.key, property]));
   const output: Record<string, string> = {};
   for (const key of keys) {
@@ -55,7 +53,7 @@ function formatStats(avatar: PanelAvatar, stats: Awaited<ReturnType<typeof readO
   }
   return output;
 }
-function formatWeapon(avatar: PanelAvatar, displayWeapon: Awaited<ReturnType<typeof readOriginalWeapon>>, alias?: string) {
+function formatWeapon(avatar: PanelAvatar, displayWeapon: Awaited<ReturnType<typeof readOriginalWeapon>>, number: FormatNumber, alias?: string) {
   const gear = avatar.weapon;
   if (!gear) return;
   const data = displayWeapon?.weapon;
@@ -77,7 +75,7 @@ function formatWeapon(avatar: PanelAvatar, displayWeapon: Awaited<ReturnType<typ
   return { ...gear, sName: name.length > 8 ? alias || name : name, star: whole(data?.star, 5), attrs, desc: { desc: description },
     img: displayWeapon ? resource("meta-gs", "weapon", displayWeapon.weaponType, gear.name, "icon.webp") : "" };
 }
-function formatDamage(damage: DamageSummary | undefined) {
+function formatDamage(damage: DamageSummary | undefined, number: FormatNumber) {
   const rowNumber = (value: string | number | undefined) => typeof value === "number" ? number(value, 0) : value ?? "";
   return {
     enemyLv: damage?.enemyLevel, enemyName: damage?.enemyName, createdBy: damage?.ruleAuthors.join("、"),
@@ -86,14 +84,15 @@ function formatDamage(damage: DamageSummary | undefined) {
     })),
   };
 }
-function formatArtifacts(avatar: PanelAvatar, { rating, missing }: Awaited<ReturnType<typeof scorePanelArtifacts>>, catalog: unknown) {
+function formatArtifacts(avatar: PanelAvatar, { rating, missing }: Awaited<ReturnType<typeof scorePanelArtifacts>>, catalog: unknown,
+  number: FormatNumber) {
   const aggregate = new Map<string, number>();
   const bySet = Object.values(object(catalog) ?? {}).map(object);
   function efficiency(key: string, value: number) {
     return scalar[key] ? value / (scalar[key]! * basicNum) : 0;
   }
   function roll({ key, value }: { readonly key: string; readonly value: number }, upNum?: number) {
-    return { key, value: display(key, value), upNum, eff: upNum ? number(efficiency(key, value) / 0.85) : undefined };
+    return { key, value: number(value) + (percent.has(key) ? "%" : ""), upNum, eff: upNum ? number(efficiency(key, value) / 0.85) : undefined };
   }
   const artifacts = Object.fromEntries(Object.entries(avatar.artis).map(([slot, item]) => {
     const { main, subs } = artifactStatRecord(item);
@@ -121,6 +120,9 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
 }: { readonly damage?: DamageSummary; readonly change?: string; readonly displayedTalent?: DisplayedTalentLevels;
   readonly allowMissingTheme?: boolean } = {}) {
   if (!theme.resourceRoot && !allowMissingTheme) return;
+  const number: FormatNumber = (value, digits = 1) => groupPanelNumber(value.toLocaleString("en-US", {
+    minimumFractionDigits: digits, maximumFractionDigits: digits,
+  }), theme.commaGroup);
   const root = theme.resourceRoot;
   const traveler = travelerIds.has(avatar.id);
   const meta = object(theme.characters[avatar.id]);
@@ -161,10 +163,10 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
       costumeSplash, gallerySplash, imgs: { a: gameWeapon ? resource("common", "item", `atk-${gameWeapon}.webp`) : "",
         e: talentIcon("e"), q: talentIcon("q"),
       }, constellations: Array.from({ length: 6 }, (_, i) => consIcon(i + 1)),
-      weapon: formatWeapon(avatar, weapon, avatar.weapon ? aliases?.[1]?.[avatar.weapon.name] : undefined),
+      weapon: formatWeapon(avatar, weapon, number, avatar.weapon ? aliases?.[1]?.[avatar.weapon.name] : undefined),
     },
-    attr: formatStats(avatar, stats), artisDetail: formatArtifacts(avatar, rating, allArtifacts),
-    artisKeyTitle: artifactTitles, dmgCalc: formatDamage(damage),
+    attr: formatStats(avatar, stats, number), artisDetail: formatArtifacts(avatar, rating, allArtifacts, number),
+    artisKeyTitle: artifactTitles, dmgCalc: formatDamage(damage, number),
   };
 }
 

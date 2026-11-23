@@ -1,3 +1,4 @@
+import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { profileFonts } from "../panel/original-profile-skia.ts";
 import type { PanelTheme, Picture } from "../panel/theme.ts";
@@ -13,7 +14,6 @@ export type GrowthCard = GrowthResult & { readonly title: string; readonly star:
 const width = 600;
 const columns = 6;
 const gold = "#d3bc8e";
-const textNumber = (num: number) => num.toLocaleString("zh-CN");
 
 function label(ctx: Context, family: string, value: string, x: number, y: number, size: number, color = "#fff", maximum = 560,
   align: CanvasTextAlign = "left") {
@@ -73,6 +73,7 @@ function block(ctx: Context, family: string, texture: Picture | undefined, y: nu
 
 export async function renderGrowthCard(model: GrowthCard, theme: PanelTheme, mode: Mode = "auto",
   { inlineImageByteLimit, signal }: { readonly inlineImageByteLimit?: number; readonly signal?: AbortSignal } = {}) {
+  const textNumber = (num: number) => groupPanelNumber(num.toLocaleString("zh-CN"), theme.commaGroup);
   const targetRows = Math.ceil(model.rows.length / 3);
   const targetHeight = 88 + targetRows * 25;
   const groups = model.shortfall ? [{ title: "还需材料", desc: model.shortfall.complete ? "已扣除背包内材料（含可合成材料）" : "已核对的背包缺口",

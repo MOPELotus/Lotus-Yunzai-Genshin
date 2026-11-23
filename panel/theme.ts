@@ -2,9 +2,11 @@ import { createHash, randomInt } from "node:crypto";
 import { constants } from "node:fs";
 import { open, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { join, relative, resolve, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import { loadImage } from "skia-canvas";
 import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
 import { readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
+import { readPanelCommaGroup } from "../../../lib/group-panel-rank-settings.ts";
 import { localPanelGalleryRoot, retainedPanelGalleryDirectory } from "../../../lib/panel-gallery-paths.ts";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
 import { managedPanelImageRoot, ownsPanelImages, usablePanelImageRoot } from "./image-library.ts";
@@ -26,6 +28,7 @@ export interface PanelPhoto {
 type Asset = { readonly image: Picture; readonly photo?: PanelPhoto };
 export interface PanelTheme extends PanelCatalog {
   readonly resourceRoot?: string;
+  readonly commaGroup?: number;
   readonly metadata?: (...parts: string[]) => Promise<Json>;
   readonly weaponNames?: () => Promise<readonly Readonly<Record<string, string>>[]>;
   readonly galleryPortrait?: (avatar: PortraitAvatar, special?: boolean) => Promise<Picture | undefined>;
@@ -152,12 +155,13 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
   installation?: string): Promise<PanelTheme> {
   const root = resolve(directory);
   const galleryRoot = galleryDirectory ?? localPanelGalleryRoot(installation);
-  const [characters, relics, installed, configured, retained, customAliases] = await Promise.all([
+  const [characters, relics, installed, configured, retained, customAliases, commaGroup] = await Promise.all([
     json(join(root, "meta-gs", "character", "data.json")), json(join(root, "meta-gs", "artifact", "data.json")),
     realpath(root).catch(() => undefined),
     galleryRoot ? realpath(resolve(galleryRoot)).catch(() => undefined) : undefined,
     galleryDirectory === "" ? undefined : retainedPanelGalleryDirectory("gs", installation),
     readGameCharacterAliases("gs"),
+    readPanelCommaGroup(installation ? pathToFileURL(resolve(installation) + sep) : undefined),
   ]);
   const managed = await usablePanelImageRoot(managedDirectory, [root, genshinGachaThemeDirectory(), galleryRoot, retained]).catch(() => false);
   const characterNames = new Map<string, number>();
@@ -225,7 +229,7 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
     }
   }
   return {
-    characters, artifacts, artifactSets, resourceRoot: installed, customAliases,
+    characters, artifacts, artifactSets, resourceRoot: installed, customAliases, commaGroup,
     async galleryPortrait(avatar, special) { return (await gallery(avatar, special))?.image; },
     galleryAsset: avatar => gallery(avatar, false, true),
     async pictureAsset(...parts) {
