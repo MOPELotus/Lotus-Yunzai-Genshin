@@ -1,13 +1,14 @@
 import { createHash, randomInt } from "node:crypto";
 import { constants } from "node:fs";
 import { open, readdir, readFile, realpath, stat } from "node:fs/promises";
-import { join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadImage } from "skia-canvas";
 import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
 import { readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
 import { readPanelCommaGroup } from "../../../lib/group-panel-rank-settings.ts";
-import { localPanelGalleryRoot, retainedPanelGalleryDirectory } from "../../../lib/panel-gallery-paths.ts";
+import { isSyncedPanelGallerySnapshot, localPanelGalleryRoot, localSyncedPanelGalleryRoot,
+  readSyncedPanelGalleryRoot, retainedPanelGalleryDirectory } from "../../../lib/panel-gallery-paths.ts";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
 import { managedPanelImageRoot, ownsPanelImages, usablePanelImageRoot } from "./image-library.ts";
 import { avatarId, object, text, type Json, type PanelAvatar, type PanelCatalog } from "./model.ts";
@@ -21,9 +22,10 @@ const safeSegment = (part: string) => part && part !== "." && part !== ".." && !
 export type Picture = Awaited<ReturnType<typeof loadImage>>;
 type PortraitAvatar = Pick<PanelAvatar, "id" | "name" | "costume">;
 export interface PanelPhoto {
-  readonly root: "theme" | "gallery" | "retained" | "managed";
+  readonly root: "theme" | "gallery" | "synced" | "retained" | "managed";
   readonly path: readonly string[];
   readonly sha256: string;
+  readonly snapshot?: string;
 }
 type Asset = { readonly image: Picture; readonly photo?: PanelPhoto };
 export interface PanelTheme extends PanelCatalog {
@@ -133,9 +135,10 @@ const photoHash = (bytes: Buffer) => createHash("sha256").update(bytes).digest("
 
 export function isPanelPhoto(value: unknown): value is PanelPhoto {
   const photo = object(value);
-  if (!photo || !["theme", "gallery", "retained", "managed"].includes(text(photo.root)) ||
+  if (!photo || !["theme", "gallery", "synced", "retained", "managed"].includes(text(photo.root)) ||
       !Array.isArray(photo.path) || photo.path.length < 1 || photo.path.length > 6 ||
       !photo.path.every(part => typeof part === "string" && part.length <= 255 && safeSegment(part)) ||
+      (photo.root === "synced" ? !isSyncedPanelGallerySnapshot(photo.snapshot) : photo.snapshot !== undefined) ||
       !/\.(?:webp|png|jpe?g)$/iu.test(photo.path.at(-1)) || !/^[a-f0-9]{64}$/u.test(text(photo.sha256))) return false;
   const [first, second, , fourth] = photo.path;
   return photo.root !== "theme" || first === "profile" ||
@@ -155,21 +158,24 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
   installation?: string): Promise<PanelTheme> {
   const root = resolve(directory);
   const galleryRoot = galleryDirectory ?? localPanelGalleryRoot(installation);
-  const [characters, relics, installed, configured, retained, customAliases, commaGroup] = await Promise.all([
+  const [characters, relics, installed, configured, synced, retained, customAliases, commaGroup] = await Promise.all([
     json(join(root, "meta-gs", "character", "data.json")), json(join(root, "meta-gs", "artifact", "data.json")),
     realpath(root).catch(() => undefined),
     galleryRoot ? realpath(resolve(galleryRoot)).catch(() => undefined) : undefined,
+    galleryDirectory === undefined ? readSyncedPanelGalleryRoot(installation) : undefined,
     galleryDirectory === "" ? undefined : retainedPanelGalleryDirectory("gs", installation),
     readGameCharacterAliases("gs"),
     readPanelCommaGroup(installation ? pathToFileURL(resolve(installation) + sep) : undefined),
   ]);
-  const managed = await usablePanelImageRoot(managedDirectory, [root, genshinGachaThemeDirectory(), galleryRoot, retained]).catch(() => false);
+  const managed = await usablePanelImageRoot(managedDirectory, [root, genshinGachaThemeDirectory(), galleryRoot,
+    dirname(localSyncedPanelGalleryRoot(installation)), retained]).catch(() => false);
   const characterNames = new Map<string, number>();
   for (const row of Object.values(characters)) {
     const name = text(object(row)?.name);
     if (name) characterNames.set(name, (characterNames.get(name) ?? 0) + 1);
   }
   const publicGallery = configured ? [join(configured, "gs-character")] : [];
+  const syncedGallery = synced ? [join(synced, "gs-character")] : [];
   const installedGallery = installed ? [join(installed, "profile")] : [];
   const legacyGallery = installed ? [join(installed, "profile", "normal-character"), ...installedGallery] : [];
   const artifacts = new Map<number, { name: string; set: string }>();
@@ -189,11 +195,12 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
       }
     }
   }
-  const roots = { theme: installed, gallery: publicGallery[0], retained, managed: managed ? managedDirectory : undefined };
+  const roots = { theme: installed, gallery: publicGallery[0], synced: syncedGallery[0], retained, managed: managed ? managedDirectory : undefined };
   function source(file: string, data: Buffer): PanelPhoto | undefined {
     for (const [key, base] of Object.entries(roots)) {
       if (base && file.startsWith(base + sep)) {
-        const photo = { root: key, path: relative(base, file).split(sep), sha256: photoHash(data) };
+        const photo = { root: key, path: relative(base, file).split(sep), sha256: photoHash(data),
+          ...(key === "synced" && synced && { snapshot: basename(synced) }) };
         if (isPanelPhoto(photo)) return photo;
       }
     }
@@ -206,7 +213,7 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
     const maintained = owned ? [[managedDirectory]] : [];
     const levels = galleryDirectory ? [...selected, ...maintained] : [...maintained, ...selected];
     if (special) levels.push(installedGallery.map(base => join(base, "super-character")));
-    const galleryLevels = [...levels, retained ? [retained] : [], owned ? installedGallery : legacyGallery];
+    const galleryLevels = [...levels, syncedGallery, retained ? [retained] : [], owned ? installedGallery : legacyGallery];
     for (const bases of galleryLevels) {
       const candidates = (await Promise.all(bases.map(base => galleryCandidates(base, name)))).flat();
       while (candidates.length) {
@@ -241,7 +248,8 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
     },
     async readPhoto(photo) {
       if (!isPanelPhoto(photo)) return;
-      const base = roots[photo.root];
+      const snapshot = photo.root === "synced" ? await readSyncedPanelGalleryRoot(installation, photo.snapshot) : undefined;
+      const base = photo.root === "synced" ? snapshot && join(snapshot, "gs-character") : roots[photo.root];
       if (!base) return;
       const bytes = await galleryBytes(join(base, ...photo.path));
       if (bytes && photoHash(bytes) === photo.sha256) return bytes;

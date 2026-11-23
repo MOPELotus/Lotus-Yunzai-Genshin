@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { panelDetailIcons } from "./card.ts";
@@ -120,5 +120,53 @@ test("原神面板显示武器类别普攻图与旅行者当前元素命座和�
     expect(talents.map(icon => assets.get(icon!))).toEqual([
       `common/item/atk-${weapon}.webp`, ...[e, q].map(slot => `meta-gs/character/${directory}/icons/cons-${slot}.webp`),
     ]);
+  }
+});
+
+test("托管图库只回落默认来源，旧引用按世代和哈希返回原图", async () => {
+  const root = await mkdtemp(join(tmpdir(), "lotus-genshin-synced-gallery-"));
+  const previous = Bun.env.LOTUS_CHARACTER_GALLERY_DIR;
+  const character = { id: 10000046, name: "胡桃" };
+  const write = async (path: string, data: string | Uint8Array) => {
+    const file = join(root, path);
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, data);
+    return file;
+  };
+  const base = "data/character-gallery-synced";
+  const firstGeneration = "gallery-00000000-0000-4000-8000-000000000001";
+  const secondGeneration = "gallery-00000000-0000-4000-8000-000000000002";
+  const current = join(root, base, "current");
+  const themeDirectory = join(root, "theme");
+  const managedDirectory = join(root, "uploaded");
+  try {
+    delete Bun.env.LOTUS_CHARACTER_GALLERY_DIR;
+    await write("theme/meta-gs/character/data.json", JSON.stringify({ [character.id]: character }));
+    await write("theme/meta-gs/character/胡桃/imgs/splash.webp", images[0]!);
+    const local = await write("data/character-gallery/gs-character/胡桃.png", images[1]!);
+    const firstPath = `${base}/snapshots/${firstGeneration}/gs-character/胡桃.png`;
+    const first = await write(firstPath, images[2]!);
+    await write(`${base}/snapshots/${secondGeneration}/gs-character/胡桃.png`, images[3]!);
+    await symlink(`snapshots/${firstGeneration}`, current);
+    const read = (configured?: string) => readPanelTheme(themeDirectory, configured, managedDirectory, root);
+    expect((await (await read()).galleryAsset?.(character))?.photo?.root).toBe("gallery");
+    await rm(local);
+    expect((await panelPortrait(await read(join(root, "configured")), character))?.width).toBe(1);
+    const old = (await (await read()).galleryAsset?.(character))!;
+    expect(old.image.width).toBe(3);
+    expect(old.photo).toMatchObject({ root: "synced", snapshot: firstGeneration, path: ["胡桃.png"] });
+    await symlink(`snapshots/${secondGeneration}`, join(root, base, "next"));
+    await rename(join(root, base, "next"), current);
+    const switched = await read();
+    expect((await switched.galleryAsset?.(character))?.image.width).toBe(4);
+    expect(await switched.readPhoto?.(old.photo!)).toEqual(images[2]);
+    await write(firstPath, images[3]!);
+    expect(await switched.readPhoto?.(old.photo!)).toBeUndefined();
+    await rm(first);
+    expect(await switched.readPhoto?.(old.photo!)).toBeUndefined();
+  } finally {
+    if (previous === undefined) delete Bun.env.LOTUS_CHARACTER_GALLERY_DIR;
+    else Bun.env.LOTUS_CHARACTER_GALLERY_DIR = previous;
+    await rm(root, { recursive: true, force: true });
   }
 });

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
-import { localPanelGalleryRoot, retainedPanelGalleryDirectory } from "../../../lib/panel-gallery-paths.ts";
+import { localPanelGalleryRoot, localSyncedPanelGalleryRoot, retainedPanelGalleryDirectory } from "../../../lib/panel-gallery-paths.ts";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import { managedPanelImageRoot, panelImageCandidates, panelImageDirectory, readPanelImage, retirePanelImage,
@@ -73,6 +73,7 @@ export function createPanelImageCommands(lockFile: AcquireRoleArchiveLock, signa
       if (!await usablePanelImageRoot(root, [
         Bun.env.LOTUS_GENSHIN_PANEL_THEME_DIR?.trim(), genshinGachaThemeDirectory(),
         Bun.env.LOTUS_CHARACTER_GALLERY_DIR?.trim() || localPanelGalleryRoot(),
+        dirname(localSyncedPanelGalleryRoot()),
         await retainedPanelGalleryDirectory("gs"),
       ])) return noRoot;
       await panelImageDirectory(index, true);
