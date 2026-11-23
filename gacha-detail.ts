@@ -1,3 +1,4 @@
+import { gachaProbabilityFor, type GachaDisplaySettings } from "@lotus-yunzai/gacha/display-settings";
 import type { GenshinGachaPool } from "@lotus-yunzai/hoyo-client";
 import { applyGachaGuarantees, gachaLuckFor, type GachaLuck } from "@lotus-yunzai/gacha";
 import type { GenshinPreviousGacha } from "./gacha-history.ts";
@@ -92,6 +93,7 @@ export interface GenshinGachaDetailOptions {
   readonly resolveItem?: (record: GenshinGachaPull) => { readonly id: ItemId; readonly name: string; readonly abbr: string; readonly img?: string } | undefined;
   readonly resolvePool?: (record: GenshinGachaPull) => { readonly isUp?: boolean; readonly isNewPool?: boolean } | undefined;
   readonly maxRows?: number;
+  readonly display?: GachaDisplaySettings;
   readonly page?: number;
 }
 
@@ -179,7 +181,7 @@ export function parseGenshinGachaRows(value: unknown, uid: string, pool: Genshin
 }
 
 export function buildGenshinGachaDetail({
-  uid, records, face, now = new Date(), resolveItem, resolvePool, pool = 301, maxRows = 30, page,
+  uid, records, face, now = new Date(), resolveItem, resolvePool, pool = 301, display, maxRows = display?.detailRows ?? 30, page,
 }: GenshinGachaDetailOptions): GenshinGachaDetailModel | undefined {
   if (!/^[1-9]\d*$/u.test(uid) || !Object.hasOwn(poolModels, pool)) throw new TypeError("原神抽卡详情 UID 或卡池无效。");
   if (!Number.isSafeInteger(maxRows) || maxRows < 0 || (page !== undefined && (!Number.isSafeInteger(page) || page < 1))) {
@@ -229,7 +231,10 @@ export function buildGenshinGachaDetail({
   const isvalidNum = reliableUp ? (upUsed / upNum).toFixed(2) : 0;
   const upYs = Number(isvalidNum) * 160;
   const guarantees = applyGachaGuarantees(model.upRate ? fiveLog : []);
-  const luck = gachaLuckFor(model, fiveNum, fiveUsed, reliableUp ? upNum : 0, upUsed, guarantees, fiveLog.some(({ isNewPool }) => isNewPool));
+  const luck = gachaLuckFor(
+    gachaProbabilityFor("gs", pool, model, display), fiveNum, fiveUsed, reliableUp ? upNum : 0, upUsed,
+    guarantees, fiveLog.some(({ isNewPool }) => isNewPool), display?.luck,
+  );
   const stat: Stats = {
     allNum, noFiveNum, noFourNum, fiveNum, fourNum,
     fiveAvg: fiveNum ? (fiveUsed / fiveNum).toFixed(2) : 0,

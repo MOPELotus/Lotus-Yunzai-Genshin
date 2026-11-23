@@ -1,4 +1,5 @@
 import { createGenshinAbyssTeams, matchGenshinAbyssTeam } from "./panel/abyss-team-command.ts";
+import { readGachaDisplaySettings } from "../../lib/gacha-display-settings.ts";
 import { createCharacterVoiceCommands, genshinVoiceFeature } from "./voice/command.ts";
 import type { LegacyPanelRecoveryOffer } from "../../lib/legacy-panel-recovery-flow.ts";
 import { matchPanelTransferCommand, type PanelTransferAccess } from "../../lib/panel-transfer-command.ts";
@@ -279,16 +280,17 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
         banner: "/meta-gs/character/芙宁娜/imgs/banner.webp",
       };
       const options = { uid, records, face, now: new Date(), ...await readGenshinGachaSources(themeDirectory, records, beginner) };
+      const display = !special ? await readGachaDisplaySettings(new URL("../../", import.meta.url)) : undefined;
       function buildPage(page?: number) {
         if ("detail" in selection) {
-          const model = buildGenshinGachaDetail({ ...options, pool: selection.detail, page });
+          const model = buildGenshinGachaDetail({ ...options, pool: selection.detail, display, page });
           return model && { kind: "detail" as const, model };
         }
         if ("special" in selection) {
           const model = buildGenshinGachaSpecial({ ...options, beginner, type: selection.special });
           return model && { kind: "special" as const, model };
         }
-        const model = buildGenshinGachaVersion({ ...options, type: selection.version, page });
+        const model = buildGenshinGachaVersion({ ...options, type: selection.version, maxRows: display?.versionRows, page });
         return model && { kind: "version" as const, model };
       }
       const first = buildPage(all ? 1 : undefined);
