@@ -78,14 +78,31 @@ function legacyGroupRankTargets(message: string) {
   return suffix && Number(suffix[1]) <= MAX_PROFILE_ID ? groupRankTargets(message.slice(0, suffix.index).trimEnd()) ?? [] : [];
 }
 
+function aggregateRank(message: string) {
+  const match = /^#(?:原神)?\s*(群内?)?\s*(?:(最强|最高分|最高|最多|最牛|第一|圣遗物|评分|词条|双[暴爆])\s*)?(?:排名|排行)榜?$/u.exec(message) ??
+    /^#(?:原神)?\s*(群内?)?\s*(?:排名|排行)\s*(最强|最高分|最高|最多|最牛|第一)$/u.exec(message);
+  if (!match || !(match[1] || match[2])) return;
+  const label = match[2];
+  const mode: RankMode = !label || /^(?:最强|最高|最多|最牛|第一)$/u.test(label) ? "damage" : rankModeOf(label);
+  return { aggregate: true as const, mode, strongest: undefined, character: undefined };
+}
+
+function legacyAggregateRank(message: string) {
+  const suffix = /(?<!\d)([1-9]\d{0,2})$/u.exec(message);
+  if (suffix && Number(suffix[1]) <= MAX_PROFILE_ID) return aggregateRank(message.slice(0, suffix.index).trimEnd());
+}
+
 export function matchGroupPanelRank(message: string) {
-  return matchRankTarget(groupRankTargets(message) ?? []) ?? matchRankTarget(legacyGroupRankTargets(message));
+  return aggregateRank(message) ?? matchRankTarget(groupRankTargets(message) ?? []) ?? matchRankTarget(legacyGroupRankTargets(message)) ??
+    legacyAggregateRank(message);
 }
 
 export async function resolveGroupPanelRank(message: string, readAliases = () => readGameCharacterAliases("gs")) {
   const targets = groupRankTargets(message) ?? [];
-  const preset = matchRankTarget(targets);
+  const preset = aggregateRank(message) ?? matchRankTarget(targets);
   if (preset) return preset;
+  const legacyAggregate = legacyAggregateRank(message);
+  if (legacyAggregate) return legacyAggregate;
   const legacy = legacyGroupRankTargets(message);
   if (!targets.length && !legacy.length) return;
   const legacyPreset = matchRankTarget(legacy);

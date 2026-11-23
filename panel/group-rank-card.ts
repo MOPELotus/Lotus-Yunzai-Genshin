@@ -103,9 +103,9 @@ async function assetsForRow(avatar: RankAvatar, theme: PanelTheme) {
 
 export async function renderGroupPanelRank(name: string, rankMode: RankMode,
   rows: readonly { readonly uid: string; readonly avatar: RankAvatar }[], theme: PanelTheme, mode: RenderMode = "auto",
-  { signal, inlineImageByteLimit, refreshSummary }: { readonly signal?: AbortSignal; readonly inlineImageByteLimit?: number;
-    readonly refreshSummary?: string } = {}) {
-  const element = rows[0]?.avatar.elem ?? "hydro";
+  { signal, inlineImageByteLimit, refreshSummary, aggregateTitle }: { readonly signal?: AbortSignal; readonly inlineImageByteLimit?: number;
+    readonly refreshSummary?: string; readonly aggregateTitle?: string } = {}) {
+  const element = aggregateTitle ? "hydro" : rows[0]?.avatar.elem ?? "hydro";
   const [fonts, backdrop, texture, medals, first, talentBadge, crown, emptyRelic, aliases, rarity, people] = await Promise.all([
     profileFonts(theme.resourceRoot),
     theme.picture("common", "bg", `bg-${element}.webp`),
@@ -145,7 +145,7 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
     ctx.shadowColor = "#000";
     ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 4;
-    write(`#${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`, 20, 74, 36, { title: true, maxWidth: 780 });
+    write(aggregateTitle ?? `#${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`, 20, 74, 36, { title: true, maxWidth: 780 });
     ctx.restore();
     panel(ctx, texture, [10, 97, 795, 166 + extra], () => {
       fill(ctx, "#0006", [10, 97, 795, 40]);
@@ -171,9 +171,19 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
       const y = rowStart + index * (rowHeight + gap);
       const current = people[index]!;
       panel(ctx, texture, [10, y, 795, rowHeight], () => {
-        const showFirst = index === 0 && (rankMode === "damage" || rankMode === "artifacts");
-        medal(ctx, showFirst ? first : medals, scoreMode, [showFirst ? 18 : 30, y + 18, showFirst ? 48 : 24, 24]);
-        if (!showFirst || !first) write(index + 1, 42, y + 34, 12, { align: "center" });
+        if (aggregateTitle) {
+          const owner: Box = [18, y + 8, 43, 43];
+          framedIcon(ctx, current.star ? rarity[current.star - 1] : undefined, owner, 21.5);
+          ctx.save();
+          round(ctx, owner, 21.5);
+          ctx.clip();
+          cover(ctx, current.face, owner);
+          ctx.restore();
+        } else {
+          const showFirst = index === 0 && (rankMode === "damage" || rankMode === "artifacts");
+          medal(ctx, showFirst ? first : medals, scoreMode, [showFirst ? 18 : 30, y + 18, showFirst ? 48 : 24, 24]);
+          if (!showFirst || !first) write(index + 1, 42, y + 34, 12, { align: "center" });
+        }
 
         const portrait: Box = [66, y + 5, 50, 50];
         framedIcon(ctx, current.star ? rarity[current.star - 1] : undefined, portrait, 25);

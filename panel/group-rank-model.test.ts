@@ -15,12 +15,24 @@ test("legacy strongest aliases select the same live ranking and keep highest sco
 test("普通角色榜默认算伤，仅缺规则才回退圣遗物评分，显式指标不变", () => {
   const intent = matchGroupPanelRank("#原神胡桃排名");
   expect(intent).toMatchObject({ character: { name: "胡桃" }, mode: "damage" });
-  expect(availableRankMode(intent!.mode, intent!.character)).toBe("damage");
+  expect(availableRankMode(intent!.mode, intent!.character!)).toBe("damage");
   expect(availableRankMode("damage", { id: 10000005, name: "空" })).toBe("damage");
   const unsupported = { id: 10000999, name: "未收录角色" };
   expect(availableRankMode("damage", unsupported)).toBe("artifacts");
   expect(availableRankMode("crit", unsupported)).toBe("crit");
-  expect(availableRankMode("valid", intent!.character)).toBe("valid");
+  expect(availableRankMode("valid", intent!.character!)).toBe("valid");
+});
+
+test("无角色名的原神群榜单独解析，保留旧指标与档号写法", async () => {
+  for (const [command, mode] of [
+    ["#最强排行", "damage"], ["#原神群内排行最强", "damage"], ["#最高分排行", "artifacts"],
+    ["#圣遗物排名 2", "artifacts"], ["#双暴排行", "crit"], ["#词条排行", "valid"],
+  ]) {
+    const aliases = async () => { throw new Error("聚合榜无需查询角色别名"); };
+    expect(await resolveGroupPanelRank(command!, aliases)).toMatchObject({ character: undefined, mode });
+  }
+  expect(matchGroupPanelRank("#星铁最高分排行")).toBeUndefined();
+  expect(matchGroupPanelRank("#重置群排行")).toBeUndefined();
 });
 
 test("旧复合群榜指令返回角色列表并保留显式评分条件", () => {

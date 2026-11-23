@@ -74,7 +74,7 @@ test("原神面板列表只用本群本人现有排名，平手优先综合练�
     const ordinary = await groupRank.query(intent, context, async () => theme);
     expect(ordinary).toContain("神里绫华伤害排行");
     expect(showcaseRequests).toBe(2);
-    const unsupported = { ...intent, character: { ...intent.character, id: 10000999, name: "未收录角色" } };
+    const unsupported = { ...intent, character: { ...intent.character!, id: 10000999, name: "未收录角色" } };
     const result = await groupRank.query(unsupported, context, async () => theme);
     expect(result).toContain("该角色暂无伤害规则，按圣遗物评分排名。");
     expect(result).toContain("未收录角色圣遗物评分排行");
@@ -123,6 +123,7 @@ test("原神实时群榜先刷新所有登记 UID，再按当前人数显示", a
     weapon: { name: "新手长枪", level: 90, promote: 6, affix: 1 },
     artis: { 1: { name: "冒险家之花", set: "冒险家", level: 20, star: 5, mainId: 14001, attrIds: ["501224", "501204"] } },
   };
+  const other = { ...avatar, id: 10000026, name: "魈", elem: "anemo" };
   const theme: PanelTheme = {
     characters: {}, artifacts: new Map(), artifactSets: new Map(), async picture() { return undefined; },
     async metadata(_game, kind) {
@@ -139,7 +140,10 @@ test("原神实时群榜先刷新所有登记 UID，再按当前人数显示", a
     async listCurrentGroupMembers() { return [99, ...members].map(id => ({ id })); } });
   const fetched: string[] = [];
   const rendered: number[] = [];
+  const aggregate: { title?: string; rows: [string, string][] }[] = [];
   let configured = 5;
+  let enabled = true;
+  let disableDuringRender = false;
   const board = createGroupPanelRank(directory, {
     async describe(qq) {
       const current = role(Number(qq));
@@ -147,7 +151,7 @@ test("原神实时群榜先刷新所有登记 UID，再按当前人数显示", a
     },
   }, lockFile, new AbortController().signal, {
     groups: "77",
-    async readEnabled(_game, _group, fallback) { return fallback; },
+    async readEnabled(_game, _group, fallback) { return enabled && fallback; },
     async readLimit(game, fallback) {
       expect([game, fallback]).toEqual(["gs", 15]);
       return configured;
@@ -155,10 +159,13 @@ test("原神实时群榜先刷新所有登记 UID，再按当前人数显示", a
     async readSelector() { return "0"; },
     async readShowcase(current) {
       fetched.push(current.uid);
-      return { uid: current.uid, avatars: { [avatar.id]: avatar } };
+      return { uid: current.uid, avatars: { [avatar.id]: avatar, [other.id]: other } };
     },
-    async render(_name, _metric, rows) {
-      rendered.push(rows.length);
+    async render(_name, _metric, rows, _theme, _mode, options) {
+      if (options?.aggregateTitle) {
+        aggregate.push({ title: options.aggregateTitle, rows: rows.map(({ uid, avatar }) => [uid, avatar.name]) });
+        if (disableDuringRender) enabled = false;
+      } else rendered.push(rows.length);
       return { png: new Uint8Array([1]) };
     },
   });
@@ -173,6 +180,20 @@ test("原神实时群榜先刷新所有登记 UID，再按当前人数显示", a
       expect(fetched.sort()).toEqual(members.map(qq => role(qq).uid));
     }
     expect(rendered).toEqual([5, 7]);
+    await board.register(context(46), 2, role(46), 2000, async () => {});
+    fetched.length = 0;
+    configured = 5;
+    expect(await board.query("#原神最高分排行", context(42), async () => theme)).toMatchObject({ type: "image" });
+    expect(fetched.sort()).toEqual(members.map(qq => role(qq).uid));
+    expect(aggregate).toEqual([{ title: "#最高分排行", rows: [[role(46).uid, "魈"], [role(46).uid, "胡桃"]] }]);
+    fetched.length = 0;
+    expect(await board.query("#最高分排行", { ...context(42), isDelegated: true }, async () => theme)).toContain("只能在群聊");
+    disableDuringRender = true;
+    expect(await board.query("#最高分排行", context(42), async () => theme)).toContain("群榜设置、群成员或档案已变化");
+    expect(fetched.sort()).toEqual(members.map(qq => role(qq).uid));
+    fetched.length = 0;
+    expect(await board.query("#最高分排行", context(42), async () => theme)).toContain("未启用");
+    expect(fetched).toEqual([]);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

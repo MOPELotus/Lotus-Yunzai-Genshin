@@ -113,6 +113,10 @@ function rankRows<Ranked extends Row>(rows: readonly Ranked[], mode: RankMode, l
   return [...unique.values()].slice(0, limit);
 }
 
+const aggregateTitles: Readonly<Record<RankMode, string>> = {
+  damage: "#最强排行", artifacts: "#最高分排行", crit: "#双爆排行", valid: "#词条排行",
+};
+
 export function createGroupPanelRank(directory: string, profiles: RankProfiles, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
   groups = Bun.env.LOTUS_GENSHIN_PANEL_RANK_GROUPS ?? "", render = renderGroupPanelRank,
   readEnabled = readGroupPanelRankEnabled, readLimit = readGroupPanelRankLimit,
@@ -271,7 +275,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       const members = await currentMembers(scope, context);
       if (!members || active.aborted) return active.aborted ? undefined : "暂时无法核对本群成员，请稍后查询。";
       const { character, strongest } = intent;
-      const mode = availableRankMode(intent.mode, character);
+      const mode = character ? availableRankMode(intent.mode, character) : intent.mode;
       const observations = await boundObservations(scope, members, () => true);
       if (active.aborted) return;
       const subjects = new Map<string, BoundObservation>();
@@ -281,12 +285,74 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       }
       if (!subjects.size) return "本群暂无已登记的原神 UID。可在本群查看自己的角色详情加入。";
       const [theme, selector] = await Promise.all([loadTheme(), readSelector()]);
-      const results = await refresh([...subjects.values()], async (entry, requestSignal) => {
+      const requestShowcase = async (entry: BoundObservation, requestSignal: AbortSignal) => {
         if (!await stillCurrent(entry)) throw new Error("原神群榜登记已失效。");
         requestSignal.throwIfAborted();
         const snapshot = await readShowcase(entry.role, selector, theme, requestSignal);
+        if (snapshot && snapshot.uid !== entry.role.uid) throw new Error("公开展板返回了其他 UID。");
+        return snapshot;
+      };
+      if (!character) {
+        const results = await refresh([...subjects.values()], async (entry, requestSignal) => {
+          const snapshot = await requestShowcase(entry, requestSignal);
+          if (!snapshot) return;
+          const avatars = [];
+          for (const publicAvatar of Object.values(snapshot.avatars)) {
+            requestSignal.throwIfAborted();
+            const avatar = await projectRankAvatar(publicAvatar, theme).catch(() => undefined);
+            if (!avatar) continue;
+            const metric = availableRankMode(mode, avatar);
+            if (avatar[metric]) avatars.push({ avatar, metric });
+          }
+          return avatars.length ? avatars : undefined;
+        }, active).catch(error => {
+          if (!active.aborted) throw error;
+        });
+        if (!results || active.aborted) return;
+        const winners = new Map<number, Row & { metric: RankMode }>();
+        for (const result of results) if (result.status === "fresh") {
+          for (const row of result.value) {
+            const candidate = { ...result.entry, ...row };
+            const previous = winners.get(row.avatar.id);
+            winners.set(row.avatar.id, previous ? rankRows([previous, candidate], row.metric, 1)[0]! : candidate);
+          }
+        }
+        const title = aggregateTitles[mode];
+        const fallback = [...winners.values()].some(row => mode !== row.metric) ? "无伤害规则的角色按圣遗物评分。" : "";
+        const scored = results.filter(row => row.status === "fresh").length;
+        const summary = `本轮可计分 UID ${scored}/${subjects.size} 个，共 ${winners.size} 位角色。 ${fallback}`.trimEnd();
+        if (!winners.size) return [title, summary, "本群本轮未取得可用于排行的公开展板。"].join("\n");
+        const star = (row: Row) => Number(object(theme.characters[row.avatar.id])?.star) || 0;
+        const ranked = [...winners.values()].sort((a, b) => a.role.uid.localeCompare(b.role.uid) || star(b) - star(a) || a.avatar.id - b.avatar.id);
+        const owners = [...new Map(ranked.map(row => [row.role.uid, row])).values()];
+        const unchanged = async () => {
+          const refreshed = active.aborted ? undefined : await currentMembers(scope, context);
+          return !!refreshed && (await Promise.all(owners.map(row => refreshed.has(row.qq) && stillCurrent(row)))).every(Boolean) &&
+            await isEnabled(scope) && !active.aborted;
+        };
+        if (!await unchanged()) return active.aborted ? undefined : changed;
+        const limit = await readLimit("gs", defaultLimit);
+        const images = [];
+        for (let index = 0; index < ranked.length; index += limit) {
+          if (active.aborted) return;
+          const rows = ranked.slice(index, index + limit).map(row => ({ uid: row.role.uid, avatar: row.avatar }));
+          const aggregateTitle = ranked.length > limit ? `${title} · ${index / limit + 1}/${Math.ceil(ranked.length / limit)}` : title;
+          const image = await render("", mode, rows, theme, undefined, {
+            inlineImageByteLimit: context.inlineImageByteLimit, signal: active, refreshSummary: summary, aggregateTitle,
+          }).catch(() => undefined);
+          if (!image) break;
+          images.push({ type: "image" as const, file: image.png });
+        }
+        if (!await unchanged()) return active.aborted ? undefined : changed;
+        if (images.length === Math.ceil(ranked.length / limit)) return images.length === 1 ? images[0] : images;
+        return [title, summary, ...ranked.map(({ avatar, metric, role }) => {
+          const score = groupPanelNumber(displayedRankScore(avatar, metric)!.toFixed(1), theme.commaGroup);
+          return `${avatar.name} · UID ${role.uid} · ${rankModeNames[metric]} ${score}${metric === "damage" && avatar.damage?.percent ? "%" : ""}`;
+        })].join("\n");
+      }
+      const results = await refresh([...subjects.values()], async (entry, requestSignal) => {
+        const snapshot = await requestShowcase(entry, requestSignal);
         if (!snapshot) return;
-        if (snapshot.uid !== entry.role.uid) throw new Error("公开展板返回了其他 UID。");
         const publicAvatar = snapshot.avatars[String(character.id)];
         if (!publicAvatar) return;
         const avatar = await projectRankAvatar(publicAvatar, theme);
