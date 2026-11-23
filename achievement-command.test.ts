@@ -169,6 +169,25 @@ test("pending import is bound to adapter, bot, sender, chat and current login, r
   },
 ));
 
+test("成就导入接旧围栏和带说明的 JSON 附件，内联原文始终先核本人档案", () => fixture(
+  async ({ command, store }) => {
+    let reads = 0;
+    const attachment = { ...source, async read() { reads++; return source.read(); } };
+    const fenced = "椰羊导出的记录：\n```json\n" + uiaf + "\n```";
+    expect(await command.main({ ...context, normalizedMessage: "#成就导入 " + fenced, attachment }))
+      .toContain("UID 与当前档案不一致");
+    expect(reads).toBe(0);
+    expect(await command.main({ ...context, normalizedMessage: "#成就导入2 " + fenced, attachment }))
+      .toMatchObject({ type: "image" });
+    expect(reads).toBe(0);
+    expect((await store.read("42", second))["11"]?.date).toBe("2023/11/14");
+    expect(await command.main({ ...context, normalizedMessage: "#成就导入2 这次的椰羊导出", attachment }))
+      .toMatchObject({ type: "image" });
+    expect(reads).toBe(1);
+    expect((await store.read("42", first))["11"]).toBeUndefined();
+  },
+));
+
 test("same role imports merge under the archive lock and a different login earns no write", () => fixture(
   async ({ command, store, change }) => {
     const input = (id: number) => JSON.stringify({ source: "椰羊成就", value: {

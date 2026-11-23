@@ -224,9 +224,11 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
         const uidHint = /^([1-9]\d{7,9})(?=\s|\{|$)\s*/u.exec(input);
         if (uidHint && uidHint[1] !== uid) return "指定的原神 UID 与当前档案不一致。";
         const raw = input.slice(uidHint?.[0].length ?? 0);
+        if (Buffer.byteLength(raw) > maxAchievementBytes) throw new AchievementInputError("成就 JSON 文件最多 4 MiB。");
+        const start = raw.indexOf("{"), end = raw.lastIndexOf("}");
+        const inline = start >= 0 && end > start ? raw.slice(start, end + 1) : undefined;
         if (context.attachment && !file) return "请发送 .json 格式的成就文件。";
-        if (raw && file) return "请单独发送成就 JSON 文本或文件。";
-        if (!raw && !file) {
+        if (!inline && !file) {
           if (context.canReadAttachments !== true) return "当前会话暂不支持接收文件，可在 #成就导入 后粘贴 JSON。";
           if (!pending.has(key) && pending.size >= 2048) return "成就导入等待人数过多，请稍后再试。";
           clear(key);
@@ -234,9 +236,9 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
           pending.set(key, { profileId, session, timeout, expires: now() + waitMs, busy: false });
           return `请在 5 分钟内发送椰羊导出的 JSON 文件（档案 ${profileId}）。`;
         }
-        if (file && context.canReadAttachments !== true) return "当前会话暂不支持读取成就文件。";
+        if (!inline && context.canReadAttachments !== true) return "当前会话暂不支持读取成就文件。";
         await verify();
-        const bytes = file ? await file.read(signal) : raw;
+        const bytes = inline ?? await file?.read(signal);
         if (!bytes) throw new AchievementInputError("无法读取成就 JSON 文件，请重新发送。");
         const parsed = parseAchievementExport(decode(bytes), uid);
         data ??= await catalog();
