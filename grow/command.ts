@@ -5,13 +5,14 @@ import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { genshinGachaThemeDirectory, readGenshinGachaCatalogue } from "../gacha-detail-source.ts";
 import { resolveGenshinCatalogTarget } from "../gacha-pool.ts";
 import { genshinLoginAccount } from "../owned-role.ts";
+import { officialPanel } from "../panel/model.ts";
 import { createGenshinPanelArchive } from "../panel/panel.ts";
 import { readPanelTheme } from "../panel/theme.ts";
 import { renderGrowthCard, type GrowthCard } from "./card.ts";
 import { loadGrowthTarget, resolveGrowthMaterials } from "./catalogue.ts";
 import { growthInventoryPlan, growthShortfall, type GrowthShortfall } from "./inventory.ts";
-import { calculateCharacterGrowth, calculateWeaponGrowth, characterTarget, currentCharacter, exceedsTarget,
-  growthHelp, matchGrowthCommand, publicCharacterGrowth, weaponTarget } from "./model.ts";
+import { calculateCharacterGrowth, calculateWeaponGrowth, characterTarget, currentCharacter, equippedWeaponTarget, exceedsTarget,
+  growthHelp, matchGrowthCommand, publicCharacterGrowth, weaponTarget, type GrowthResult } from "./model.ts";
 
 const changed = "原神档案角色已变化，请重新计算。";
 const id = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value > 0;
@@ -38,18 +39,22 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
   }: { readonly render?: Render; readonly loadTheme?: typeof readPanelTheme;
     readonly loadCatalogue?: typeof readGenshinGachaCatalogue;
     readonly archive?: Pick<ReturnType<typeof createGenshinPanelArchive>, "readPanel">;
-    readonly client?: Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinGrowth"> } = {}) {
+    readonly client?: Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinGrowth"> &
+      Partial<Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinTalents">> } = {}) {
   return async (message: string, { user_id, message_type, isDelegated, inlineImageByteLimit }:
     { readonly user_id?: number; readonly message_type?: string; readonly isDelegated?: boolean; readonly inlineImageByteLimit?: number }) => {
     const request = matchGrowthCommand(message);
     if (!request || signal.aborted) return;
     if (request === "help") return growthHelp;
+    let matchedGrowth = !request.legacy;
     try {
       const directory = genshinGachaThemeDirectory();
       const [catalogue, theme] = await Promise.all([loadCatalogue(directory), loadTheme(directory)]);
-      const match = resolveGenshinCatalogTarget(request.name, catalogue);
+      const match = resolveGenshinCatalogTarget(request.name, request.legacy ? { ...catalogue, weapons: new Map() } : catalogue);
       if (match === "ambiguous") return "有多个原神角色或武器匹配，请使用完整名称计算。";
+      matchedGrowth = matchedGrowth || !!match;
       if (match && (["空", "荧", "旅行者"].includes(match.name))) return "旅行者暂不支持养成计算。";
+      if (request.legacy && !match) return;
       if (!match) return `未找到「${request.name}」对应的原神角色或武器。`;
       const target = await loadGrowthTarget(match.type, match.name, catalogue, theme);
       if (!target) return `暂无${match.name}的养成材料数据。`;
@@ -66,43 +71,69 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
         notice.push("80 表示升至80级未突破，80+ 表示80级已突破。");
       } else {
         const plan = characterTarget(request);
-        if (!plan) return `${growthHelp}\n角色等级最高90，天赋最高10。`;
+        if (!plan || request.legacy?.weaponLevel === 0) return `${growthHelp}\n角色等级最高90，天赋最高10。`;
         let start = publicCharacterGrowth;
+        let weaponGrowth: GrowthResult | undefined;
         if (plan.from) {
           start = { ...start, ...plan.from };
           notice.push("已指定起始等级，天赋按1/1/1计算。");
         } else {
-          const role = qq && await profiles.savedRole(qq, request.profileId, "gs").catch(error => {
+          const role = qq && !(request.legacy && isDelegated) && await profiles.savedRole(qq, request.profileId, "gs").catch(error => {
             if (!(error instanceof ProfileError) || !["missing", "role-missing", "login-required"].includes(error.code)) throw error;
           });
           if (request.uid && (!role || role.uid !== request.uid)) return "此 UID 与当前档案绑定的原神角色不一致。";
           if (request.explicitProfile && !role) return `profile ${request.profileId} 没有同步原神 UID。`;
           const localSource = qq && role && !isDelegated && await profiles.requestContext?.(qq, request.profileId, "gs").catch(() => undefined);
-          const talentAccount = localSource && role && localSource.role.uid === role.uid ? genshinLoginAccount(localSource) : undefined;
-          const saved = qq && role ? (await archive.readPanel(qq, role.uid, theme, false, talentAccount))?.avatars[String(target.id)]
-            : undefined;
-          const current = saved?.promote !== undefined && currentCharacter({ level: saved.level, promote: saved.promote },
-            { ...saved.talent, ...saved.refreshedTalent });
-          if (qq && role && current && !exceedsTarget(current, plan)) {
+          const source = localSource && role && localSource.qq === qq && localSource.profileId === request.profileId &&
+            localSource.role.uid === role.uid && localSource.role.region === role.region && localSource.role.gameBiz === role.gameBiz
+            ? localSource : undefined;
+          const talentAccount = source && genshinLoginAccount(source);
+          const live = request.legacy && source && await client?.fetchGenshinTalents?.(source, {
+            signal, characterIds: [target.id],
+          }).then(response => ({ revision: response.revision,
+            avatar: officialPanel(source.role.uid, response.avatars, theme, Date.now()).avatars[String(target.id)] })).catch(() => undefined);
+          const saved = live ? live.avatar : qq && role
+            ? (await archive.readPanel(qq, role.uid, theme, false, talentAccount))?.avatars[String(target.id)] : undefined;
+          const current = saved?.promote !== undefined && currentCharacter(request.legacy
+            ? { level: Math.min(90, saved.level), promote: Math.min(6, saved.promote) }
+            : { level: saved.level, promote: saved.promote }, { ...saved.talent, ...saved.refreshedTalent });
+          if (current && (request.legacy || !exceedsTarget(current, plan))) {
             start = current;
-            uid = role.uid;
-            verify = async () => {
-              if (signal.aborted) return false;
-              const latest = await profiles.savedRole(qq, request.profileId, "gs").catch(() => undefined);
-              if (latest?.uid !== role.uid || latest.region !== role.region || latest.gameBiz !== role.gameBiz) return false;
-              if (!talentAccount || !saved?.refreshedTalent) return true;
-              const source = await profiles.requestContext?.(qq, request.profileId, "gs").catch(() => undefined);
-              return !!source && source.role.uid === role.uid && source.role.region === role.region &&
-                source.role.gameBiz === role.gameBiz && genshinLoginAccount(source) === talentAccount;
-            };
           } else if (current && exceedsTarget(current, plan)) {
             notice.push("本地角色练度已超过目标，按公开基线等级1、天赋1/1/1计算。");
           } else {
             notice.push(saved ? "本地等级、突破或天赋资料不完整，按公开基线等级1、天赋1/1/1计算。"
               : "暂无本地角色面板，按公开基线等级1、天赋1/1/1计算。");
           }
+          if (request.legacy) {
+            const equipped = saved?.weapon;
+            const weapon = equipped && await loadGrowthTarget("weapon", equipped.name, catalogue, theme);
+            const weaponPlan = weapon && equipped?.level !== undefined &&
+              equippedWeaponTarget(equipped.level, equipped.promote, request.legacy.weaponLevel, weapon.star);
+            if (weapon && weaponPlan) {
+              weaponGrowth = calculateWeaponGrowth(weapon.materials, weapon.star, weaponPlan.from, weaponPlan.to, material, theme.commaGroup);
+              if (weaponGrowth) notice.push(`武器按当前装备「${weapon.name}」计算。`);
+            }
+            if (!weaponGrowth) notice.push(equipped ? "当前武器的养成资料不完整，未计入武器材料。"
+              : "未取得该角色的现用武器，未计入武器材料。");
+          }
+          if (qq && role && (start !== publicCharacterGrowth || live || weaponGrowth)) {
+            if (start !== publicCharacterGrowth || weaponGrowth) uid = role.uid;
+            verify = async () => {
+              if (signal.aborted) return false;
+              const latest = await profiles.savedRole(qq, request.profileId, "gs").catch(() => undefined);
+              if (latest?.uid !== role.uid || latest.region !== role.region || latest.gameBiz !== role.gameBiz) return false;
+              if (!live && (!talentAccount || !saved?.refreshedTalent)) return true;
+              const source = await profiles.requestContext?.(qq, request.profileId, "gs").catch(() => undefined);
+              return !!source && source.role.uid === role.uid && source.role.region === role.region && source.role.gameBiz === role.gameBiz &&
+                (live ? source.revision === live.revision : genshinLoginAccount(source) === talentAccount);
+            };
+          }
         }
         result = calculateCharacterGrowth(target.materials, start, plan, material, theme.commaGroup);
+        if (result && weaponGrowth) result = { ...result, moraTotal: result.moraTotal + weaponGrowth.moraTotal,
+          rows: [...result.rows, ...weaponGrowth.rows.map(row => ({ ...row, title: `武器${row.title}` }))],
+          groups: [...result.groups, ...weaponGrowth.groups.map(group => ({ ...group, title: `武器${group.title}` }))] };
         notice.push("天赋按不含命座加成的等级计算，经验未扣除当前等级内已有经验。",
           `可指定方向：#养成计算 ${target.name} 等级89 天赋 10 9 10（80+ 表示80级已突破）`);
       }
@@ -110,7 +141,7 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
       if (!result) return `暂无${target.name}的养成材料数据。`;
       let shortfall: GrowthShortfall | undefined;
       let inventoryMora: number | undefined;
-      const allowInventory = !isDelegated && (message_type === "private" || (message_type === "group" && request.deductInventory));
+      const allowInventory = !request.legacy && !isDelegated && (message_type === "private" || (message_type === "group" && request.deductInventory));
       if (allowInventory && client && profiles.requestContext && result.groups.some(group => group.items.length)) {
         const source = qq ? await profiles.requestContext(qq, request.profileId, "gs").catch(() => undefined) : undefined;
         if (!source) {
@@ -153,7 +184,7 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
       if (!await verify()) return signal.aborted ? undefined : changed;
       return png ? { type: "image" as const, file: png } : fallback(model, theme.commaGroup);
     } catch {
-      if (!signal.aborted) return "暂时无法读取原神养成资料，请检查本地主题和面板。";
+      if (matchedGrowth && !signal.aborted) return "暂时无法读取原神养成资料，请检查本地主题和面板。";
     }
   };
 }

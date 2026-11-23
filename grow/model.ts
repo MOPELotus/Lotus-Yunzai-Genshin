@@ -37,16 +37,28 @@ export interface GrowthRequest {
   readonly explicitProfile: boolean;
   readonly deductInventory?: true;
   readonly uid?: string;
+  readonly legacy?: { readonly weaponLevel: number };
 }
 
 export const growthHelp = ["养成计算格式", "#养成计算 刻晴 · 等级90、天赋10/10/10",
   "#养成计算 刻晴 天赋 10 9 10", "#养成计算 刻晴 等级89 天赋 10 9 10",
   "#养成计算 雾切 80 · 从1级升至80级，未突破", "#养成计算 雾切 50-80+ · 从50级升至80级并突破",
+  "#刻晴养成81 90 9 9 9 · 依次指定角色等级、当前装备的武器等级、三项天赋",
   "登录后可在私聊扣除当前档案的背包，群聊需在指令中加上「扣除背包」。"].join("\n");
 
 export function matchGrowthCommand(message: string): GrowthRequest | "help" | undefined {
   const start = /^#(?:原神)?(?:养成|培养)计算/u.exec(message);
-  if (!start) return;
+  if (!start) {
+    const legacy = /^[#＃]*(?:原神)?([^#＃\d\p{Cc}\p{Cf}]+?)(?:养成计算|养成|计算)([0-9,， ]*)$/u.exec(message);
+    if (!legacy) return;
+    const name = legacy[1]!.trim();
+    if (!name || name.length > 64 || /^(?:星铁|崩铁|绝区|培养)/u.test(name) || message.length > 192) return;
+    if (name === "角色") return "help";
+    const [level = "90", weapon = "90", a = "10", e = "10", q = "10", ...extra] = legacy[2]!.match(/\d+/gu) ?? [];
+    const capped = (value: string, max: number) => String(Math.min(Number(value), max));
+    return { name, numbers: [capped(level, 90), capped(a, 10), capped(e, 10), capped(q, 10), ...extra],
+      profileId: 1, explicitProfile: false, legacy: { weaponLevel: Number(capped(weapon, 90)) } };
+  }
   let body = message.slice(start[0].length).trim();
   if (body.length > 192) return "help";
   const deduct = /(?:^|\s)扣除背包(?=\s|$)/u;
@@ -113,6 +125,16 @@ export function weaponTarget(request: GrowthRequest, star: GrowthStar) {
   const from = request.from ?? { level: 1, promote: 0 };
   const to = request.level ?? (request.numbers[0] === undefined ? { level: max, promote: stages } : parseLevel(request.numbers[0]));
   if (request.talent || request.numbers.length > (request.level ? 0 : 1) || !validLevel(from, max, stages) || !validLevel(to, max, stages)) return;
+  return { from, to };
+}
+
+export function equippedWeaponTarget(level: number, promote: number | undefined, target: number, star: GrowthStar) {
+  // At a milestone the same level can represent either side of the ascension.
+  if (promote === undefined && promoteLvs.includes(level) && level < weaponExp[star].length + 1) return;
+  const from = { level, promote: promote ?? getPromote(level) };
+  const to = parseLevel(String(star < 3 ? 70 : target));
+  if (!validLevel(from, weaponExp[star].length + 1, weaponPromote[star].length) ||
+      !validLevel(to, weaponExp[star].length + 1, weaponPromote[star].length)) return;
   return { from, to };
 }
 
