@@ -1,3 +1,4 @@
+import { readGenshinWishSettings, updateGenshinWishSettings } from "../../lib/genshin-wish-settings.ts";
 import { createGenshinAbyssTeams, matchGenshinAbyssTeam } from "./panel/abyss-team-command.ts";
 import { readGachaDisplaySettings } from "../../lib/gacha-display-settings.ts";
 import { createCharacterVoiceCommands, genshinVoiceFeature } from "./voice/command.ts";
@@ -157,7 +158,11 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   lockFile: Parameters<typeof createGenshinGachaHistoryStore>[1];
   runtimeVersion?: { readonly version?: string; readonly revision?: string };
 }) {
-  const wish = createWishCommands({ lockFile, signal });
+  const wishRoot = new URL("../../", import.meta.url);
+  const wish = createWishCommands({
+    lockFile, signal, readSettings: () => readGenshinWishSettings(wishRoot),
+    saveSettings: (update, active) => updateGenshinWishSettings(wishRoot, update, active, signal),
+  });
   const voice = createCharacterVoiceCommands(signal);
   const characterAliases = createGameCharacterAliasCommands(lockFile, signal);
   const publicRank = createGenshinCustomRank(signal);

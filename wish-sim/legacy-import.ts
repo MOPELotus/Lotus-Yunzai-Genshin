@@ -3,7 +3,7 @@ import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { createWishPoolSource, record } from "./pools.ts";
 import {
   createLegacyWishImport, wishDailyKey, wishDayMs, wishRetentionDays, wishWeeklyKey,
-  type WishBalance, type WishConversation,
+  type WishBalance, type WishConversation, type WishToday,
 } from "./store.ts";
 import type { Pity, WishSession } from "./draw.ts";
 
@@ -116,8 +116,19 @@ async function decodeConversation(
     },
     week: { key: wishWeeklyKey(daily), five: until < now ? 0 : count(week?.num) },
   };
+  const legacyToday = record(data.today);
+  let today: WishToday | undefined;
+  if (legacyToday && expiry(legacyToday.expire) >= now && Array.isArray(legacyToday.star)) {
+    const preview = legacyToday.star.slice(0, 8).map(raw => {
+      const row = record(raw);
+      if (typeof row?.name !== "string" || row.name.length > 120) throw new TypeError("旧模拟五星记录无效。");
+      return { name: row.name, pity: count(row.num, 90) };
+    });
+    today = { day: daily, normalDraws: count(legacyToday.num), weaponDraws: count(legacyToday.weaponNum),
+      five: legacyToday.star.length, preview };
+  }
   const expiresAt = now + ttl;
-  return { activeDay: wishDailyKey(expiresAt - wishRetentionDays * wishDayMs), expiresAt, session };
+  return { activeDay: wishDailyKey(expiresAt - wishRetentionDays * wishDayMs), expiresAt, session, ...(today ? { today } : {}) };
 }
 
 export async function importLegacyWishes(options: ImportOptions, lockFile: AcquireRoleArchiveLock) {

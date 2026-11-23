@@ -1,7 +1,7 @@
-import { join } from "node:path";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { emptySession, type Pity, type WishSession } from "./draw.ts";
-import { readOptionalWishYaml, readWishYaml, record, wishLegacyDirectory } from "./pools.ts";
+import { record } from "./pools.ts";
+import type { WishAllowance } from "../../../lib/genshin-wish-settings-model.ts";
 
 const hour = 3_600_000;
 export const wishDayMs = 24 * hour;
@@ -14,10 +14,19 @@ export interface WishBalance {
   blue: number;
 }
 
+export interface WishToday {
+  readonly day: number;
+  normalDraws: number;
+  weaponDraws: number;
+  five: number;
+  readonly preview: { readonly name: string; readonly pity: number }[];
+}
+
 export interface WishConversation {
   readonly activeDay: number;
   readonly expiresAt?: number;
   readonly session: WishSession;
+  readonly today?: WishToday;
 }
 
 interface SimulationData {
@@ -34,6 +43,15 @@ function pity(value: unknown): value is Pity {
   const state = record(value);
   return !!state && nonnegative(state.num4, 90) && nonnegative(state.num5, 90) &&
     typeof state.isUp4 === "boolean" && typeof state.isUp5 === "boolean";
+}
+
+function validToday(value: unknown): value is WishToday {
+  const state = record(value);
+  const max = Number.MAX_SAFE_INTEGER;
+  return !!state && nonnegative(state.day, max) && nonnegative(state.normalDraws, max) &&
+    nonnegative(state.weaponDraws, max) && nonnegative(state.five, max) &&
+    Array.isArray(state.preview) && state.preview.length === Math.min(8, state.five) &&
+    state.preview.every(row => typeof row?.name === "string" && row.name.length <= 120 && nonnegative(row.pity, 90));
 }
 
 function readData(value: unknown): SimulationData {
@@ -54,6 +72,7 @@ function readData(value: unknown): SimulationData {
     if (!/^(?:private|[1-9]\d*)$/u.test(key) || !entry ||
       !nonnegative(entry.activeDay, Number.MAX_SAFE_INTEGER) ||
       (entry.expiresAt !== undefined && !nonnegative(entry.expiresAt, Number.MAX_SAFE_INTEGER)) || !session ||
+      (entry.today !== undefined && !validToday(entry.today)) ||
       !pity(session.role) || !pity(session.weapon) || !pity(session.permanent) || !weapon ||
       !nonnegative(weapon.lifeNum, 1) || (weapon.target !== undefined && typeof weapon.target !== "string") ||
       (weapon.rotation !== undefined && typeof weapon.rotation !== "string") || !week ||
@@ -65,23 +84,6 @@ function readData(value: unknown): SimulationData {
     throw new TypeError("模拟祈愿迁移记录无效。");
   }
   return { balance, conversations, flowerImported: root?.flowerImported } as unknown as SimulationData;
-}
-
-async function allowance(group: string, file: string | undefined) {
-  const legacyDirectory = wishLegacyDirectory();
-  const builtIn = new URL("./flower/coin.yaml", import.meta.url);
-  const config = file ? await readWishYaml(file) : legacyDirectory ? {
-    ...(await readOptionalWishYaml(join(legacyDirectory, "def", "coin.yaml")) ?? await readWishYaml(builtIn)),
-    ...await readOptionalWishYaml(join(legacyDirectory, "config", "coin.yaml")),
-  } : await readWishYaml(builtIn);
-  const defaults = record(config.default);
-  const override = group === "private" ? undefined : record(config[group]);
-  const pink = override?.pink ?? defaults?.pink;
-  const blue = override?.blue ?? defaults?.blue;
-  if (!nonnegative(pink, 10_000) || !nonnegative(blue, 10_000)) {
-    throw new TypeError("每日模拟祈愿球数设置无效。");
-  }
-  return { pink, blue };
 }
 
 export const wishDailyKey = (time: number) => Math.floor((time + 4 * hour) / wishDayMs);
@@ -130,17 +132,16 @@ export function createLegacyWishImport(directory: string, lock: AcquireRoleArchi
 
 export function createWishStore(
   directory: string, lock: AcquireRoleArchiveLock, signal: AbortSignal,
-  coinFile = Bun.env.LOTUS_GENSHIN_WISH_COIN_FILE?.trim(),
 ) {
   const archive = wishArchive(directory, lock);
 
   return async <T>(
-    qq: string, group: string, now: number,
-    update: (balance: WishBalance, session: WishSession) => T,
+    qq: string, group: string, now: number, { pink, blue }: WishAllowance,
+    update: (balance: WishBalance, session: WishSession, today: WishToday) => T,
   ): Promise<{ result: T; issued?: { pink: number; blue: number } }> => {
     const daily = wishDailyKey(now);
     const weekly = wishWeeklyKey(daily);
-    const grants = await allowance(group, coinFile);
+    const grants = { pink, blue };
     return archive.update({ qq, uid: "1" }, async () => signal.throwIfAborted(), (snapshot) => {
       const data = readData(snapshot);
       const issued = data.balance.day === daily ? undefined : grants;
@@ -149,10 +150,13 @@ export function createWishStore(
         const expired = value.expiresAt === undefined ? daily - value.activeDay >= wishRetentionDays : now >= value.expiresAt;
         if (expired) delete data.conversations[key];
       }
-      const session = data.conversations[group]?.session ?? emptySession(weekly);
+      const previous = data.conversations[group];
+      const session = previous?.session ?? emptySession(weekly);
+      const today: WishToday = previous?.today?.day === daily ? previous.today :
+        { day: daily, normalDraws: 0, weaponDraws: 0, five: 0, preview: [] };
       if (session.week.key !== weekly) session.week = { key: weekly, five: 0 };
-      data.conversations[group] = { activeDay: daily, session };
-      const result = update(data.balance, session);
+      data.conversations[group] = { activeDay: daily, session, today };
+      const result = update(data.balance, session, today);
       return { document: data, result: { result, issued } };
     });
   };
