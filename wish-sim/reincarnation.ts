@@ -3,13 +3,13 @@ import { fileURLToPath } from "node:url";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { readOptionalWishYaml, readWishYaml, record, wishLegacyDirectory } from "./pools.ts";
 import { renderWishReincarnation, wishReincarnationElement } from "./reincarnation-card.ts";
+import { readLegacyWishSettings } from "./settings.ts";
 import characterMetadata from "./flower/reincarnation-characters.json";
 
 const defaultArchive = fileURLToPath(new URL("../../../data/genshin/wish-sim", import.meta.url));
 const defaultIdentities = new URL("./flower/identity.yaml", import.meta.url);
 const characters: Readonly<Record<string, { readonly elem: string; readonly title: string }>> = characterMetadata;
 const minute = 60_000;
-const defaultCooldown = 120;
 
 export const wishReincarnationFeature = "[genshin] 转生";
 export const matchesWishReincarnation = (message: string) => /^#*(?:原神)?转生$/u.test(message);
@@ -27,17 +27,6 @@ function text(value: unknown, limit: number) {
   return typeof value === "string" ? [...value.trim()].slice(0, limit).join("") : "";
 }
 
-export async function readWishReincarnationMinutes(legacyDirectory = wishLegacyDirectory()) {
-  if (!legacyDirectory) return defaultCooldown;
-  const user = await readOptionalWishYaml(join(legacyDirectory, "config", "gacha.yaml"));
-  const minutes = user?.relifeCD ??
-    (await readOptionalWishYaml(join(legacyDirectory, "def", "gacha.yaml")))?.relifeCD ?? defaultCooldown;
-  if (typeof minutes !== "number" || !Number.isSafeInteger(minutes) || minutes < 1 || minutes > 1440) {
-    throw new TypeError("原神转生冷却须为 1 至 1440 分钟。");
-  }
-  return minutes;
-}
-
 async function readIdentities(legacyDirectory: string | undefined) {
   const configured = legacyDirectory && await readOptionalWishYaml(join(legacyDirectory, "resources", "yaml", "identity.yaml"));
   const identities = configured || await readWishYaml(defaultIdentities);
@@ -51,11 +40,13 @@ async function readIdentities(legacyDirectory: string | undefined) {
 export function createWishReincarnation({
   lockFile, signal, stateDirectory = Bun.env.LOTUS_GENSHIN_WISH_STATE_DIR?.trim() || defaultArchive,
   legacyDirectory = wishLegacyDirectory(), now = Date.now, random = Math.random, render = renderWishReincarnation,
+  readSettings = () => readLegacyWishSettings(undefined, undefined, legacyDirectory),
 }: {
   readonly lockFile: AcquireRoleArchiveLock;
   readonly signal: AbortSignal;
   readonly stateDirectory?: string;
   readonly legacyDirectory?: string;
+  readonly readSettings?: () => Promise<{ readonly reincarnationMinutes: number }>;
   readonly now?: () => number;
   readonly random?: () => number;
   readonly render?: typeof renderWishReincarnation;
@@ -71,8 +62,8 @@ export function createWishReincarnation({
     const nickname = text(context.sender?.nickname, 40) || text(context.sender?.card, 40) || "旅行者";
     try {
       signal.throwIfAborted();
-      const [minutes, identities, colors] = await Promise.all([
-        readWishReincarnationMinutes(legacyDirectory), readIdentities(legacyDirectory),
+      const [{ reincarnationMinutes: minutes }, identities, colors] = await Promise.all([
+        readSettings(), readIdentities(legacyDirectory),
         legacyDirectory && readOptionalWishYaml(join(legacyDirectory, "resources", "yaml", "color.yaml")),
       ]);
       if (!identities.length) return "暂未找到可转生的原神角色，请检查本地身份表。";

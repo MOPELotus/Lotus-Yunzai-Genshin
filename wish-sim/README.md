@@ -46,5 +46,5 @@ bun plugins/genshin/wish-sim/import-legacy-cli.ts --apply 授权.json data/gensh
 ## 转生
 
 - `#转生`、`#原神转生` 随机抽取角色身份，显示名字、神之眼、称号和身份。QQ 的冷却在群聊和私聊间共用，重启后仍生效，机器人主人可在冷却中使用。转生不会发放或扣除模拟球数。
-- 默认冷却 120 分钟。配置 `LOTUS_GENSHIN_WISH_LEGACY_DIR` 时，沿用旧 `config/gacha.yaml` 或 `def/gacha.yaml` 中的 `relifeCD`，范围 1–1440 分钟，并可沿用该目录中的角色身份和元素配色。
+- 默认冷却 120 分钟，可在管理面板「业务设置 → 原神模拟祈愿」设置为 1–1440 分钟。新值从下一次转生起生效。迁移时继承旧配置中的有效 `relifeCD`。设置 `LOTUS_GENSHIN_WISH_LEGACY_DIR` 后，也可沿用该目录中的角色身份与元素配色。
 - 角色底图和立绘沿用已有原神面板主题，可通过 `LOTUS_GENSHIN_PANEL_THEME_DIR` 指定。字体读取授权旧 Flower 根目录的 `resources/font` 或面板主题的 `common/font`；缺资源时仍能显示角色信息。

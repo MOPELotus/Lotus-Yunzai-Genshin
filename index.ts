@@ -160,7 +160,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   runtimeVersion?: { readonly version?: string; readonly revision?: string };
 }) {
   const wishRoot = new URL("../../", import.meta.url);
-  const reincarnation = createWishReincarnation({ signal, lockFile });
+  const reincarnation = createWishReincarnation({ signal, lockFile, readSettings: () => readGenshinWishSettings(wishRoot) });
   const wish = createWishCommands({
     lockFile, signal, readSettings: () => readGenshinWishSettings(wishRoot),
     saveSettings: (update, active) => updateGenshinWishSettings(wishRoot, update, active, signal),
