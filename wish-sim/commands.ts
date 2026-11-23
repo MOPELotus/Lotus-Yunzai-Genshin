@@ -5,7 +5,7 @@ import { drawWish, prepareWeaponPath, type WishPull } from "./draw.ts";
 import { createWishPoolSource, type PoolKind } from "./pools.ts";
 import { createWishStore, type WishToday } from "./store.ts";
 import { readLegacyWishSettings } from "./settings.ts";
-import { parseWishSettings, wishAllowance, type WishSettings } from "../../../lib/genshin-wish-settings-model.ts";
+import { parseWishSettings, wishAllowance, wishDailyDrawLimit, type WishSettings } from "../../../lib/genshin-wish-settings-model.ts";
 import type { CommandForward, RecallableCommandReply } from "../../../lib/commands.ts";
 import { renderWishCard, type WishCardOptions } from "./card.ts";
 
@@ -160,13 +160,14 @@ export function createWishCommands({
       if (draw && !settings.enabled) return "原神模拟祈愿已关闭。";
       if (draw && draw.count > 10 && !settings.multiple) return "原神模拟祈愿未开启多连抽。";
       const allowance = wishAllowance(settings, group);
+      const limit = wishDailyDrawLimit(settings, group);
       const recallSeconds = group === "private" && draw?.count === 1 ? settings.privateSingleRecallSeconds : allowance.recallSeconds;
       const name = [context.sender?.card, context.sender?.nickname].find((entry) =>
         typeof entry === "string" && entry.trim().length > 0) as string | undefined;
       const nickname = name?.trim() || "旅行者";
       const pool = draw || track ? await poolSource(track ? "weapon" : draw!.kind, time, qq, settings) : undefined;
       if ((draw || track) && !pool) return "当前卡池没有第二个角色活动祈愿。";
-      const { result, issued } = await update<string | WishCardOptions | LackOfTickets>(qq, group, time, allowance, (balance, session, today) => {
+      const { result, issued } = await update<string | WishCardOptions | LackOfTickets>(qq, group, now, allowance, (balance, session, today) => {
         if (wallet) return `今日你还有${balance.pink}个纠缠之缘和${balance.blue}个相遇之缘。`;
         if (track && pool) {
           prepareWeaponPath(session.weapon, pool);
@@ -193,6 +194,16 @@ export function createWishCommands({
             notice: `你的${currency === "blue" ? "相遇" : "纠缠"}之缘不足。需要${draw.count}个，你还有${balance[currency]}个。`,
             summary: draw.count > 1 ? wishSummary(today, nickname, pool.kind === "weapon", session.week.five) : undefined,
           };
+        }
+        const isWeapon = pool.kind === "weapon";
+        if (limit && !isOwner()) {
+          const used = limit.separate ? (isWeapon ? today.weaponDraws : today.normalDraws) : today.normalDraws + today.weaponDraws;
+          const maximum = limit.count * 10;
+          if (used >= maximum) {
+            const label = limit.separate ? (isWeapon ? "武器池" : "角色与常驻池") : "模拟祈愿";
+            return { notice: `今日${label}已达到 ${maximum} 抽上限（已抽 ${used} 抽）。`,
+              summary: wishSummary(today, nickname, isWeapon, session.week.five) };
+          }
         }
         balance[currency] += context.isMaster ? draw.count : -draw.count;
         const pulls = drawWish(pool, session, draw.count, random, settings);

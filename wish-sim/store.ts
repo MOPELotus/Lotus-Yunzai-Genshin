@@ -136,13 +136,14 @@ export function createWishStore(
   const archive = wishArchive(directory, lock);
 
   return async <T>(
-    qq: string, group: string, now: number, { pink, blue }: WishAllowance,
+    qq: string, group: string, clock: () => number, { pink, blue }: WishAllowance,
     update: (balance: WishBalance, session: WishSession, today: WishToday) => T,
   ): Promise<{ result: T; issued?: { pink: number; blue: number } }> => {
-    const daily = wishDailyKey(now);
-    const weekly = wishWeeklyKey(daily);
     const grants = { pink, blue };
     return archive.update({ qq, uid: "1" }, async () => signal.throwIfAborted(), (snapshot) => {
+      const now = clock();
+      const daily = wishDailyKey(now);
+      const weekly = wishWeeklyKey(daily);
       const data = readData(snapshot);
       const issued = data.balance.day === daily ? undefined : grants;
       if (issued) data.balance = { day: daily, ...issued };
