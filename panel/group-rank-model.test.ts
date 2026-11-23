@@ -24,7 +24,7 @@ test("普通角色榜默认算伤，仅缺规则才回退圣遗物评分，显�
 });
 
 test("旧复合群榜指令返回角色列表并保留显式评分条件", () => {
-  for (const command of ["#群内最强胡桃排行", "#群内排行最强胡桃", "#原神 群内 最强胡桃面板排行榜"]) {
+  for (const command of ["#群内最强胡桃排行", "#群内排行最强胡桃", "#原神 群内 最强胡桃面板排行榜", "#群内排行最强胡桃2"]) {
     const intent = matchGroupPanelRank(command);
     expect(intent).toMatchObject({ character: { name: "胡桃" }, mode: "damage" });
     expect(intent?.strongest).toBeUndefined();
@@ -32,6 +32,10 @@ test("旧复合群榜指令返回角色列表并保留显式评分条件", () =>
   expect(matchGroupPanelRank("#群内最高分胡桃排行")).toMatchObject({ character: { name: "胡桃" }, mode: "artifacts" });
   expect(matchGroupPanelRank("#群内排行最高分胡桃双暴")).toMatchObject({ character: { name: "胡桃" }, mode: "crit" });
   expect(matchGroupPanelRank("#星铁群内最强希儿排行")).toBeUndefined();
+  expect(matchGroupPanelRank("#最强胡桃双暴 255")).toMatchObject({ character: { name: "胡桃" }, mode: "crit", strongest: true });
+  for (const command of ["#胡桃排名0", "#胡桃排名256", "#胡桃排名100000001", "#胡桃排名统计2"]) {
+    expect(matchGroupPanelRank(command)).toBeUndefined();
+  }
 });
 
 test("自定义别名接入路由前保留原神静态别名及排行指标优先级", async () => {
@@ -56,6 +60,13 @@ test("自定义别名接入路由前保留原神静态别名及排行指标优�
   expect(await resolveGroupPanelRank("#原神双暴桃桃加权有效词条排行", aliases)).toBeUndefined();
   expect(await resolveGroupPanelRank("#原神坏名称排行", aliases)).toBeUndefined();
   expect(reads).toBe(5);
+});
+
+test("旧尾随档号与带数字的现有角色别名可以并用", async () => {
+  const aliases = async () => new Map([["桃桃", "胡桃"], ["胡桃2", "行秋"]]);
+  expect(await resolveGroupPanelRank("#最强胡桃2", aliases)).toMatchObject({ character: { name: "行秋" }, strongest: true });
+  expect(await resolveGroupPanelRank("#最强胡桃3", aliases)).toMatchObject({ character: { name: "胡桃" }, strongest: true });
+  expect(await resolveGroupPanelRank("#桃桃排行2", aliases)).toMatchObject({ character: { name: "胡桃" } });
 });
 
 test("rank summaries preserve only checked original talents and continue to read older summaries", () => {

@@ -310,7 +310,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchLegacyGenshinExtremePanel(message)) return ["[genshin] 角色面板"];
       if (isAvatarOriginal(message)) return ["[genshin] 角色卡片"];
       if (matchGenshinAvatarCard(message)) return ["[genshin] 角色卡片"];
-      if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message) || matchGroupPanelRank(message)) return ["[genshin] 角色面板"];
+      if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       if (matchWeaponList(message)) return ["[genshin] 武器查询"];
       if (matchGenshinBlueprint(message)) return ["[genshin] 尘歌壶模数"];

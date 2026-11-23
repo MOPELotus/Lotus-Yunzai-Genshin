@@ -168,7 +168,7 @@ test("原神实时群榜先刷新所有登记 UID，再按当前人数显示", a
     for (const count of [5, 30]) {
       configured = count;
       fetched.length = 0;
-      expect(await board.query("#群内排行最高分胡桃", context(42), async () => theme))
+      expect(await board.query("#群内排行最高分胡桃255", context(42), async () => theme))
         .toEqual({ type: "image", file: new Uint8Array([1]) });
       expect(fetched.sort()).toEqual(members.map(qq => role(qq).uid));
     }

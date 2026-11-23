@@ -73,21 +73,29 @@ function matchRankTarget(targets: NonNullable<ReturnType<typeof groupRankTargets
   }
 }
 
+function legacyGroupRankTargets(message: string) {
+  const suffix = /(?<!\d)([1-9]\d{0,2})$/u.exec(message);
+  return suffix && Number(suffix[1]) <= MAX_PROFILE_ID ? groupRankTargets(message.slice(0, suffix.index).trimEnd()) ?? [] : [];
+}
+
 export function matchGroupPanelRank(message: string) {
-  const targets = groupRankTargets(message);
-  if (targets) return matchRankTarget(targets);
+  return matchRankTarget(groupRankTargets(message) ?? []) ?? matchRankTarget(legacyGroupRankTargets(message));
 }
 
 export async function resolveGroupPanelRank(message: string, readAliases = () => readGameCharacterAliases("gs")) {
-  const targets = groupRankTargets(message);
-  if (!targets) return;
+  const targets = groupRankTargets(message) ?? [];
   const preset = matchRankTarget(targets);
   if (preset) return preset;
+  const legacy = legacyGroupRankTargets(message);
+  if (!targets.length && !legacy.length) return;
+  const legacyPreset = matchRankTarget(legacy);
+  if (!targets.length && legacyPreset) return legacyPreset;
   const aliases = await readAliases();
-  return matchRankTarget(targets, name => {
+  const findAlias = (name: string) => {
     const canonical = aliases.get(characterAliasKey(name));
     if (canonical) return findRankCharacter(canonical);
-  });
+  };
+  return matchRankTarget(targets, findAlias) ?? legacyPreset ?? matchRankTarget(legacy, findAlias);
 }
 
 export const rankId = (value: unknown): value is number =>
