@@ -1,3 +1,5 @@
+import { lolomiArtifactRules } from "./lolomi/artifact-rules.ts";
+import { damageSettings } from "./lolomi/config.ts";
 import characterMetadata from "./miao/character-artifact-base.json";
 import { readLegacyArtifactRuleProperties } from "./damage.ts";
 import type { PanelTheme } from "./theme.ts";
@@ -31,16 +33,16 @@ const supportedWeapons: Readonly<Record<string, { attr: string; abbr?: string; m
 type Weights = Readonly<Record<string, number>>;
 interface RuleResult { readonly title: string; readonly attrWeight: Weights }
 interface RuleInputs {
-  readonly attr: Weights;
-  readonly cons?: number;
+  readonly attr: Weights & { readonly cpct: number; readonly cdmg: number; readonly recharge: number };
+  readonly cons: number;
   readonly elem: string;
   readonly artis: { is(check: string, slot?: string | number): boolean };
   readonly weapon: { readonly name: string; readonly bonusKey: string };
   def(weight?: Weights, title?: string[]): RuleResult;
   rule(title: string, weight: Weights): RuleResult;
 }
-const rules: Readonly<Record<string, (inputs: RuleInputs) => RuleResult>> =
-  characterRules as unknown as Readonly<Record<string, (inputs: RuleInputs) => RuleResult>>;
+export type ArtifactScoringRule = (inputs: RuleInputs) => RuleResult;
+const rules = characterRules as unknown as Readonly<Record<string, ArtifactScoringRule>>;
 
 interface Attribute { readonly key: string; readonly value: number }
 interface RatingInput {
@@ -75,7 +77,7 @@ function requirements(item: PanelArtifact, slot: string): RatingInput {
   return { main, subs };
 }
 
-function selectRule(avatar: PanelAvatar, pieces: Readonly<Record<string, RatingInput>>, abbr: string): RuleResult {
+function selectRule(avatar: PanelAvatar, pieces: Readonly<Record<string, RatingInput>>, abbr: string, lolomi: boolean): RuleResult {
   const weapon = avatar.weapon;
   if (!weapon || weapon.promote === undefined || !Object.keys({ ...avatar.talent, ...avatar.refreshedTalent }).length) {
     throw new Missing("缺少完整武器或天赋，请先更新面板");
@@ -84,7 +86,7 @@ function selectRule(avatar: PanelAvatar, pieces: Readonly<Record<string, RatingI
     const value = Number(property.value.replace(/%$/u, ""));
     return Number.isFinite(value) && property.value.trim() ? [[property.key, value] as const] : [];
   }));
-  const attr: Weights = new Proxy(Object.create(null), {
+  const attr: RuleInputs["attr"] = new Proxy(Object.create(null), {
     get(_target, key) {
       const value = properties.get(String(key));
       if (value === undefined) throw new Missing(`缺少角色最终属性 ${propertyLabels[String(key)] ?? String(key)}，请先更新面板`);
@@ -143,7 +145,8 @@ function selectRule(avatar: PanelAvatar, pieces: Readonly<Record<string, RatingI
   }
 
   const name = [10000005, 10000007, 20000000].includes(avatar.id) ? "旅行者" : avatar.name;
-  const select = Object.hasOwn(rules, name) ? rules[name] : undefined;
+  const select = (lolomi && Object.hasOwn(lolomiArtifactRules, name) ? lolomiArtifactRules[name] : undefined) ??
+    (Object.hasOwn(rules, name) ? rules[name] : undefined);
   if (select) {
     return select({
       elem: avatar.elem, attr, artis, def,
@@ -256,13 +259,13 @@ function rate(piece: RatingInput, slot: number, attributes: Readonly<Record<stri
   return { score, rank: rank(score), scale: 66 / (shownScale * ceiling), coefficient, mainDisplayPoints, main, subs: details };
 }
 
-export function scoreArtifacts(avatar: PanelAvatar): ArtifactScore {
+export function scoreArtifacts(avatar: PanelAvatar, lolomi = damageSettings.lolomiartis): ArtifactScore {
   try {
     const metadata = characters[String(avatar.id)];
     if (!metadata) throw new Missing("缺少此角色的旧版评分资料");
     if (!Object.keys(avatar.artis).length) throw new Missing("未能获得圣遗物详情，请重新获取面板信息后查看");
     const inputs = Object.fromEntries(Object.entries(avatar.artis).map(([slot, item]) => [slot, requirements(item, slot)]));
-    const config = selectRule(avatar, inputs, metadata.abbr);
+    const config = selectRule(avatar, inputs, metadata.abbr, lolomi);
     const attr = weights(config, metadata.baseAttr);
     const items = Object.fromEntries(Object.entries(inputs).map(([slot, item]) => [slot, rate(item, Number(slot), attr, avatar)]));
     const total = Object.values(items).reduce((sum, item) => sum + item.score, 0);

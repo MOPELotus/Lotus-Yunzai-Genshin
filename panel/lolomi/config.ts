@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 type Mode = "auto" | "lolomi" | "miao";
 export interface DamageSettings {
   readonly lolomicalc: boolean;
+  readonly lolomiartis: boolean;
   readonly templateteam: boolean;
   readonly conscompare: boolean;
   readonly engineMode: Mode;
@@ -23,12 +24,13 @@ function readSettings(file: string | undefined): DamageSettings {
 export function resolveDamageSettings(raw: unknown): DamageSettings {
   if (raw !== undefined && (!raw || typeof raw !== "object" || Array.isArray(raw))) throw new TypeError("原神伤害设置必须为 YAML 对象。");
   const cfg = (raw ?? {}) as Partial<DamageSettings>;
-  if ([cfg.lolomicalc, cfg.templateteam, cfg.conscompare].some(value => value !== undefined && typeof value !== "boolean") ||
+  if ([cfg.lolomicalc, cfg.lolomiartis, cfg.templateteam, cfg.conscompare].some(value => value !== undefined && typeof value !== "boolean") ||
     (cfg.engineMode !== undefined && !["auto", "lolomi", "miao"].includes(cfg.engineMode))) {
-    throw new TypeError("原神伤害引擎、预设配队或命座对比设置无效。");
+    throw new TypeError("原神伤害引擎、圣遗物评分、预设配队或命座对比设置无效。");
   }
   return Object.freeze({
     lolomicalc: cfg.lolomicalc ?? true,
+    lolomiartis: cfg.lolomiartis ?? true,
     templateteam: cfg.templateteam ?? false,
     conscompare: cfg.conscompare ?? true,
     engineMode: cfg.engineMode ?? "auto",
