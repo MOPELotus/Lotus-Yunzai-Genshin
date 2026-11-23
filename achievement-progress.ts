@@ -1,8 +1,7 @@
-import { constants } from "node:fs";
-import { open, realpath } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import type { createAtlasRuntimeCatalog } from "@lotus-yunzai/atlas/catalog";
+import { MigrationSourceFileError, readMigrationSourceFile } from "../../lib/migration-files.ts";
 
 type Atlas = Awaited<ReturnType<ReturnType<typeof createAtlasRuntimeCatalog>["read"]>>;
 type Category = NonNullable<Atlas["pages"][number]["achievementCategories"]>[number];
@@ -69,31 +68,17 @@ function readProgress(value: unknown, uid: string): Progress {
 }
 
 async function readLegacy(directories: readonly string[], uid: string): Promise<Progress> {
-  for (const dir of directories) {
-    const path = join(dir, `${uid}.json`);
-    const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK).catch((error: unknown) => {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  for (const directory of directories) {
+    const root = resolve(directory);
+    const file = await readMigrationSourceFile(root, join(root, `${uid}.json`), maxAchievementBytes).catch(error => {
+      if (!(error instanceof MigrationSourceFileError)) throw error;
+      throw new AchievementInputError(error.reason === "changed" ? "旧原神成就存档已变化。"
+        : "旧原神成就存档须为大小有效且无链接的普通文件。");
     });
     if (!file) continue;
-    try {
-      const info = await file.stat();
-      if (!info.isFile() || info.size > maxAchievementBytes || await realpath(path) !== join(await realpath(dir), `${uid}.json`)) {
-        throw new AchievementInputError("旧原神成就存档须为大小有效的普通文件。");
-      }
-      const bytes = Buffer.alloc(info.size);
-      for (let offset = 0; offset < bytes.length;) {
-        const { bytesRead } = await file.read(bytes, offset, bytes.length - offset, offset);
-        if (!bytesRead) throw new AchievementInputError("旧原神成就存档已变化。");
-        offset += bytesRead;
-      }
-      const after = await file.stat();
-      if (after.size !== info.size || after.mtimeMs !== info.mtimeMs || after.ctimeMs !== info.ctimeMs) {
-        throw new AchievementInputError("旧原神成就存档已变化。");
-      }
-      const value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-      if (value === null) throw new AchievementInputError("旧原神成就存档格式无效。");
-      return readProgress(value, uid);
-    } finally { await file.close(); }
+    const value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(file.bytes));
+    if (value === null) throw new AchievementInputError("旧原神成就存档格式无效。");
+    return readProgress(value, uid);
   }
   return readProgress(null, uid);
 }

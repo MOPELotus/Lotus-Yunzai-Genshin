@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createAtlasRuntimeCatalog, defaultAtlasLocale, parseAtlasLocale } from "@lotus-yunzai/atlas/catalog";
-import { readLotusGlobalConfig } from "../../lib/lotus-global-config.ts";
+import { legacyLotusDirectories, readLotusGlobalConfig } from "../../lib/lotus-global-config.ts";
 import { readAtlasGalleryImage } from "@lotus-yunzai/atlas/gallery";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "./owned-role.ts";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -10,9 +10,6 @@ import { achievementCategoryKey, achievementGroups, achievementStats, Achievemen
   createAchievementProgressStore, maxAchievementBytes, parseAchievementExport, type AchievementCategory } from "./achievement-progress.ts";
 
 const hostRoot = new URL("../../", import.meta.url);
-const achievementRoot = fileURLToPath(new URL("../../data/achievements/", import.meta.url));
-const legacyRoots = ["Lotus-Plugin", "Lotus-ReFactor"].map(name =>
-  fileURLToPath(new URL(`../${name}/data/achievements/`, import.meta.url)));
 const indexCommand = /^#成就(?:目录|索引|列表|查漏)?(?:\s*(?:档案\s*)?(\d{1,3}))?$/u;
 const importCommand = /^#成就(?:导入|录入)(\d{1,3})?(?=\s|\{|$)\s*([\s\S]*)$/u;
 const categoryCommand = /^#(?!(?:星铁|星穹铁道|绝区零|绝区|崩铁|原神))([^#%*！!？?\r\n]{2,70})$/u;
@@ -111,11 +108,18 @@ function configuredCatalog(root: URL) {
   };
 }
 
+function progressStoreAt(root: URL, lockFile: AcquireRoleArchiveLock) {
+  const current = fileURLToPath(new URL("data/achievements/", root));
+  const legacy = ["plugins", "backup/plugins"].flatMap(directory => legacyLotusDirectories.map(name =>
+    fileURLToPath(new URL(`${directory}/${name}/data/achievements/`, root))));
+  return createAchievementProgressStore(current, [current, ...legacy], lockFile);
+}
+
 export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
-  atlas, atlasConfigRoot = hostRoot,
-  store = createAchievementProgressStore(achievementRoot, [achievementRoot, ...legacyRoots], lockFile),
+  installationRoot = hostRoot, atlas, atlasConfigRoot = installationRoot,
+  store = progressStoreAt(installationRoot, lockFile),
   render = renderAchievementCard, now = () => performance.now(),
-}: { atlas?: Pick<Atlas, "read" | "achievementCategoryArtwork" | "assetRoot">; atlasConfigRoot?: URL;
+}: { installationRoot?: URL; atlas?: Pick<Atlas, "read" | "achievementCategoryArtwork" | "assetRoot">; atlasConfigRoot?: URL;
   store?: ReturnType<typeof createAchievementProgressStore>; render?: typeof renderAchievementCard; now?: () => number } = {}) {
   const activeCatalog = configuredCatalog(atlasConfigRoot);
   const pending = new Map<string, Pending>();
