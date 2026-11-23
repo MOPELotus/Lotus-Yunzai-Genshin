@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { readOptionalWishYaml, readWishYaml, wishLegacyDirectory } from "./pools.ts";
 
-import { inheritWishSettings, legacyWishReincarnationMinutes } from "../../../lib/genshin-wish-settings-model.ts";
+import { inheritWishSettings, legacyWishReincarnationMinutes, legacyWishRules } from "../../../lib/genshin-wish-settings-model.ts";
 
 export async function readLegacyWishSettings(
   coinFile = Bun.env.LOTUS_GENSHIN_WISH_COIN_FILE?.trim(),
@@ -18,5 +18,5 @@ export async function readLegacyWishSettings(
   const customGacha = legacy ? await readOptionalWishYaml(join(legacy, "config/gacha.yaml")) : undefined;
   const stockGacha = legacy ? await readOptionalWishYaml(join(legacy, "def/gacha.yaml")) : undefined;
   const cooldown = legacyWishReincarnationMinutes(customGacha?.relifeCD, stockGacha?.relifeCD);
-  return inheritWishSettings(coins, recall, customGacha?.delMsg ?? stockGacha?.delMsg, cooldown);
+  return inheritWishSettings(coins, recall, customGacha?.delMsg ?? stockGacha?.delMsg, cooldown, legacyWishRules(customGacha, stockGacha));
 }

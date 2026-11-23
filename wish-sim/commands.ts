@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
+import { applyWishAdministration, matchWishAdministration, summarizeWishAdministration } from "./admin.ts";
 import { drawWish, prepareWeaponPath, type WishPull } from "./draw.ts";
 import { createWishPoolSource, type PoolKind } from "./pools.ts";
 import { createWishStore, type WishToday } from "./store.ts";
@@ -34,6 +35,8 @@ interface WishContext {
   readonly message_type?: string;
   readonly sender?: Readonly<Record<string, unknown>>;
   readonly isMaster?: boolean;
+  readonly isDelegated?: boolean;
+  readonly isBotMaster?: (id: number) => boolean;
   readonly reply?: (message: string) => unknown;
 }
 
@@ -104,20 +107,35 @@ export function createWishCommands({
     const track = path.exec(message);
     const wallet = coin.test(message);
     const setting = settingsCommand.exec(message);
+    const administration = matchWishAdministration(message);
     if (help.test(message)) {
       return "原神模拟祈愿\n#单抽、#十连、#百连，可加 2、武器池或常驻池。\n#定轨 循环选择，#定轨1、#定轨2、#定轨取消 或 #定轨查询。\n#我的纠缠之缘 查看今日球数，每天北京时间 04:00 补满。";
     }
-    if (!draw && !track && !wallet && !setting) return;
+    if (!draw && !track && !wallet && !setting && !administration) return;
     if (!identity(context.user_id)) return "请在 QQ 会话使用原神模拟祈愿。";
     if (signal.aborted) return;
 
-    const qq = String(context.user_id);
+    const user = context.user_id;
+    const qq = String(user);
+    const isOwner = () => context.isMaster === true && !context.isDelegated && (!context.isBotMaster || context.isBotMaster(user));
     if (context.message_type === "group" && !identity(context.group_id)) return "无法确认当前群号。";
     const group = context.message_type !== "private" && identity(context.group_id) ? String(context.group_id) : "private";
     const time = now();
     try {
+      if (administration) {
+        if (!isOwner()) return "只有机器人主人可以管理模拟祈愿设置。";
+        if (!administration.option) return summarizeWishAdministration(await readSettings());
+        if (!saveSettings) return "请在管理面板修改模拟祈愿设置。";
+        try {
+          return summarizeWishAdministration(await saveSettings(previous => applyWishAdministration(previous, administration),
+            () => isOwner() && !signal.aborted));
+        } catch (error) {
+          if (error instanceof TypeError) return error.message;
+          throw error;
+        }
+      }
       if (setting) {
-        if (context.isMaster !== true) return "只有机器人主人可以管理模拟祈愿设置。";
+        if (!isOwner()) return "只有机器人主人可以管理模拟祈愿设置。";
         let settings = await readSettings();
         if (setting[1]) {
           const key = settingKeys[setting[1] as keyof typeof settingKeys];
@@ -128,7 +146,7 @@ export function createWishCommands({
             settings = await saveSettings(previous => parseWishSettings(group === "private"
               ? { ...previous, [key]: Number(raw) }
               : { ...previous, groups: { ...previous.groups, [group]: { ...previous.groups[group], [key]: Number(raw) } } }),
-            () => context.isMaster === true && !signal.aborted);
+            () => isOwner() && !signal.aborted);
           } catch (error) {
             if (error instanceof TypeError) return error.message;
             throw error;
@@ -139,6 +157,8 @@ export function createWishCommands({
         return `${label}每日粉球：${pink}\n${label}每日蓝球：${blue}\n${label}抽卡撤回时间：${recallSeconds} 秒`;
       }
       const settings = await readSettings();
+      if (draw && !settings.enabled) return "原神模拟祈愿已关闭。";
+      if (draw && draw.count > 10 && !settings.multiple) return "原神模拟祈愿未开启多连抽。";
       const allowance = wishAllowance(settings, group);
       const recallSeconds = group === "private" && draw?.count === 1 ? settings.privateSingleRecallSeconds : allowance.recallSeconds;
       const name = [context.sender?.card, context.sender?.nickname].find((entry) =>
@@ -175,7 +195,7 @@ export function createWishCommands({
           };
         }
         balance[currency] += context.isMaster ? draw.count : -draw.count;
-        const pulls = drawWish(pool, session, draw.count, random);
+        const pulls = drawWish(pool, session, draw.count, random, settings);
         const pity = session[pool.kind === "role2" ? "role" : pool.kind].num5;
         if (pool.kind === "weapon") today.weaponDraws += draw.count;
         else today.normalDraws += draw.count;

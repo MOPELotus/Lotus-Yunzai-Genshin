@@ -22,6 +22,7 @@ import { createPanelImageCommands, panelImageCommand } from "./panel/image-comma
 import { createAchievementCommand } from "./achievement-command.ts";
 import { matchGenshinCommission } from "./commission-command.ts";
 import { queryRankStats, resolveGenshinCharacter } from "./rank-statistics/stats.ts";
+import { matchWishAdministration } from "./wish-sim/admin.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
 import { createWishReincarnation, matchesWishReincarnation, wishReincarnationFeature } from "./wish-sim/reincarnation.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
@@ -367,6 +368,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinPayLog(message)) return ["[genshin] 充值记录"];
       if (matchGenshinBirthdayPhoto(message)) return ["[genshin] 生日留影"];
       if (matchGenshinTarotCards(message)) return ["[genshin] 月谕圣牌"];
+      if (matchWishAdministration(message)) return ["[genshin] 模拟祈愿"];
       if (matchesWishReincarnation(message)) return [wishReincarnationFeature];
       if (matchGenshinAbyssTeam(message)) return ["[genshin] 深渊配队"];
       if (matchPersonalHardChallenge(message)) return ["[genshin] 幽境危战", "[genshin] 角色查询"];
