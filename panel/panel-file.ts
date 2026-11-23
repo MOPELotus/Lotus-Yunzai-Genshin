@@ -5,8 +5,8 @@ import { canRefreshTalent } from "./refreshed-talents.ts";
 import type { createGenshinPanelArchive } from "./panel.ts";
 import type { PanelCatalog, PanelSnapshot } from "./model.ts";
 
-type ExportContext = Partial<Pick<MessageEvent, "message_type" | "self_id" | "user_id" | "isDelegated" |
-  "privateCredentialSignal" | "uploadFile">>;
+type ExportContext = Partial<Pick<MessageEvent, "self_id" | "user_id" | "isDelegated" |
+  "privateCredentialSignal" | "uploadFile">> & { readonly message_type?: string };
 type ExportArchive = Pick<ReturnType<typeof createGenshinPanelArchive>, "discardedAt" | "readPanel">;
 
 export function matchGenshinPanelExport(message: string) {
