@@ -23,6 +23,7 @@ import { findRankCharacter } from "../rank-statistics/stats.ts";
 import { genshinLoginAccount, ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
 import { characterAliasKey, readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
+import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import type { ReplyOptions } from "../../../lib/messages.ts";
 import type { PanelRebuilder } from "../../../lib/panel-rebuild.ts";
 import { panelListColumns, PanelListImageLimitError } from "./panel-list-card.ts";
@@ -495,6 +496,7 @@ export function createGenshinPanelQuery(
       const { name, type, mode } = command;
       const observedAt = type === "detail" && source && mode === "profile" && await groupRank?.allows(context) ? now() : undefined;
       const assets = preflight ?? await theme();
+      const displayNumber = (value: string | number | undefined) => groupPanelNumber(String(value), assets.commaGroup);
       let snapshot: PanelSnapshot | undefined;
       let updated = false;
       if (type === "reload") {
@@ -705,8 +707,8 @@ export function createGenshinPanelQuery(
           await verify();
           if (png) return { type: "image", file: png };
           return [title, ...estimate.rows.map(row =>
-            `${row.title} · ${row.unavailable ? "数据不全" : [row.average !== undefined && `期望 ${row.average}`,
-              row.crit !== undefined && `暴击 ${row.crit}`].filter(Boolean).join(" / ")}`)].join("\n");
+            `${row.title} · ${row.unavailable ? "数据不全" : [row.average !== undefined && `期望 ${displayNumber(row.average)}`,
+              row.crit !== undefined && `暴击 ${displayNumber(row.crit)}`].filter(Boolean).join(" / ")}`)].join("\n");
         }
         const properties = await readChangedPanelProperties(avatar, assets);
         const projected = { ...avatar, _lotus: { properties } };
@@ -717,7 +719,7 @@ export function createGenshinPanelQuery(
         await verify();
         if (png) return { type: "image", file: png };
         return [title, change.reason, ...properties.map(row =>
-          `${propertyLabels[row.key]} ${row.value || `基础 ${row.base}`}`)].filter(Boolean).join("\n");
+          `${propertyLabels[row.key]} ${row.value ? displayNumber(row.value) : `基础 ${displayNumber(row.base)}`}`)].filter(Boolean).join("\n");
       }
       if (type === "detail") {
         const avatar = selectAvatar(snapshot, name!, assets);
@@ -736,7 +738,8 @@ export function createGenshinPanelQuery(
             if (error instanceof ProfileError) throw error;
             await verify();
             return [`UID ${uid} · ${avatar.name} · 目标 ${estimate.enemyLevel} 级`, ...estimate.rows.map((entry, index) => {
-              const numbers = [entry.average !== undefined ? `期望 ${entry.average}` : "", entry.crit !== undefined ? `暴击 ${entry.crit}` : ""];
+              const numbers = [entry.average !== undefined ? `期望 ${displayNumber(entry.average)}` : "",
+                entry.crit !== undefined ? `暴击 ${displayNumber(entry.crit)}` : ""];
               return `${index + 1}. ${entry.title} · ${entry.unavailable ? "数据不全" : numbers.filter(Boolean).join(" / ")}`;
             })].join("\n");
           }
