@@ -1,3 +1,4 @@
+import { layoutTrialDamageTitles, trialDamageTitleLineHeight } from "../../../lib/panel-trial-display.ts";
 import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { Canvas } from "skia-canvas";
 import { renderGenshinCard } from "../card-render.ts";
@@ -65,10 +66,10 @@ function splitLine(ctx: Context, value: string, available: number) {
   return lines;
 }
 
-function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined, model: Result, top: number, profileId: number, display: DisplayDamage) {
+function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined, model: Result, top: number, profileId: number, display: DisplayDamage, titles: ReturnType<typeof layoutTrialDamageTitles>) {
   const { write } = writer;
   const entries = [...model.rows, ...model.constellation ?? []];
-  const height = 115 + entries.length * 40;
+  const height = 115 + titles.height;
   const columns = [x, x + 100, x + 300.5, x + 438.3, x + width];
   const center = (i: number) => (columns[i]! + columns[i + 1]!) / 2;
   panel(ctx, texture, [x, top, width, height], () => {
@@ -82,15 +83,17 @@ function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined,
     write("暴击伤害", center(2), head + 26, 15, { color: gold, align: "center" });
     write("期望伤害", center(3), head + 26, 15, { color: gold, align: "center" });
     entries.forEach((row, index) => {
-      const y = top + 80 + index * 40;
+      const { lines, top: offset, height: rowHeight } = titles.rows[index]!;
+      const y = top + 80 + offset;
       const selected = index === model.selected;
       const combined = row.unavailable || row.crit === undefined;
-      fill(ctx, index % 2 ? alternate : dark, [x, y, width, 40]);
-      fill(ctx, dark, [x, y, columns[2]! - x, 40]);
-      if (selected) fill(ctx, "#d3bc8e30", [x, y, width, 40]);
-      grid(ctx, y, 40, combined ? [x, columns[1]!, columns[2]!, x + width] : columns);
+      fill(ctx, index % 2 ? alternate : dark, [x, y, width, rowHeight]);
+      fill(ctx, dark, [x, y, columns[2]! - x, rowHeight]);
+      if (selected) fill(ctx, "#d3bc8e30", [x, y, width, rowHeight]);
+      grid(ctx, y, rowHeight, combined ? [x, columns[1]!, columns[2]!, x + width] : columns);
       write(index + 1, columns[1]! - 15, y + 26, 15, { color: selected ? "#ffe699" : gold, align: "right" });
-      fit(ctx, writer, row.title, columns[2]! - 15, y + 26, 15, 178, "right", selected ? "#ffe699" : gold);
+      lines.forEach((title, line) => fit(ctx, writer, title, columns[2]! - 15, y + 26 + line * trialDamageTitleLineHeight,
+        15, 178, "right", selected ? "#ffe699" : gold));
       const damageCell = (key: "average" | "crit", left: number, maxWidth: number) => {
         const delta = row.trial?.[key];
         const change = damageTrialLabel(delta);
@@ -232,7 +235,10 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
   const buffsHeight = 36 + buffs.reduce((sum, row) => sum + row.height, 0);
   const changeHeight = change ? change.reason ? 63 : 46 : 0;
   const tableTop = 515 + (changeHeight ? changeHeight + 10 : 0);
-  const tableHeight = 115 + (model.rows.length + (model.constellation?.length ?? 0)) * 40;
+  measureText.font(15);
+  const titles = layoutTrialDamageTitles([...model.rows, ...model.constellation ?? []], 40, model.trialTitleMode,
+    line => measure.measureText(line).width <= 178);
+  const tableHeight = 115 + titles.height;
   const matrixTop = tableTop + tableHeight + 10;
   const buffsTop = matrixTop + (matrixHeight ? matrixHeight + 10 : 0);
   const contentEnd = buffsTop + buffsHeight;
@@ -251,7 +257,7 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
       write(`当前替换命令 ${change.command}`, x + 15, 551, 12, { color: muted, maxWidth: 545 });
       if (change.reason) write(change.reason, x + 15, 568, 12, { color: muted, maxWidth: 545 });
     });
-    damageTable(ctx, writer, texture, model, tableTop, profileId, display);
+    damageTable(ctx, writer, texture, model, tableTop, profileId, display, titles);
     if (comparison && selected) drawMatrix(ctx, writer, texture, comparison, selected, model.selected, profile.data.abbr, notes, matrixTop, matrixHeight, display);
     drawBuffs(ctx, writer, texture, buffs, buffsTop, buffsHeight);
     ctx.save();

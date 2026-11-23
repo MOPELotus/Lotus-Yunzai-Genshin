@@ -1,3 +1,4 @@
+import { layoutTrialDamageTitles, trialDamageTitleLineHeight } from "../../../lib/panel-trial-display.ts";
 import { createHash } from "node:crypto";
 import { access } from "node:fs/promises";
 import { join } from "node:path";
@@ -342,7 +343,11 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
   const secondRow = pieces.length > 2 ? 10 + secondRowHeight : 0;
   const damageTop = 838 + secondRow + changeHeight;
   const rows = damage.dmgData ?? [];
-  const damageHeight = rows.length ? 115 + rows.length * 40 : 0;
+  const damageMeasure = damage.trialTitleMode === 2 ? new Canvas(1, 1).getContext("2d") : undefined;
+  if (damageMeasure) typeset(damageMeasure, faces).font(15);
+  const damageTitles = layoutTrialDamageTitles(rows, 40, damage.trialTitleMode,
+    damageMeasure && (line => damageMeasure.measureText(line).width <= 210));
+  const damageHeight = rows.length ? 115 + damageTitles.height : 0;
   const contentEnd = (damageHeight ? damageTop : damageTop - 10) + damageHeight;
   const height = contentEnd + 37;
   // Coordinates are the fixed original CSS dimensions before its 1.4 display transform.
@@ -455,12 +460,14 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
       write("暴击伤害", 332, damageTop + 66, 15, { color: gold, align: "center" });
       write("期望伤害", 504.5, damageTop + 66, 15, { color: gold, align: "center" });
       rows.forEach((row, i) => {
-        const y = damageTop + 80 + i * 40;
-        fill(ctx, i % 2 ? "rgba(50,50,50,.4)" : dark, [10, y, 575, 40]);
-        fill(ctx, dark, [10, y, 230, 40]);
-        for (const x of [10, 240, 424]) fill(ctx, "#fff4", [x, y, .65, 40]);
+        const { lines, top, height: rowHeight } = damageTitles.rows[i]!;
+        const y = damageTop + 80 + top;
+        fill(ctx, i % 2 ? "rgba(50,50,50,.4)" : dark, [10, y, 575, rowHeight]);
+        fill(ctx, dark, [10, y, 230, rowHeight]);
+        for (const x of [10, 240, 424]) fill(ctx, "#fff4", [x, y, .65, rowHeight]);
         fill(ctx, "#fff4", [10, y, 575, .65]);
-        write(row.title, 225, y + 26, 15, { align: "right", color: gold, maxWidth: 210 });
+        lines.forEach((title, line) => write(title, 225, y + 26 + line * trialDamageTitleLineHeight, 15,
+          { align: "right", color: gold, maxWidth: 210 }));
         const damageCell = (value: string, left: number, delta: number | undefined) => {
           const change = damageTrialLabel(delta);
           write(value + (row.unit ?? ""), left, y + (change ? 18 : 27), 18, { align: "center" });

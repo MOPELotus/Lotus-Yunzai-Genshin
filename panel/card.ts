@@ -1,3 +1,5 @@
+import { layoutTrialDamageTitles, trialDamageTitleLineHeight } from "../../../lib/panel-trial-display.ts";
+import { Canvas } from "skia-canvas";
 import { renderGenshinCard } from "../card-render.ts";
 import { renderArtifactCard } from "./artifact-card.ts";
 import { damageTrialLabel, type DamageRow, type DamageSummary } from "./damage.ts";
@@ -188,11 +190,11 @@ const summaryFooterHeight = 34;
 const displayDamage = (value: DamageRow["average"], unit?: DamageRow["unit"]) =>
   value === undefined ? "—" : typeof value === "number" ? `${Math.round(value).toLocaleString("zh-CN")}${unit ?? ""}` : value;
 
-function drawDamageSummary(ctx: Context, model: DamageSummary, texture: Picture | undefined, y: number, detailCommand: string | undefined, profileSuffix: string) {
+function drawDamageSummary(ctx: Context, model: DamageSummary, texture: Picture | undefined, y: number, detailCommand: string | undefined, profileSuffix: string, titles: ReturnType<typeof layoutTrialDamageTitles>) {
   const x = 10, width = detailWidth - x * 2;
   const typeWidth = width * 0.4, valueWidth = (width - typeWidth) / 2;
   const critCenter = x + typeWidth + valueWidth / 2, averageCenter = critCenter + valueWidth;
-  const tableBottom = y + summaryHeaderHeight + model.rows.length * summaryRowHeight;
+  const tableBottom = y + summaryHeaderHeight + titles.height;
   const height = tableBottom + summaryFooterHeight - y;
   ctx.save();
   ctx.beginPath();
@@ -212,15 +214,17 @@ function drawDamageSummary(ctx: Context, model: DamageSummary, texture: Picture 
   label(ctx, "暴击伤害", critCenter, y + 66, 15, "#d3bc8e", valueWidth - 15, "center");
   label(ctx, "期望伤害", averageCenter, y + 66, 15, "#d3bc8e", valueWidth - 15, "center");
   model.rows.forEach((row, index) => {
-    const top = y + summaryHeaderHeight + index * summaryRowHeight;
+    const { lines, top: offset, height: rowHeight } = titles.rows[index]!;
+    const top = y + summaryHeaderHeight + offset;
     ctx.fillStyle = index % 2 ? "#32323266" : "#0006";
-    ctx.fillRect(x, top, width, summaryRowHeight);
+    ctx.fillRect(x, top, width, rowHeight);
     ctx.fillStyle = "#0006";
-    ctx.fillRect(x, top, typeWidth, summaryRowHeight);
+    ctx.fillRect(x, top, typeWidth, rowHeight);
     ctx.fillStyle = "#ffffff36";
     ctx.fillRect(x, top, width, 1);
-    ctx.fillRect(x + typeWidth, top, 1, summaryRowHeight);
-    label(ctx, row.title, x + typeWidth - 15, top + 26, 15, "#d3bc8e", typeWidth - 21, "right");
+    ctx.fillRect(x + typeWidth, top, 1, rowHeight);
+    lines.forEach((title, line) => label(ctx, title, x + typeWidth - 15, top + 26 + line * trialDamageTitleLineHeight,
+      15, "#d3bc8e", typeWidth - 21, "right"));
     const damageCell = (key: "average" | "crit", left: number, maxWidth: number) => {
       const delta = row.trial?.[key];
       const change = damageTrialLabel(delta);
@@ -233,7 +237,7 @@ function drawDamageSummary(ctx: Context, model: DamageSummary, texture: Picture 
       damageCell("average", x + typeWidth + valueWidth, valueWidth * 2 - 20);
     } else {
       ctx.fillStyle = "#ffffff36";
-      ctx.fillRect(x + typeWidth + valueWidth, top, 1, summaryRowHeight);
+      ctx.fillRect(x + typeWidth + valueWidth, top, 1, rowHeight);
       damageCell("crit", critCenter, valueWidth - 15);
       damageCell("average", averageCenter, valueWidth - 15);
     }
@@ -300,6 +304,10 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
   const meta = object(theme.characters[avatar.id]);
   const levels = panelTalentLevels(avatar, meta, meta, change?.displayedTalent);
   const summary = pane === "profile" && damage?.rows.length ? damage : undefined;
+  const summaryMeasure = summary?.trialTitleMode === 2 ? new Canvas(1, 1).getContext("2d") : undefined;
+  if (summaryMeasure) summaryMeasure.font = `600 15px ${font}`;
+  const summaryTitles = layoutTrialDamageTitles(summary?.rows ?? [], summaryRowHeight, summary?.trialTitleMode,
+    summaryMeasure && (line => summaryMeasure.measureText(line).width <= (detailWidth - 20) * .4 - 21));
   const [backdrop, splash, badge, crown, icons, [talents, constellations], equip, relicArt, summaryTexture] = await Promise.all([
     theme.picture("common", "bg", `bg-${element}.webp`),
     panelPortrait(theme, avatar),
@@ -316,7 +324,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
   const gearHeight = (showWeapon && avatar.weapon ? 104 : 0) + (showRelics ? 32 + relicRows * 133 : 0);
   const changeHeight = change ? change.reason ? 68 : 49 : 0;
   const summaryY = 523 + changeHeight + gearHeight;
-  const height = summaryY + (summary ? summaryHeaderHeight + summary.rows.length * summaryRowHeight + summaryFooterHeight + 9 : 0) + 35;
+  const height = summaryY + (summary ? summaryHeaderHeight + summaryTitles.height + summaryFooterHeight + 9 : 0) + 35;
   const raw = new Map(avatar._lotus?.properties?.map(property => [property.key, property]));
   const stats = tableKeys.map(key => key === "dmg"
     ? raw.get(element) ?? raw.get("phy")
@@ -399,7 +407,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
     if (summary) {
       const profileSuffix = profileId === 1 ? "" : ` 档案${profileId}`;
       const name = text(meta?.abbr) || avatar.name;
-      drawDamageSummary(ctx, summary, summaryTexture, summaryY, change ? undefined : `#${name}伤害${profileSuffix}`, profileSuffix);
+      drawDamageSummary(ctx, summary, summaryTexture, summaryY, change ? undefined : `#${name}伤害${profileSuffix}`, profileSuffix, summaryTitles);
     }
     footer(ctx, width, height);
   }, mode);

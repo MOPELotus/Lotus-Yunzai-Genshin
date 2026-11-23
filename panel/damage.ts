@@ -1,3 +1,4 @@
+import type { TrialTitleMode } from "../../../lib/panel-trial-display.ts";
 import DmgAttr from "./miao/damage/DmgAttr.ts";
 import DmgCalc from "./miao/damage/DmgCalc.ts";
 import type { RefinementLevels } from "./miao/damage/rule-types.ts";
@@ -89,6 +90,7 @@ export interface DamageComparison {
 }
 export interface DamageSummary {
   readonly rows: readonly DamageRow[];
+  readonly trialTitleMode?: TrialTitleMode;
   readonly enemyLevel: number;
   readonly enemyName: string;
   readonly ruleAuthors: readonly string[];

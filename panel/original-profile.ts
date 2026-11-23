@@ -78,7 +78,7 @@ function formatWeapon(avatar: PanelAvatar, displayWeapon: Awaited<ReturnType<typ
 function formatDamage(damage: DamageSummary | undefined, number: FormatNumber) {
   const rowNumber = (value: string | number | undefined) => typeof value === "number" ? number(value, 0) : value ?? "";
   return {
-    enemyLv: damage?.enemyLevel, enemyName: damage?.enemyName, createdBy: damage?.ruleAuthors.join("、"),
+    trialTitleMode: damage?.trialTitleMode, enemyLv: damage?.enemyLevel, enemyName: damage?.enemyName, createdBy: damage?.ruleAuthors.join("、"),
     dmgData: damage && [...damage.rows, ...damage.constellation ?? []].filter(row => !row.unavailable).map(row => ({
       title: row.title, dmg: rowNumber(row.crit), avg: rowNumber(row.average), unit: row.unit, trial: row.trial,
     })),
