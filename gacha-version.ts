@@ -1,6 +1,6 @@
 import type { GenshinGachaPool } from "@lotus-yunzai/hoyo-client";
 import {
-  genshinGachaTimestamp, parseGenshinGachaRows, type GenshinGachaDetailOptions, type GenshinGachaDetailPeriod,
+  genshinGachaTimestamp, insideGenshinGachaPeriod, parseGenshinGachaRows, type GenshinGachaDetailOptions, type GenshinGachaDetailPeriod,
   type GenshinGachaPull,
 } from "./gacha-detail.ts";
 import type { GenshinPreviousGacha } from "./gacha-history.ts";
@@ -92,6 +92,7 @@ export interface GenshinGachaVersionOptions {
   readonly face: GenshinGachaDetailOptions["face"];
   readonly type?: Selection;
   readonly schedule: readonly GenshinGachaVersionPeriod[];
+  readonly weaponSchedule?: readonly GenshinGachaVersionPeriod[];
   readonly mixedSchedule: readonly GenshinGachaVersionPeriod[];
   readonly resolveItem?: GenshinGachaDetailOptions["resolveItem"];
   readonly maxRows?: number;
@@ -152,7 +153,7 @@ function windows(rows: readonly GenshinGachaVersionPeriod[]) {
 }
 
 export function buildGenshinGachaVersion({
-  uid, records, face, schedule, mixedSchedule, resolveItem, type = "up", maxRows = 10, page,
+  uid, records, face, schedule, weaponSchedule = schedule, mixedSchedule, resolveItem, type = "up", maxRows = 10, page,
 }: GenshinGachaVersionOptions): GenshinGachaVersionModel | undefined {
   if (!/^[1-9]\d*$/u.test(uid) || !Object.hasOwn(selections, type)) throw new TypeError("原神抽卡统计 UID 或卡池无效。");
   if (!Number.isSafeInteger(maxRows) || maxRows < 0 || (page !== undefined && (!Number.isSafeInteger(page) || page < 1))) {
@@ -161,6 +162,7 @@ export function buildGenshinGachaVersion({
   const selection = selections[type];
   const aggregate = "aggregate" in selection ? selection.aggregate : undefined;
   const regular = windows(schedule);
+  const weapons = weaponSchedule === schedule ? regular : windows(weaponSchedule);
   const mixed = windows(mixedSchedule);
   const all = bucket();
   const unknown = bucket();
@@ -177,9 +179,12 @@ export function buildGenshinGachaVersion({
     };
     if (item.type === "char") knownCharacterNames.set(item.name, item.abbr);
     const { at, pool } = pull;
-    const periods = pool === 500 ? mixed : regular;
-    const period = pool === 200 || at === undefined ? undefined : periods.find(({ start, end }) => start < at && at < end);
-    const featured = item.type === "char" ? period?.char5 : period?.weapon5;
+    const findPeriod = (periods: typeof regular) => at === undefined ? undefined
+      : periods.find(period => insideGenshinGachaPeriod(at, period.start, period.end, period));
+    const weaponPeriod = pool === 302 ? findPeriod(weapons) : undefined;
+    const ordinaryPeriod = pool === 200 || type === "weapon" ? undefined : findPeriod(pool === 500 ? mixed : regular);
+    const period = ordinaryPeriod ?? weaponPeriod;
+    const featured = pool === 302 ? weaponPeriod?.weapon5 : item.type === "char" ? period?.char5 : period?.weapon5;
     const up = pool !== 200 && item.star === 5 && (pull.isUp ?? featured?.includes(item.name) ?? false);
     addPull(all, id, item, up);
     if (!aggregate) addPull(period?.draws ?? unknown, id, item, up);
@@ -190,10 +195,12 @@ export function buildGenshinGachaVersion({
   if (aggregate) {
     rows = [compact(all, { version: aggregate, half: "", from: "", to: "", name: "" }, itemMap)];
   } else {
-    rows = (type === "mix" ? mixed : regular).toSorted((left, right) => right.start - left.start).flatMap((period) => {
+    const grouped = type === "mix" ? mixed : type === "weapon" ? weapons : weapons === regular ? regular : [...regular, ...weapons];
+    rows = grouped.toSorted((left, right) => right.start - left.start).flatMap((period) => {
       if (!period.draws.stats.totalNum) return [];
       const name = period.name ?? period.char5.map((char) => knownCharacterNames.get(char) ?? char).join(" / ");
-      return [compact(period.draws, { version: period.version, half: period.half, name,
+      const half = type === "up" && !regular.includes(period) ? `武器池·${period.half}` : period.half;
+      return [compact(period.draws, { version: period.version, half, name,
         from: day.format(period.start).slice(2), to: day.format(period.end).slice(2) }, itemMap)];
     });
     if (unknown.stats.totalNum) rows.push(compact(unknown, {

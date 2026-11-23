@@ -144,6 +144,31 @@ function versionPeriod(entry: GenshinGachaDetailPeriod): entry is GenshinGachaVe
   return "version" in entry && typeof entry.version === "string" && "half" in entry && typeof entry.half === "string";
 }
 
+function weaponSchedule(schedule: readonly GenshinGachaVersionPeriod[]): readonly GenshinGachaVersionPeriod[] {
+  const affected = schedule.filter(row => row.version === "1.3");
+  if (affected.length !== 3) return schedule;
+  const first = affected.find(row => row.half === "上半" &&
+    row.from === "2021-02-03 06:00:00" && row.to === "2021-02-17 15:59:59");
+  const middle = affected.find(row => row.half === "中场" &&
+    row.from === "2021-02-17 18:00:00" && row.to === "2021-03-02 15:59:59");
+  const last = affected.find(row => row.half === "下半" &&
+    row.from === "2021-03-02 18:00:00" && row.to === "2021-03-16 14:59:59");
+  const matches = (row: GenshinGachaVersionPeriod | undefined, expected: readonly string[]) =>
+    row?.weapon5.length === expected.length && expected.every(name => row.weapon5.includes(name));
+  const early = ["磐岩结绿", "和璞鸢"];
+  const late = ["护摩之杖", "狼的末路"];
+  if (!first || !last || !matches(first, early) || !matches(middle, [...early, ...late]) || !matches(last, late)) return schedule;
+
+  // The original Miao calendar combines both weapon sets during Keqing's character banner.
+  // The official weapon rotation changed on February 23, independent of the character banner.
+  // https://genshin.hoyoverse.com/en/news/detail/103841 and https://www.hoyolab.com/article/200610
+  return schedule.filter(row => row !== middle).map(row => row === first
+    ? { ...row, to: "2021-02-23 15:59:59", includeEnd: true, name: row.weapon5.join(" / ") }
+    : row === last
+      ? { ...row, from: "2021-02-23 18:00:00", includeStart: true, includeEnd: true, name: row.weapon5.join(" / ") }
+      : row);
+}
+
 export async function readGenshinGachaSources(root: string, records: GenshinPreviousGacha, beginner?: readonly unknown[]) {
   const [characters, weapons, calendar] = await Promise.all([
     readCharacters(root), readWeapons(root, [...Object.values(records), beginner]), readGenshinWishCalendar(root),
@@ -154,11 +179,14 @@ export async function readGenshinGachaSources(root: string, records: GenshinPrev
   });
   const regular = calendar.regular.filter(period);
   const mixed = calendar.mixed.filter(period);
+  const schedule = regular.filter(versionPeriod).map(named);
+  const weaponPeriods = weaponSchedule(schedule);
   return {
     characters,
     resolveItem,
-    schedule: regular.filter(versionPeriod).map(named),
+    schedule,
     mixedSchedule: mixed.filter(versionPeriod).map(named),
-    resolvePool: resolveGenshinDetailPool(regular, mixed),
+    weaponSchedule: weaponPeriods,
+    resolvePool: resolveGenshinDetailPool(regular, mixed, weaponPeriods === schedule ? regular : weaponPeriods),
   };
 }

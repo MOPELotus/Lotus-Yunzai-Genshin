@@ -102,6 +102,8 @@ export interface GenshinGachaDetailPeriod {
   readonly to: string;
   readonly char5: readonly string[];
   readonly weapon5: readonly string[];
+  readonly includeStart?: true;
+  readonly includeEnd?: true;
 }
 
 function decimal(value: unknown): string | undefined {
@@ -118,8 +120,16 @@ export function genshinGachaTimestamp(raw: string): number | undefined {
   return time >= launch ? time : undefined;
 }
 
+export function insideGenshinGachaPeriod(
+  time: number, start: number, end: number, { includeStart, includeEnd }: Pick<GenshinGachaDetailPeriod, "includeStart" | "includeEnd">,
+): boolean {
+  return (time > start || (includeStart === true && time === start)) &&
+    (time < end || (includeEnd === true && time === end));
+}
+
 export function resolveGenshinDetailPool(
   schedule: readonly GenshinGachaDetailPeriod[], mixed: readonly GenshinGachaDetailPeriod[],
+  weaponSchedule = schedule,
 ): NonNullable<GenshinGachaDetailOptions["resolvePool"]> {
   const periods = (rows: readonly GenshinGachaDetailPeriod[]) => rows.flatMap((row) => {
     const from = genshinGachaTimestamp(row.from);
@@ -128,12 +138,13 @@ export function resolveGenshinDetailPool(
     return from === undefined || to === undefined || from >= to ? [] : [{ ...row, from, to }];
   });
   const regular = periods(schedule);
+  const weapons = weaponSchedule === schedule ? regular : periods(weaponSchedule);
   const chronicle = periods(mixed);
   return ({ pool, at, name, itemType }) => {
     if (pool === 100 || pool === 200) return { isUp: false };
     if (at === undefined) return;
-    const selected = pool === 500 ? chronicle : regular;
-    const found = selected.find(({ from, to }) => from < at && at < to);
+    const selected = pool === 500 ? chronicle : pool === 302 ? weapons : regular;
+    const found = selected.find(period => insideGenshinGachaPeriod(at, period.from, period.to, period));
     if (found) return { isUp: (itemType === "char" ? found.char5 : found.weapon5).includes(name), isNewPool: false };
     if (selected.length && selected.every(({ to }) => at > to)) return { isNewPool: true };
   };
