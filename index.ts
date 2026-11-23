@@ -20,6 +20,7 @@ import { createPersonalHardChallengeQuery, matchPersonalHardChallenge } from "./
 import { createGenshinTarotCards, matchGenshinTarotCards } from "./panel/tarot-cards.ts";
 import { createWeaponListQuery, matchWeaponList } from "./panel/weapon-list.ts";
 import { createGenshinPanelArchive, createGenshinPanelDamagePreferences, createGenshinPanelQuery, matchLegacyGenshinExtremePanel } from "./panel/panel.ts";
+import { createGenshinAvatarCards, matchGenshinAvatarCard } from "./panel/avatar-card.ts";
 import { createGenshinShowcaseCommand, matchGenshinShowcase } from "./panel/showcase-command.ts";
 import { matchGenshinPanelDiscard } from "./panel/model.ts";
 import { createGroupPanelRank, type GroupRankContext } from "./panel/group-rank.ts";
@@ -139,6 +140,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const monthlyStatistics = createGenshinStatisticsQuery(profiles, client, monthlyArchive, signal);
   const sevenSaintsDecks = createSevenSaintsDeckQuery(profiles, client, signal);
   const panelArchive = createGenshinPanelArchive(lockFile);
+  const avatarCards = createGenshinAvatarCards(profiles, client, lockFile, signal, { archive: panelArchive });
   const panelPreferences = createGenshinPanelDamagePreferences(lockFile, signal);
   const teamDamage = createTeamDamageQuery(profiles, panelArchive, signal);
   const refreshTalent = createGenshinTalentRefresh(profiles, client, panelArchive, signal);
@@ -288,6 +290,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
     commands: {},
     gachaUpdate,
     panelRebuild: panel.rebuild,
+    handleAvatarPoke: avatarCards.handleAvatarPoke,
     async fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
       const aliases = matchGameCharacterAliasCommand(message);
@@ -301,6 +304,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
       if (matchLegacyGenshinExtremePanel(message)) return ["[genshin] 角色面板"];
+      if (matchGenshinAvatarCard(message)) return ["[genshin] 角色卡片"];
       if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message) || matchGroupPanelRank(message)) return ["[genshin] 角色面板"];
       if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
       if (matchWeaponList(message)) return ["[genshin] 武器查询"];
@@ -330,6 +334,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       const aliases = matchGameCharacterAliasCommand(context.normalizedMessage);
       if (aliases && aliases.game !== "sr") return characterAliases(aliases, context);
       if (matchLegacyGenshinExtremePanel(context.normalizedMessage)) return panel(context.normalizedMessage, context);
+      const avatarCard = matchGenshinAvatarCard(context.normalizedMessage);
+      if (avatarCard) return avatarCards.query(avatarCard, context);
       if (matchGenshinPanelDiscard(context.normalizedMessage)) return panel(context.normalizedMessage, context);
       if (genshinMonthlyTaskCommand.test(context.normalizedMessage)) return monthlyTask(context);
       const statistics = matchGenshinStatistics(context.normalizedMessage);
