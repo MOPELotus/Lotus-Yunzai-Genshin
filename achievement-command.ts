@@ -1,6 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createAtlasRuntimeCatalog } from "@lotus-yunzai/atlas/catalog";
+import { readLotusGlobalConfig } from "../../lib/lotus-global-config.ts";
+import { defaultAtlasLocale, parseAtlasLocale } from "../atlas/locale.ts";
 import { readAtlasGalleryImage } from "@lotus-yunzai/atlas/gallery";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "./owned-role.ts";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -8,7 +10,7 @@ import { renderAchievementCard, type AchievementCard } from "./achievement-card.
 import { achievementCategoryKey, achievementGroups, achievementStats, AchievementInputError,
   createAchievementProgressStore, maxAchievementBytes, parseAchievementExport, type AchievementCategory } from "./achievement-progress.ts";
 
-const atlasRoot = fileURLToPath(new URL("../../data/atlas/", import.meta.url));
+const hostRoot = new URL("../../", import.meta.url);
 const achievementRoot = fileURLToPath(new URL("../../data/achievements/", import.meta.url));
 const legacyRoots = ["Lotus-Plugin", "Lotus-ReFactor"].map(name =>
   fileURLToPath(new URL(`../${name}/data/achievements/`, import.meta.url)));
@@ -99,12 +101,24 @@ const summary = (stats: Pick<ReturnType<typeof achievementStats>, "completed" | 
   rows: [[`${stats.completed}/${stats.total}`, `${stats.pointsDone}/${stats.pointsTotal}`, `${stats.percent}%`, end]],
 });
 
+function configuredCatalog(root: URL) {
+  const directory = fileURLToPath(new URL("data/atlas/", root));
+  let catalog: Atlas | undefined;
+  return async () => {
+    const { atlas } = await readLotusGlobalConfig(root);
+    const locale = parseAtlasLocale((atlas as { locale?: unknown } | undefined)?.locale) ?? defaultAtlasLocale;
+    if (catalog?.locale !== locale) catalog = createAtlasRuntimeCatalog(directory, Bun.env.LOTUS_ATLAS_DATA_DIR, locale);
+    return catalog;
+  };
+}
+
 export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, {
-  atlas = createAtlasRuntimeCatalog(atlasRoot, Bun.env.LOTUS_ATLAS_DATA_DIR),
+  atlas, atlasConfigRoot = hostRoot,
   store = createAchievementProgressStore(achievementRoot, [achievementRoot, ...legacyRoots], lockFile),
   render = renderAchievementCard, now = () => performance.now(),
-}: { atlas?: Pick<Atlas, "read" | "achievementCategoryArtwork" | "assetRoot">;
+}: { atlas?: Pick<Atlas, "read" | "achievementCategoryArtwork" | "assetRoot">; atlasConfigRoot?: URL;
   store?: ReturnType<typeof createAchievementProgressStore>; render?: typeof renderAchievementCard; now?: () => number } = {}) {
+  const activeCatalog = configuredCatalog(atlasConfigRoot);
   const pending = new Map<string, Pending>();
 
   function clear(key: string, request = pending.get(key)) {
@@ -125,9 +139,11 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
   }
 
   async function catalog() {
-    const data = await atlas.read();
+    const source = atlas ?? await activeCatalog();
+    const data = await source.read();
     const page = data.pages.find(item => item.game === "gi" && item.kind === "achievement" && !item.sampled);
     return {
+      source,
       entries: page?.entries ?? [],
       categories: (page?.achievementCategories ?? []).toSorted((a, b) =>
         (a.priority ?? Number(a.id)) - (b.priority ?? Number(b.id)) || Number(a.id) - Number(b.id)),
@@ -137,8 +153,8 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
   async function artwork(record: Awaited<ReturnType<typeof catalog>>, category: AchievementCategory) {
     const entry = record.entries.find(item => item.id === category.id);
     if (!entry) return;
-    const path = await atlas.achievementCategoryArtwork(entry).catch(() => undefined);
-    return await readAtlasGalleryImage(atlas.assetRoot(entry), "gi", path);
+    const path = await record.source.achievementCategoryArtwork(entry).catch(() => undefined);
+    return await readAtlasGalleryImage(record.source.assetRoot(entry), "gi", path);
   }
 
   async function asImage(data: AchievementCard, inlineImageByteLimit?: number): Promise<Image> {

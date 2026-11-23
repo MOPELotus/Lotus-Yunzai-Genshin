@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createProfileStore } from "@lotus-yunzai/account";
-import { createAtlasRuntimeCatalog } from "@lotus-yunzai/atlas/catalog";
+import { pathToFileURL } from "node:url";
 import { lockFile } from "../../lib/file-lock.ts";
 import { createAchievementCommand } from "./achievement-command.ts";
 import type { AchievementCard } from "./achievement-card.ts";
@@ -29,12 +29,14 @@ async function fixture(run: (input: {
   store: ReturnType<typeof createAchievementProgressStore>; change(): Promise<void>; expire(): void;
   writeProfile(id: number, mode: "valid" | "public" | "unlisted" | "wrong-cookie" | "wrong-user" | "wrong-role"): Promise<void>;
   changeDuringRender(): void;
+  setAtlasLanguage(value: string): Promise<void>;
 }) => Promise<void>) {
   const dir = await mkdtemp(join(tmpdir(), "lotus-achievement-fixture-"));
   const control = new AbortController();
   try {
-    const legacy = join(dir, "legacy"), archive = join(dir, "progress"), atlasDir = join(dir, "atlas");
+    const legacy = join(dir, "legacy"), archive = join(dir, "progress"), atlasDir = join(dir, "data", "atlas", "data");
     await mkdir(legacy); await mkdir(join(atlasDir, "items"), { recursive: true });
+    await mkdir(join(dir, "config"));
     const legacyFile = join(legacy, `${first}.json`);
     const before = JSON.stringify({ version: 1, uid: first, done: { "100": { id: 100, date: "2024/01/02", status: true } } });
     await writeFile(legacyFile, before);
@@ -44,6 +46,10 @@ async function fixture(run: (input: {
         "6": { id: "6", path: "items/group.json", name: categoryName },
         "7": { id: "7", path: "items/largest.json", name: "天地万象" },
       } },
+    } }, en: { pages: {
+      "achievement/achievement": { version: "1", recordCount: 1, records: {
+        "6": { id: "6", path: "items/en-group.json", name: "Wonders of the World" },
+      } },
     } } } } } }));
     await writeFile(join(atlasDir, "items/group.json"), JSON.stringify({ meta: {
       gameId: "gi", pageId: "achievement/achievement", recordId: "6", version: "1",
@@ -51,6 +57,13 @@ async function fixture(run: (input: {
     await writeFile(join(atlasDir, "items/largest.json"), JSON.stringify({ meta: {
       gameId: "gi", pageId: "achievement/achievement", recordId: "7", version: "1",
     }, content: { list: { id: 7, name: "天地万象", priority: 2, list: largest } } }));
+    await writeFile(join(atlasDir, "items/en-group.json"), JSON.stringify({ meta: {
+      gameId: "gi", pageId: "achievement/achievement", recordId: "6", version: "1", locale: "en",
+    }, content: { list: { id: 6, name: "Wonders of the World", priority: 1,
+      list: [{ id: 100, name: "First achievement", desc: "English condition", reward: 5 }] } } }));
+    async function setAtlasLanguage(value: string) {
+      await writeFile(join(dir, "config", "global.yaml"), Bun.YAML.stringify({ atlas: { locale: value } }));
+    }
     let generation = 0, time = 0;
     let renderChange = false;
     const profileDir = join(dir, "profiles");
@@ -74,14 +87,14 @@ async function fixture(run: (input: {
     const cards: AchievementCard[] = [];
     const store = createAchievementProgressStore(archive, [legacy], lockFile);
     const command = createAchievementCommand(profiles, lockFile, control.signal, {
-      atlas: createAtlasRuntimeCatalog(atlasDir, atlasDir), store, now: () => time,
+      atlasConfigRoot: pathToFileURL(dir + "/"), store, now: () => time,
       async render(card) {
         cards.push(card);
         if (renderChange) { renderChange = false; await writeProfile(1, "valid"); }
         return { png: Buffer.from("fixture"), engine: {} as never };
       },
     });
-    await run({ command, cards, before, legacyFile, store, async change() {
+    await run({ command, cards, before, legacyFile, store, setAtlasLanguage, async change() {
       await Promise.all([writeProfile(1, "valid"), writeProfile(2, "valid")]);
     }, expire() { time += 300_001; }, writeProfile, changeDuringRender() { renderChange = true; } });
   } finally { control.abort(); await rm(dir, { recursive: true, force: true }); }
@@ -89,6 +102,20 @@ async function fixture(run: (input: {
 
 const context = { normalizedMessage: "", self_id: 99, user_id: 42, group_id: 77,
   adapter: "onebot", message_type: "group", canReadAttachments: true, reply() {} } as const;
+
+test("个人成就按宿主 Atlas 语言查同一份角色进度，可用本地化分类名", () => fixture(
+  async ({ command, cards, setAtlasLanguage }) => {
+    await setAtlasLanguage("English");
+    expect(await command.main({ ...context, normalizedMessage: "#成就查漏" })).toMatchObject({ type: "image" });
+    expect(cards.at(-1)?.badge).toBe("1/1");
+    expect(cards.at(-1)?.tables[1]?.rows[0]?.[0]).toMatchObject({ label: "Wonders of the World" });
+    expect(await command.main({ ...context, normalizedMessage: "#Wonders of the World" }, true)).toMatchObject({ type: "image" });
+    expect(JSON.stringify(cards.at(-1))).toContain("First achievement");
+    await setAtlasLanguage("简体中文");
+    expect(await command.main({ ...context, normalizedMessage: "#成就查漏" })).toMatchObject({ type: "image" });
+    expect(cards.at(-1)?.badge).toBe("1/1043");
+  }
+));
 
 test("same-bound UID reads old progress, exact aliases paginate whole groups, and UIAF writes current account only", () => fixture(
   async ({ command, cards, store, before, legacyFile }) => {
