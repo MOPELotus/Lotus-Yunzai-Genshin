@@ -10,5 +10,8 @@
 | `def/gacha.yaml`、`def/pool.yaml`、`def/coin.yaml` | Flower 的默认配置与历史卡池 |
 | `resources/html/gacha/gacha.html`、`resources/html/gacha/gacha.css` | 十连结果的横排祈愿框、裁切路径、位置与素材图层 |
 | `resources/html/single/single.html`、`resources/html/single/single.css` | 单抽结果的背景、道具与信息布局 |
+| `apps/genshinrelife.js`、`resources/yaml/{identity,color}.yaml`、`resources/html/relife/relife.{html,css}` | 转生角色身份、元素配色与图卡布局 |
+
+转生称号与元素是由 Miao 固定提交 `8a83182f1a2103734e28e37ee611a673f692f9c9` 的 `resources/meta-gs/character/<角色>/data.json` 提取的 120 组文字字段。相关 MIT 许可见 [原神面板保留的 Miao 许可](../../panel/miao/LICENSE)。未随代码分发角色图和字体。 [Miao 固定源](https://github.com/MOPELotus/miao-plugin/tree/8a83182f1a2103734e28e37ee611a673f692f9c9)
 
 祈愿图引用已有部署有权使用的原图和字体。二进制画面资源不随本仓分发。配置元素图标时，运行时可读取旧 genshin 的 `defSet/element/` 映射。

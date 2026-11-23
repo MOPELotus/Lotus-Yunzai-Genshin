@@ -42,3 +42,9 @@ bun plugins/genshin/wish-sim/import-legacy-cli.ts --apply 授权.json data/gensh
 第一条预检并统计将导入的球数和会话。第二条逐 QQ 保存，留存已有的当日球数和保底。每个 QQ 的数据和完成记录一起提交，重复运行会跳过已完成的 QQ。旧来源保持只读。当天已过期的球数按新版发放规则处理，旧保底保留原 TTL。
 
 若要保留武器定轨，在预检和导入时将 `LOTUS_GENSHIN_WISH_LEGACY_DIR` 指向旧副本对应的模拟祈愿模块目录。以旧卡池核对武器档位，武器换期后保底仍然有效，定轨和命定值按新版换期规则重置。
+
+## 转生
+
+- `#转生`、`#原神转生` 随机抽取角色身份，显示名字、神之眼、称号和身份。QQ 的冷却在群聊和私聊间共用，重启后仍生效，机器人主人可在冷却中使用。转生不会发放或扣除模拟球数。
+- 默认冷却 120 分钟。配置 `LOTUS_GENSHIN_WISH_LEGACY_DIR` 时，沿用旧 `config/gacha.yaml` 或 `def/gacha.yaml` 中的 `relifeCD`，范围 1–1440 分钟，并可沿用该目录中的角色身份和元素配色。
+- 角色底图和立绘沿用已有原神面板主题，可通过 `LOTUS_GENSHIN_PANEL_THEME_DIR` 指定。字体读取授权旧 Flower 根目录的 `resources/font` 或面板主题的 `common/font`；缺资源时仍能显示角色信息。

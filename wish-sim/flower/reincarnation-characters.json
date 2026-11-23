@@ -1,0 +1,482 @@
+{
+  "烟绯": {
+    "elem": "pyro",
+    "title": "智明无邪"
+  },
+  "胡桃": {
+    "elem": "pyro",
+    "title": "雪霁梅香"
+  },
+  "辛焱": {
+    "elem": "pyro",
+    "title": "燥热旋律"
+  },
+  "可莉": {
+    "elem": "pyro",
+    "title": "逃跑的太阳"
+  },
+  "迪卢克": {
+    "elem": "pyro",
+    "title": "晨曦的暗面"
+  },
+  "香菱": {
+    "elem": "pyro",
+    "title": "万民百味"
+  },
+  "安柏": {
+    "elem": "pyro",
+    "title": "飞行冠军"
+  },
+  "班尼特": {
+    "elem": "pyro",
+    "title": "命运试金石"
+  },
+  "宵宫": {
+    "elem": "pyro",
+    "title": "琉焰华舞"
+  },
+  "托马": {
+    "elem": "pyro",
+    "title": "渡来介者"
+  },
+  "迪希雅": {
+    "elem": "pyro",
+    "title": "炽鬃之狮"
+  },
+  "林尼": {
+    "elem": "pyro",
+    "title": "惑光幻戏"
+  },
+  "夏沃蕾": {
+    "elem": "pyro",
+    "title": "明律决罚"
+  },
+  "嘉明": {
+    "elem": "pyro",
+    "title": "骏猊頕首"
+  },
+  "阿蕾奇诺": {
+    "elem": "pyro",
+    "title": "孤暝厄月"
+  },
+  "玛薇卡": {
+    "elem": "pyro",
+    "title": "焚夜以炎"
+  },
+  "杜林": {
+    "elem": "pyro",
+    "title": "「不熄灭的火」"
+  },
+  "尼可": {
+    "elem": "pyro",
+    "title": "喧寂于心"
+  },
+  "魈": {
+    "elem": "anemo",
+    "title": "护法夜叉"
+  },
+  "温迪": {
+    "elem": "anemo",
+    "title": "风色诗人"
+  },
+  "琴": {
+    "elem": "anemo",
+    "title": "蒲公英骑士"
+  },
+  "砂糖": {
+    "elem": "anemo",
+    "title": "无害甜度"
+  },
+  "枫原万叶": {
+    "elem": "anemo",
+    "title": "红叶逐荒波"
+  },
+  "早柚": {
+    "elem": "anemo",
+    "title": "忍里之貉"
+  },
+  "鹿野院平藏": {
+    "elem": "anemo",
+    "title": "心朝乂安"
+  },
+  "空": {
+    "elem": "multi",
+    "title": "异界的旅人"
+  },
+  "荧": {
+    "elem": "multi",
+    "title": "异界的旅人"
+  },
+  "流浪者": {
+    "elem": "anemo",
+    "title": "久世浮倾"
+  },
+  "珐露珊": {
+    "elem": "anemo",
+    "title": "机逐封秘"
+  },
+  "琳妮特": {
+    "elem": "anemo",
+    "title": "丽影绮行"
+  },
+  "闲云": {
+    "elem": "anemo",
+    "title": "鸾音鹤信"
+  },
+  "恰斯卡": {
+    "elem": "anemo",
+    "title": "巡宇翦定"
+  },
+  "蓝砚": {
+    "elem": "anemo",
+    "title": "翦玉编春"
+  },
+  "梦见月瑞希": {
+    "elem": "anemo",
+    "title": "绮梦缱绻"
+  },
+  "伊法": {
+    "elem": "anemo",
+    "title": "蔚风引灵"
+  },
+  "雅珂达": {
+    "elem": "anemo",
+    "title": "系风攘影"
+  },
+  "法尔伽": {
+    "elem": "anemo",
+    "title": "北风骑士"
+  },
+  "布伦妮": {
+    "elem": "anemo",
+    "title": "稚梦归心"
+  },
+  "刻晴": {
+    "elem": "electro",
+    "title": "霆霓快雨"
+  },
+  "北斗": {
+    "elem": "electro",
+    "title": "无冕的龙王"
+  },
+  "雷泽": {
+    "elem": "electro",
+    "title": "狼少年"
+  },
+  "菲谢尔": {
+    "elem": "electro",
+    "title": "断罪皇女！！"
+  },
+  "丽莎": {
+    "elem": "electro",
+    "title": "蔷薇魔女"
+  },
+  "雷电将军": {
+    "elem": "electro",
+    "title": "一心净土"
+  },
+  "九条裟罗": {
+    "elem": "electro",
+    "title": "黑羽鸣镝"
+  },
+  "八重神子": {
+    "elem": "electro",
+    "title": "浮世笑百姿"
+  },
+  "久岐忍": {
+    "elem": "electro",
+    "title": "烦恼刈除"
+  },
+  "多莉": {
+    "elem": "electro",
+    "title": "梦园藏金"
+  },
+  "赛诺": {
+    "elem": "electro",
+    "title": "缄秘的裁遣"
+  },
+  "克洛琳德": {
+    "elem": "electro",
+    "title": "秉烛狝影"
+  },
+  "赛索斯": {
+    "elem": "electro",
+    "title": "衡明知度"
+  },
+  "欧洛伦": {
+    "elem": "electro",
+    "title": "深黯的谜烟"
+  },
+  "伊安珊": {
+    "elem": "electro",
+    "title": "熔石百炼"
+  },
+  "瓦雷莎": {
+    "elem": "electro",
+    "title": "悠暇豪劲"
+  },
+  "伊涅芙": {
+    "elem": "electro",
+    "title": "轰隆雷鸣波"
+  },
+  "菲林斯": {
+    "elem": "electro",
+    "title": "诡灯陌影"
+  },
+  "阿罗夏": {
+    "elem": "electro",
+    "title": "疾掠弋缇"
+  },
+  "阿贝多": {
+    "elem": "geo",
+    "title": "白垩之子"
+  },
+  "钟离": {
+    "elem": "geo",
+    "title": "尘世闲游"
+  },
+  "凝光": {
+    "elem": "geo",
+    "title": "掩月天权"
+  },
+  "诺艾尔": {
+    "elem": "geo",
+    "title": "未授勋之花"
+  },
+  "五郎": {
+    "elem": "geo",
+    "title": "戎犬锵锵"
+  },
+  "荒泷一斗": {
+    "elem": "geo",
+    "title": "花坂豪快"
+  },
+  "云堇": {
+    "elem": "geo",
+    "title": "红毹婵娟"
+  },
+  "娜维娅": {
+    "elem": "geo",
+    "title": "明花蔓舵"
+  },
+  "千织": {
+    "elem": "geo",
+    "title": "鸣雷的裁锦师"
+  },
+  "卡齐娜": {
+    "elem": "geo",
+    "title": "斑金矿朴"
+  },
+  "希诺宁": {
+    "elem": "geo",
+    "title": "焮火铸魂"
+  },
+  "兹白": {
+    "elem": "geo",
+    "title": "驹隙隐泉"
+  },
+  "叶洛亚": {
+    "elem": "geo",
+    "title": "魇夜燃芯"
+  },
+  "莉奈娅": {
+    "elem": "geo",
+    "title": "博闻异旅"
+  },
+  "达达利亚": {
+    "elem": "hydro",
+    "title": "「公子」"
+  },
+  "芭芭拉": {
+    "elem": "hydro",
+    "title": "闪耀偶像"
+  },
+  "行秋": {
+    "elem": "hydro",
+    "title": "少年春衫薄"
+  },
+  "莫娜": {
+    "elem": "hydro",
+    "title": "星天水镜"
+  },
+  "珊瑚宫心海": {
+    "elem": "hydro",
+    "title": "真珠之智"
+  },
+  "神里绫人": {
+    "elem": "hydro",
+    "title": "磐祭叶守"
+  },
+  "夜兰": {
+    "elem": "hydro",
+    "title": "兰生幽谷"
+  },
+  "妮露": {
+    "elem": "hydro",
+    "title": "莲光落舞筵"
+  },
+  "坎蒂丝": {
+    "elem": "hydro",
+    "title": "浮金的誓愿"
+  },
+  "那维莱特": {
+    "elem": "hydro",
+    "title": "谕告的潮音"
+  },
+  "芙宁娜": {
+    "elem": "hydro",
+    "title": "不休独舞"
+  },
+  "希格雯": {
+    "elem": "hydro",
+    "title": "龙女妙变"
+  },
+  "玛拉妮": {
+    "elem": "hydro",
+    "title": "哗啦啦逐浪客"
+  },
+  "塔利雅": {
+    "elem": "hydro",
+    "title": "颂礼祝祭"
+  },
+  "爱诺": {
+    "elem": "hydro",
+    "title": "妙械咣咣铛"
+  },
+  "哥伦比娅": {
+    "elem": "hydro",
+    "title": "空月归乡"
+  },
+  "优菈": {
+    "elem": "cryo",
+    "title": "浪沫的旋舞"
+  },
+  "罗莎莉亚": {
+    "elem": "cryo",
+    "title": "棘冠恩典"
+  },
+  "甘雨": {
+    "elem": "cryo",
+    "title": "循循守月"
+  },
+  "迪奥娜": {
+    "elem": "cryo",
+    "title": "猫尾特调"
+  },
+  "重云": {
+    "elem": "cryo",
+    "title": "雪融有踪"
+  },
+  "七七": {
+    "elem": "cryo",
+    "title": "冻冻回魂夜"
+  },
+  "凯亚": {
+    "elem": "cryo",
+    "title": "寒风剑士"
+  },
+  "神里绫华": {
+    "elem": "cryo",
+    "title": "白鹭霜华"
+  },
+  "埃洛伊": {
+    "elem": "cryo",
+    "title": "「异界的救世主」"
+  },
+  "申鹤": {
+    "elem": "cryo",
+    "title": "孤辰茕怀"
+  },
+  "莱依拉": {
+    "elem": "cryo",
+    "title": "绮思晚星"
+  },
+  "米卡": {
+    "elem": "cryo",
+    "title": "晴霜的标绘"
+  },
+  "菲米尼": {
+    "elem": "cryo",
+    "title": "潜怀遐梦"
+  },
+  "夏洛蒂": {
+    "elem": "cryo",
+    "title": "朗镜索真"
+  },
+  "莱欧斯利": {
+    "elem": "cryo",
+    "title": "寂罪的密使"
+  },
+  "茜特菈莉": {
+    "elem": "cryo",
+    "title": "白星黑曜"
+  },
+  "爱可菲": {
+    "elem": "cryo",
+    "title": "明绚千韵"
+  },
+  "丝柯克": {
+    "elem": "cryo",
+    "title": "虚渊暗星"
+  },
+  "洛恩": {
+    "elem": "cryo",
+    "title": "恣锐锋镞"
+  },
+  "桑多涅": {
+    "elem": "cryo",
+    "title": "镜水析谬"
+  },
+  "奥黛塔": {
+    "elem": "cryo",
+    "title": "翾风回雪"
+  },
+  "提纳里": {
+    "elem": "dendro",
+    "title": "浅蔚轻行"
+  },
+  "柯莱": {
+    "elem": "dendro",
+    "title": "萃念初蘖"
+  },
+  "纳西妲": {
+    "elem": "dendro",
+    "title": "白草净华"
+  },
+  "瑶瑶": {
+    "elem": "dendro",
+    "title": "仙蕊玲珑"
+  },
+  "艾尔海森": {
+    "elem": "dendro",
+    "title": "诲韬诤言"
+  },
+  "卡维": {
+    "elem": "dendro",
+    "title": "天穹之镜"
+  },
+  "绮良良": {
+    "elem": "dendro",
+    "title": "檐宇猫游"
+  },
+  "白术": {
+    "elem": "dendro",
+    "title": "遵生合和"
+  },
+  "艾梅莉埃": {
+    "elem": "dendro",
+    "title": "千缕之踪"
+  },
+  "基尼奇": {
+    "elem": "dendro",
+    "title": "回火之狩"
+  },
+  "菈乌玛": {
+    "elem": "dendro",
+    "title": "永月的祀歌"
+  },
+  "奈芙尔": {
+    "elem": "dendro",
+    "title": "湮沙的秘闻"
+  }
+}

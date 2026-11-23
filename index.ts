@@ -23,6 +23,7 @@ import { createAchievementCommand } from "./achievement-command.ts";
 import { matchGenshinCommission } from "./commission-command.ts";
 import { queryRankStats, resolveGenshinCharacter } from "./rank-statistics/stats.ts";
 import { createWishCommands } from "./wish-sim/commands.ts";
+import { createWishReincarnation, matchesWishReincarnation, wishReincarnationFeature } from "./wish-sim/reincarnation.ts";
 import { createPersonalRecordQuery, matchPersonalRecord } from "./panel/personal-record.ts";
 import { matchGenshinPanelHelp, renderGenshinPanelHelp } from "./panel/help-card.ts";
 import { createGenshinPayLogCommand, matchGenshinPayLog } from "./pay-log-command.ts";
@@ -159,6 +160,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   runtimeVersion?: { readonly version?: string; readonly revision?: string };
 }) {
   const wishRoot = new URL("../../", import.meta.url);
+  const reincarnation = createWishReincarnation({ signal, lockFile });
   const wish = createWishCommands({
     lockFile, signal, readSettings: () => readGenshinWishSettings(wishRoot),
     saveSettings: (update, active) => updateGenshinWishSettings(wishRoot, update, active, signal),
@@ -365,6 +367,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinPayLog(message)) return ["[genshin] 充值记录"];
       if (matchGenshinBirthdayPhoto(message)) return ["[genshin] 生日留影"];
       if (matchGenshinTarotCards(message)) return ["[genshin] 月谕圣牌"];
+      if (matchesWishReincarnation(message)) return [wishReincarnationFeature];
       if (matchGenshinAbyssTeam(message)) return ["[genshin] 深渊配队"];
       if (matchPersonalHardChallenge(message)) return ["[genshin] 幽境危战", "[genshin] 角色查询"];
       if (matchStygianConsentCommand(message) || matchStygianGroupRank(message)) return ["[genshin] 幽境危战群榜"];
@@ -386,6 +389,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return [];
     },
     async fallback(_message: string, context: GachaContext) {
+      if (matchesWishReincarnation(context.normalizedMessage)) return reincarnation(context);
       const abyssTeam = matchGenshinAbyssTeam(context.normalizedMessage);
       if (abyssTeam) return abyssTeams(abyssTeam, context);
       const spoken = await voice.fallback(context.normalizedMessage, context);
