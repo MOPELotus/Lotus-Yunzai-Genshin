@@ -121,6 +121,12 @@ export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
       }));
     },
     readLegacy: (uid: string, catalog: PanelCatalog) => oldPanel(legacyDirectory, uid, catalog),
+    async readRosterFace(qq: string, uid: string) {
+      const raw = await store.read(qq, uid);
+      const root = object(raw);
+      const face = String(root?.uid) === uid ? root?.rosterFace ?? root?.face : undefined;
+      return { face, discarded: panelDiscardedAt(raw) };
+    },
     async readPanel(qq: string, uid: string, catalog: PanelCatalog, includeMysRoster = false, talentAccount?: string) {
       const current = await store.read(qq, uid);
       const discardedAt = panelDiscardedAt(current);

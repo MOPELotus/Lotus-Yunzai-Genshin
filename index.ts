@@ -57,6 +57,8 @@ import { readPanelTheme } from "./panel/theme.ts";
 import { fileURLToPath } from "node:url";
 import { gameCommandProfileId, createProfileStore, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createGachaUpdater } from "@lotus-yunzai/gacha/update";
+import { gachaPortraitCharacter, readGachaPlayerArt } from "@lotus-yunzai/gacha/player-art";
+import { readLegacyPlayerPortrait } from "../../lib/own-role-legacy-artwork.ts";
 import { createProfileHoyoClient, HoyoRequestError, type GenshinGachaPool } from "@lotus-yunzai/hoyo-client";
 import { createGenshinBackpackQuery, genshinBackpackCommand } from "./backpack.ts";
 import { buildGenshinGachaDetail } from "./gacha-detail.ts";
@@ -298,17 +300,22 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
 
   async function view(qq: string, profileId: number, selection: GachaView, all: boolean, context: GachaContext) {
     try {
-      const { uid, nickname } = await profiles.savedRole(qq, profileId, "gs");
+      const { uid, nickname, avatar: officialAvatar } = await profiles.savedRole(qq, profileId, "gs");
       const special = "special" in selection ? selection.special : undefined;
       const records = special === "beginner" ? {} : await history.read(qq, uid);
       const useBeginner = special === "beginner" || (special === "all" && !Object.values(records).some((rows) => rows.length));
       const beginner = useBeginner ? await history.readBeginner(qq, uid) : undefined;
       const themeDirectory = genshinGachaThemeDirectory();
-      const face = {
-        name: nickname || "旅行者", face: "/meta-gs/character/芙宁娜/imgs/face-q.webp",
-        banner: "/meta-gs/character/芙宁娜/imgs/banner.webp",
-      };
-      const options = { uid, records, face, now: new Date(), ...await readGenshinGachaSources(themeDirectory, records, beginner) };
+      const [{ characters, ...sources }, saved] = await Promise.all([
+        readGenshinGachaSources(themeDirectory, records, beginner),
+        panelArchive.readRosterFace(qq, uid).catch(() => undefined),
+      ]);
+      const character = gachaPortraitCharacter(characters.values(), saved?.face) ??
+        (saved && !saved.discarded
+          ? gachaPortraitCharacter(characters.values(), (await readLegacyPlayerPortrait("gs", uid, signal).catch(() => undefined))?.face)
+          : undefined);
+      const { face, avatar } = await readGachaPlayerArt(themeDirectory, "gs", nickname || "旅行者", character, officialAvatar, signal);
+      const options = { uid, records, face, now: new Date(), ...sources };
       const display = !special ? await readGachaDisplaySettings(new URL("../../", import.meta.url)) : undefined;
       function buildPage(page?: number) {
         if ("detail" in selection) {
@@ -337,7 +344,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
           render(page, scale) {
             const result = page === 1 ? first : buildPage(page);
             if (!result) throw new Error("原神抽卡记录缺少分页。");
-            const options = { themeDirectory, scale };
+            const options = { themeDirectory, scale, avatar };
             return result.kind === "special" ? renderGenshinGachaSpecial(result.model, options)
               : result.kind === "detail" ? renderGenshinGachaDetail(result.model, options)
               : renderGenshinGachaVersion(result.model, options);

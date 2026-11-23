@@ -155,6 +155,7 @@ export async function readGenshinGachaSources(root: string, records: GenshinPrev
   const regular = calendar.regular.filter(period);
   const mixed = calendar.mixed.filter(period);
   return {
+    characters,
     resolveItem,
     schedule: regular.filter(versionPeriod).map(named),
     mixedSchedule: mixed.filter(versionPeriod).map(named),
