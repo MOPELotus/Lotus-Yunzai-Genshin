@@ -49,6 +49,14 @@ function scope(context: AchievementContext) {
   if (place) return `${context.adapter ?? "onebot"}:${context.self_id}:${context.user_id}:${place}`;
 }
 
+function jsonAttachment(context: AchievementContext) {
+  return context.attachment && /\.json$/iu.test(context.attachment.name) ? context.attachment : undefined;
+}
+
+function canContinueImport(message: string) {
+  return !/^[#＃*＊%％/／]/u.test(message.trim());
+}
+
 function selectCategory(message: string, categories: readonly AchievementCategory[]) {
   const candidate = categoryCommand.exec(message)?.[1]?.trim();
   if (!candidate) return;
@@ -185,9 +193,9 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
     const message = context.normalizedMessage.trim();
     const index = indexCommand.exec(message);
     const importing = importCommand.exec(message);
-    const file = context.attachment && /\.json$/iu.test(context.attachment.name) ? context.attachment : undefined;
+    const file = jsonAttachment(context);
     const earlier = key ? pending.get(key) : undefined;
-    const request = !message && file ? earlier : undefined;
+    const request = file && canContinueImport(message) ? earlier : undefined;
     const categoryAction = categoryCommand.test(message) && (bareOnly || /^#成就/u.test(message)) && !reserved.test(message);
     if (bareOnly ? !categoryAction || index || importing : !index && !importing && !request && !categoryAction) return;
     const qq = String(context.user_id);
@@ -328,8 +336,8 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
     main,
     explicit(context: AchievementContext) {
       const key = scope(context);
-      return /^#成就/u.test(context.normalizedMessage) || !context.normalizedMessage.trim() && key !== undefined &&
-        context.attachment !== undefined && pending.has(key);
+      return /^#成就/u.test(context.normalizedMessage) || key !== undefined && pending.has(key) &&
+        canContinueImport(context.normalizedMessage) && jsonAttachment(context) !== undefined;
     },
   };
 }
