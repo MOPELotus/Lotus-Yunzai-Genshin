@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
-import { applyWishAdministration, matchWishAdministration, summarizeWishAdministration } from "./admin.ts";
+import { prepareWishAdministration, matchWishAdministration, summarizeWishAdministration } from "./admin.ts";
 import { drawWish, prepareWeaponPath, type WishPull } from "./draw.ts";
 import { createWishPoolSource, type PoolKind } from "./pools.ts";
 import { createWishStore, type WishToday } from "./store.ts";
@@ -127,8 +127,8 @@ export function createWishCommands({
         if (!administration.option) return summarizeWishAdministration(await readSettings());
         if (!saveSettings) return "请在管理面板修改模拟祈愿设置。";
         try {
-          return summarizeWishAdministration(await saveSettings(previous => applyWishAdministration(previous, administration),
-            () => isOwner() && !signal.aborted));
+          const update = await prepareWishAdministration(administration, random);
+          return summarizeWishAdministration(await saveSettings(update, () => isOwner() && !signal.aborted));
         } catch (error) {
           if (error instanceof TypeError) return error.message;
           throw error;
@@ -164,7 +164,7 @@ export function createWishCommands({
       const name = [context.sender?.card, context.sender?.nickname].find((entry) =>
         typeof entry === "string" && entry.trim().length > 0) as string | undefined;
       const nickname = name?.trim() || "旅行者";
-      const pool = draw || track ? await poolSource(track ? "weapon" : draw!.kind, time, qq) : undefined;
+      const pool = draw || track ? await poolSource(track ? "weapon" : draw!.kind, time, qq, settings) : undefined;
       if ((draw || track) && !pool) return "当前卡池没有第二个角色活动祈愿。";
       const { result, issued } = await update<string | WishCardOptions | LackOfTickets>(qq, group, time, allowance, (balance, session, today) => {
         if (wallet) return `今日你还有${balance.pink}个纠缠之缘和${balance.blue}个相遇之缘。`;

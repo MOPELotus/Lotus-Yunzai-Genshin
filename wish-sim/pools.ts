@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseDocument } from "yaml";
+import { type WishManualPools } from "../../../lib/genshin-wish-settings-model.ts";
 import { genshinGachaThemeDirectory, readGenshinWishCalendar } from "../wish-calendar.ts";
 
 export type PoolKind = "role" | "role2" | "weapon" | "permanent";
@@ -104,12 +105,27 @@ function scheduleBanner(rows: readonly unknown[], now: number): Banner | undefin
   }
 }
 
-async function readLegacyBanner(directory: string, qq: string | undefined, config: Record<string, unknown> | undefined): Promise<Banner> {
+function withManualBanner(banner: Banner, settings: WishManualPools | undefined): Banner {
+  if (!settings || settings.automaticPools) return banner;
+  const { poolCharacterFive, poolCharacterFour, poolWeaponFive, poolWeaponFour } = settings;
+  if (![poolCharacterFive, poolCharacterFour, poolWeaponFive, poolWeaponFour].some(names => names.length)) return banner;
+  return {
+    version: "手工卡池",
+    char5: poolCharacterFive.length ? [poolCharacterFive[0]!, poolCharacterFive[1] ?? poolCharacterFive[0]!] : banner.char5,
+    char4: poolCharacterFour.length ? poolCharacterFour : banner.char4,
+    weapon5: poolWeaponFive.length ? poolWeaponFive : banner.weapon5,
+    weapon4: poolWeaponFour.length ? poolWeaponFour : banner.weapon4,
+  };
+}
+
+async function readLegacyBanner(directory: string, qq: string | undefined, config: Record<string, unknown> | undefined,
+  settings: WishManualPools | undefined): Promise<Banner> {
   const personal = qq && /^[1-9]\d*$/u.test(qq)
     ? await readOptionalWishYaml(join(directory, "data", qq, "pool.yaml"))
     : undefined;
   if (personal) return configuredBanner(personal);
-  const base = await readWishYaml(join(directory, "def", "pool.yaml"));
+  const base = await readOptionalWishYaml(join(directory, "def", "pool.yaml")) ?? await readWishYaml(new URL("pool.yaml", defaults));
+  if (settings) return withManualBanner(configuredBanner(base), settings);
   const custom = config?.sync === false ? await readOptionalWishYaml(join(directory, "config", "pool.yaml")) : undefined;
   return configuredBanner({ ...base, ...custom });
 }
@@ -119,7 +135,7 @@ export function createWishPoolSource({
   themeDirectory = genshinGachaThemeDirectory(),
   legacyDirectory = wishLegacyDirectory(),
 }: { readonly bannerFile?: string; readonly themeDirectory?: string; readonly legacyDirectory?: string } = {}) {
-  return async (kind: PoolKind, now: number, qq?: string): Promise<WishPool | undefined> => {
+  return async (kind: PoolKind, now: number, qq?: string, settings?: WishManualPools): Promise<WishPool | undefined> => {
     const config = legacyDirectory ? await readOptionalWishYaml(join(legacyDirectory, "config", "gacha.yaml")) : undefined;
     const stock = legacyDirectory ? await readOptionalWishYaml(join(legacyDirectory, "def", "gacha.yaml")) : undefined;
     const def = { ...(stock ?? await readWishYaml(new URL("gacha.yaml", defaults))), ...config };
@@ -128,11 +144,11 @@ export function createWishPoolSource({
       if (bannerFile) {
         banner = configuredBanner(await readWishYaml(bannerFile));
       } else if (legacyDirectory) {
-        banner = await readLegacyBanner(legacyDirectory, qq, config);
+        banner = await readLegacyBanner(legacyDirectory, qq, config, settings);
       } else {
         const { regular } = await readGenshinWishCalendar(themeDirectory);
-        banner = scheduleBanner(regular, now)
-          ?? configuredBanner(await readWishYaml(new URL("pool.yaml", defaults)));
+        banner = withManualBanner(scheduleBanner(regular, now)
+          ?? configuredBanner(await readWishYaml(new URL("pool.yaml", defaults))), settings);
       }
     }
 
