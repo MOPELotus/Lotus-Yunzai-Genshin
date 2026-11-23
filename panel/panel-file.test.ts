@@ -224,14 +224,21 @@ test("原神签名导出尊重已有删除，并在读取期间撤权、删档�
     expect(await interruptedRead({ uid, authorize: async () => true },
       { ...context, privateCredentialSignal: interrupted.signal })).toBeUndefined();
 
-    proofs = 0;
-    expect(await run({ uid, async authorize() {
-      if (++proofs === 2) await archive.discard("42", uid, () => 1_900_000_000_000, async () => {});
-      return true;
-    } }, context)).toContain("已删除");
-    expect(reads).toBe(2);
+    let boundaryReads = 0;
+    const revokedAtBoundary = createGenshinSignedPanelExport({ ...archive, async discardedAt(qq, target) {
+      boundaryReads++;
+      return archive.discardedAt(qq, target);
+    } }, lifecycle.signal, async () => catalog);
+    expect(await revokedAtBoundary({ uid, authorize: async () => boundaryReads < 2 }, context)).toContain("重新验证");
+    const discardDuringRead = createGenshinSignedPanelExport({ ...archive, async readLegacy(uid, catalog) {
+      const snapshot = await archive.readLegacy(uid, catalog);
+      await archive.discard("42", uid, () => 1_900_000_000_000, async () => {});
+      return snapshot;
+    } }, lifecycle.signal, async () => catalog);
+    expect(await discardDuringRead({ uid, authorize: async () => true }, context)).toContain("已删除");
+    expect(reads).toBe(1);
     expect(await run({ uid, authorize: async () => true }, context)).toContain("暂无");
-    expect(reads).toBe(2);
+    expect(reads).toBe(1);
     expect(calls).toHaveLength(0);
   } finally { await rm(work, { recursive: true, force: true }); }
 });

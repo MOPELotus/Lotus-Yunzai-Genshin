@@ -54,8 +54,8 @@ export function createGenshinSignedPanelExport(archive: SignedExportArchive, sig
       active.throwIfAborted();
       const snapshot = await archive.readLegacy(uid, catalog);
       const file = snapshot?.uid === uid ? exportFile(snapshot) : undefined;
-      if (!await verify()) return unauthorized;
       if (await archive.discardedAt(qq, uid)) return "原神面板已删除，请重新导出。";
+      if (!await verify()) return unauthorized;
       active.throwIfAborted();
       if (!file) return "暂无可导出的本人原神旧面板。";
       const result = await uploadFile(file);
