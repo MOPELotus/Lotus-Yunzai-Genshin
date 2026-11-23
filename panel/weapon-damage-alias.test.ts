@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ProfileRequestContext } from "@lotus-yunzai/account";
+import { resolvePanelWeapon } from "./equipment-change.ts";
 import { matchGenshinPanel, type PanelAvatar } from "./model.ts";
 import { createGenshinPanelQuery } from "./panel.ts";
 import type { PanelTheme } from "./theme.ts";
@@ -119,4 +120,40 @@ test("未编号武器和伤害使用同档默认伤害矩阵，编号继续选�
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test("主体武器名和主题映射优先，已核旧别名只补同类型的唯一缺口", async () => {
+  const names = {
+    sword: ["白湖冬羽", "熔猎异端之刃", "笼钓瓶一心", "「一心传」名刀", "月光剑"],
+    claymore: ["金律铸影"],
+    catalyst: ["漩流颂歌", "凝雪沉心", "群王局戏", "秘星典谕"],
+    bow: ["银昼"],
+  } as const;
+  const weaponTheme: PanelTheme = { ...theme,
+    async metadata(_game, _category, type) {
+      return Object.fromEntries((names[type as keyof typeof names] ?? []).map((name, index) => [index, { name, star: 5 }]));
+    },
+  };
+  for (const [name, type, canonical] of [
+    ["白湖", "sword", "白湖冬羽"], ["冬羽", "sword", "白湖冬羽"], ["异端之刃", "sword", "熔猎异端之刃"],
+    ["铸影", "claymore", "金律铸影"], ["漩流", "catalyst", "漩流颂歌"], ["颂歌", "catalyst", "漩流颂歌"],
+    ["沉心", "catalyst", "凝雪沉心"], ["局戏", "catalyst", "群王局戏"],
+    ["典谕", "catalyst", "秘星典谕"], ["冰神专武", "bow", "银昼"],
+  ] as const) {
+    expect(await resolvePanelWeapon(name, type, weaponTheme)).toMatchObject({ canonical, star: 5 });
+  }
+  for (const name of ["一心传", "我想换白湖", "白湖别名"]) expect(await resolvePanelWeapon(name, "sword", weaponTheme)).toBeUndefined();
+  expect(await resolvePanelWeapon("白湖", "catalyst", weaponTheme)).toBeUndefined();
+  expect(await resolvePanelWeapon("笼钓瓶一心", "sword", weaponTheme)).toMatchObject({ canonical: "笼钓瓶一心" });
+  expect(await resolvePanelWeapon("「一心传」名刀", "sword", weaponTheme)).toMatchObject({ canonical: "「一心传」名刀" });
+  const configured = { ...weaponTheme,
+    async weaponNames() { return [{ 月光剑: "白湖,一心传,白湖冬羽" }]; },
+  };
+  expect(await resolvePanelWeapon("白湖冬羽", "sword", configured)).toMatchObject({ canonical: "白湖冬羽" });
+  expect(await resolvePanelWeapon("白湖", "sword", configured)).toMatchObject({ canonical: "月光剑" });
+  expect(await resolvePanelWeapon("一心传", "sword", configured)).toMatchObject({ canonical: "月光剑" });
+  const ambiguous = { ...weaponTheme,
+    async weaponNames() { return [{ 月光剑: "白湖", 熔猎异端之刃: "白湖" }]; },
+  };
+  expect(await resolvePanelWeapon("白湖", "sword", ambiguous)).toBeUndefined();
 });

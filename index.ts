@@ -15,6 +15,7 @@ import { createGenshinMonthlyTask, genshinMonthlyTaskCommand } from "./monthly-t
 import { createGenshinStatisticsQuery, matchGenshinStatistics } from "./monthly-statistics-command.ts";
 import { createGenshinMonthlyQuery, matchGenshinMonthly } from "./monthly-command.ts";
 import { createDamageSettingsCommand, matchDamageSettingsCommand } from "./panel/lolomi/settings-command.ts";
+import { matchPanelPreset } from "./panel/lolomi/presets.ts";
 import { createGenshinPanelExport, matchGenshinPanelExport } from "./panel/panel-file.ts";
 import { createPanelImageCommands, panelImageCommand } from "./panel/image-commands.ts";
 import { createAchievementCommand } from "./achievement-command.ts";
@@ -347,7 +348,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
       if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
       if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
-      if (matchLegacyGenshinExtremePanel(message)) return ["[genshin] 角色面板"];
+      if (matchLegacyGenshinExtremePanel(message) || matchPanelPreset(message)) return ["[genshin] 角色面板"];
       if (isAvatarOriginal(message)) return ["[genshin] 角色卡片"];
       if (matchGenshinAvatarCard(message)) return ["[genshin] 角色卡片"];
       if (matchGenshinPanelExport(message)) return ["[genshin] 角色面板"];

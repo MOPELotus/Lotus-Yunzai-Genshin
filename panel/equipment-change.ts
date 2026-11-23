@@ -6,6 +6,12 @@ import type { PanelTheme } from "./theme.ts";
 const transient = new Set(["change", "customize", "share"]);
 const weaponTypes = new Set(["sword", "claymore", "polearm", "bow", "catalyst"]);
 const weaponLevelCaps = [20, 40, 50, 60, 70, 80, 90];
+// These old aliases fill gaps in the theme. 一心传 referred to two different swords.
+const legacyWeaponNames = new Map([
+  ["白湖", "白湖冬羽"], ["冬羽", "白湖冬羽"], ["异端之刃", "熔猎异端之刃"],
+  ["铸影", "金律铸影"], ["漩流", "漩流颂歌"], ["颂歌", "漩流颂歌"],
+  ["沉心", "凝雪沉心"], ["局戏", "群王局戏"], ["典谕", "秘星典谕"], ["冰神专武", "银昼"],
+]);
 const nameKey = (name: string) => name.normalize("NFKC").replace(/\s/gu, "").toLowerCase();
 type TemporaryChange = { readonly avatar: PanelAvatar; readonly equipped: string } | { readonly message: string };
 
@@ -22,8 +28,9 @@ export async function resolvePanelWeapon(name: string, type: string, theme: Pane
       return [text(row?.abbr), ...list.flatMap(map => (map[canonical] ?? "").split(","))]
         .some(alias => nameKey(alias) === key);
     });
-    if (aliases.length !== 1) return;
-    match = aliases[0];
+    if (aliases.length > 1) return;
+    const legacyName = legacyWeaponNames.get(key);
+    match = aliases[0] ?? entries.find(row => text(row?.name) === legacyName);
   }
   const canonical = text(match?.name);
   const star = whole(match?.star, 5);

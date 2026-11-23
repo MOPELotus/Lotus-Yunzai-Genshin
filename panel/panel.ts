@@ -13,7 +13,7 @@ import { panelListOrder, panelStatisticsPageSize, renderArtifactList, renderDail
 import { matchBareEquipment, matchCharacterLevelChange, matchConstellationChange, matchConstellationEquipment, matchEquipmentChain, matchGenshinPanel,
   matchGenshinPanelDiscard, object, officialPanel, propertyLabels, readPanel,
   matchCharacterLevelCombination, matchConstellationTalent, matchNamedWeaponArtifacts, matchTalentArtifacts, matchTalentChange, matchTalentWeapon, selectAvatar, text,
-  type PanelCatalog, type PanelSnapshot } from "./model.ts";
+  type PanelAvatar, type PanelCatalog, type PanelCommand, type PanelSnapshot } from "./model.ts";
 import { estimatePanelDamage, readChangedPanelProperties } from "./damage.ts";
 import { createDamagePreferences, DamagePreferencesError, matchEnemyLevel } from "./damage-preferences.ts";
 import { createDailyMaterialRefresh, type DailyMaterialClient } from "./daily-material-refresh.ts";
@@ -335,6 +335,23 @@ export function createGenshinPanelQuery(
       }
     }
     const preset = matchPanelPreset(message);
+    let customNames: ReturnType<typeof readGameCharacterAliases> | undefined;
+    async function findCharacter(name: string) {
+      const known = findRankCharacter(name);
+      if (known) return known;
+      const canonical = (await (customNames ??= readGameCharacterAliases("gs"))).get(characterAliasKey(name));
+      return canonical ? findRankCharacter(canonical) : undefined;
+    }
+    async function selectedEquipment(command: PanelCommand, snapshot: PanelSnapshot, avatar: PanelAvatar, assets: PanelTheme) {
+      const change = command.equipmentChange;
+      if (!change || "weaponName" in change || change.donorUid || change.extraSlots?.length || change.moreDonors?.length) return change;
+      const alternate = (preset?.bareWeaponCommand ?? matchBareEquipment(message))?.equipmentChange;
+      if (!alternate || !("weaponName" in alternate) || selectAvatar(snapshot, change.donor, assets) || await findCharacter(change.donor)) return change;
+      // Some weapon names also end in an artifact slot, such as 白湖冬羽.
+      const weaponType = text(object(assets.characters[avatar.id])?.weapon);
+      const weapon = await resolvePanelWeapon(alternate.weaponName, weaponType, assets);
+      return weapon ? { ...alternate, weaponName: weapon.canonical } : change;
+    }
     const presetDonor = (assets: PanelTheme) => async (uid: string) => {
       const code = preset?.donors.get(uid);
       return code && await readPanelPreset(code, assets);
@@ -355,7 +372,8 @@ export function createGenshinPanelQuery(
         }
         const original = command.name && selectPresetAvatar(snapshot, command.name, assets);
         if (!original) return `${label}暂无「${command.name}」的预设。`;
-        const changed = command.equipmentChange && await buildEquipmentChange(snapshot, original, command.equipmentChange, assets,
+        const equipment = await selectedEquipment(command, snapshot, original, assets);
+        const changed = equipment && await buildEquipmentChange(snapshot, original, equipment, assets,
           { presetDonor: presetDonor(assets) });
         if (changed && "message" in changed) return changed.message;
         const avatar = changed ? changed.avatar : original;
@@ -386,13 +404,6 @@ export function createGenshinPanelQuery(
       return;
     }
     let command = preset?.command ?? matchGenshinPanel(message);
-    let customNames: ReturnType<typeof readGameCharacterAliases> | undefined;
-    async function findCharacter(name: string) {
-      const known = findRankCharacter(name);
-      if (known) return known;
-      const canonical = (await (customNames ??= readGameCharacterAliases("gs"))).get(characterAliasKey(name));
-      return canonical ? findRankCharacter(canonical) : undefined;
-    }
     if (command?.knownCharacterOnly && (!command.name || !await findCharacter(command.name))) return;
     let preflight: PanelTheme | undefined;
     if (!command) {
@@ -746,8 +757,9 @@ export function createGenshinPanelQuery(
         const constellation = command.constellationChange;
         const displayedTalent = command.talentChange;
         const characterLevel = command.characterLevelChange;
-        const replacement = command.equipmentChange
-          ? await buildEquipmentChange(snapshot, original, command.equipmentChange, assets, { constellation, displayedTalent, characterLevel, presetDonor: preset?.donors.size ? presetDonor(assets) : undefined })
+        const equipment = await selectedEquipment(command, snapshot, original, assets);
+        const replacement = equipment
+          ? await buildEquipmentChange(snapshot, original, equipment, assets, { constellation, displayedTalent, characterLevel, presetDonor: preset?.donors.size ? presetDonor(assets) : undefined })
           : characterLevel !== undefined ? buildCharacterLevelChange(original, characterLevel, assets, { constellation, displayedTalent })
             : displayedTalent ? buildTalentChange(original, displayedTalent, assets, constellation)
               : constellation !== undefined && buildConstellationChange(original, constellation, assets);

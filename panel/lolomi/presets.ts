@@ -11,7 +11,12 @@ const presets = {
   by: { uid: "999999996", label: "毕业面板" },
 } as const;
 type PresetCode = keyof typeof presets;
-type Selection = { readonly command: PanelCommand; readonly target?: PresetCode; readonly donors: ReadonlyMap<string, PresetCode> };
+type Selection = {
+  readonly command: PanelCommand;
+  readonly target?: PresetCode;
+  readonly donors: ReadonlyMap<string, PresetCode>;
+  readonly bareWeaponCommand?: PanelCommand;
+};
 const aliases: Readonly<Record<string, string>> = alias;
 const normalize = (name: string) => name.normalize("NFKC").toLowerCase().replace(/[\s·・]/gu, "");
 const rawSets = Bun.file(new URL("./data/artifact/data.json", import.meta.url));
@@ -27,12 +32,14 @@ export function presetCharacterName(input: string) {
 }
 
 export function matchPanelPreset(message: string): Selection | undefined {
-  const input = /^#(?:原神)?\s*(.+)$/u.exec(message)?.[1];
-  if (!input || /添加|删除|表情|更新|加载|星铁|绝区零|崩坏/u.test(input)) return;
+  const prefixed = message.startsWith("#");
+  const input = /^#?(?:原神)?\s*(.+)$/u.exec(message)?.[1];
+  if (!input || (!prefixed && /^[＃*%％/]/u.test(input)) || /添加|删除|表情|更新|加载|星铁|绝区零|崩坏/u.test(input)) return;
   const [target, ...parts] = input.split("换");
   const targetHits = target!.match(/jx|hb|fz|by/gu);
   if ((targetHits?.length ?? 0) > 1) return;
   const targetCode = targetHits?.[0] as PresetCode | undefined;
+  if (!prefixed && !targetCode) return;
   const rewritten = targetCode ? target!.replace(targetCode, "").trim() : target!;
   const donors = new Map<string, PresetCode>();
   const replacements: string[] = [];
@@ -64,11 +71,12 @@ export function matchPanelPreset(message: string): Selection | undefined {
   }
 
   const normalized = `#${targetCode ? presets[targetCode].uid : ""}${rewritten}换${replacements.join("换")}`;
-  const command = matchGenshinPanel(normalized) ?? matchEquipmentChain(normalized) ?? matchBareEquipment(normalized);
+  const bareWeaponCommand = matchBareEquipment(normalized);
+  const command = matchGenshinPanel(normalized) ?? matchEquipmentChain(normalized) ?? bareWeaponCommand;
   const name = command?.name && presetCharacterName(command.name);
   if (command?.type !== "change" || !name || !command.equipmentChange) return;
   if (targetCode && (command.uid !== presets[targetCode].uid || /档案/u.test(input))) return;
-  return { command: { ...command, name }, target: targetCode, donors };
+  return { command: { ...command, name }, target: targetCode, donors, bareWeaponCommand };
 }
 
 export function presetLabel(code: PresetCode) {
