@@ -85,6 +85,7 @@ const poolCommand = /^#?(?:原神)?(全部)?(抽卡|抽奖|角色|武器|常驻|
 const versionCommand = /^#(?:原神)?(版本(?:全部)?|全部)统计([1-9]\d{0,2})?$/u;
 const specialCommand = /^#?(?:原神)?(?:(新手|全部新手)池?(?:全部)?(?:记录|祈愿|分析|统计)|全部(?:记录|祈愿|分析))([1-9]\d{0,2})?$/u;
 const helpCommand = /^#?(?:原神)?(?:抽卡|记录)帮助$/u;
+const deviceHelpCommand = /^#?(电脑|pc|安卓|苹果|ios)帮助$/iu;
 const detailPools = new Map<string, GenshinGachaPool>([["武器", 302], ["常驻", 200], ["集录", 500]]);
 type VersionPool = NonNullable<GenshinGachaVersionOptions["type"]>;
 const versionPools = new Map<string, VersionPool>([["角色", "char"], ["武器", "weapon"], ["常驻", "normal"], ["集录", "mix"]]);
@@ -107,7 +108,20 @@ const help = [
   "私聊 #导入记录 后发送 UIGF JSON 文件，可在命令末尾指定档案。",
   "#版本统计 按期次查看角色和武器池，#全部统计 查看各池汇总。",
   "末尾加档案编号可选档案。单池可加「全部」查看各页，如 #角色全部记录2。",
+  "设备教程可用 #电脑帮助、#安卓帮助、#苹果帮助。",
 ].join("\n");
+
+function deviceGachaHelp(input: string) {
+  const device = input === "安卓" ? "安卓" : input === "苹果" || input.toLowerCase() === "ios" ? "iOS" : "电脑";
+  const login = device === "电脑" ? "在电脑上打开私聊二维码，用手机米游社 App 扫描并确认。"
+    : "用米游社 App 扫描并确认登录。同一台手机操作时，可用另一块屏幕显示二维码。";
+  return [
+    `原神抽卡记录 · ${device}`,
+    `1. 私聊发送 #扫码登录。${login}`,
+    "2. 私聊发送 #同步角色，再发送 #更新抽卡记录。更新完成后用 #抽卡记录 查看。",
+    "已有 UIGF 历史文件时，私聊发送 #导入记录，然后发送 JSON 文件。可在命令末尾加档案编号。",
+  ].join("\n");
+}
 
 function matchGachaQuery(message: string): { profileId: number; view: GachaView; all: boolean } | undefined {
   const special = specialCommand.exec(message);
@@ -379,7 +393,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (achievements.explicit(context)) return [];
       if (genshinBackpackCommand.test(message)) return ["[genshin] 背包"];
       if (worldBossCommand.test(message) || worldBossRankingCommand.test(message)) return ["[genshin] 世界 BOSS"];
-      const gacha = gachaImportCommand.test(message) || helpCommand.test(message) || updateCommand.test(message) ||
+      const gacha = gachaImportCommand.test(message) || helpCommand.test(message) || deviceHelpCommand.test(message) || updateCommand.test(message) ||
         externalGachaCommand.test(message) || exportCommand.test(message) || matchGachaQuery(message) ||
         (!message.trim() && attachment && /\.json$/iu.test(attachment.name));
       if (gacha) return ["[gacha] 抽卡记录"];
@@ -495,6 +509,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
         if (importMatch || imported !== undefined) return imported;
       }
       if (helpCommand.test(context.normalizedMessage)) return help;
+      const deviceHelpMatch = deviceHelpCommand.exec(context.normalizedMessage);
+      if (deviceHelpMatch) return deviceGachaHelp(deviceHelpMatch[1]!);
       const matched = updateCommand.exec(context.normalizedMessage);
       const external = externalGachaCommand.exec(context.normalizedMessage);
       const exportMatch = exportCommand.exec(context.normalizedMessage);

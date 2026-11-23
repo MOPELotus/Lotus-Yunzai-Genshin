@@ -19,7 +19,16 @@ test("旧原神抽卡裸命令沿用有井号命令的权限与回复", async ()
       expect(await module.fallbackFeatures(context(text))).toEqual(["[gacha] 抽卡记录"]);
       expect(await module.fallback(text, context(text))).toEqual(await module.fallback("#" + text, context("#" + text)));
     }
-    for (const text of ["我想看抽卡记录", "星铁角色统计", "绝区零武器统计", "角色", "安卓帮助"]) {
+    for (const [input, device] of [["电脑帮助", "电脑"], ["#pc帮助", "电脑"], ["安卓帮助", "安卓"],
+      ["#苹果帮助", "iOS"], ["#iOS帮助", "iOS"]] as const) {
+      expect(await module.fallbackFeatures(context(input))).toEqual(["[gacha] 抽卡记录"]);
+      const response = await module.fallback(input, context(input));
+      expect(response).toContain(`原神抽卡记录 · ${device}`);
+      expect(response).toContain("#扫码登录");
+      expect(response).toContain("#更新抽卡记录");
+      expect(response).toContain("#导入记录");
+    }
+    for (const text of ["我想看抽卡记录", "星铁角色统计", "绝区零武器统计", "角色", "#星铁安卓帮助", "苹果帮助 其他", "#帮助"]) {
       expect(await module.fallbackFeatures(context(text))).not.toContain("[gacha] 抽卡记录");
     }
   } finally {
