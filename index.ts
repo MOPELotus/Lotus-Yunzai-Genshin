@@ -1,3 +1,4 @@
+import type { LegacyPanelRecoveryOffer } from "../../lib/legacy-panel-recovery-flow.ts";
 import { matchPanelTransferCommand, type PanelTransferAccess } from "../../lib/panel-transfer-command.ts";
 import { createGenshinPanelTransfer } from "./panel/panel-transfer.ts";
 import { matchArkRankCommand } from "../../lib/ark-custom-rank-command.ts";
@@ -141,6 +142,7 @@ interface GachaContext extends GroupRankContext {
   readonly canReadAttachments?: boolean;
   readonly uploadFile?: (file: { readonly name: string; readonly bytes: Uint8Array }) => Promise<"confirmed" | "rejected" | "unknown">;
   readonly panelTransfer?: PanelTransferAccess;
+  readonly offerLegacyPanelRecovery?: LegacyPanelRecoveryOffer;
   reply(message: string | { readonly type: "image"; readonly file: Uint8Array }): unknown;
 }
 

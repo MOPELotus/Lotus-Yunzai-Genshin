@@ -24,11 +24,13 @@ import { genshinLoginAccount, ownedGenshinRole, type GenshinRoleProfiles } from 
 import type { createGroupPanelRank, GroupRankContext } from "./group-rank.ts";
 import { characterAliasKey, readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
 import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
+import type { DeliveryCommandReply } from "../../../lib/commands.ts";
+import type { LegacyPanelRecoveryOffer } from "../../../lib/legacy-panel-recovery-flow.ts";
 import type { ReplyOptions } from "../../../lib/messages.ts";
 import type { PanelRebuilder } from "../../../lib/panel-rebuild.ts";
 import { panelListColumns, PanelListImageLimitError } from "./panel-list-card.ts";
 import { renderOriginalProfile } from "./original-profile.ts";
-import { createRefreshedTalentArchive } from "./refreshed-talents.ts";
+import { canRefreshTalent, createRefreshedTalentArchive } from "./refreshed-talents.ts";
 import { createTrainingRoster } from "./training-roster.ts";
 import { buildPanelStatistics, buildTalentStatistics, talentStatisticsDay, type PanelStatisticRow } from "./statistics.ts";
 import { readPanelTheme, type PanelTheme } from "./theme.ts";
@@ -93,6 +95,20 @@ export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
   return {
     talents,
     update: store.update,
+    async isEmpty(qq: string, uid: string, catalog: PanelCatalog) {
+      return await store.read(qq, uid) === null && !await oldPanel(legacyDirectory, uid, catalog);
+    },
+    async recover(qq: string, uid: string, playerData: Readonly<Record<string, unknown>>, catalog: PanelCatalog, verify: () => Promise<void>) {
+      const panel = readPanel(uid, playerData, catalog, true);
+      const avatars = Object.fromEntries(Object.entries(panel?.avatars ?? {}).filter(([, avatar]) => canRefreshTalent(avatar)));
+      const count = Object.keys(avatars).length;
+      if (!count) return 0;
+      const existsLocally = () => oldPanel(legacyDirectory, uid, catalog);
+      return store.update<number | undefined>({ qq, uid }, async () => {
+        await verify();
+        if (await existsLocally()) throw new ProfileError("changed", "本机已有原神面板。");
+      }, current => current === null ? { document: { uid, avatars }, result: count } : { result: undefined });
+    },
     async discardedAt(qq: string, uid: string) {
       return panelDiscardedAt(await store.read(qq, uid));
     },
@@ -134,7 +150,7 @@ const renderDetail: Renderers["detail"] = (snapshot, avatar, theme, options) =>
     : renderPanelDetail(snapshot, avatar, theme, options);
 
 type Image = { readonly type: "image"; readonly file: Uint8Array };
-type Reply = string | Image | readonly [] | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] } | BatchedImageForward;
+type Reply = string | Image | DeliveryCommandReply | readonly [] | { readonly type: "forward"; readonly nodes: readonly (string | Image)[] } | BatchedImageForward;
 
 export function createGenshinPanelDamagePreferences(lockFile: AcquireRoleArchiveLock, signal: AbortSignal,
   archiveDirectory = Bun.env.LOTUS_GENSHIN_PANEL_DIR?.trim() || mainDirectory,
@@ -230,6 +246,7 @@ export function createGenshinPanelQuery(
 
   const query = async (message: string, context: GroupRankContext & {
     readonly privateCredentialSignal?: AbortSignal; readonly inlineImageByteLimit?: number;
+    readonly offerLegacyPanelRecovery?: LegacyPanelRecoveryOffer;
     readonly reply?: (image: Image, quote?: boolean, options?: ReplyOptions) => unknown;
   }): Promise<Reply | undefined> => {
     if (signal.aborted) return;
@@ -430,6 +447,29 @@ export function createGenshinPanelQuery(
     if (reload && context.isDelegated) return "请在本人 QQ 会话重新加载原神面板。";
     if (!user || !Number.isSafeInteger(user) || user < 1) return "请在有原神档案的 QQ 会话使用面板。";
     const qq = String(user);
+    const offer = command?.type === "update" && context.message_type === "private" && !context.isDelegated
+      ? context.offerLegacyPanelRecovery : undefined;
+
+    async function offerRecovery(uid: string, catalog?: PanelCatalog) {
+      if (!offer || signal.aborted || context.privateCredentialSignal?.aborted) return;
+      try {
+        const assets = catalog ?? await theme();
+        const key = `${qq}:${uid}`;
+        const isEmpty = async () => !signal.aborted && !refreshes.has(key) && await store.isEmpty(qq, uid, assets);
+        if (!await isEmpty()) return;
+        return await offer({ game: "gs", profileId, uid, isEmpty,
+          save: (playerData, verify) => store.recover(qq, uid, playerData, assets, async () => {
+            signal.throwIfAborted();
+            await verify();
+            signal.throwIfAborted();
+            if (refreshes.has(key)) throw new ProfileError("changed", "原神面板正在官方更新。");
+          }) });
+      } catch {
+        // Keep the ordinary refresh reply when archive absence cannot be confirmed.
+        return;
+      }
+    }
+
     try {
       const publicRead = !context.isDelegated && (command?.type === "list" || command?.type === "detail");
       const explicit = publicRead ? command?.uid : undefined;
@@ -442,10 +482,22 @@ export function createGenshinPanelQuery(
           error.code === "invalid")) return undefined;
         throw error;
       }) : undefined;
-      const source = publicUid ? undefined : owned?.source ?? await profiles.requestContext(qq, profileId, "gs").catch(error => {
-        if (command?.type !== "update" && error instanceof ProfileError && error.code === "login-required") return undefined;
+      let source: ProfileRequestContext | undefined;
+      try {
+        source = publicUid ? undefined : owned?.source ?? await profiles.requestContext(qq, profileId, "gs").catch(error => {
+          if (command?.type !== "update" && error instanceof ProfileError && error.code === "login-required") return undefined;
+          throw error;
+        });
+      } catch (error) {
+        if (offer && error instanceof ProfileError && (error.code === "login-required" || error.code === "missing" || error.code === "role-missing")) {
+          const selected = await profiles.savedRole(qq, profileId, "gs").catch(() => undefined);
+          if (selected && (!command?.uid || command.uid === selected.uid)) {
+            const recovery = await offerRecovery(selected.uid);
+            if (recovery) return recovery;
+          }
+        }
         throw error;
-      });
+      }
       const role = publicUid ? { uid: publicUid, region: "", gameBiz: "", nickname: "", chosen: false } :
         source?.role ?? await profiles.savedRole(qq, profileId, "gs");
       const { uid } = role;
@@ -456,7 +508,7 @@ export function createGenshinPanelQuery(
       async function check(revision?: string) {
         if (revision !== undefined) expected = revision;
         signal.throwIfAborted();
-        if (materialDay || publicRead || readRoster) context.privateCredentialSignal?.throwIfAborted();
+        if (offer || materialDay || publicRead || readRoster) context.privateCredentialSignal?.throwIfAborted();
         if (trainingDiscardedAt !== undefined && await store.discardedAt(qq, uid) !== trainingDiscardedAt) {
           throw new ProfileError("changed", "原神面板已删除。");
         }
@@ -507,9 +559,19 @@ export function createGenshinPanelQuery(
       }
       if (type === "update" || (type === "reload" && (!snapshot || !Object.keys(snapshot.avatars).length))) {
         if (!source) throw new ProfileError("login-required", "原神面板更新需要登录。");
-        const result = await refreshPanel(source, assets, verify, signal);
+        const active = offer && context.privateCredentialSignal ? AbortSignal.any([signal, context.privateCredentialSignal]) : signal;
+        const result = await refreshPanel(source, assets, verify, active).catch(async (error: unknown) => {
+          if (offer && error instanceof HoyoRequestError && error.code !== "profile-changed" && error.code !== "invalid-input" &&
+              !(error instanceof GameRecordRequestError && error.reason !== "expired")) {
+            await verify();
+            const recovery = await offerRecovery(uid, assets);
+            if (recovery) return recovery;
+          }
+          throw error;
+        });
+        if ("type" in result) return result;
         if (result.status === "busy") return "此原神面板正在更新，请稍后查询。";
-        if (result.status === "empty") return "米游社没有返回原神角色面板，原档案已保留。";
+        if (result.status === "empty") return await offerRecovery(uid, assets) ?? "米游社没有返回原神角色面板，原档案已保留。";
         if (result.status === "discarded") return "此原神面板已删除，请重新发起更新。";
         snapshot = result.snapshot;
         updated = result.updated;
@@ -842,7 +904,7 @@ ${avatars.map(avatar => avatar.name).join("、")}`;
       }
       return [];
     } catch (error) {
-      if (signal.aborted || (materialDay || readRoster || command?.type === "list" || command?.type === "detail") && context.privateCredentialSignal?.aborted) return;
+      if (signal.aborted || (offer || materialDay || readRoster || command?.type === "list" || command?.type === "detail") && context.privateCredentialSignal?.aborted) return;
       if (error instanceof ProfileError) {
         if (error.code === "changed") return "原神面板档案已变化，请重新查询。";
         if (error.code === "missing" || error.code === "login-required") return `请先登录 profile ${profileId}。`;
