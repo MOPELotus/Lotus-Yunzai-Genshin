@@ -38,7 +38,7 @@ const formatter = new Intl.NumberFormat("en-US");
 const gold = "#d3bc8e", muted = "#aaa";
 
 // Original geometry and badges from Ark e81b5ef, resources/character/stygian-rank-list.html and .css.
-const rowHeight = 60, rowGap = 5, infoTop = 91, rowTop = 219;
+const rowHeight = 60, rowGap = 5, infoTop = 97, rowTop = 227;
 
 function clean(value: string | undefined, length: number) {
   const plain = (value ?? "").replace(/[\p{Cc}\p{Cf}]/gu, "").trim();
@@ -77,10 +77,11 @@ function badges() {
   ] as const)).then(items => new Map(items));
 }
 
-function cover(ctx: Context, image: Picture, [x, y, width, height]: Box) {
+function cover(ctx: Context, image: Picture, [x, y, width, height]: Box, centered = true) {
   const ratio = Math.max(width / image.width, height / image.height);
   const scaledWidth = ratio * image.width, scaledHeight = ratio * image.height;
-  ctx.drawImage(image, x + (width - scaledWidth) / 2, y + (height - scaledHeight) / 2, scaledWidth, scaledHeight);
+  ctx.drawImage(image, centered ? x + (width - scaledWidth) / 2 : x,
+    centered ? y + (height - scaledHeight) / 2 : y, scaledWidth, scaledHeight);
 }
 
 function columnRule(ctx: Context, x: number, y: number) {
@@ -103,34 +104,35 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
   const width = 580 + 140 * columns.length;
   const displayWidth = Math.round(width * 1.4);
   const height = rowTop + Math.max(1, data.rows.length) * (rowHeight + rowGap) + 29;
-  const [fonts, backdrop, texture, rankBadge, medals] = await Promise.all([
+  const [fonts, backdrop, texture, rankBadge, medalBackdrop, medals] = await Promise.all([
     profileFonts(theme.resourceRoot), theme.picture("common", "bg", "bg-hydro.webp"),
-    theme.picture("common", "cont", "card-bg.png"), theme.picture("character", "imgs", "mark-icon.png"), badges(),
+    theme.picture("common", "cont", "card-bg.png"), theme.picture("character", "imgs", "mark-icon.png"),
+    theme.picture("common", "item", "bg5.png"), badges(),
   ]);
   signal?.throwIfAborted();
   return renderGenshinCardForChat(width, height, ctx => {
     const { font, write } = typeset(ctx, fonts);
     ctx.imageSmoothingQuality = "high";
     fill(ctx, "#224054", [0, 0, width, height]);
-    if (backdrop) cover(ctx, backdrop, [0, 0, width, height]);
+    if (backdrop) cover(ctx, backdrop, [0, 0, width, height], false);
 
     ctx.save();
     shadow(ctx, "#000e", 2, 1);
-    write("#幽境危战排名", 20, 68, 36, { title: true });
+    write("#幽境危战排名", 20, 74, 36, { title: true });
     ctx.restore();
 
-    panel(ctx, texture, [10, infoTop, width - 25, 118], () => {
-      fill(ctx, "#0006", [10, infoTop, width - 25, 38]);
-      fill(ctx, "#ffffff5c", [10, infoTop + 38, width - 25, 1]);
+    panel(ctx, texture, [10, infoTop, width - 25, 126], () => {
+      fill(ctx, "#0006", [10, infoTop, width - 25, 40]);
+      fill(ctx, "#ffffff5c", [10, infoTop + 40, width - 25, 1]);
       write("幽境危战排名说明", 30, infoTop + 25, 16, { color: gold });
-      fill(ctx, "#0008", [10, infoTop + 39, width - 25, 79]);
+      fill(ctx, "#0008", [10, infoTop + 41, width - 25, 85]);
       const lines = [
         ["幽境危战版本", clean(data.version, 40) || "未提供"],
         ["统计周期", [clean(data.period?.start, 40), clean(data.period?.end, 40)].filter(Boolean).join(" - ") || "未提供"],
         ["数据源", sources],
       ] as const;
       lines.forEach(([title, value], index) => {
-        const y = infoTop + 58 + index * 19, x = 52;
+        const y = infoTop + 62 + index * 19, x = 57;
         write("•", 36, y, 12);
         write(`${title}：`, x, y, 12, { color: gold });
         font(12);
@@ -177,7 +179,17 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
 
         columnRule(ctx, 224, y);
         const image = medal && medals.get(medal);
-        if (image) contain(ctx, image, [234, y + 4, 47, 52]);
+        if (image) {
+          if (medalBackdrop) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(237, y + 12, 36, 36, 4);
+            ctx.clip();
+            cover(ctx, medalBackdrop, [237, y + 12, 36, 36]);
+            ctx.restore();
+          }
+          contain(ctx, image, [233, y + 3, 47, 54]);
+        }
         write("难度", 284, y + 22, 12, { color: muted });
         write(medal ? row.difficulty : "—", 284, y + 46, 18);
 
@@ -186,7 +198,7 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
         write(Number.isSafeInteger(row.seconds) && row.seconds >= 0 ? `${row.seconds}秒` : "—", 379, y + 46, 18);
 
         columns.forEach(({ site, state }, column) => {
-          const x = 511 + column * 155;
+          const x = 511 + column * 172;
           columnRule(ctx, x - 12, y);
           write(`全服排名(${siteNames[site]})`, x, y + 22, 12, { color: muted });
           write(state === "ok" ? place(row[site]) : states[state], x, y + 46, state === "ok" ? 18 : 14,
