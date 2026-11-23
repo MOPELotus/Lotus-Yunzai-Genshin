@@ -921,5 +921,5 @@ ${avatars.map(avatar => avatar.name).join("、")}`;
       return "原神面板暂时无法读取或更新，请稍后重试。";
     }
   };
-  return Object.assign(query, { rebuild });
+  return Object.assign(query, { rebuild, trainingRoster });
 }

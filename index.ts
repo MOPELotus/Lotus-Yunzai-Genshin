@@ -1,3 +1,4 @@
+import { createGenshinAbyssTeams, matchGenshinAbyssTeam } from "./panel/abyss-team-command.ts";
 import { createCharacterVoiceCommands, genshinVoiceFeature } from "./voice/command.ts";
 import type { LegacyPanelRecoveryOffer } from "../../lib/legacy-panel-recovery-flow.ts";
 import { matchPanelTransferCommand, type PanelTransferAccess } from "../../lib/panel-transfer-command.ts";
@@ -195,6 +196,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
   const groupRankMatches = new WeakMap<GachaContext, Awaited<ReturnType<typeof resolveGroupPanelRank>>>();
   const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase, groupRank });
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, { groupRank, preferences: panelPreferences, readPanelDeletionBoundary: panelArchive.discardedAt });
+  const abyssTeams = createGenshinAbyssTeams(profiles, panelArchive, panel.trainingRoster, signal);
   const sync = createGenshinGachaSync(profiles, client, history);
   const worldBossRanking = createGenshinWorldBossRanking(rankingDirectory, lockFile);
   const worldBossQuery = createWorldBossQuery(profiles, client, worldBossRanking, signal);
@@ -353,6 +355,7 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       if (matchGenshinPayLog(message)) return ["[genshin] 充值记录"];
       if (matchGenshinBirthdayPhoto(message)) return ["[genshin] 生日留影"];
       if (matchGenshinTarotCards(message)) return ["[genshin] 月谕圣牌"];
+      if (matchGenshinAbyssTeam(message)) return ["[genshin] 深渊配队"];
       if (matchPersonalHardChallenge(message)) return ["[genshin] 幽境危战", "[genshin] 角色查询"];
       if (matchStygianConsentCommand(message) || matchStygianGroupRank(message)) return ["[genshin] 幽境危战群榜"];
       if (matchGenshinCommission(message) !== undefined) return ["[genshin] 委托查询"];
@@ -373,6 +376,8 @@ export function createModule({ signal, lockFile, runtimeVersion }: {
       return [];
     },
     async fallback(_message: string, context: GachaContext) {
+      const abyssTeam = matchGenshinAbyssTeam(context.normalizedMessage);
+      if (abyssTeam) return abyssTeams(abyssTeam, context);
       const spoken = await voice.fallback(context.normalizedMessage, context);
       if (spoken !== undefined) return spoken;
       const transfer = matchPanelTransferCommand(context.normalizedMessage);
