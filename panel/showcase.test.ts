@@ -459,3 +459,79 @@ test("live group reads bypass the local showcase TTL without borrowing private t
   await client(target, signal, { fresh: true });
   expect(requests).toBe(2);
 });
+
+test("旧面板冷读、缺少已知角色与重载只查询公开展板并尊重回执和删档", async () => {
+  const root = await mkdtemp(join(tmpdir(), "lotus-showcase-cold-read-"));
+  try {
+    const archiveDirectory = join(root, "panels"), legacyDirectory = join(root, "legacy");
+    const profilesDirectory = join(root, "profiles");
+    await mkdir(profilesDirectory);
+    const profile = Bun.YAML.parse(makeProfile(cn)) as { account: Record<string, string> };
+    Object.assign(profile.account, { ltuid: "12", stuid: "12", stoken: "synthetic-stoken",
+      stoken_cookie: "stuid=12; stoken=synthetic-stoken", cookie: "account_id=12; cookie_token=synthetic-cookie" });
+    await writeFile(join(profilesDirectory, "42.yaml"), Bun.YAML.stringify(profile));
+    const archive = createGenshinPanelArchive(lockFile, { archiveDirectory, legacyDirectory });
+    const storage = createGenshinShowcaseStorage(archiveDirectory, lockFile, undefined, archive.discardedAt);
+    const trace: string[] = [];
+    let phase: "partial" | "complete" | "delete" = "partial";
+    let acknowledge = false;
+    const transport = Object.assign(async (input: URL | Request | string, options?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      expect(url.origin).toBe("https://profile.microgg.cn");
+      expect(options).toMatchObject({ method: "GET", credentials: "omit" });
+      expect(Array.from(new Headers(options?.headers).keys()).sort()).toEqual(["accept", "user-agent"]);
+      expect(options?.body).toBeUndefined();
+      expect(trace.at(-1)).toContain("仅发送游戏 UID");
+      const requested = url.pathname.split("/").at(-1)!;
+      trace.push(requested);
+      if (phase === "delete") await archive.discard("43", alternate, Date.now, async () => {});
+      const data = payload(requested);
+      return Response.json(phase === "partial" ? { ...data, avatarInfoList: [actor] } : data);
+    }, { preconnect: fetch.preconnect });
+    let now = 120_000;
+    const panel = createGenshinPanelQuery(createProfileStore(profilesDirectory), {} as never, lockFile, signal, {
+      archiveDirectory, legacyDirectory, readShowcaseServer: async () => "0", theme: async () => theme,
+      fetchShowcase: createGenshinShowcaseClient(transport, () => now),
+      render: {
+        async list(_snapshot, avatars) { return { png: Buffer.from(avatars.map(({ name }) => name).join(" ")) }; },
+        async detail(_view) { return { png: Buffer.from("detail") }; },
+      },
+    });
+    const context = { ...own, async reply(message: unknown, _quote?: boolean, options?: { onDelivered?: (id: number) => unknown }) {
+      trace.push(String(message));
+      if (acknowledge) await options?.onDelivered?.(1);
+      return true;
+    } };
+
+    expect(await panel("#面板", context)).toContain("本地暂无原神角色面板");
+    expect(trace).toHaveLength(1);
+    acknowledge = true;
+    expect(await panel("#面板", context)).toEqual({ type: "image", file: Buffer.from("芙宁娜") });
+    expect(trace.slice(1)).toEqual([expect.stringContaining("仅发送游戏 UID"), uid]);
+    expect(await panel("#面板", context)).toEqual({ type: "image", file: Buffer.from("芙宁娜") });
+    expect(trace).toHaveLength(3);
+    await panel("#不存在的角色面板", context);
+    expect(trace).toHaveLength(3);
+
+    phase = "complete";
+    now += 240_000;
+    expect(await panel("#神里绫华面板", context)).toEqual({ type: "image", file: Buffer.from("detail") });
+    expect(trace.slice(3)).toEqual([expect.stringContaining("仅发送游戏 UID"), uid]);
+    expect((await storage.read("42", uid, theme))?.avatars[ayaka]?.name).toBe("神里绫华");
+    expect(await archive.readPanel("42", uid, theme, false)).toBeUndefined();
+    expect(await panel("#重载面板", context)).toMatchObject({ type: "image" });
+    expect(trace).toHaveLength(5);
+
+    phase = "delete";
+    expect(await panel(`#面板${alternate}`, { ...context, user_id: 43 })).toContain("面板档案已变化");
+    expect(trace.slice(5)).toEqual([expect.stringContaining("仅发送游戏 UID"), alternate]);
+    expect(await storage.read("43", alternate, theme)).toBeUndefined();
+    expect(await panel(`#面板${alternate}`, { ...context, user_id: 43 })).toContain("本地暂无公开展板");
+    expect(trace).toHaveLength(7);
+    await archive.discard("42", uid, Date.now, async () => {});
+    expect(await panel("#重载面板", context)).toContain("本地暂无原神角色面板");
+    expect(trace).toHaveLength(7);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
