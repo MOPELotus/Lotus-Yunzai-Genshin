@@ -2,11 +2,20 @@ import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunza
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
+import { readGenshinReleaseData } from "../release-data.ts";
 import { readPanelTheme } from "./theme.ts";
 import { renderWeaponList } from "./weapon-list-card.ts";
 import { buildWeaponList } from "./weapon-list-model.ts";
 
 const weaponList = /^#(?:原神)?(?:(五星|四星|5星|4星))?武器(?:\s*(?:([1-9]\d{8,9})(?:\s+(?:(?:档案|profile)\s*)?(\d{1,3}))?|(?:(?:档案|profile)\s*)?(\d{1,3})))?$/iu;
+
+function eventWeaponNames(input: unknown): ReadonlySet<string> | undefined {
+  if (Array.isArray(input) && input.length <= 512 &&
+      input.every(name => typeof name === "string" && name.length > 0 && name.length <= 80 &&
+        name === name.trim() && !/[\p{Cc}\p{Cf}]/u.test(name))) {
+    return new Set(input);
+  }
+}
 
 export function matchWeaponList(message: string) {
   const match = weaponList.exec(message.trim().replace(/^＃/u, "#"));
@@ -57,8 +66,8 @@ export function createWeaponListQuery(profiles: GenshinRoleProfiles,
       const official = await client.fetchGenshinCharacterList(source, { signal });
       revision = official.revision;
       await verify();
-      const theme = await readPanelTheme();
-      const model = buildWeaponList(uid, official.avatars, theme.characters, rarity);
+      const [theme, release] = await Promise.all([readPanelTheme(), readGenshinReleaseData("weapon/other.yaml")]);
+      const model = buildWeaponList(uid, official.avatars, theme.characters, rarity, eventWeaponNames(release?.actWeapon));
       if (!model.items.length) return rarity ? `当前角色没有装备${rarity}星武器。` : "米游社未返回可显示的已装备武器。";
       const { png } = await render(model, theme, { signal, inlineImageByteLimit: context.inlineImageByteLimit });
       await verify();

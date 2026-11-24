@@ -8,6 +8,7 @@ import { officialPanel, text, type Json, type PanelSnapshot } from "./model.ts";
 import { createGenshinPanelArchive } from "./panel.ts";
 import { renderPersonalExploration } from "./personal-exploration-card.ts";
 import { buildPersonalExploration } from "./personal-exploration-model.ts";
+import { readGenshinReleaseData } from "../release-data.ts";
 import { buildPersonalOverview } from "./personal-record-model.ts";
 import { personalRosterColumns, renderPersonalOverview, renderPersonalRoster } from "./personal-record-card.ts";
 import { buildPanelStatistics } from "./statistics.ts";
@@ -115,7 +116,11 @@ export function createPersonalRecordQuery(profiles: GenshinRoleDirectory, client
       if (official) revision = official.revision;
       await verify();
       if (includeExploration && official) {
-        const model = buildPersonalExploration(uid, region, official.overview, official.gcg, { regionName: source.role.regionName });
+        const releaseCaps = await readGenshinReleaseData("role/index.yaml");
+        await verify();
+        const model = buildPersonalExploration(uid, region, official.overview, official.gcg, {
+          regionName: source.role.regionName, releaseCaps,
+        });
         if (!model) return "米游社未返回原神探索统计。";
         const { inlineImageByteLimit } = context;
         const { png } = await explore(model, { signal, qq, inlineImageByteLimit });

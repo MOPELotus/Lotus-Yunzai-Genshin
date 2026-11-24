@@ -35,15 +35,21 @@ function score(rate: number) {
 }
 
 export function buildPersonalExploration(uid: string, region: string, data: Json, gcg?: GenshinGcgSummary,
-  { now = Date.now(), regionName }: { now?: number; regionName?: string } = {}) {
+  { now = Date.now(), regionName, releaseCaps }: {
+    now?: number; regionName?: string; releaseCaps?: Readonly<Record<string, unknown>>;
+  } = {}) {
   const stats = object(data.stats);
   if (!stats) return;
   const role = object(data.role);
   const count = (key: string) => whole(stats[key], 100_000_000);
   const metric = (label: string, value?: number | string, total?: number): ExplorationMetric => ({ label, value, total });
+  const cap = (key: string, base: number) => {
+    const value = releaseCaps?.[key];
+    return typeof value === "number" && Number.isSafeInteger(value) && value > 0 && value <= 100_000_000 ? value : base;
+  };
   const fromStats = (key: keyof typeof statsSources) => {
     const [label, field, total] = statsSources[key];
-    return metric(label, count(field), total);
+    return metric(label, count(field), cap(field.replace(/_number$/u, ""), total));
   };
   const chests = chestTypes.map(fromStats);
   const maxChests = chests.reduce((sum, chest) => sum + (chest.total ?? 0), 0);
@@ -66,14 +72,14 @@ export function buildPersonalExploration(uid: string, region: string, data: Json
         ? `第${turn}幕${medals ? ` 圣牌${medals}` : ""}` : undefined),
       metric("幽境危战", hard?.is_unlock === false ? "未解锁" : hard?.has_data && difficulty
         ? abyssDifficulty[difficulty - 1] : undefined)],
-    [metric("角色数", avatarCount, 121), metric("满好感角色", count("full_fetter_avatar_num"),
+    [metric("角色数", avatarCount, cap("avatar", 121)), metric("满好感角色", count("full_fetter_avatar_num"),
       avatarCount !== undefined && avatarCount >= 3 ? avatarCount - 3 : undefined),
-      metric("传送点", count("way_point_number"), 839), metric("秘境", count("domain_number"), 74),
-      metric("成就", count("achievement_number"), 1844)],
+      metric("传送点", count("way_point_number"), cap("way_point", 839)), metric("秘境", count("domain_number"), cap("domain", 74)),
+      metric("成就", count("achievement_number"), cap("achievement", 1844))],
     [metric("宝箱总数", totalChests, maxChests), acquisition, ...chests.slice(0, 3)],
     [...chests.slice(3), fromStats("anemo"), fromStats("geo"), fromStats("electro")],
     [fromStats("dendro"), fromStats("hydro"), fromStats("pyro"), fromStats("lunar"),
-      metric("冰神瞳", count("iceculus_number") ?? count("cryoculus_number"), 140)],
+      metric("冰神瞳", count("iceculus_number") ?? count("cryoculus_number"), cap("cryoculus", 140))],
   ];
   const home = Array.isArray(data.homes) && object(data.homes[0]);
   if (home) rows.push([metric("家园等级", whole(home.level, 10)), metric("最高仙力", whole(home.comfort_num, 100_000_000)),

@@ -25,7 +25,8 @@ export interface EquippedWeapon {
   readonly refinement: number;
 }
 
-export function buildWeaponList(uid: string, avatars: readonly Json[], characters: Json, selection?: 4 | 5) {
+export function buildWeaponList(uid: string, avatars: readonly Json[], characters: Json, selection?: 4 | 5,
+  activeWeapons: ReadonlySet<string> = eventWeapons) {
   const items = avatars.flatMap(avatar => {
     const weapon = object(avatar.weapon);
     const rarity = whole(weapon?.rarity, 5);
@@ -43,7 +44,7 @@ export function buildWeaponList(uid: string, avatars: readonly Json[], character
     }
     if (selection && selection !== rarity) return [];
     const kind = weaponKinds.find(type => type.name === weapon?.type_name)?.key;
-    const first = level + (rarity - 4) * 20 + (level >= 20 ? roleLevel : 0) + (eventWeapons.has(name) ? 0 : refinement * 5);
+    const first = level + (rarity - 4) * 20 + (level >= 20 ? roleLevel : 0) + (activeWeapons.has(name) ? 0 : refinement * 5);
     const sort = rarity * 1_000_000 + refinement * 100_000 + level * 1_000 + Math.min(roleRarity, 5) * 100 + roleLevel;
     return [{ role, name, kind, rarity, level, refinement, first, sort }];
   }).sort((a, b) => b.sort - a.sort || b.first - a.first);
