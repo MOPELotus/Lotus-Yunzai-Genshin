@@ -73,7 +73,7 @@ import { renderGenshinGachaFailure, renderGenshinGachaResult } from "./gacha-res
 import { buildGenshinGachaSpecial } from "./gacha-special.ts";
 import { renderGenshinGachaSpecial } from "./gacha-special-card.ts";
 import { createGenshinGachaHistoryStore } from "./gacha-store.ts";
-import { createGenshinGachaSync } from "./gacha-sync.ts";
+import { createGenshinGachaSync, GenshinGachaBusyError } from "./gacha-sync.ts";
 import { createGenshinGachaRepair, GenshinGachaRepairCancelledError, gachaRepairCommand } from "./gacha-repair.ts";
 import { exportGenshinUigf, type GenshinUigfExportOptions } from "./gacha-uigf.ts";
 import { buildGenshinGachaVersion, type GenshinGachaVersionOptions } from "./gacha-version.ts";
@@ -287,6 +287,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       return [title, ...lines, `导入成功，可使用 #抽卡记录${profileId === 1 ? "" : profileId} 查看。`].join("\n");
     } catch (error) {
       if (signal.aborted) return;
+      if (error instanceof GenshinGachaBusyError) return error.message;
       let message = "请检查档案登录状态和原神 UID，稍后再试。";
       if (error instanceof ProfileError) {
         if (error.code === "missing" || error.code === "login-required") message = `请先登录 profile ${profileId}。`;
@@ -366,7 +367,14 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
 
   return {
     commands: {},
-    gachaUpdate,
+    async gachaUpdate(...args: Parameters<typeof gachaUpdate>) {
+      try {
+        return await gachaUpdate(...args);
+      } catch (error) {
+        if (error instanceof GenshinGachaBusyError) return;
+        throw error;
+      }
+    },
     panelRebuild: panel.rebuild,
     async fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
@@ -569,7 +577,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
         }
       } catch (error) {
         if (signal.aborted) return;
-        if (error instanceof GenshinGachaRepairCancelledError) return error.message;
+        if (error instanceof GenshinGachaRepairCancelledError || error instanceof GenshinGachaBusyError) return error.message;
         if (error instanceof ProfileError) {
           if (error.code === "missing" || error.code === "login-required") return `[genshin] 请先登录 profile ${profileId}。`;
           if (error.code === "role-missing") return `[genshin] profile ${profileId} 没有同步原神 UID。`;
