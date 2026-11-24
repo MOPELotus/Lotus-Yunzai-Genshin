@@ -1,3 +1,4 @@
+import { reportResourceProgress, type ResourceProgressCallback } from "../../lib/resource-progress.ts";
 import { createHash } from "node:crypto";
 import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -81,12 +82,15 @@ async function downloadCalendar(request: CalendarFetch, signal: AbortSignal) {
 }
 
 export async function prepareGenshinWishCalendar(checkout: URL, {
-  themeDirectory = Bun.env.LOTUS_GENSHIN_GACHA_THEME_DIR?.trim(), download, signal,
+  themeDirectory = Bun.env.LOTUS_GENSHIN_GACHA_THEME_DIR?.trim(), download, signal, onProgress,
 }: {
   readonly themeDirectory?: string;
   readonly download?: boolean | CalendarFetch;
   readonly signal?: AbortSignal;
+  readonly onProgress?: ResourceProgressCallback;
 } = {}) {
+  const report = (message: string, completed?: number, total?: number) => reportResourceProgress(onProgress, signal, "wish-calendar", message, completed, total);
+  report("检查祈愿日历缓存");
   signal?.throwIfAborted();
   if (themeDirectory) return "local";
   const root = await realpath(fileURLToPath(checkout));
@@ -98,6 +102,7 @@ export async function prepareGenshinWishCalendar(checkout: URL, {
   const deadline = AbortSignal.timeout(12_000);
   const downloadSignal = signal ? AbortSignal.any([signal, deadline]) : deadline;
   const request = typeof download === "function" ? download : fetch;
+  report("下载祈愿日历");
   const contents = await downloadCalendar(request, downloadSignal).catch((error: NodeJS.ErrnoException) => {
     if (!downloadSignal.aborted && (error?.code === "ECONNRESET" || error?.code === "ETIMEDOUT")) {
       return downloadCalendar(request, downloadSignal).catch(() => undefined);
@@ -120,6 +125,7 @@ export async function prepareGenshinWishCalendar(checkout: URL, {
     await writeFile(temporary, contents, { mode: 0o600, flag: "wx", signal });
     signal?.throwIfAborted();
     await rename(temporary, destination);
+    report("祈愿日历已保存", 1, 1);
     return "installed";
   } finally {
     await rm(stage, { recursive: true, force: true });
