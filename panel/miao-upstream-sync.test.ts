@@ -3,7 +3,7 @@ import { builtinResourceDirectory } from "../../../lib/builtin-resources.ts";
 import { readPanelTheme } from "./theme.ts";
 import { resolvePanelWeapon } from "./equipment-change.ts";
 import artifacts from "./miao/damage/artifact-rules.ts";
-import { characterRules } from "./miao/character-artifact-rules.ts";
+import { characterRules, usefulAttr } from "./miao/character-artifact-rules.ts";
 import type { RuleBuff, RuleContext } from "./miao/damage/rule-types.ts";
 import { readGenshinGachaSources } from "../gacha-detail-source.ts";
 import { genshinGachaTimestamp } from "../gacha-detail.ts";
@@ -24,10 +24,14 @@ test("更新后的默认Miao资料可识别两套新圣遗物、新四星武器�
 });
 
 test("希诺宁战斗评分把伤害词条计入，辅助分支保持原权重", () => {
-  type Input = { attr: { cpct: number; cdmg: number }; def(weight: Record<string, number>, title?: string[]): Record<string, number> };
-  const score = characterRules.希诺宁 as (inputs: Input) => Record<string, number>;
-  expect(score({ attr: { cpct: 60, cdmg: 120 }, def: weight => weight })).toMatchObject({ dmg: 100, cpct: 100, cdmg: 100, recharge: 55 });
-  expect(score({ attr: { cpct: 20, cdmg: 50 }, def: weight => weight })).toMatchObject({ dmg: 0, recharge: 100 });
+  const base: Parameters<NonNullable<typeof characterRules[string]>>[0] = {
+    attr: { ...usefulAttr.七七, cpct: 60, cdmg: 120 }, cons: 0, elem: "geo",
+    artis: { is: () => false }, weapon: { name: "岩峰巡歌", bonusKey: "defPct" },
+    def: (weight = {}, title = []) => ({ title: title.join("/"), attrWeight: weight }),
+    rule: (title, weight) => ({ title, attrWeight: weight }),
+  };
+  expect(characterRules.希诺宁!(base)).toMatchObject({ title: "战斗", attrWeight: { dmg: 100, cpct: 100, cdmg: 100, recharge: 55 } });
+  expect(characterRules.希诺宁!({ ...base, attr: { ...base.attr, cpct: 20, cdmg: 50 } })).toMatchObject({ attrWeight: { dmg: 0, recharge: 100 } });
 });
 
 test("角色突破属性通过实际metadata入口使用上游精度，流浪者删除冗余meta后仍可读data", async () => {
