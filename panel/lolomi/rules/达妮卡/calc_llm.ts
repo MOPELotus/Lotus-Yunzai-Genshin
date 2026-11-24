@@ -15,11 +15,10 @@ const applyStandardTeam = withStdTeam(mainCharName, team, artifact_normal, confi
 const isSweeper = (ds) => ds.params.sweeper === true
 
 // 2命「炽流砂的静心」祝歌：星超导反应附加基础值
-// 持有祝歌的角色消耗1层提升80%攻击力；清扫者形态达妮卡至多消耗2层提升350%攻击力
 const c2Flat = (ds) => {
   const { cons, attr, calc } = ds
   if (cons < 2) return 0
-  return calc(attr.atk) * (isSweeper(ds) ? 3.5 : 0.8)
+  return calc(attr.atk) * (isSweeper(ds) ? 5 : 0.8)
 }
 
 const starConduct = (ds, calcApi, rate, slot) => {

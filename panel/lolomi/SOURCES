@@ -1,4 +1,4 @@
-https://gitee.com/land-route_lu/lolomi-calc/tree/22cb14e7571678ef152707d50c46bffab58e12ba
+https://gitee.com/land-route_lu/lolomi-calc/tree/b18725103e95e8973d6efc02d5a074916178cf9a
 rules/ is damage/lolomi-gs/, only rules and shared rule functions.
 engine/ is llm-engine/, with host dependencies bound to module-local primitives.
 data/ is llm-data/meta-gs/, numeric catalogs and effect tables. No images are shipped.
@@ -6,3 +6,5 @@ The original Mulan PSL v2 and the more specific Yoimiya MIT notices are retained
 presets/ records are derived from the four public replace/data/1/PlayerData/gs Git blobs in the same commit.
 Only the virtual preset ID and public role/equipment fields are retained. The source role aliases are from llm-data/meta-gs/character/alias.js, covered by data/LICENSE.
 artifact-rules.ts ports the six damage/lolomi-gs/<character>/artis_llm.js functions, including their original rule weights and selection order.
+
+Synchronized V4 formulas and numeric catalogs at b187251. Engine, presets, artifact scoring and adapters are unchanged from their previous port because the upstream diff does not touch them. data/weapon/desc.ts preserves the updated public simplified weapon descriptions; it does not add upstream runtime entry points.

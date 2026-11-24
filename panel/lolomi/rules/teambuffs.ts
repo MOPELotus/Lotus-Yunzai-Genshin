@@ -153,6 +153,7 @@ const isPureHydroDendro = (params, element) => {
  * Lauma     菈乌玛Q：基础24层，6命机制默认视为无限次全程覆盖
  * Vodyanitsa 沃雅妮莎天赋「十二弦的泪歌」：前台主C生效25次
  * Valeriy   瓦列里天赋「攻斥指令」：15次
+ * Danica    达妮卡2命「祝歌」：10层
  */
 const LIMITED_PLUS = {
   Nicole: {
@@ -221,6 +222,14 @@ const LIMITED_PLUS = {
         * (155.04 + (params.Valeriy_noHuiying ? 0.3 : 0.9) * (params.Valeriy_potential ?? 100)) / 100
       : 0,
     limit: 15
+  },
+  Danica: {
+    // 2命「祝歌」：召唤准雷定锚时给队伍附近所有角色10层
+    // 每层提升值 = 达妮卡攻击力80%，攻击力默认4000，可传 Danica_atk
+    fyPlus: ({ params, element }) => (element === '雷' || element === '冰') && (params.Danica_mid || params.Danica_best)
+      ? (params.Danica_atk ?? 4000) * 0.8
+      : 0,
+    limit: 10
   }
 }
 
@@ -1224,6 +1233,64 @@ let TeamBuff = [
       ePlus: LIMITED_PLUS.Valeriy.plus,
       qPlus: LIMITED_PLUS.Valeriy.plus,
       fyplus: LIMITED_PLUS.Valeriy.fyPlus
+    }
+  },
+  {
+    check: ({ params }) => params.Anastasya_low || params.Anastasya_mid || params.Anastasya_best,
+    title: '安娜丝塔夏',
+    // 「慈爱」后台辅助分支
+    // 被动「煌夜的明威」：E后全队各得1份荣勋(暴伤12%)，自身被封存后那份再均分给队友
+    // 0命共2份24%；1命起自己那份改为原本300%，共4份48%；4命每份×1.3
+    // 1命荣勋追加：冰元素角色加攻15%、其他元素精通60；均分份按被封存者结算，一律折成加攻
+    // 被动「星耀祝礼·无染复临」：星烁基础伤害提升14%
+    // 被动「未挽的悼亡」：星扩散基础反应系数额外+10%，传 Anastasya_starSwirl 生效
+    //   星超导分支只说极星辉域增益进一步提升，暂无数据
+    // Q「致新世界」：全队星烁增伤，10级30%，13级35.4%
+    // 2命：全队星烁暴伤+50、星烁擢升5%
+    // 6命：星烁擢升10%
+    data: {
+      cdmg: ({ params }) => (params.Anastasya_best ? 15.6 : 12) * ((params.Anastasya_mid || params.Anastasya_best) ? 4 : 2),
+      atkPct: ({ params, element }) => (params.Anastasya_mid || params.Anastasya_best)
+        ? (params.Anastasya_best ? 19.5 : 15) * (element === '冰' ? 4 : 3)
+        : 0,
+      mastery: ({ params, element }) => (params.Anastasya_mid || params.Anastasya_best) && element !== '冰'
+        ? (params.Anastasya_best ? 78 : 60)
+        : 0,
+      fypct: ({ params, element }) => ['雷', '冰', '风'].includes(element) ? 14 + (params.Anastasya_starSwirl ? 10 : 0) : 0,
+      stellarConduct: ({ params }) => params.Anastasya_best ? 35.4 : 30,
+      stellarVortex: ({ params }) => params.Anastasya_best ? 35.4 : 30,
+      starSwirlAnemo: ({ params }) => params.Anastasya_best ? 35.4 : 30,
+      starSwirlCryo: ({ params }) => params.Anastasya_best ? 35.4 : 30,
+      stellarConductCdmg: ({ params }) => (params.Anastasya_mid || params.Anastasya_best) ? 50 : 0,
+      stellarVortexCdmg: ({ params }) => (params.Anastasya_mid || params.Anastasya_best) ? 50 : 0,
+      starSwirlAnemoCdmg: ({ params }) => (params.Anastasya_mid || params.Anastasya_best) ? 50 : 0,
+      starSwirlCryoCdmg: ({ params }) => (params.Anastasya_mid || params.Anastasya_best) ? 50 : 0,
+      elevated: ({ params }) => params.Anastasya_best ? 15 : (params.Anastasya_mid ? 5 : 0)
+    }
+  },
+  {
+    check: ({ params }) => params.Danica_low || params.Danica_mid || params.Danica_best,
+    title: '达妮卡',
+    // 默认「御前护卫」后台辅助形态
+    // 被动「星耀祝礼·纤毫不遗」：星超导基础伤害提升14%
+    // 被动「古海浪的咏歌」：准雷定锚减雷抗15%，默认辉映·星超导再减雷15%/冰30%，传 Danica_noHuiying 非辉映环境
+    // Q「净世卫仪」御前护卫：全队基础攻击力提升，1命效果提升100%
+    // 高中配默认4000攻、低配3000，可传 Danica_atk；6命Q13级11.8%/472，10级10%/400
+    // 2命「祝歌」：提升星超导基础值
+    // 6命：全队星超导擢升15%；每1000攻使场上角色星超导伤害+10%，上限40%
+    data: {
+      fypct: ({ element }) => (element === '雷' || element === '冰') ? 14 : 0,
+      kx: ({ params, element }) => element === '雷'
+        ? (params.Danica_noHuiying ? 15 : 30)
+        : element === '冰' ? (params.Danica_noHuiying ? 0 : 30) : 0,
+      atkPlus: ({ params }) => {
+        const atk = params.Danica_atk ?? ((params.Danica_best || params.Danica_mid) ? 4000 : 3000)
+        const [pct, cap] = params.Danica_best ? [11.8, 472] : [10, 400]
+        return Math.min(atk * pct / 100, cap) * ((params.Danica_best || params.Danica_mid) ? 2 : 1)
+      },
+      fyplus: LIMITED_PLUS.Danica.fyPlus,
+      stellarConduct: ({ params }) => params.Danica_best ? Math.min((params.Danica_atk ?? 4000) / 1000 * 10, 40) : 0,
+      elevated: ({ params }) => params.Danica_best ? 15 : 0
     }
   }
 ]

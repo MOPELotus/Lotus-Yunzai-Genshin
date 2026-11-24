@@ -5,7 +5,7 @@ import { Config } from '../../config.ts'
 
 const mainCharName = '安娜丝塔夏'
 
-const team = ['奥黛塔', '米提亚', '希诺宁']
+const team = ['奥黛塔', '米提亚', '达妮卡']
 const artifact_normal = ['炉火', '千岩']
 
 const config = Config.getConfig('user', 'config')
@@ -21,19 +21,34 @@ const gloryMult = (ds) => ds.cons >= 2 && ds.params.glory === true ? 1.25 : 1
 // 每次尾段攻击替换为星烁伤害
 const splitTail = (ds, times) => ds.params.huiying === false ? [times, 0] : [Math.max(times - 1, 0), 1]
 
-const xilonenQuota = (ds, calcApi) => {
+const teammateQuota = (ds, calcApi) => {
   const { attr, params } = ds
-  const plus = LIMITED_PLUS.Xilonen.plus(ds)
-  let left = Math.floor(bounded(params.xilonen_hits, LIMITED_PLUS.Xilonen.limit, 0, LIMITED_PLUS.Xilonen.limit))
+  const xPlus = LIMITED_PLUS.Xilonen.plus(ds)
+  let xLeft = Math.floor(bounded(params.xilonen_hits, LIMITED_PLUS.Xilonen.limit, 0, LIMITED_PLUS.Xilonen.limit))
+  const dPlus = LIMITED_PLUS.Danica.fyPlus({ params, element: '冰' })
+  const dLimit = typeof LIMITED_PLUS.Danica.limit === 'function' ? LIMITED_PLUS.Danica.limit(ds) : LIMITED_PLUS.Danica.limit
+  let dLeft = Math.floor(bounded(params.danica_hits, dLimit, 0, dLimit))
   const cache = new Map()
-  return (slot) => {
-    if (!plus || !['a', 'a2', 'a3'].includes(slot)) return calcApi
-    if (left > 0) {
-      left--
-      return calcApi
+  return (slot, ch) => {
+    let removeX = false
+    if (xPlus > 0 && ['a', 'a2', 'a3'].includes(slot)) {
+      if (xLeft > 0) xLeft--
+      else removeX = true
     }
-    if (!cache.has(slot)) cache.set(slot, calcApi.withAttr({ [slot]: { plus: attr[slot].plus - plus } }))
-    return cache.get(slot)
+    let removeD = false
+    if (dPlus > 0 && ch === 'stellarConduct') {
+      if (dLeft > 0) dLeft--
+      else removeD = true
+    }
+    if (!removeX && !removeD) return calcApi
+    const key = `${removeX ? slot : '-'}:${removeD}`
+    if (!cache.has(key)) {
+      const patch = {}
+      if (removeX) patch[slot] = { plus: attr[slot].plus - xPlus }
+      if (removeD) patch.fyplus = (attr.fyplus ?? 0) - dPlus
+      cache.set(key, calcApi.withAttr(patch))
+    }
+    return cache.get(key)
   }
 }
 
@@ -48,22 +63,22 @@ const tailHit = (ds, calcApi, source, name, slot, quota) => {
   const take = quota || (() => calcApi)
   const ice = iceN ? take(slot)(per * iceN * mult, slot) : { dmg: 0, avg: 0 }
   const starRate = talent[source][`${name.replace('冰元素伤害', '')}星超导/星扩散伤害2`][si]
-  const star = starN ? take(slot).basic(calc(attr.atk) * starRate / 100 * mult, slot, ch) : { dmg: 0, avg: 0 }
+  const star = starN ? take(slot, ch).basic(calc(attr.atk) * starRate / 100 * mult, slot, ch) : { dmg: 0, avg: 0 }
   return { dmg: ice.dmg + star.dmg, avg: ice.avg + star.avg }
 }
 
 // 慈爱「苍星圣冕」单次
-const crownCycle = (ds, calcApi, withExtra = false) => {
+const crownCycle = (ds, calcApi, withExtra = false, quota = null) => {
   const { attr, calc, talent, params } = ds
-  const { basic } = calcApi
   const dmg = calcApi
+  const take = quota || (() => calcApi)
   const [ch, si] = starRoute(params)
   const [crownPer, crownTimes] = talent.e['苍星圣冕冰元素伤害2']
   const [crownIce, crownStar] = splitTail(ds, crownTimes)
   const ice = crownIce ? dmg(crownPer * crownIce, 'e') : { dmg: 0, avg: 0 }
-  const star = crownStar ? basic(calc(attr.atk) * talent.e['苍星圣冕星超导/星扩散伤害2'][si] / 100, 'e', ch) : { dmg: 0, avg: 0 }
+  const star = crownStar ? take(null, ch).basic(calc(attr.atk) * talent.e['苍星圣冕星超导/星扩散伤害2'][si] / 100, 'e', ch) : { dmg: 0, avg: 0 }
   const extra = withExtra
-    ? basic(calc(attr.atk) * talent.q['苍星圣冕额外星超导/星扩散伤害2'][si] / 100, 'e', ch)
+    ? take(null, ch).basic(calc(attr.atk) * talent.q['苍星圣冕额外星超导/星扩散伤害2'][si] / 100, 'e', ch)
     : { dmg: 0, avg: 0 }
   return { dmg: ice.dmg + star.dmg + extra.dmg, avg: ice.avg + star.avg + extra.avg }
 }
@@ -76,19 +91,23 @@ const addTriumph = (total, hit, times) => ({
 // 「慈爱」：圣冕每2秒一轮，默认15秒时间打7轮
 const calcLoveRotation = (ds, calcApi) => {
   const { attr, calc, talent, cons, params } = ds
-  const { basic } = calcApi
   const dmg = calcApi
   const [ch, si] = starRoute(params)
   const ticks = params.crownTicks ?? 7
-  const cycle = crownCycle(ds, calcApi, true)
+  const quota = teammateQuota(ds, calcApi)
   const tap = dmg(talent.e['点按技能伤害'], 'e')
   const q = dmg(talent.q['致新世界技能伤害'], 'q')
-  const triumph = basic(calc(attr.atk) * talent.q['凯旋星超导/星扩散伤害2'][si] / 100, 'e', ch)
   let total = { dmg: tap.dmg + q.dmg, avg: tap.avg + q.avg }
-  total.dmg += cycle.dmg * ticks
-  total.avg += cycle.avg * ticks
-  total = addTriumph(total, triumph, 1)
-  if (cons >= 6) total = addTriumph(total, triumph, 2)
+  for (let i = 0; i < ticks; i++) {
+    const cycle = crownCycle(ds, calcApi, true, quota)
+    total.dmg += cycle.dmg
+    total.avg += cycle.avg
+  }
+  const triumphTimes = cons >= 6 ? 3 : 1
+  for (let i = 0; i < triumphTimes; i++) {
+    const triumph = quota(null, ch).basic(calc(attr.atk) * talent.q['凯旋星超导/星扩散伤害2'][si] / 100, 'e', ch)
+    total = addTriumph(total, triumph, 1)
+  }
   return total
 }
 
@@ -97,15 +116,12 @@ const calcLoveRotation = (ds, calcApi) => {
 // spearRotations: 普攻轮数，默认15秒按每轮3.5秒打3轮，衔接特殊战技和Q收尾
 const calcGloryRotation = (ds, calcApi) => {
   const { attr, calc, talent, cons, params } = ds
-  const { basic } = calcApi
   const dmg = calcApi
   const [ch, si] = starRoute(params)
   const rounds = params.spearRotations ?? 3
-  const quota = xilonenQuota(ds, calcApi)
+  const quota = teammateQuota(ds, calcApi)
   const hold = dmg(talent.e['长按技能伤害'], 'e')
-  const night = basic(calc(attr.atk) * talent.q['永夜将明星超导/星扩散伤害2'][si] / 100 * gloryMult(ds), 'q', ch)
-  const dec = calcDecimation(ds, calcApi)
-  let total = { dmg: hold.dmg + night.dmg + dec.dmg, avg: hold.avg + night.avg + dec.avg }
+  let total = { dmg: hold.dmg, avg: hold.avg }
   for (let i = 0; i < rounds; i++) {
     for (const n of ['一', '二', '三', '四', '五']) {
       const seg = tailHit(ds, calcApi, 'e', `${n}段冰元素伤害`, 'a', quota)
@@ -113,8 +129,12 @@ const calcGloryRotation = (ds, calcApi) => {
       total.avg += seg.avg
     }
   }
+  const night = quota(null, ch).basic(calc(attr.atk) * talent.q['永夜将明星超导/星扩散伤害2'][si] / 100 * gloryMult(ds), 'q', ch)
+  const dec = calcDecimation(ds, calcApi, quota)
+  total.dmg += night.dmg + dec.dmg
+  total.avg += night.avg + dec.avg
   if (cons >= 6) {
-    const c6 = basic(calc(attr.atk) * talent.q['裁灭三段星超导/星扩散伤害2'][si] / 100 * 2.5 * gloryMult(ds), 'e', ch)
+    const c6 = quota(null, ch).basic(calc(attr.atk) * talent.q['裁灭三段星超导/星扩散伤害2'][si] / 100 * 2.5 * gloryMult(ds), 'e', ch)
     total.dmg += c6.dmg
     total.avg += c6.avg
   }
@@ -122,15 +142,15 @@ const calcGloryRotation = (ds, calcApi) => {
 }
 
 // 「荣耀」解封战技「苍星圣敕·裁灭」
-const calcDecimation = (ds, calcApi) => {
+const calcDecimation = (ds, calcApi, quota = null) => {
   const { attr, calc, talent, params } = ds
-  const { basic } = calcApi
   const dmg = calcApi
+  const take = quota || (() => calcApi)
   const [ch, si] = starRoute(params)
   const mult = gloryMult(ds)
   const [firstPer, firstTimes] = talent.q['裁灭一段冰元素伤害2']
   const ice = dmg(firstPer * firstTimes * mult, 'e')
-  const star = (key) => basic(calc(attr.atk) * talent.q[key][si] / 100 * mult, 'e', ch)
+  const star = (key) => take(null, ch).basic(calc(attr.atk) * talent.q[key][si] / 100 * mult, 'e', ch)
   const s1 = star('裁灭一段星超导/星扩散伤害2')
   const s2 = star('裁灭二段星超导/星扩散伤害2')
   const s3 = star('裁灭三段星超导/星扩散伤害2')
@@ -193,7 +213,7 @@ export const details = applyStandardTeam([
     title: '圣佑之枪五段总伤',
     params: { glory: true },
     dmg: (ds, calcApi) => {
-      const quota = xilonenQuota(ds, calcApi)
+      const quota = teammateQuota(ds, calcApi)
       return '一二三四五'.split('').reduce((acc, n) => {
         const r = tailHit(ds, calcApi, 'e', `${n}段冰元素伤害`, 'a', quota)
         acc.dmg += r.dmg
