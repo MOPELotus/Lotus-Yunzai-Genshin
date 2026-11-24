@@ -564,6 +564,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
       title.push('战斗')
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
+      particularAttr.dmg = 100
       particularAttr.recharge = 55
       particularAttr.heal = 70
     }
