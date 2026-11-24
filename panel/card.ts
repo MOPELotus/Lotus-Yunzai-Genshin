@@ -1,3 +1,4 @@
+import { miaoTemplateFont } from "../../../lib/game-template-fonts.ts";
 import { layoutTrialDamageTitles, trialDamageTitleLineHeight } from "../../../lib/panel-trial-display.ts";
 import { Canvas } from "skia-canvas";
 import { renderGenshinCard, renderGenshinCardForChat } from "../card-render.ts";
@@ -19,7 +20,8 @@ type RenderMode = Parameters<typeof renderGenshinCard>[3];
 type Position = readonly [x: number, y: number, width: number, height: number];
 
 const detailWidth = 600;
-const font = '"Noto Sans CJK SC", sans-serif';
+const panelFonts = new WeakMap<Context, { body: string; title: string }>();
+const fontFor = (ctx: Context, size: number) => panelFonts.get(ctx)?.[size >= 25 ? "title" : "body"] ?? miaoTemplateFont(size >= 25);
 const blue = "#a4ddff";
 const gold = "#ffdfa0";
 const elements: Readonly<Record<string, string>> = {
@@ -37,9 +39,9 @@ const time = new Intl.DateTimeFormat("zh-CN", {
 function label(ctx: Context, value: string, x: number, y: number, size: number, color = "#fff", maxWidth = 530, align: CanvasTextAlign = "left") {
   ctx.textAlign = align;
   ctx.fillStyle = color;
-  ctx.font = `600 ${size}px ${font}`;
+  ctx.font = `600 ${size}px ${fontFor(ctx, size)}`;
   const width = ctx.measureText(value).width;
-  if (width > maxWidth) ctx.font = `600 ${Math.max(5, Math.floor(size * maxWidth / width))}px ${font}`;
+  if (width > maxWidth) ctx.font = `600 ${Math.max(5, Math.floor(size * maxWidth / width))}px ${fontFor(ctx, size)}`;
   ctx.fillText(value, x, y);
 }
 
@@ -102,6 +104,7 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
   ]);
   const ink = "#504c49", muted = "#6d655d";
   return renderGenshinCardForChat(width, height, ctx => {
+    panelFonts.set(ctx, { body: miaoTemplateFont(false, theme.resourceRoot), title: miaoTemplateFont(true, theme.resourceRoot) });
     ctx.fillStyle = "#f5f1eb";
     ctx.fillRect(0, 0, width, height);
     ctx.fillStyle = "#d3bc8d";
@@ -305,7 +308,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
   const levels = panelTalentLevels(avatar, meta, meta, change?.displayedTalent);
   const summary = pane === "profile" && damage?.rows.length ? damage : undefined;
   const summaryMeasure = summary?.trialTitleMode === 2 ? new Canvas(1, 1).getContext("2d") : undefined;
-  if (summaryMeasure) summaryMeasure.font = `600 15px ${font}`;
+  if (summaryMeasure) summaryMeasure.font = `600 15px ${miaoTemplateFont(false, theme.resourceRoot)}`;
   const summaryTitles = layoutTrialDamageTitles(summary?.rows ?? [], summaryRowHeight, summary?.trialTitleMode,
     summaryMeasure && (line => summaryMeasure.measureText(line).width <= (detailWidth - 20) * .4 - 21));
   const [backdrop, splash, badge, crown, icons, [talents, constellations], equip, relicArt, summaryTexture] = await Promise.all([
@@ -330,6 +333,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
     ? raw.get(element) ?? raw.get("phy")
     : raw.get(key));
   return renderGenshinCard(width, height, ctx => {
+    panelFonts.set(ctx, { body: miaoTemplateFont(false, theme.resourceRoot), title: miaoTemplateFont(true, theme.resourceRoot) });
     frame(ctx, backdrop, element, width, height);
     block(ctx, "#25273555", 8, 118, 584, 382);
     const bgBox: Position = [0, 9, 385, 484];

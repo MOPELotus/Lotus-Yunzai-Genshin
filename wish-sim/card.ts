@@ -1,3 +1,5 @@
+import { flowerTemplateFont } from "../../../lib/game-template-fonts.ts";
+import { builtinResourceDirectory } from "../../../lib/builtin-resources.ts";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { renderGenshinCard } from "../card-render.ts";
@@ -21,7 +23,7 @@ export interface WishCardOptions {
 }
 
 const colors = { 3: "#6396d6", 4: "#a97ae5", 5: "#ffd388" };
-const font = '"Noto Sans CJK SC", sans-serif';
+const font = flowerTemplateFont();
 const frame = new Path2D("M0.01 168.12l0 -9.64c4.32,-21.34 12,-32.33 25.46,-25.58 -2.35,-10.3 -1.53,-26.06 5.79,-25.96 19.18,0.25 29.95,-3.14 40.24,-13.16 -4.5,-66.43 51.39,-54.26 79.61,-93.78l0 0c28.22,39.52 84.1,27.34 79.61,93.78 10.29,10.02 21.06,13.41 40.24,13.16 7.32,-0.1 8.13,15.66 5.79,25.96 13.46,-6.75 21.14,4.24 25.46,25.58l0 9.64 0 1004.21 -0.01 0 0 3.13c-4.32,21.34 -12,32.33 -25.46,25.58 2.35,10.3 1.53,26.06 -5.79,25.96 -19.18,-0.25 -29.95,3.14 -40.24,13.16 4.5,66.43 -51.39,54.26 -79.61,93.78l0 0c-28.22,-39.52 -84.1,-27.34 -79.61,-93.78 -10.29,-10.02 -21.06,-13.41 -40.24,-13.16 -7.32,0.1 -8.13,-15.66 -5.79,-25.96 -13.46,6.75 -21.14,-4.24 -25.46,-25.58l0 -3.13 -0.01 0z");
 const rasterSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
@@ -38,7 +40,7 @@ async function picture(root: string | undefined, ...file: string[]): Promise<Pic
 }
 
 function text(ctx: Context, value: string, x: number, y: number, size: number, color: string, maxWidth: number) {
-  ctx.font = `600 ${size}px ${font}`;
+  ctx.font = `600 ${size}px ${size >= 37 ? flowerTemplateFont(true) : font}`;
   ctx.fillStyle = color;
   const width = ctx.measureText(value).width;
   if (width > maxWidth) ctx.font = `600 ${Math.floor(size * maxWidth / width)}px ${font}`;
@@ -130,10 +132,10 @@ export async function renderWishCard({
   const visible = [...pulls].sort((left, right) => right.star - left.star ||
     left.type.localeCompare(right.type, "en") || left.at - right.at);
   const legacyDirectory = wishLegacyDirectory();
-  const resourceDirectory = themeDirectory ?? (legacyDirectory ? join(legacyDirectory, "resources") : undefined);
+  const resourceDirectory = themeDirectory ?? (legacyDirectory ? join(legacyDirectory, "resources") : builtinResourceDirectory("games/flower"));
   const assets = (...parts: string[]) => picture(resourceDirectory, variant, ...parts);
   const elementsDir = Bun.env.LOTUS_GENSHIN_WISH_ELEMENTS_DIR?.trim() ||
-    (legacyDirectory ? join(legacyDirectory, "../../..", "genshin", "defSet", "element") : undefined);
+    (legacyDirectory ? join(legacyDirectory, "../../..", "genshin", "defSet", "element") : builtinResourceDirectory("games/genshin-elements"));
   const elements = async (type: WishPull["type"]) => elementsDir
     ? readWishYaml(join(elementsDir, `${type}.yaml`)).catch(() => undefined)
     : undefined;

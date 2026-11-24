@@ -1,3 +1,4 @@
+import { builtinResourceDirectory } from "../../../lib/builtin-resources.ts";
 import { join, resolve } from "node:path";
 import { loadImage } from "skia-canvas";
 import { renderGenshinCardForChat } from "../card-render.ts";
@@ -21,8 +22,7 @@ const border = "#d9d3c7", textColor = "#91837a";
 
 // Original shapes and palette are from Genshin 0290a17, resources/html/calculator/calculator-gs.html and .css.
 async function localLegacyAssets() {
-  const configured = Bun.env.LOTUS_GENSHIN_LEGACY_RESOURCES_DIR?.trim();
-  if (!configured) return {};
+  const configured = Bun.env.LOTUS_GENSHIN_LEGACY_RESOURCES_DIR?.trim() || builtinResourceDirectory("games/genshin");
   const root = resolve(configured);
   const directory = join(root, "html", "calculator");
   const css = Bun.file(join(directory, "calculator-gs.css"));

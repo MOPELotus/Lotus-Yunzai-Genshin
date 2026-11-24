@@ -1,3 +1,4 @@
+import { builtinResourceDirectory } from "../../../lib/builtin-resources.ts";
 import { createHash, randomInt } from "node:crypto";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,7 +14,7 @@ import { panelWeaponPicture, readPanelTheme, type PanelTheme, type Picture } fro
 type Drawing = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
 type Mode = Parameters<typeof renderGenshinCard>[3];
 type Box = readonly [x: number, y: number, width: number, height: number];
-const nativeResources = fileURLToPath(new URL("../../../data/genshin/gacha-theme/", import.meta.url));
+const nativeResources = builtinResourceDirectory("games/genshin");
 const chineseElements: Readonly<Record<string, string>> = {
   ice: "cryo", wind: "anemo", fire: "pyro", water: "hydro", electric: "electro", rock: "geo", grass: "dendro",
 };

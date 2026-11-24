@@ -1,3 +1,4 @@
+import { builtinResourceDirectory } from "../../lib/builtin-resources.ts";
 import { reportResourceProgress, type ResourceProgressCallback } from "../../lib/resource-progress.ts";
 import { createHash } from "node:crypto";
 import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
@@ -6,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { readLiteralArrayExport } from "@lotus-yunzai/gacha/literal-exports";
 
 const installedCheckout = new URL("../../", import.meta.url);
-const defaultTheme = fileURLToPath(new URL("data/genshin/miao-theme", installedCheckout));
+const defaultTheme = builtinResourceDirectory("games/miao");
 const calendarPath = "data/genshin/wish-calendar/pool.js";
 const themeCalendarPath = "meta-gs/info/pool.js";
 const revision = "f75a60114b29646363d80e283358c2ea26ee171d";

@@ -1,9 +1,10 @@
+import { miaoTemplateFont } from "../../../lib/game-template-fonts.ts";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { readPanelTheme } from "./theme.ts";
 
 const help = /^#(?:原神)?(?:角色|换|更换)?面[板版]帮助$/u;
 const width = 797, height = 1050;
-const font = '"Noto Sans CJK SC", "Droid Sans Fallback", sans-serif';
+const font = miaoTemplateFont();
 
 const sections = [
   { y: 160, title: "#更新面板、#展板更新面板",

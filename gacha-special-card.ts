@@ -1,9 +1,10 @@
+import { builtinResourceDirectory } from "../../lib/builtin-resources.ts";
 import { fileURLToPath } from "node:url";
 import { renderGachaSpecialCard, type GachaSpecialCardOptions, type GachaSpecialMetric } from "@lotus-yunzai/skia/genshin-gacha-special";
 import { genshinGachaThemeDirectory } from "./gacha-detail-source.ts";
 import type { GenshinGachaSpecialModel } from "./gacha-special.ts";
 
-const defaultGenshinResources = fileURLToPath(new URL("../../data/genshin/gacha-theme", import.meta.url));
+const defaultGenshinResources = builtinResourceDirectory("games/genshin");
 
 export function renderGenshinGachaSpecial(
   model: GenshinGachaSpecialModel,

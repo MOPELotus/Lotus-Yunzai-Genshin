@@ -1,10 +1,11 @@
+import { genshinTemplateFont } from "../../../lib/game-template-fonts.ts";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { nativeGenshinResourcesDirectory, originalFonts } from "./personal-record-card.ts";
 import { readPanelTheme, type PanelTheme } from "./theme.ts";
 import type { WeaponList } from "./weapon-list-model.ts";
 
 type Drawing = Parameters<Parameters<typeof renderGenshinCardForChat>[2]>[0];
-const han = '"PingFang SC", "Noto Sans CJK SC", sans-serif';
+const han = genshinTemplateFont();
 const dots = ["#d59258", "#9073ba", "#4c99b9"] as const;
 
 function rounded(ctx: Drawing, colour: string, x: number, y: number, w: number, h: number, radius: number) {
