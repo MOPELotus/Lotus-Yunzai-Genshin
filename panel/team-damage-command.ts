@@ -1,7 +1,7 @@
 import { gameCommandProfileId, MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { characterAliasKey } from "../../../lib/game-character-aliases.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
-import type { PanelSnapshot } from "./model.ts";
+import { artifactStatRecord, talentKeys, type PanelSnapshot } from "./model.ts";
 import { travelerIds } from "./talent-levels.ts";
 
 // Team shortcuts follow Lotus-Plugin e28c6df, adapted there from AFanSKyQs/FanSky_Qs (Apache-2.0).
@@ -107,7 +107,12 @@ export function selectTeam(tokens: readonly string[], snapshot: PanelSnapshot, c
   const owned = Object.values(snapshot.avatars).filter(avatar => !["change", "customize", "share", "mys"].includes(avatar._source));
   const named = tokens.length === 1 ? findTeamAlias(tokens[0]!) ?? tokens : tokens;
   if (!named.length) {
-    const team = owned.filter(avatar => avatar.weapon?.promote !== undefined).slice(0, 4);
+    const team = owned.filter(avatar => avatar.weapon?.promote !== undefined && avatar.cons !== undefined &&
+      talentKeys.every(key => avatar.refreshedTalent?.[key] || avatar.talent[key]) &&
+      Object.values(avatar.artis).every(item => {
+        const { main, unrecognized } = artifactStatRecord(item);
+        return item.scoreReady !== false && !!item.set && !!main && !unrecognized;
+      })).slice(0, 4);
     if (!team.length) throw new TypeError("暂无可用于队伍伤害的角色，请先使用 #更新面板，或指定队伍角色。");
     if (team.some(avatar => travelerIds.has(avatar.id))) throw new TypeError("旅行者暂不支持队伍伤害计算。");
     return team;

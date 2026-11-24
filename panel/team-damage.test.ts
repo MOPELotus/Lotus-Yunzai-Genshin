@@ -4,13 +4,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createProfileStore } from "@lotus-yunzai/account";
 import { readGenshinTeamDamage, type TeamDamagePayload } from "@lotus-yunzai/hoyo-client";
+import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { lockFile } from "../../../lib/file-lock.ts";
+import type { ReplyOptions } from "../../../lib/messages.ts";
+import { readTeamPanelProperties } from "./damage.ts";
+import { characterDamageRules } from "./miao/damage/character-rules.ts";
 import { readPanel, type PanelSnapshot } from "./model.ts";
 import { createGenshinPanelArchive } from "./panel.ts";
 import { parseTeamDamage, selectTeam } from "./team-damage-command.ts";
-import { parseTeamDamageResult, teamDamageServer } from "./team-damage-model.ts";
+import { buildTeamDamagePayload, parseTeamDamageResult, teamDamageServer } from "./team-damage-model.ts";
 import { createTeamDamageQuery } from "./team-damage.ts";
-import { teamDamagePages } from "./team-damage-card.ts";
+import { renderTeamDamage, teamDamagePages } from "./team-damage-card.ts";
 import type { PanelTheme } from "./theme.ts";
 
 const uid = "100000001", otherUid = "100000002", furina = 10000089;
@@ -48,6 +52,8 @@ test("original team aliases, adjacent profile and same-role UID syntax, with dis
   expect(parseTeamDamage("#星铁队伍伤害")).toBeUndefined();
   const snapshot = readPanel(uid, stored, theme)!;
   expect(selectTeam([], snapshot).map(avatar => avatar.id)).toEqual([furina]);
+  expect(selectTeam([], { ...snapshot, avatars: { ...snapshot.avatars,
+    10000042: { ...snapshot.avatars[furina]!, id: 10000042, name: "刻晴", talent: {} } } }).map(avatar => avatar.id)).toEqual([furina]);
   const aliases = new Map([["枫丹茶会的水神", "芙宁娜"]]);
   expect(selectTeam(["枫丹茶会的水神"], snapshot, aliases).map(avatar => avatar.id)).toEqual([furina]);
   expect(() => selectTeam(["芙芙", "枫丹茶会的水神"], snapshot, aliases)).toThrow("只能");
@@ -103,6 +109,20 @@ test("official totals preserve old units, only current team is returned and deta
   expect(teamDamagePages({ uid, profileId: 3, members, result: sections, detail: false })).toEqual([]);
 });
 
+test("队伤按旧静态面板取数，角色没有独立单人伤害公式也可参加计算", async () => {
+  const avatar = readPanel(uid, stored, theme)!.avatars[furina]!;
+  const name = "达妮卡";
+  const candidate = { ...avatar, id: 10000147, name };
+  const table = { ...character, name };
+  const candidateTheme: PanelTheme = { ...theme, characters: { [candidate.id]: table },
+    async metadata(...parts) { return parts[1] === "character" ? table : theme.metadata!(...parts); },
+  };
+  expect(Object.hasOwn(characterDamageRules, name)).toBe(false);
+  expect(await readTeamPanelProperties(candidate, candidateTheme)).toMatchObject({ atkBase: 550, hp: 14778.55 });
+  const unequipped = await buildTeamDamagePayload(uid, "cn_gf01", [{ ...candidate, artis: {} }], candidateTheme);
+  expect(unequipped.payload.role_data).toMatchObject([{ hp: 10000, artifacts: "", artifacts_detail: [] }]);
+});
+
 test("same QQ and selected profile, notice precedes release, third-party data is minimal and old archive remains read-only", async () => {
   const dir = await mkdtemp(join(tmpdir(), "lotus-gs-team-"));
   try {
@@ -113,9 +133,14 @@ test("same QQ and selected profile, notice precedes release, third-party data is
     await writeFile(path, profile());
     await writeFile(oldFile, raw);
     const calls: string[] = [];
-    let changeBefore = false, changeAfter = false, long = false, renders = 0;
+    let changeBefore = false, changeAfter = false, long = false, renders = 0, overBudget = false, unavailable = false;
     let wire: TeamDamagePayload | undefined;
-    const render = async () => { renders++; return { png: Buffer.from("image"), engine: {} as never }; };
+    const render: typeof renderTeamDamage = async (_card, _theme, options) => {
+      renders++;
+      if (unavailable) throw new Error("fixture rendering failed");
+      if (overBudget && options?.page?.timeline.length === 40) throw new ImageSizeLimitError("fixture budget");
+      return { png: Buffer.from("image"), engine: {} as never };
+    };
     const query = createTeamDamageQuery(createProfileStore(profiles), createGenshinPanelArchive(lockFile,
       { archiveDirectory: destination, legacyDirectory: legacy }), new AbortController().signal, {
       theme: async () => theme, render, engine: "auto",
@@ -126,21 +151,24 @@ test("same QQ and selected profile, notice precedes release, third-party data is
         return long ? { ...result, advice: Array(40).fill(result.advice[0]) } : result;
       },
     });
-    const scene = { ...context, async reply(message: unknown) {
+    const scene = { ...context, async reply(message: unknown, _quote?: boolean, options?: ReplyOptions) {
       expect(message).toContain("api.lelaer.com");
       expect(message).toContain("档案 3");
       expect(message).toContain("芙宁娜");
       calls.push("notice");
       if (changeBefore) await writeFile(path, profile(otherUid));
+      await options?.onDelivered?.(10);
       return true;
     } };
     expect(await query("#队伍伤害帮助", scene)).toContain("提瓦特小助手");
-    expect(await query(`#队伍伤害3 ${otherUid} 芙芙`, scene)).toContain("UID 与当前档案");
+    expect(await query("#队伍伤害3 100000003 芙芙", scene)).toContain("UID 与当前档案");
+    expect(await query(`#队伍伤害3 ${otherUid} 芙芙`, scene)).toContain("没有原神角色面板");
     expect(await query("#队伍伤害3芙宁娜 芙芙", scene)).toContain("只能");
     expect(await query("#队伍伤害3芙芙", { ...scene, user_id: 43 })).toContain("先登录档案 3");
     expect(await query("#队伍伤害3芙芙", { ...scene, isDelegated: true })).toContain("本人 QQ");
     expect(await query("#队伍伤害3芙芙", { ...scene, reply: () => false })).toContain("提示未能送出");
     expect(await query("#队伍伤害3芙芙", { ...scene, reply: () => undefined })).toContain("提示未能送出");
+    expect(await query("#队伍伤害3芙芙", { ...scene, reply: () => true })).toContain("提示未能送出");
     expect(calls).toEqual([]);
     expect(await query("#队伍伤害3芙芙", scene)).toMatchObject({ type: "image" });
     expect(calls).toEqual(["notice", "provider"]);
@@ -157,7 +185,21 @@ test("same QQ and selected profile, notice precedes release, third-party data is
     expect(await query("#队伍伤害3芙芙", scene)).toContain("档案已变化");
     await writeFile(path, profile());
     changeAfter = false; long = true; renders = 0;
-    expect(await query("#队伍伤害详情3芙芙", { ...scene, reply: message => typeof message === "string" })).toContain("图片未能送出");
+    expect(await query("#队伍伤害详情3芙芙", scene)).toMatchObject({ type: "image" });
+    expect(renders).toBe(1);
+    overBudget = true; renders = 0;
+    expect(await query("#队伍伤害详情3芙芙", { ...scene, reply: (message, quote, options) =>
+      typeof message === "string" ? scene.reply(message, quote, options) : false })).toContain("图片未能送出");
+    expect(renders).toBe(2);
+    renders = 0;
+    expect(await query("#队伍伤害详情3芙芙", { ...scene, async reply(message, quote, options) {
+      if (typeof message === "string") return scene.reply(message, quote, options);
+      await options?.onDelivered?.(11);
+      return true;
+    } })).toMatchObject({ type: "image" });
+    expect(renders).toBe(3);
+    unavailable = true; renders = 0;
+    expect(await query("#队伍伤害详情3芙芙", scene)).toContain("总伤害 208000 · DPS 8667 · 时间 24 秒 · 评级 良好");
     expect(renders).toBe(1);
     expect(await readFile(oldFile, "utf8")).toBe(raw);
     expect(await Bun.file(join(destination, "42", `${uid}.json`)).exists()).toBe(false);

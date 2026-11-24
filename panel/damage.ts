@@ -363,10 +363,10 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme, engine?: Dama
   return { cons, rule, tables, gear, weapon, allBuffs, starting, native, catalog, usesNativeRule: !!selected };
 }
 
-export async function readOriginalPanelNumbers(avatar: PanelAvatar, theme: PanelTheme) {
+export async function readOriginalPanelNumbers(avatar: PanelAvatar, theme: PanelTheme, { sourceOnly = false } = {}) {
   try {
     const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
-    const tables = await panelTables(theme, avatar, name);
+    const tables = sourceOnly ? await sourceData(theme, avatar, name) : await panelTables(theme, avatar, name);
     const gear = equipment(avatar);
     const rule = Object.hasOwn(formulas, name) ? formulas[name]!() : undefined;
     const buffs = [...(rule?.buffs ?? []), ...weaponBuffs(avatar.weapon!.name, avatar.weapon?.affix ?? 1), ...gear.buffs];
@@ -398,16 +398,13 @@ export async function readOriginalWeapon(avatar: PanelAvatar, theme: PanelTheme)
 }
 
 export async function readTeamPanelProperties(avatar: PanelAvatar, theme: PanelTheme) {
-  try {
-    const { starting } = await panelInputs(avatar, theme);
-    const keys = ["hp", "hpBase", "atk", "atkBase", "def", "defBase", "mastery", "cpct", "cdmg", "heal", "recharge", "phy", "dmg"] as const;
-    const entries = keys.map(key => [key, finite(starting[key])] as const);
-    if (entries.some(([, value]) => value === undefined)) return;
-    return Object.fromEntries(entries) as Record<typeof keys[number], number>;
-  } catch (error) {
-    if (error instanceof Unavailable) return;
-    throw error;
-  }
+  if (!Object.hasOwn(elementNames, avatar.elem) || !avatar.weapon?.affix) return;
+  const original = await readOriginalPanelNumbers(avatar, theme, { sourceOnly: true });
+  if (!original) return;
+  const keys = ["hp", "hpBase", "atk", "atkBase", "def", "defBase", "mastery", "cpct", "cdmg", "heal", "recharge", "phy", "dmg"] as const;
+  const entries = keys.map(key => [key, finite(original.values[key])] as const);
+  if (entries.some(([, value]) => value === undefined)) return;
+  return Object.fromEntries(entries) as Record<typeof keys[number], number>;
 }
 
 export async function readLegacyArtifactRuleProperties(avatar: PanelAvatar, theme: PanelTheme) {

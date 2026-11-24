@@ -86,7 +86,7 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
   const measureContext = new Canvas(1, 1).getContext("2d");
   measureContext.font = `14px ${font}`;
   const measure = (value: string) => measureContext.measureText(value).width;
-  let cursor = 113;
+  let cursor = 116;
   const drawings: ((ctx: Drawing) => void)[] = [];
   function drawText(ctx: Drawing, value: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign = "left", typeface = font) {
     ctx.font = `${size}px ${typeface}`;
@@ -108,11 +108,15 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
       ctx.save();
       ctx.beginPath(); ctx.roundRect(left, top, tableWidth, entries.reduce((sum, row) => sum + row.height, 0), 10); ctx.clip();
       entries.forEach(({ height, lines, face }, i) => {
-        ctx.fillStyle = i === 0 ? "#0008" : i % 2 ? "#f0f0f0" : "#fff";
+        ctx.fillStyle = i === 0 ? "#00000080" : i % 2 ? "#f0f0f0" : "#fff";
         ctx.fillRect(left, y, tableWidth, height);
         let x = left;
         lines.forEach((cell, col) => {
-          if (col === 1 && face) ctx.drawImage(face, x + 3, y + 3, 30, 30);
+          if (col === 1 && face) {
+            const scale = 30 / Math.max(face.width, face.height);
+            const w = face.width * scale, h = face.height * scale;
+            ctx.drawImage(face, x + 3 + (30 - w) / 2, y + 3 + (30 - h) / 2, w, h);
+          }
           const indent = col === 1 && face ? 36 : 0;
           cell.forEach((line, j) => drawText(ctx, line, x + 6 + indent, y + 7 + j * 21, 14, i ? "#333" : gold));
           ctx.fillStyle = "#6664"; ctx.fillRect(x, y, widths[col]!, 1); ctx.fillRect(x, y, 1, height);
@@ -125,17 +129,21 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
   }
   tables.forEach(table);
   if (overview && result.actions.length) {
-    const lines = wrap(result.actions.join(" → "), tableWidth - 40, measure);
-    const top = cursor, height = 47 + lines.length * 21;
+    const lines = wrap(result.actions.join(" → "), tableWidth - 65, measure);
+    const top = cursor, titleHeight = 44, height = titleHeight + lines.length * 22 + 28;
     drawings.push(ctx => {
-      ctx.fillStyle = "#0008"; ctx.beginPath(); ctx.roundRect(left, top, tableWidth, height, 10); ctx.fill();
-      drawText(ctx, "输出手法", left + 20, top + 10, 19, gold);
-      lines.forEach((line, i) => drawText(ctx, line, left + 20, top + 42 + i * 21, 14, "#fff"));
+      ctx.save(); ctx.beginPath(); ctx.roundRect(left, top, tableWidth, height, 10); ctx.clip();
+      ctx.fillStyle = "#00000080"; ctx.fillRect(left, top, tableWidth, height);
+      ctx.fillStyle = "#0006"; ctx.fillRect(left, top, tableWidth, titleHeight);
+      drawText(ctx, "输出手法", left + 20, top + 10, 20, gold);
+      drawText(ctx, "•", left + 15, top + titleHeight + 10, 14, "#fff");
+      lines.forEach((line, i) => drawText(ctx, line, left + 40, top + titleHeight + 10 + i * 22, 14, "#fff"));
+      ctx.restore();
     });
-    cursor += height + 14;
+    cursor += height + 10;
   }
   details.forEach(table);
-  const height = cursor + 50;
+  const height = cursor + 68;
   return renderGenshinCardForChat(width, height, ctx => {
     ctx.fillStyle = "#e8e7e4"; ctx.fillRect(0, 0, width, height);
     if (back) {
@@ -143,19 +151,24 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
       const center = (height - tile) / 2;
       for (let y = center - Math.ceil(center / tile) * tile; y < height; y += tile) ctx.drawImage(back, 0, y, width, tile);
     }
-    if (cover) ctx.drawImage(cover, 0, -25, width, width * cover.height / cover.width);
+    if (cover) {
+      const boxHeight = 900;
+      const scale = Math.min(width / cover.width, boxHeight / cover.height);
+      const coverWidth = cover.width * scale, coverHeight = cover.height * scale;
+      ctx.drawImage(cover, (width - coverWidth) / 2, -25 + (boxHeight - coverHeight) / 2, coverWidth, coverHeight);
+    }
     ctx.save();
-    if (back || cover) { ctx.shadowColor = "#0008"; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1; }
+    if (back || cover) { ctx.shadowColor = "#000"; ctx.shadowBlur = 2; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1; }
     const titleColor = back || cover ? "#fff" : "#252521";
-    drawText(ctx, "原神队伍伤害", 35, 30, 34, titleColor, "left", titleFont);
+    drawText(ctx, "原神队伍伤害", 35, 30, 36, titleColor, "left", titleFont);
     drawText(ctx, `UID ${card.uid} · 档案 ${card.profileId}${totalPages > 1 ? ` · ${pageNumber}/${totalPages}` : ""}`, 35, 75, 16, titleColor);
     ctx.restore();
     drawings.forEach(draw => draw(ctx));
     ctx.save();
-    if (back) { ctx.shadowColor = "#000"; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1; }
+    if (back) { ctx.shadowColor = "#000"; ctx.shadowBlur = 2; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1; }
     const footerColor = back ? "#fff" : "#35342f";
-    drawText(ctx, "数据来源：提瓦特小助手", width / 2, cursor + 7, 12, footerColor, "center");
-    drawText(ctx, "Lotus-Yunzai", width / 2, cursor + 25, 12, footerColor, "center");
+    drawText(ctx, "数据来源：提瓦特小助手", width / 2, cursor + 15, 12, footerColor, "center");
+    drawText(ctx, "Lotus-Yunzai", width / 2, cursor + 33, 12, footerColor, "center");
     ctx.restore();
   }, mode, { displayWidth: 720, inlineImageByteLimit, signal });
 }
