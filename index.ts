@@ -235,8 +235,10 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
   const repair = createGenshinGachaRepair(
     fileURLToPath(new URL("../../data/genshin/gacha-repair.sqlite", import.meta.url)), sync.sync, lockFile,
   );
-  const gachaUpdate = createGachaUpdater((qq, profileId, isDelegated?: boolean) => isDelegated
-    ? sync.sync(qq, profileId, { signal }) : repair.update(qq, profileId, { signal }));
+  const gachaUpdate = createGachaUpdater((qq, profileId, options?: { isDelegated?: boolean; workflow?: AbortSignal }) => {
+    const active = options?.workflow ? AbortSignal.any([signal, options.workflow]) : signal;
+    return options?.isDelegated ? sync.sync(qq, profileId, { signal: active }) : repair.update(qq, profileId, { signal: active });
+  });
   const externalUpdate = createGachaUpdater((qq, profileId) => sync.syncExternal(qq, profileId, { signal }));
   const importGacha = createGenshinGachaImport(profiles, history, signal);
   const publicPool = createGenshinPublicPoolQuery(signal);
@@ -367,9 +369,9 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
 
   return {
     commands: {},
-    async gachaUpdate(...args: Parameters<typeof gachaUpdate>) {
+    async gachaUpdate(qq: string, profileId: number, notify?: () => unknown, isDelegated?: boolean, workflow?: AbortSignal) {
       try {
-        return await gachaUpdate(...args);
+        return await gachaUpdate(qq, profileId, notify, { isDelegated, workflow });
       } catch (error) {
         if (error instanceof GenshinGachaBusyError) return;
         throw error;
@@ -567,7 +569,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       if (query) return view(qq, profileId, query.view, query.all, context);
       try {
         const result = await gachaUpdate(qq, profileId, () =>
-          context.reply(`[genshin] 正在更新 Profile ${profileId} 的抽卡记录，会补齐官方范围内的缺档。`), context.isDelegated);
+          context.reply(`[genshin] 正在更新 Profile ${profileId} 的抽卡记录，会补齐官方范围内的缺档。`), { isDelegated: context.isDelegated });
         if (!result) return "该档案的原神抽卡记录正在更新，请稍后再试。";
         try {
           const { png } = await renderGenshinGachaResult(qq, result);
