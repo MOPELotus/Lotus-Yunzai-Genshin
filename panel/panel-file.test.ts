@@ -163,7 +163,7 @@ test("原神签名导出只从显式同 UID 的旧面板读取，经边界与授
     expect(await run(selection, { ...context, isDelegated: true })).toContain("好友私聊");
     expect(await run(selection, { ...context, privateCredentialSignal: undefined })).toContain("好友私聊");
     expect(await run({ ...selection, uid: "../100123456" }, context)).toContain("请输入");
-    expect(await run({ ...selection, uid: otherUid }, context)).toContain("重新验证");
+    expect(await run({ ...selection, uid: otherUid }, context)).toBe("角色所属档案或登录信息已变更，请重新操作。");
     expect(proofs).toEqual([otherUid]);
     expect(readPartitions).toHaveLength(0);
     expect(readLegacyUids).toHaveLength(0);
@@ -212,7 +212,7 @@ test("原神签名导出尊重已有删除，并在读取期间撤权、删档�
       reads++;
       return archive.readLegacy(uid, catalog);
     } }, lifecycle.signal, async () => catalog);
-    expect(await run({ uid, authorize: async () => ++proofs === 1 }, context)).toContain("重新验证");
+    expect(await run({ uid, authorize: async () => ++proofs === 1 }, context)).toBe("角色所属档案或登录信息已变更，请重新操作。");
     expect(proofs).toBe(2);
 
     const interrupted = new AbortController();
@@ -229,7 +229,7 @@ test("原神签名导出尊重已有删除，并在读取期间撤权、删档�
       boundaryReads++;
       return archive.discardedAt(qq, target);
     } }, lifecycle.signal, async () => catalog);
-    expect(await revokedAtBoundary({ uid, authorize: async () => boundaryReads < 2 }, context)).toContain("重新验证");
+    expect(await revokedAtBoundary({ uid, authorize: async () => boundaryReads < 2 }, context)).toBe("角色所属档案或登录信息已变更，请重新操作。");
     const discardDuringRead = createGenshinSignedPanelExport({ ...archive, async readLegacy(uid, catalog) {
       const snapshot = await archive.readLegacy(uid, catalog);
       await archive.discard("42", uid, () => 1_900_000_000_000, async () => {});

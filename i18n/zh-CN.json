@@ -1781,7 +1781,7 @@
     "panel.panel-file.text_34e040d89e": "请输入本人原神 UID。",
     "panel.panel-file.text_422a7cd8e3": "请在机器人好友私聊中导出本人原神面板。",
     "panel.panel-file.text_49a85d1f84": "原神面板已删除，请重新导出。",
-    "panel.panel-file.text_4cf6c28bb7": "该 UID 的原神签名验证已失效，请重新验证。",
+    "panel.panel-file.text_4cf6c28bb7": "角色所属档案或登录信息已变更，请重新操作。",
     "panel.panel-file.text_60c21c1bc5": "已导出原神面板 {name}。",
     "panel.panel-file.text_610ca27149": "原神面板文件发送失败。",
     "panel.panel-file.text_6707ed5af5": "仅可导出所选档案中已同步的本人原神面板。",
