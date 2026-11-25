@@ -154,6 +154,6 @@ export async function renderGenshinStatistics(model: GenshinMonthlyStatistics, {
     text("总计", pieX, pieY - 17, 18, 90, body, "center");
     text(model.sources.length ? String(total) : "—", pieX, pieY + 17, 34, 135, body, "center", true);
     if (coverage) text(coverage, 18, 967, 12, 487, muted);
-    text("Created By Lotus-Yunzai", 265, 984, 14, 390, "#7994a7", "center");
+    text("Created By Lotus-Yunzai", 265, 984, 14, 390, "#fff", "center");
   }, "gpu", { displayWidth: 689, inlineImageByteLimit, signal });
 }

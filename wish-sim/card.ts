@@ -202,6 +202,6 @@ export async function renderWishCard({
     const label = ["原神模拟祈愿", target && title.endsWith("历史卡池") ? "历史卡池" : "", single ? "" : `第 ${page} 页`];
     text(ctx, label.filter(Boolean).join(" · "), 65, height - 35, 21, "#e2ebfa", width / 2);
     ctx.textAlign = "right";
-    text(ctx, "Lotus-Yunzai", width - 55, height - 35, 20, "#e2ebfa", width / 2);
+    text(ctx, "Lotus-Yunzai", width - 55, height - 35, 20, "#fff", width / 2);
   }, mode);
 }

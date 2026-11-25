@@ -184,7 +184,7 @@ export async function renderPersonalExploration(model: PersonalExploration, {
       });
     }
     drawText(ctx, "Created By Lotus-Yunzai", width / 2, height - 13, 12, {
-      family: numberFont, color: "#7994a7", align: "center",
+      family: numberFont, color: "#fff", align: "center",
     });
   }, mode, { displayWidth, scale });
   const full = await render(4);

@@ -155,6 +155,6 @@ export async function renderGenshinPayLog(model: GenshinPayLog, { mode = "auto",
     monthly(ctx, model, 361, font);
     panel(ctx, 686, 325, "详细统计");
     detail(ctx, model, 706, font);
-    text(ctx, "Created By Lotus-Yunzai", width / 2, 1040, 14, { font, color: "#7994a7", align: "center" });
+    text(ctx, "Created By Lotus-Yunzai", width / 2, 1040, 14, { font, color: "#fff", align: "center" });
   }, mode, { displayWidth: 689, inlineImageByteLimit, signal });
 }

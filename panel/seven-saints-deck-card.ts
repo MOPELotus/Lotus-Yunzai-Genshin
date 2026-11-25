@@ -197,6 +197,6 @@ export async function renderSevenSaintsDeck(record: Pick<GenshinDeckList, "uid" 
     });
     const pageLabel = pageCount > 1 ? ` · ${page}/${pageCount}` : "";
     const deckLabel = deckId !== undefined ? `卡组 ${deckId} · ` : "";
-    text(`${deckLabel}Lotus-Yunzai${pageLabel}`, width / 2, height - 16, 12, hint, "center");
+    text(`${deckLabel}Lotus-Yunzai${pageLabel}`, width / 2, height - 16, 12, "#fff", "center");
   }, mode);
 }

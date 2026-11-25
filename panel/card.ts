@@ -77,7 +77,7 @@ function frame(ctx: Context, image: Picture | undefined, element: string, width:
 }
 
 function footer(ctx: Context, width: number, height: number) {
-  label(ctx, "Lotus-Yunzai", width / 2, height - 14, 12, "#f0e7d9", 550, "center");
+  label(ctx, "Lotus-Yunzai", width / 2, height - 14, 12, "#fff", 550, "center");
 }
 
 const character = (theme: PanelTheme, name: string, ...rest: string[]) => theme.picture("meta-gs", "character", name, ...rest);
@@ -176,7 +176,7 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
       y += groupHeight + 14;
     });
     label(ctx, "仅显示已装备的武器 · 资料来自当前档案", 16, height - 23, 12, muted, 532);
-    label(ctx, "Lotus-Yunzai", 683, height - 23, 11, muted, 100, "right");
+    label(ctx, "Lotus-Yunzai", 683, height - 23, 11, "#fff", 100, "right");
   }, mode, options);
 }
 

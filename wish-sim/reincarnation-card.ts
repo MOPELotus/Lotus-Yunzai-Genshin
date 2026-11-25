@@ -131,6 +131,6 @@ export async function renderWishReincarnation({
       ctx.fillRect(88, top, 650, 55);
       text(ctx, field, 413, top + 44, 38, body ?? fontFallback, color, 607);
     }
-    text(ctx, "Lotus-Yunzai · Genshin", 1615, 765, 24, footer ?? fontFallback, "#ffffff80", 430, "right");
+    text(ctx, "Lotus-Yunzai · Genshin", 1615, 765, 24, footer ?? fontFallback, "#fff", 430, "right");
   }, mode ?? "auto", { inlineImageByteLimit, signal });
 }

@@ -71,6 +71,6 @@ export async function renderAbyssTeams(pairs: readonly AbyssTeamPair[], updated:
       down.forEach((member, i) => role(member, 340 + i * 57, y + 8));
     });
     if (updated) write(`统计更新时间 ${updated}`, width - 18, height - 24, 11, { align: "right", color: "#e7e3e6" });
-    write("Lotus-Yunzai", width / 2, height - 9, 12, { align: "center", color: "#e7e3e6" });
+    write("Lotus-Yunzai", width / 2, height - 9, 12, { align: "center", color: "#fff" });
   }, mode, { inlineImageByteLimit, signal });
 }

@@ -168,7 +168,7 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
     if (back) { ctx.shadowColor = "#000"; ctx.shadowBlur = 2; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1; }
     const footerColor = back ? "#fff" : "#35342f";
     drawText(ctx, "数据来源：提瓦特小助手", width / 2, cursor + 15, 12, footerColor, "center");
-    drawText(ctx, "Lotus-Yunzai", width / 2, cursor + 33, 12, footerColor, "center");
+    drawText(ctx, "Lotus-Yunzai", width / 2, cursor + 33, 12, "#fff", "center");
     ctx.restore();
   }, mode, { displayWidth: 720, inlineImageByteLimit, signal });
 }

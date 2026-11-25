@@ -134,7 +134,7 @@ export async function renderPersonalOverview(model: PersonalOverview, theme: Pan
         type(`${avatar.cons}命`, x + 18, y + 154, 13, 35);
       }
     });
-    type("Lotus-Yunzai", 812, 454, 11, 100, "#ffefdb", "right");
+    type("Lotus-Yunzai", 812, 454, 11, 100, "#fff", "right");
   }, mode);
 }
 
@@ -360,7 +360,7 @@ export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readon
       }
     } else type("暂无数据更新时间，可使用 #更新面板 刷新角色资料。", 710, noticeTop + 23, 12, 680, "#aaa", "right");
     ctx.restore();
-    type("Lotus-Yunzai", 375, height - 23, 14, 170);
+    type("Lotus-Yunzai", 375, height - 23, 14, 170, "#fff");
   };
   const displayWidth = 1036;
   if (scale !== 2) return renderGenshinCardForChat(width, height, draw, mode, { displayWidth, inlineImageByteLimit, signal });

@@ -114,7 +114,7 @@ export async function renderAvatarCard(name: string, id: number, uid: string, av
       const updated = avatar._time ? timestamp.format(avatar._time) : "";
       write(`数据源 ${sources[avatar._source] ?? "档案"} ${updated}`, 10, height - 8, 13);
     }
-    write("Lotus-Yunzai", width - 10, height - 8, 13, { align: "right", color: "#edeae2" });
+    write("Lotus-Yunzai", width - 10, height - 8, 13, { align: "right", color: "#fff" });
   }, mode, { inlineImageByteLimit, signal });
   return { type: "image" as const, file: png, original: asset?.photo };
 }
