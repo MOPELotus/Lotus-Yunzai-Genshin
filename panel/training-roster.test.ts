@@ -104,7 +104,8 @@ test("普通练度首次获取完整名册，Cookie 续接未完成阶段，热�
   expect(rendered.at(-1)?.avatars["安柏"]).toEqual([9, [6, 6, 6], [], "mys"]);
   fail = true;
   expect(await query("#练度统计3", context)).toEqual({ type: "image", file: Uint8Array.of(1) });
-  expect(trace.splice(0)).toEqual(["index"]);
+  // Exhaust the shared three-attempt read budget before using the same-account cache.
+  expect(trace.splice(0)).toEqual(["index", "index", "index"]);
   expect(await query("#练度统计3", { ...context, isDelegated: true })).toContain("本人 QQ");
   expect(await query("#练度统计3", { ...context, privateCredentialSignal: AbortSignal.abort() })).toBeUndefined();
   expect(await query("#练度统计 100000002", context)).toMatch(/不一致|先登录/u);
@@ -320,7 +321,8 @@ test("按月剧诗练度先续接并更新本人名册，再使用当月规则�
     expect(await query(december, context)).toEqual({ type: "forward", nodes: [
       "2026-12 幻想真境剧诗 · 角色练度统计\n限制元素：火\n开幕角色：胡桃\n特邀角色：七七", image,
     ] });
-    expect(requests.splice(0)).toEqual(["index"]);
+    // Offline index retries must not refetch details or discard the cached talent levels.
+    expect(requests.splice(0)).toEqual(["index", "index", "index"]);
     expect(rendered.at(-1)).toEqual({ [amber.id]: [5, 5, 5], [opening]: [8, 8, 8] });
     expect(exchanges).toBe(1);
     expect(await Bun.file(join(archive, "42", uid + ".json")).exists()).toBe(false);
