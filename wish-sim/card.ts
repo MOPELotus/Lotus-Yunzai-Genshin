@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { flowerTemplateFont } from "../../../lib/game-template-fonts.ts";
 import { builtinResourceDirectory } from "../../../lib/builtin-resources.ts";
@@ -107,7 +110,7 @@ function banner(ctx: Context, pull: WishPull, art: PullArt, x: number, y: number
     else aspectWidth(ctx, art.item, -1, 44, 110);
   } else {
     ctx.textAlign = "center";
-    text(ctx, pull.type === "role" ? "角" : "兵", 53, 195, 65, "#ffffff55", 102);
+    text(ctx, pull.type === "role" ? $t("wish-sim.card.text_beddda2bcf") : $t("wish-sim.card.text_5b43c02074"), 53, 195, 65, "#ffffff55", 102);
   }
   ctx.restore();
   if (overlay) ctx.drawImage(overlay, 7, 7, 99, 436);
@@ -119,7 +122,7 @@ function banner(ctx: Context, pull: WishPull, art: PullArt, x: number, y: number
   if (pull.pity) {
     ctx.fillStyle = "#05050599";
     ctx.fillRect(2, 276, 108, 39);
-    text(ctx, [`${pull.pity}抽`, pull.guaranteed].filter(Boolean).join(" · "), 56, 302, 20, "#fff", 102);
+    text(ctx, [$t("wish-sim.card.text_f30758be1c", { "pity": pull.pity }), pull.guaranteed].filter(Boolean).join(" · "), 56, 302, 20, "#fff", 102);
   }
   ctx.restore();
 }
@@ -128,7 +131,7 @@ export async function renderWishCard({
   title, name, pity, target, fate, pulls, page = 1,
   themeDirectory = Bun.env.LOTUS_GENSHIN_WISH_THEME_DIR?.trim() || undefined, mode = "auto",
 }: WishCardOptions) {
-  if (!pulls.length || pulls.length > 10) throw new RangeError("模拟祈愿每页须包含 1 至 10 抽。");
+  if (!pulls.length || pulls.length > 10) throw new RangeError($t("wish-sim.card.text_8b15e323b3"));
   const single = pulls.length === 1;
   const variant = single ? "single" : "torrent";
   const visible = [...pulls].sort((left, right) => right.star - left.star ||
@@ -164,7 +167,7 @@ export async function renderWishCard({
   const width = single ? 1191 : 1286;
   const height = 670;
   const count = [...pulls].reverse().find(({ star }) => star === 5);
-  const summary = count ? `${count.name}「${count.pity}抽」${count.guaranteed ?? ""}` : `累计「${pity}抽」`;
+  const summary = count ? $t("wish-sim.card.text_d05ff70d73", { "name": count.name, "pity": count.pity, "value3": count.guaranteed ?? "" }) : $t("wish-sim.card.text_6bc100786a", { "pity": pity });
 
   return renderGenshinCard(width, height, ctx => {
     if (background) ctx.drawImage(background, 0, 0, width, height);
@@ -186,7 +189,7 @@ export async function renderWishCard({
         aspectHeight(ctx, art.item, -60, 0, height);
       } else {
         ctx.textAlign = "center";
-        text(ctx, pull.type === "role" ? "角" : "兵", width / 2, 405, 200, colors[pull.star], 400);
+        text(ctx, pull.type === "role" ? $t("wish-sim.card.text_beddda2bcf") : $t("wish-sim.card.text_5b43c02074"), width / 2, 405, 200, colors[pull.star], 400);
         ctx.textAlign = "left";
       }
       badge(ctx, summary, 5, 5, "left");
@@ -199,11 +202,11 @@ export async function renderWishCard({
       badge(ctx, name, 65, 8, "left");
       badge(ctx, summary, 65, 85, "left");
     }
-    badge(ctx, target ? `定轨：${target}` : title, width - 55, 8, "right");
-    if (target) badge(ctx, `命定值：${fate}/1`, width - 55, 85, "right");
-    const label = ["原神模拟祈愿", target && title.endsWith("历史卡池") ? "历史卡池" : "", single ? "" : `第 ${page} 页`];
+    badge(ctx, target ? $t("wish-sim.card.text_b33c90a455", { "target": target }) : title, width - 55, 8, "right");
+    if (target) badge(ctx, $t("wish-sim.card.text_adfb135cb9", { "fate": fate }), width - 55, 85, "right");
+    const label = [$t("wish-sim.card.text_93123d3162"), target && title.endsWith("历史卡池") ? $t("wish-sim.card.text_145da140c1") : "", single ? "" : $t("wish-sim.card.text_acac3da6c6", { "page": page })];
     text(ctx, label.filter(Boolean).join(" · "), 65, height - 35, 21, "#e2ebfa", width / 2);
     ctx.textAlign = "right";
-    text(ctx, "Lotus-Yunzai", width - 55, height - 35, 20, "#fff", width / 2);
+    text(ctx, $t("wish-sim.card.text_3867834e77"), width - 55, height - 35, 20, "#fff", width / 2);
   }, mode);
 }

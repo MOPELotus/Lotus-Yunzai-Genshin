@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { fileURLToPath } from "node:url";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { prepareWishAdministration, matchWishAdministration, summarizeWishAdministration } from "./admin.ts";
@@ -14,7 +17,7 @@ const coin = /^#*(?:原神)?(?:我的|领取|查询|查看)(?:纠缠|相遇|粉|
 const path = /^#*(?:原神)?定轨(?:\s*(1|2|取消|查询|[^\s#].*))?$/u;
 const aliases = /^#*(?:原神)?(?<before>角色池2?|武器池?|常驻池?)?(?<size>单抽|(?:[一二三四五六七八九]?十|百|10)[连抽卡奖]|抽[卡奖])(?<after>角色池2?|武器池?|常驻池?|池?[12])?$/u;
 const help = /^#*(?:原神)?(?:模拟祈愿|模拟抽卡)(?:帮助)?$/u;
-const numeric = "一二三四五六七八九";
+const numeric = $t("wish-sim.commands.text_206a7b4bd9");
 const settingsCommand = /^#*(?:原神)?设置抽卡(?:\s*(粉球|蓝球|撤回时间)\s*(.*))?$/u;
 const settingKeys = { 粉球: "pink", 蓝球: "blue", 撤回时间: "recallSeconds" } as const;
 
@@ -53,18 +56,19 @@ function wishSummary(today: WishToday, name: string, weapon: boolean, week: numb
   legacy?: { readonly starsUnknown: boolean; readonly weekUnknown: boolean }): string {
   const short = Array.from(name).slice(0, 8).join("");
   if (!today.five) {
-    const reason = legacy ? "今日已抽，累计" : "暂时无法抽卡。\n已累计";
-    return `${short}\n${reason}${weapon ? today.weaponDraws : today.normalDraws}抽${legacy?.starsUnknown ? "，旧五星未能核验" : "无五星"}`;
+    const reason = legacy ? $t("wish-sim.commands.text_fa2686ea8b") : $t("wish-sim.commands.text_572b1ece4b");
+    return $t("wish-sim.commands.text_3fff51d6f6", { "short": short, "reason": reason, "value3": weapon ? today.weaponDraws : today.normalDraws, "value4": legacy?.starsUnknown ? $t("wish-sim.commands.text_55db614a8d") : $t("wish-sim.commands.text_854518fd6f") });
   }
-  const stars = today.five >= (legacy ? 4 : 8) ? `${today.five}个` :
+  const stars = today.five >= (legacy ? 4 : 8) ? $t("wish-sim.commands.text_f7c5f43bf2", { "five": today.five }) :
     "\n" + today.preview.map(({ name, pity }) => `${name}(${pity})`).join("\n");
-  const caption = legacy ? "今日五星" : "今日模拟抽卡五星";
-  const weeklyLabel = legacy?.weekUnknown ? "本周（已核验）" : "本周";
-  return `${short}\n${caption}：${stars}${legacy?.starsUnknown ? "\n另有旧抽数的五星未能核验" : ""}${week >= 2 ? `\n${weeklyLabel}：${week}个五星` : ""}`;
+  const caption = legacy ? $t("wish-sim.commands.text_d5a855f390") : $t("wish-sim.commands.text_7fd6271f15");
+  const weeklyLabel = legacy?.weekUnknown ? $t("wish-sim.commands.text_8b82ff0ce9") : $t("wish-sim.commands.text_b4c6c3eb0b");
+  return `${short}
+${caption}：${stars}${legacy?.starsUnknown ? $t("wish-sim.commands.text_232705b4cc") : ""}${week >= 2 ? $t("wish-sim.commands.text_f36013940a", { "weeklyLabel": weeklyLabel, "week": week }) : ""}`;
 }
 
 function formatPulls(pulls: readonly WishPull[]) {
-  return pulls.map((pull) => `${pull.star}★ ${pull.name}${pull.pity ? `（${pull.pity}抽${pull.guaranteed ?? ""}）` : ""}`).join("\n");
+  return pulls.map((pull) => `${pull.star}★ ${pull.name}${pull.pity ? $t("wish-sim.commands.text_ffe47be768", { "pity": pull.pity, "value2": pull.guaranteed ?? "" }) : ""}`).join("\n");
 }
 
 function identity(id: number | undefined): id is number {
@@ -98,14 +102,14 @@ export function createWishCommands({
       }
     } catch {
       if (signal.aborted) return;
-      return `${issued}${card.title} · ${card.pity}抽未出五星\n${formatPulls(card.pulls)}`;
+      return $t("wish-sim.commands.text_e3a8b24e11", { "issued": issued, "title": card.title, "pity": card.pity, "value4": formatPulls(card.pulls) });
     }
     if (signal.aborted) return;
     const retain = card.pulls.length === 10 &&
       (card.pulls.some(({ star }) => star === 5) || card.pulls.filter(({ star }) => star === 4).length >= 4);
     const seconds = retain ? 0 : recallSeconds;
     if (!issued && nodes.length === 1) return recall(nodes[0]!, seconds);
-    return { type: "forward", nodes: [`${issued}${card.title} · ${card.pulls.length}抽`, ...nodes],
+    return { type: "forward", nodes: [$t("wish-sim.commands.text_1dd432e753", { "issued": issued, "title": card.title, "length": card.pulls.length }), ...nodes],
       ...(seconds > 0 ? { recallSeconds: seconds } : {}) };
   }
 
@@ -116,23 +120,23 @@ export function createWishCommands({
     const setting = settingsCommand.exec(message);
     const administration = matchWishAdministration(message);
     if (help.test(message)) {
-      return "原神模拟祈愿\n#单抽、#十连、#百连，可加 2、武器池或常驻池。\n#定轨 循环选择，#定轨1、#定轨2、#定轨取消 或 #定轨查询。\n#我的纠缠之缘 查看今日球数，每天北京时间 04:00 补满。";
+      return $t("wish-sim.commands.text_249f1f80a3");
     }
     if (!draw && !track && !wallet && !setting && !administration) return;
-    if (!identity(context.user_id)) return "请在 QQ 会话使用原神模拟祈愿。";
+    if (!identity(context.user_id)) return $t("wish-sim.commands.text_5367f7d23c");
     if (signal.aborted) return;
 
     const user = context.user_id;
     const qq = String(user);
     const isOwner = () => context.isMaster === true && !context.isDelegated && (!context.isBotMaster || context.isBotMaster(user));
-    if (context.message_type === "group" && !identity(context.group_id)) return "无法确认当前群号。";
+    if (context.message_type === "group" && !identity(context.group_id)) return $t("wish-sim.commands.text_24ac01d574");
     const group = context.message_type !== "private" && identity(context.group_id) ? String(context.group_id) : "private";
     const time = now();
     try {
       if (administration) {
-        if (!isOwner()) return "只有机器人主人可以管理模拟祈愿设置。";
+        if (!isOwner()) return $t("wish-sim.commands.text_1b57ee5856");
         if (!administration.option) return summarizeWishAdministration(await readSettings());
-        if (!saveSettings) return "请在管理面板修改模拟祈愿设置。";
+        if (!saveSettings) return $t("wish-sim.commands.text_2ca712d608");
         try {
           const update = await prepareWishAdministration(administration, random);
           return summarizeWishAdministration(await saveSettings(update, () => isOwner() && !signal.aborted));
@@ -142,13 +146,13 @@ export function createWishCommands({
         }
       }
       if (setting) {
-        if (!isOwner()) return "只有机器人主人可以管理模拟祈愿设置。";
+        if (!isOwner()) return $t("wish-sim.commands.text_1b57ee5856");
         let settings = await readSettings();
         if (setting[1]) {
           const key = settingKeys[setting[1] as keyof typeof settingKeys];
           const raw = setting[2]?.trim() ?? "";
-          if (!/^\d+$/u.test(raw)) return "请填写整数。";
-          if (!saveSettings) return "请在管理面板修改模拟祈愿设置。";
+          if (!/^\d+$/u.test(raw)) return $t("wish-sim.commands.text_9f3c78c716");
+          if (!saveSettings) return $t("wish-sim.commands.text_2ca712d608");
           try {
             settings = await saveSettings(previous => parseWishSettings(group === "private"
               ? { ...previous, [key]: Number(raw) }
@@ -160,45 +164,45 @@ export function createWishCommands({
           }
         }
         const { pink, blue, recallSeconds } = wishAllowance(settings, group);
-        const label = group === "private" ? "默认" : "本群";
-        return `${label}每日粉球：${pink}\n${label}每日蓝球：${blue}\n${label}抽卡撤回时间：${recallSeconds} 秒`;
+        const label = group === "private" ? $t("wish-sim.commands.text_844b8cc8df") : $t("wish-sim.commands.text_0d5f4509dd");
+        return $t("wish-sim.commands.text_8824718571", { "label": label, "pink": pink, "value3": label, "blue": blue, "value5": label, "recallSeconds": recallSeconds });
       }
       const settings = await readSettings();
-      if (draw && !settings.enabled) return "原神模拟祈愿已关闭。";
-      if (draw && draw.count > 10 && !settings.multiple) return "原神模拟祈愿未开启多连抽。";
+      if (draw && !settings.enabled) return $t("wish-sim.commands.text_4accd970c9");
+      if (draw && draw.count > 10 && !settings.multiple) return $t("wish-sim.commands.text_06f4769e99");
       const allowance = wishAllowance(settings, group);
       const limit = wishDailyDrawLimit(settings, group);
       const recallSeconds = group === "private" && draw?.count === 1 ? settings.privateSingleRecallSeconds : allowance.recallSeconds;
       const name = [context.sender?.card, context.sender?.nickname].find((entry) =>
         typeof entry === "string" && entry.trim().length > 0) as string | undefined;
-      const nickname = name?.trim() || "旅行者";
+      const nickname = name?.trim() || $t("wish-sim.commands.text_4bf6868aa0");
       const pool = draw || track ? await poolSource(track ? "weapon" : draw!.kind, time, qq, settings) : undefined;
-      if ((draw || track) && !pool) return "当前卡池没有第二个角色活动祈愿。";
+      if ((draw || track) && !pool) return $t("wish-sim.commands.text_585a56e871");
       const { result, issued } = await update<string | WishCardOptions | LackOfTickets | ReachedDailyLimit>(qq, group, now, allowance, (balance, session, today, carry) => {
-        if (wallet) return `今日你还有${balance.pink}个纠缠之缘和${balance.blue}个相遇之缘。`;
+        if (wallet) return $t("wish-sim.commands.text_a862305a0e", { "pink": balance.pink, "blue": balance.blue });
         if (track && pool) {
           prepareWeaponPath(session.weapon, pool);
           const action = track[1]?.trim();
           const targetIndex = pool.up5.findIndex(({ name }) => name === session.weapon.target);
           if (action === "查询") {
             const target = session.weapon.target;
-            return target ? `当前定轨：${target}，命定值 ${session.weapon.lifeNum}/1。` : "当前未定轨。";
+            return target ? $t("wish-sim.commands.text_a36a224879", { "target": target, "lifeNum": session.weapon.lifeNum }) : $t("wish-sim.commands.text_d616feccff");
           }
           const target = action === "取消" ? undefined : !action ? pool.up5[targetIndex + 1]?.name
             : action === "1" || action === "2" ? pool.up5[Number(action) - 1]?.name
             : pool.up5.find(({ name }) => name === action)?.name;
-          if (action && action !== "取消" && !target) return "该武器不在卡池中。发送 #定轨查询 查看当前定轨。";
+          if (action && action !== "取消" && !target) return $t("wish-sim.commands.text_cd1ae4ee24");
           if (session.weapon.target !== target) {
             session.weapon.target = target;
             session.weapon.lifeNum = 0;
           }
-          return target ? `定轨成功\n${pool.up5.map(({ name }) => `${name === target ? "[√]" : "[ ]"} ${name}`).join("\n")}` : "定轨已取消。";
+          return target ? $t("wish-sim.commands.text_2176c05c61", { "value1": pool.up5.map(({ name }) => `${name === target ? "[√]" : "[ ]"} ${name}`).join("\n") }) : $t("wish-sim.commands.text_79caa330df");
         }
-        if (!draw || !pool) throw new Error("缺少模拟祈愿卡池。");
+        if (!draw || !pool) throw new Error($t("wish-sim.commands.text_f27a62e887"));
         const currency = pool.kind === "permanent" ? "blue" : "pink";
         if (balance[currency] < draw.count) {
           return {
-            notice: `你的${currency === "blue" ? "相遇" : "纠缠"}之缘不足。需要${draw.count}个，你还有${balance[currency]}个。`,
+            notice: $t("wish-sim.commands.text_7ae445c61f", { "value1": currency === "blue" ? $t("wish-sim.commands.text_8c8b4bb307") : $t("wish-sim.commands.text_ecf91d2fca"), "count": draw.count, "value3": balance[currency] }),
             summary: draw.count > 1 ? wishSummary(today, nickname, pool.kind === "weapon", session.week.five) : undefined,
           };
         }
@@ -210,7 +214,7 @@ export function createWishCommands({
           const used = limit.separate ? (isWeapon ? weapon : normal) : normal + weapon;
           const maximum = limit.count * 10;
           if (used >= maximum) {
-            const label = limit.separate ? (isWeapon ? "武器池" : "角色与常驻池") : "模拟祈愿";
+            const label = limit.separate ? (isWeapon ? $t("wish-sim.commands.text_afd577c01f") : $t("wish-sim.commands.text_e1270f8ad5")) : $t("wish-sim.commands.text_4c59860702");
             const oldStars = oldDay?.stars;
             const oldWeek = carry?.week;
             const weekFive = session.week.five + (oldWeek && now() <= oldWeek.expiresAt ? oldWeek.five : 0);
@@ -219,7 +223,7 @@ export function createWishCommands({
               five: today.five + (oldStars?.five ?? 0),
               preview: [...oldStars?.preview ?? [], ...today.preview],
             }, nickname, isWeapon, weekFive, { starsUnknown: !!oldDay && !oldStars, weekUnknown: !!oldDay && !oldWeek });
-            return { limitNotice: `${summary}\n今日${label}已达到 ${maximum} 抽上限（已抽 ${used} 抽）。` };
+            return { limitNotice: $t("wish-sim.commands.text_b499e7b583", { "summary": summary, "label": label, "maximum": maximum, "used": used }) };
           }
         }
         balance[currency] += context.isMaster ? draw.count : -draw.count;
@@ -239,7 +243,7 @@ export function createWishCommands({
         };
       });
       if (signal.aborted) return;
-      const received = issued && !track ? `今日成功领取${issued.pink}个纠缠之缘和${issued.blue}个相遇之缘。\n` : "";
+      const received = issued && !track ? $t("wish-sim.commands.text_68ae115f3b", { "pink": issued.pink, "blue": issued.blue }) : "";
       if (typeof result === "string") return received + result;
       if ("limitNotice" in result) {
         if (received && context.reply) {
@@ -263,7 +267,7 @@ export function createWishCommands({
       }
       return await drawCards(result, received, recallSeconds);
     } catch {
-      if (!signal.aborted) return "模拟祈愿暂时无法完成，请检查卡池设置和模拟存档。";
+      if (!signal.aborted) return $t("wish-sim.commands.text_dd7e936177");
     }
   };
 }

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { ProfileError, type createProfileStore, type ProfileRequestContext } from "@lotus-yunzai/account";
 import { previewRedeemIdentity } from "@lotus-yunzai/hoyo-client/redeem-submit";
 
@@ -14,14 +17,14 @@ export async function ownedGenshinRole(profiles: GenshinRoleProfiles, qq: string
   // savedRole can represent a public UID. Require the selected role to be in the same login's directory.
   const selected = await profiles.savedRole(qq, profileId, "gs");
   const source = await profiles.requestContext(qq, profileId, "gs", selected.uid);
-  if (before.revision !== source.revision) throw new ProfileError("changed", "档案变化。");
+  if (before.revision !== source.revision) throw new ProfileError("changed", $t("owned-role.text_79872712a9"));
   if (!source.role.region || !source.role.gameBiz || source.role.uid !== selected.uid ||
       source.role.region !== selected.region || source.role.gameBiz !== selected.gameBiz) {
-    throw new ProfileError("role-missing", "档案没有已同步的原神角色。");
+    throw new ProfileError("role-missing", $t("owned-role.text_b28f1008b5"));
   }
   const accountId = genshinLoginAccount(source);
   if (!accountId) {
-    throw new ProfileError("invalid", "档案的登录凭据与账号不一致。");
+    throw new ProfileError("invalid", $t("owned-role.text_4ff57173cc"));
   }
   return { source, accountId };
 }
@@ -30,7 +33,7 @@ export async function readOwnedGenshinUid(profiles: GenshinRoleProfiles, qq: str
   const source = await profiles.requestContext(qq, profileId, "gs", uid);
   const accountId = genshinLoginAccount(source);
   if (!accountId || source.role.uid !== uid || !source.role.region || !source.role.gameBiz) {
-    throw new ProfileError("invalid", "档案没有已验证的原神角色。");
+    throw new ProfileError("invalid", $t("owned-role.text_a9d9e92ca6"));
   }
   return { source, accountId };
 }

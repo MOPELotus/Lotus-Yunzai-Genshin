@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { randomInt } from "node:crypto";
 import { readdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
@@ -43,7 +46,7 @@ function isProfile(value: unknown): value is number {
 function isSite(value: unknown): value is StygianConsentSite { return value === "ark" || value === "akasha"; }
 
 function checkScope({ adapter, bot, group }: StygianConsentScope) {
-  if ((adapter !== "onebot" && adapter !== "milky") || !isId(bot) || !isId(group)) throw new TypeError("幽境群榜会话范围无效。");
+  if ((adapter !== "onebot" && adapter !== "milky") || !isId(bot) || !isId(group)) throw new TypeError($t("panel.stygian-consent.text_d45e57c928"));
 }
 
 function readGrant(raw: unknown): StygianConsentGrant | undefined {
@@ -61,11 +64,11 @@ function readDocument(input: unknown, scope: StygianConsentScope, qq: number) {
   const document = object(input);
   if (!document || document.version !== 1 || document.adapter !== scope.adapter || document.bot !== scope.bot ||
       document.group !== scope.group || document.qq !== qq || !Array.isArray(document.grants) ||
-      document.grants.length > stygianConsentSites.length) throw new Error("幽境群榜授权档案无效。");
+      document.grants.length > stygianConsentSites.length) throw new Error($t("panel.stygian-consent.text_9e604bae8f"));
   const grants: StygianConsentGrant[] = [];
   for (const row of document.grants) {
     const grant = readGrant(row);
-    if (!grant || grants.some(item => item.site === grant.site)) throw new Error("幽境群榜授权站点无效。");
+    if (!grant || grants.some(item => item.site === grant.site)) throw new Error($t("panel.stygian-consent.text_e54be3664c"));
     grants.push(grant);
   }
   return grants;
@@ -81,11 +84,11 @@ export function createStygianConsentStore(directory: string, lock: AcquireRoleAr
   function files(scope: StygianConsentScope) {
     checkScope(scope);
     return createRoleJsonArchive(join(directory, scope.adapter, String(scope.bot)), lock, {
-      subject: "幽境群榜授权", lockSuffix: "stygian-consent", maxBytes: 4096, rejectNull: true,
+      subject: $t("panel.stygian-consent.text_5c5e51ccec"), lockSuffix: "stygian-consent", maxBytes: 4096, rejectNull: true,
     });
   }
   function keys(scope: StygianConsentScope, qq: number) {
-    if (!isId(qq) || qq === scope.bot) throw new TypeError("幽境群榜授权人无效。");
+    if (!isId(qq) || qq === scope.bot) throw new TypeError($t("panel.stygian-consent.text_1e9a350a2c"));
     return { qq: String(scope.group), uid: String(qq) };
   }
   async function read(scope: StygianConsentScope, qq: number) {
@@ -102,7 +105,7 @@ export function createStygianConsentStore(directory: string, lock: AcquireRoleAr
     try {
       const root = await realpath(directory);
       const folder = join(root, scope.adapter, String(scope.bot), String(scope.group));
-      if (await realpath(folder) !== folder) throw new Error("幽境群榜授权目录无效。");
+      if (await realpath(folder) !== folder) throw new Error($t("panel.stygian-consent.text_d1cbb5c7fd"));
       names = await readdir(folder);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
@@ -112,7 +115,7 @@ export function createStygianConsentStore(directory: string, lock: AcquireRoleAr
       const actor = Number(/^([1-9]\d*)\.json$/u.exec(name)?.[1]);
       return isId(actor) && actor !== scope.bot ? [actor] : [];
     });
-    if (candidates.length > maxMembers) throw new Error("幽境群榜授权人数过多。");
+    if (candidates.length > maxMembers) throw new Error($t("panel.stygian-consent.text_1fd9ff6a73"));
     const members: number[] = [];
     for (const member of candidates) if ((await read(scope, member).catch(() => [])).length) members.push(member);
     return members;
@@ -122,7 +125,7 @@ export function createStygianConsentStore(directory: string, lock: AcquireRoleAr
     async grant(scope: StygianConsentScope, qq: number, newGrants: readonly StygianConsentGrant[], verify: () => Promise<void>) {
       const checked = newGrants.map(readGrant).filter((grant): grant is StygianConsentGrant => grant !== undefined);
       if (!checked.length || checked.length !== newGrants.length || new Set(checked.map(grant => grant.site)).size !== checked.length) {
-        throw new TypeError("幽境群榜授权无效。");
+        throw new TypeError($t("panel.stygian-consent.text_84f4ff57bc"));
       }
       return files(scope).update(keys(scope, qq), verify, input => {
         const grants = readDocument(input, scope, qq).filter(grant => !checked.some(next => next.site === grant.site)).concat(checked);
@@ -200,11 +203,11 @@ export function createStygianConsentCommand(profiles: GenshinRoleProfiles, store
     if (context.message_type !== "private" || context.sub_type !== "friend" || context.group_id !== undefined ||
         !connection || !verifyOwnGroupMembership || !isId(bot) || !isId(qq) || bot === qq || context.message_id === undefined ||
         (adapter !== undefined && adapter !== "onebot" && adapter !== "milky")) {
-      return "请在当前机器人的好友私聊管理本人幽境群榜授权。";
+      return $t("panel.stygian-consent.text_da37f858db");
     }
     const signal = AbortSignal.any([lifecycle, connection]);
     if (signal.aborted) return;
-    if (command.kind === "invalid") return "用法 #幽境群榜授权 群号 Ark|Akasha|双站 [档案N]，或 #幽境群榜撤回 群号 [站点]。";
+    if (command.kind === "invalid") return $t("panel.stygian-consent.text_891c84994e");
     const scope: StygianConsentScope = { adapter: adapter ?? "onebot", bot, group: command.group };
     const key = `${scope.adapter}:${scope.bot}:${scope.group}:${qq}`;
     const current = drafts.get(connection) ?? new Map<string, Pending>();
@@ -213,23 +216,23 @@ export function createStygianConsentCommand(profiles: GenshinRoleProfiles, store
       if (command.kind === "revoke") {
         current.delete(key);
         const removed = await store.revoke(scope, qq, command.sites, async () => signal.throwIfAborted());
-        if (!signal.aborted) return removed ? "已撤回所选站点的幽境群榜授权。" : "没有可撤回的幽境群榜授权。";
+        if (!signal.aborted) return removed ? $t("panel.stygian-consent.text_0167378a13") : $t("panel.stygian-consent.text_48b1a17554");
         return;
       }
       const verifyMembership = async () => !signal.aborted && await verifyOwnGroupMembership(scope.group, signal) && !signal.aborted;
       if (command.kind === "authorize") {
         current.delete(key);
         for (const [entry, pending] of current) if (pending.expires <= now()) current.delete(entry);
-        if (current.size >= maxPending) return "待确认授权过多，请稍后再试。";
+        if (current.size >= maxPending) return $t("panel.stygian-consent.text_cf76ea7612");
         const pending: Pending = { expires: now() + confirmationMs };
         current.set(key, pending);
         try {
-          if (!await verifyMembership()) return signal.aborted ? undefined : "无法确认你和当前机器人都在目标群。";
+          if (!await verifyMembership()) return signal.aborted ? undefined : $t("panel.stygian-consent.text_c2fdfab402");
           const { accountId, source: { role, revision } } = await ownedGenshinRole(profiles, String(qq), command.profileId);
           if (signal.aborted || current.get(key) !== pending || now() >= pending.expires) return;
           const { uid, region, gameBiz } = role;
           if (!uidPattern.test(uid) || !regionPattern.test(region) || (gameBiz !== "hk4e_cn" && gameBiz !== "hk4e_global")) {
-            return "所选档案没有可授权的本人原神角色。";
+            return $t("panel.stygian-consent.text_28ddc43fb9");
           }
           const draft: Draft = { code: String(randomInt(100_000, 1_000_000)), revision,
             selection: { profileId: command.profileId, accountId, uid, region, gameBiz },
@@ -238,9 +241,9 @@ export function createStygianConsentCommand(profiles: GenshinRoleProfiles, store
           const destinations = draft.sites.map(site => sites[site]).join("、");
           return {
             type: "delivery",
-            message: `授权后，群 ${scope.group} 查询幽境群榜时，当前机器人可把档案 ${command.profileId} 的原神 UID ${uid} 及查询需要的期数信息发送给 ${destinations}，并在该群显示你的难度、用时和排名。\n` +
-              "你在该群成功查询本人的幽境危战时，机器人也会为本群更新能核对期数的单人战绩。\n" +
-              `确认请在本私聊发送 #幽境群榜确认 ${scope.group} ${draft.code}，有效期两分钟。可随时用 #幽境群榜撤回 ${scope.group} 撤回。`,
+            message: $t("panel.stygian-consent.text_008b8b5716", { "group": scope.group, "profileId": command.profileId, "uid": uid, "destinations": destinations }) +
+              $t("panel.stygian-consent.text_2dc1a6f98e") +
+              $t("panel.stygian-consent.text_cdb8cb4f0f", { "group": scope.group, "code": draft.code, "value3": scope.group }),
             onDelivered() {
               if (!signal.aborted && current.get(key) === pending && now() < pending.expires) draft.delivered = true;
             },
@@ -252,7 +255,7 @@ export function createStygianConsentCommand(profiles: GenshinRoleProfiles, store
       const pending = current.get(key);
       const draft = pending?.draft;
       if (!pending || !draft || !draft.delivered || draft.claimed || draft.code !== command.code || now() >= pending.expires) {
-        return "没有匹配的待确认授权，请先重新发送授权指令。";
+        return $t("panel.stygian-consent.text_dc94acef55");
       }
       draft.claimed = true;
       try {
@@ -260,26 +263,26 @@ export function createStygianConsentCommand(profiles: GenshinRoleProfiles, store
         const confirmedAt = now();
         const grants = draft.sites.map(site => ({ site, ...draft.selection, confirmedAt }));
         const verify = async () => {
-          if (current.get(key) !== pending || now() >= pending.expires || !await verifyMembership()) throw new ProfileError("changed", "授权会话已变化。");
+          if (current.get(key) !== pending || now() >= pending.expires || !await verifyMembership()) throw new ProfileError("changed", $t("panel.stygian-consent.text_8dcc8f262e"));
           const latest = await ownedGenshinRole(profiles, String(qq), profileId).catch(() => undefined);
           if (signal.aborted || current.get(key) !== pending || now() >= pending.expires || !latest || latest.source.revision !== draft.revision ||
               !matchesStygianConsentProfile(grants[0]!, latest)) {
-            throw new ProfileError("changed", "幽境群榜档案已变化。");
+            throw new ProfileError("changed", $t("panel.stygian-consent.text_9071fb0b82"));
           }
         };
         await store.grant(scope, qq, grants, verify);
-        if (!signal.aborted && current.get(key) === pending) return `已确认群 ${scope.group} 的${draft.sites.map(site => sites[site]).join("、")}幽境群榜授权。`;
+        if (!signal.aborted && current.get(key) === pending) return $t("panel.stygian-consent.text_a959dcf7e3", { "group": scope.group, "value2": draft.sites.map(site => sites[site]).join("、") });
       } finally {
         if (current.get(key) === pending) current.delete(key);
       }
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing" || error.code === "login-required") return "请先登录所选档案。";
-        if (error.code === "changed") return "群成员、授权会话或档案已变化，请重新发起授权。";
-        if (error.code === "invalid" || error.code === "role-missing") return "请先同步并选择所选档案的本人原神角色。";
+        if (error.code === "missing" || error.code === "login-required") return $t("panel.stygian-consent.text_a7bbdd94a9");
+        if (error.code === "changed") return $t("panel.stygian-consent.text_ee34e8f1f2");
+        if (error.code === "invalid" || error.code === "role-missing") return $t("panel.stygian-consent.text_8ef5e6e18d");
       }
-      return "暂时无法管理幽境群榜授权，请稍后再试。";
+      return $t("panel.stygian-consent.text_58be82fa0c");
     }
   };
 }

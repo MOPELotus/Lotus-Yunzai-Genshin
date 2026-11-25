@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { scorePanelArtifacts } from "./artifact-score.ts";
 import { resolveGrowthMaterials } from "../grow/catalogue.ts";
 import { talentRegions, talentSchedule } from "./miao/talent-schedule.ts";
@@ -74,8 +77,8 @@ export async function buildPanelStatistics(snapshot: PanelSnapshot, theme: Panel
 
 export type PanelStatistic = Awaited<ReturnType<typeof buildPanelStatistics>>[number];
 
-const bookDays = ["周一/周四", "周二/周五", "周三/周六"];
-const weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+const bookDays = [$t("panel.statistics.text_3d8720d0ec"), $t("panel.statistics.text_6630eb959c"), $t("panel.statistics.text_1f197e24d6")];
+const weekdays = [$t("panel.statistics.text_c430f4c12e"), $t("panel.statistics.text_d1378a68e6"), $t("panel.statistics.text_2961168962"), $t("panel.statistics.text_e9d3b01a5a"), $t("panel.statistics.text_572388f3b0"), $t("panel.statistics.text_f9aa11dbb1"), $t("panel.statistics.text_ee239f3943")];
 const bookGroups = new Map<string, { group: number; region: string; days: string }>(talentSchedule.flatMap((names, index) => names.map((name, region) =>
   [name, { group: index, region: talentRegions[region]!, days: bookDays[index]! }] as const)));
 
@@ -106,7 +109,7 @@ export async function buildTalentStatistics(rows: readonly PanelStatistic[], the
     signal?.throwIfAborted();
     if (selection.star && row.star !== selection.star) continue;
     const { avatar } = row;
-    const location = travelerIds.has(avatar.id) ? ["旅行者", avatar.elem] : [avatar.name];
+    const location = travelerIds.has(avatar.id) ? [$t("panel.statistics.text_4bf6868aa0"), avatar.elem] : [avatar.name];
     const detail = await theme.metadata?.("meta-gs", "character", ...location, "data.json");
     const materials = object(detail?.materials);
     const talentName = text(materials?.talent), weeklyName = text(materials?.weekly);

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { normalizeProfileRoleArtworkUrl } from "@lotus-yunzai/account";
 import { avatarId, object, text, whole, type Json } from "./model.ts";
 import { stygianObservationVersion } from "./stygian-rank-period.ts";
@@ -61,7 +64,7 @@ function damage(value: unknown) {
 
 export function buildPersonalHardChallenge(uid: string, selection: HardChallengeSelection,
   challenge: Json, avatarIds: readonly number[]) {
-  const period = selection.scheduleType === 1 ? "本期" : "上期";
+  const period = selection.scheduleType === 1 ? $t("panel.personal-hard-challenge-model.text_474da3018a") : $t("panel.personal-hard-challenge-model.text_2823616a99");
   const season = object(Array.isArray(challenge.data) ? challenge.data[selection.scheduleType - 1] : undefined);
   const single = object(season?.single);
   const mp = object(season?.mp);
@@ -71,8 +74,8 @@ export function buildPersonalHardChallenge(uid: string, selection: HardChallenge
     (mpBest.difficulty === singleBest.difficulty && mpBest.time < singleBest.time));
   const mode = selection.mode === "best" ? (multiplayerWins ? "mp" : "single") : selection.mode;
   const chosen = mode === "single" ? singleBest : mpBest;
-  const modeLabel = mode === "single" ? "单人" : "组队";
-  if (!chosen) return { message: `UID ${uid}，暂无${period}幽境危战${selection.mode === "best" ? "" : modeLabel}挑战数据。` };
+  const modeLabel = mode === "single" ? $t("panel.personal-hard-challenge-model.text_7077d6f614") : $t("panel.personal-hard-challenge-model.text_3501514738");
+  if (!chosen) return { message: $t("panel.personal-hard-challenge-model.text_1ea17407e2", { "uid": uid, "period": period, "value3": selection.mode === "best" ? "" : modeLabel }) };
   const schedule = object(season?.schedule);
   const starts = whole(schedule?.start_time, 253402300799);
   const ends = whole(schedule?.end_time, 253402300799);
@@ -85,7 +88,7 @@ export function buildPersonalHardChallenge(uid: string, selection: HardChallenge
       const enemy = object(row.monster);
       const records = Array.isArray(row.best_avatar) ? row.best_avatar : [];
       return {
-        name: text(row.name) || text(enemy?.name) || `第 ${index + 1} 场`, time: seconds(row.second),
+        name: text(row.name) || text(enemy?.name) || $t("panel.personal-hard-challenge-model.text_0bce5af7e1", { "value1": index + 1 }), time: seconds(row.second),
         enemy: { icon: normalizeProfileRoleArtworkUrl(enemy?.icon), level: whole(enemy?.level, 999), descriptions: descriptions(enemy?.desc) },
         team: rows(row.teams, 8).map(avatar), records: [damage(records[0]), damage(records[1])],
       };

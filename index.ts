@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { readGenshinWishSettings, updateGenshinWishSettings } from "../../lib/genshin-wish-settings.ts";
 import { createGenshinAbyssTeams, matchGenshinAbyssTeam } from "./panel/abyss-team-command.ts";
 import { readGachaDisplaySettings } from "../../lib/gacha-display-settings.ts";
@@ -101,28 +104,28 @@ const rankingDirectory = fileURLToPath(new URL("../../data/genshinWorldBossRecor
 const groupPanelRankDirectory = fileURLToPath(new URL("../../data/genshin/panel-ranks/", import.meta.url));
 const tarotCardsDirectory = fileURLToPath(new URL("../../data/genshin/tarot-cards/", import.meta.url));
 const help = [
-  "原神抽卡记录",
-  "#登录列表 可查看档案，#同步角色 可同步原神角色。",
-  "#更新抽卡记录 同步官方记录。",
-  "#同步外部抽卡记录 可从外部服务同步历史，开始时会说明服务及发送的信息。",
-  "#抽卡记录、#武器记录、#常驻记录、#集录记录 可查看对应卡池。",
-  "#新手记录 查看旧新手池记录，#全部记录 查看各池详情。",
-  "私聊 #导出记录 发送 UIGF 文件，可用 #导出记录jsonv2 选择旧格式。",
-  "私聊 #导入记录 后发送 UIGF JSON 文件，可在命令末尾指定档案。",
-  "#版本统计 按期次查看角色和武器池，#全部统计 查看各池汇总。",
-  "末尾加档案编号可选档案。单池可加「全部」查看各页，如 #角色全部记录2。",
-  "设备教程可用 #电脑帮助、#安卓帮助、#苹果帮助。",
+  $t("index.text_c2ecc8119c"),
+  $t("index.text_6474b2e11b"),
+  $t("index.text_528032c066"),
+  $t("index.text_6312837dd2"),
+  $t("index.text_060d1397ac"),
+  $t("index.text_1426c11523"),
+  $t("index.text_d208226e7b"),
+  $t("index.text_371b854ba9"),
+  $t("index.text_ab2f5d36c8"),
+  $t("index.text_56b7cf83e7"),
+  $t("index.text_6983de8fdd"),
 ].join("\n");
 
 function deviceGachaHelp(input: string) {
-  const device = input === "安卓" ? "安卓" : input === "苹果" || input.toLowerCase() === "ios" ? "iOS" : "电脑";
-  const login = device === "电脑" ? "在电脑上打开私聊二维码，用手机米游社 App 扫描并确认。"
-    : "用米游社 App 扫描并确认登录。同一台手机操作时，可用另一块屏幕显示二维码。";
+  const device = input === "安卓" ? $t("index.text_2f939477c4") : input === "苹果" || input.toLowerCase() === "ios" ? "iOS" : $t("index.text_d48f1dcf88");
+  const login = device === "电脑" ? $t("index.text_4c94f01bfc")
+    : $t("index.text_5be820dee4");
   return [
-    `原神抽卡记录 · ${device}`,
-    `1. 私聊发送 #扫码登录。${login}`,
-    "2. 私聊发送 #同步角色，再发送 #更新抽卡记录。更新完成后用 #抽卡记录 查看。",
-    "已有 UIGF 历史文件时，私聊发送 #导入记录，然后发送 JSON 文件。可在命令末尾加档案编号。",
+    $t("index.text_ac0af587d3", { "device": device }),
+    $t("index.text_b9dc1d69de", { "login": login }),
+    $t("index.text_4aca723d7b"),
+    $t("index.text_6638daf9b6"),
   ].join("\n");
 }
 
@@ -249,7 +252,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
   const blueprint = createGenshinBlueprintQuery(profiles, client, signal);
 
   async function exportHistory(qq: string, profileId: number, version: GenshinUigfExportOptions["version"], context: GachaContext) {
-    if (!context.uploadFile) return "当前会话暂不支持发送抽卡文件。";
+    if (!context.uploadFile) return $t("index.text_0cbb353158");
     try {
       const { uid } = await profiles.savedRole(qq, profileId, "gs");
       const records = await history.read(qq, uid);
@@ -261,46 +264,46 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       const file = { name: `${uid}.json`, bytes: Buffer.from(JSON.stringify(document, null, "\t") + "\n") };
       const current = await profiles.savedRole(qq, profileId, "gs").catch(() => undefined);
       if (signal.aborted) return;
-      if (current?.uid !== uid) return "原神档案角色已变化，请重新导出。";
+      if (current?.uid !== uid) return $t("index.text_961466dde4");
       const delivered = await context.uploadFile(file);
-      if (delivered === "rejected") return "导出文件发送失败，请检查网关是否支持发送文件。";
-      if (delivered !== "confirmed") return "文件发送结果未确认，请在当前会话核对。";
+      if (delivered === "rejected") return $t("index.text_9c28fa7343");
+      if (delivered !== "confirmed") return $t("index.text_44ad33e91e");
       const count = "list" in document ? document.list.length : document.hk4e[0].list.length;
-      return `已导出 ${file.name}，共 ${count} 条抽卡记录。`;
+      return $t("index.text_27b2eb700c", { "name": file.name, "count": count });
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing") return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 没有同步原神 UID。`;
+        if (error.code === "missing") return $t("index.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("index.text_6658649baf", { "profileId": profileId });
       }
       if (error instanceof TypeError && /^(?:UIGF|当前档案没有可导出的原神抽卡记录)/u.test(error.message)) return error.message;
-      return "原神抽卡记录导出失败，请检查本地历史文件。";
+      return $t("index.text_ae81f83abc");
     }
   }
 
   async function syncExternalHistory(qq: string, profileId: number, context: GachaContext) {
     try {
       const result = await externalUpdate(qq, profileId, () =>
-        context.reply(`正在同步档案 ${profileId} 的外部抽卡记录。将向提瓦特小助手（www.lelaer.com）发送原神 UID 和临时抽卡授权链接。`));
+        context.reply($t("index.text_c894d23063", { "profileId": profileId })));
       if (signal.aborted) return;
-      if (!result) return "该档案的外部抽卡记录正在同步。";
-      const title = `档案 ${profileId} · UID ${result.uid}`;
+      if (!result) return $t("index.text_97ed0183ab");
+      const title = $t("index.text_1397b2ffaf", { "profileId": profileId, "uid": result.uid });
       const imported = result.pools.filter(({ received }) => received > 0);
-      if (!imported.length) return `${title}\n外部抽卡记录为空，本地记录已保留。`;
-      const lines = imported.map(({ name, received, added, total }) => `${name}记录：收到 ${received} 条，新增 ${added} 条，共 ${total} 条`);
-      return [title, ...lines, `导入成功，可使用 #抽卡记录${profileId === 1 ? "" : profileId} 查看。`].join("\n");
+      if (!imported.length) return $t("index.text_a8f2783c04", { "title": title });
+      const lines = imported.map(({ name, received, added, total }) => $t("index.text_f23b6c6db3", { "name": name, "received": received, "added": added, "total": total }));
+      return [title, ...lines, $t("index.text_1182eeff45", { "value1": profileId === 1 ? "" : profileId })].join("\n");
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof GenshinGachaBusyError) return error.message;
-      let message = "请检查档案登录状态和原神 UID，稍后再试。";
+      let message = $t("index.text_ab371801c0");
       if (error instanceof ProfileError) {
-        if (error.code === "missing" || error.code === "login-required") message = `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") message = `档案 ${profileId} 没有同步原神 UID。`;
-        if (error.code === "changed") message = "档案已变更，请重新发起请求。";
+        if (error.code === "missing" || error.code === "login-required") message = $t("index.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") message = $t("index.text_6658649baf", { "profileId": profileId });
+        if (error.code === "changed") message = $t("index.text_0b089c48f2");
       } else if (error instanceof HoyoRequestError) {
-        message = error.status === 429 ? "访问过于频繁，请稍后再试。" : error.message;
+        message = error.status === 429 ? $t("index.text_a3f0d28183") : error.message;
       }
-      return `外部抽卡记录同步失败：${message}`;
+      return $t("index.text_b3244dcc6a", { "message": message });
     }
   }
 
@@ -320,7 +323,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
         (saved && !saved.discarded
           ? gachaPortraitCharacter(characters.values(), (await readLegacyPlayerPortrait("gs", uid, signal).catch(() => undefined))?.face)
           : undefined);
-      const { face, avatar } = await readGachaPlayerArt(themeDirectory, "gs", nickname || "旅行者", character, officialAvatar, signal, roleQFace);
+      const { face, avatar } = await readGachaPlayerArt(themeDirectory, "gs", nickname || $t("index.text_4bf6868aa0"), character, officialAvatar, signal, roleQFace);
       const options = { uid, records, face, now: new Date(), ...sources };
       const display = !special ? await readGachaDisplaySettings(new URL("../../", import.meta.url)) : undefined;
       function buildPage(page?: number) {
@@ -336,20 +339,20 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
         return model && { kind: "version" as const, model };
       }
       const first = buildPage(all ? 1 : undefined);
-      if (!first) return special === "beginner" ? `UID:${uid} 本地暂无旧新手池抽卡记录。`
-        : `UID:${uid} 本地暂无该卡池抽卡记录，请先使用 #更新抽卡记录${profileId === 1 ? "" : profileId}。`;
+      if (!first) return special === "beginner" ? $t("index.text_7404b79d59", { "uid": uid })
+        : $t("index.text_052e0dea03", { "uid": uid, "value2": profileId === 1 ? "" : profileId });
       try {
         const total = first.kind === "special" ? 1 : first.model.pageInfo?.total ?? 1;
-        const title = first.kind === "version" ? `${first.model.poolName}统计，共${first.model.pageInfo?.count}期卡池`
-          : first.kind === "detail" ? `${first.model.poolName}池抽卡记录，共${first.model.gacha.stat.fiveNum}条五星` : "";
+        const title = first.kind === "version" ? $t("index.text_acbebaddd8", { "poolName": first.model.poolName, "count": first.model.pageInfo?.count })
+          : first.kind === "detail" ? $t("index.text_2eefd98a1a", { "poolName": first.model.poolName, "fiveNum": first.model.gacha.stat.fiveNum }) : "";
         return await gachaImageReply({
-          total, title: `UID:${uid} ${title}，分${total}张图`, signal,
+          total, title: $t("index.text_f87fdb63c4", { "uid": uid, "title": title, "total": total }), signal,
           inlineImageByteLimit: context.inlineImageByteLimit, forward: context.forward,
           async verifyRole() { return (await profiles.savedRole(qq, profileId, "gs").catch(() => undefined))?.uid === uid; },
-          changedRoleMessage: "原神档案角色已变化，请重新查询。",
+          changedRoleMessage: $t("index.text_5982fc0b5b"),
           render(page, scale) {
             const result = page === 1 ? first : buildPage(page);
-            if (!result) throw new Error("原神抽卡记录缺少分页。");
+            if (!result) throw new Error($t("index.text_25abb3a468"));
             const options = { themeDirectory, scale, avatar, qFace: roleQFace };
             return result.kind === "special" ? renderGenshinGachaSpecial(result.model, options)
               : result.kind === "detail" ? renderGenshinGachaDetail(result.model, options)
@@ -357,15 +360,15 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
           },
         });
       } catch {
-        if (!signal.aborted) return "原神抽卡记录已读取，原版详情图暂时无法生成。";
+        if (!signal.aborted) return $t("index.text_faa3f484e1");
       }
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing") return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 没有同步原神 UID。`;
+        if (error.code === "missing") return $t("index.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("index.text_6658649baf", { "profileId": profileId });
       }
-      return "原神抽卡记录读取失败，请检查本地历史文件。";
+      return $t("index.text_08505e4298");
     }
   }
 
@@ -383,50 +386,50 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
     async fallbackFeatures(context: GachaContext) {
       const { normalizedMessage: message, attachment } = context;
       if (voice.features(message, context)) return [genshinVoiceFeature];
-      if (matchPanelTransferCommand(message)?.game === "gs") return ["[genshin] 角色面板"];
+      if (matchPanelTransferCommand(message)?.game === "gs") return [$t("index.text_81f59af71e")];
       const customRankCommand = matchArkRankCommand(message);
-      if (customRankCommand && (!customRankCommand.game || customRankCommand.game === "gs")) return ["[genshin] 角色面板"];
+      if (customRankCommand && (!customRankCommand.game || customRankCommand.game === "gs")) return [$t("index.text_81f59af71e")];
       const aliases = matchGameCharacterAliasCommand(message);
-      if (aliases && aliases.game !== "sr") return ["[genshin] 角色别名"];
-      if (genshinMonthlyTaskCommand.test(message)) return ["[genshin] 原石任务"];
-      if (matchGenshinStatistics(message)) return ["[genshin] 原石统计"];
-      if (matchGenshinMonthly(message)) return ["[genshin] 原石札记"];
-      if (matchSevenSaintsCollection(message)) return ["[genshin] 七圣召唤收藏"];
-      if (matchSevenSaintsDecks(message)) return ["[genshin] 七圣召唤牌组"];
-      if (matchesTeamDamage(message)) return ["[genshin] 队伍伤害"];
-      if (matchGenshinTalentRefresh(message)) return ["[genshin] 刷新天赋"];
-      if (panelImageCommand(message)) return ["[genshin] 面板图管理"];
-      if (matchLegacyGenshinExtremePanel(message) || matchPanelPreset(message)) return ["[genshin] 角色面板"];
-      if (isAvatarOriginal(message)) return ["[genshin] 角色卡片"];
-      if (matchGenshinAvatarCard(message)) return ["[genshin] 角色卡片"];
-      if (matchGenshinPanelExport(message)) return ["[genshin] 角色面板"];
-      if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message)) return ["[genshin] 角色面板"];
-      if (matchDamageSettingsCommand(message)) return ["[genshin] 伤害设置"];
-      if (matchPublicDamageRank(message, "gs")) return ["[genshin] 角色面板"];
-      if (matchWeaponList(message)) return ["[genshin] 武器查询"];
-      if (matchGenshinBlueprint(message)) return ["[genshin] 尘歌壶模数"];
-      if (matchGenshinPayLog(message)) return ["[genshin] 充值记录"];
-      if (matchGenshinBirthdayPhoto(message)) return ["[genshin] 生日留影"];
-      if (matchGenshinTarotCards(message)) return ["[genshin] 月谕圣牌"];
-      if (matchWishAdministration(message)) return ["[genshin] 模拟祈愿"];
+      if (aliases && aliases.game !== "sr") return [$t("index.text_09d85755e1")];
+      if (genshinMonthlyTaskCommand.test(message)) return [$t("index.text_18a8214066")];
+      if (matchGenshinStatistics(message)) return [$t("index.text_9c1bbde7e6")];
+      if (matchGenshinMonthly(message)) return [$t("index.text_088d3c566a")];
+      if (matchSevenSaintsCollection(message)) return [$t("index.text_12c07f1a34")];
+      if (matchSevenSaintsDecks(message)) return [$t("index.text_64ed1003b7")];
+      if (matchesTeamDamage(message)) return [$t("index.text_9d41e63acf")];
+      if (matchGenshinTalentRefresh(message)) return [$t("index.text_5131435b74")];
+      if (panelImageCommand(message)) return [$t("index.text_9dc1cfb9d1")];
+      if (matchLegacyGenshinExtremePanel(message) || matchPanelPreset(message)) return [$t("index.text_81f59af71e")];
+      if (isAvatarOriginal(message)) return [$t("index.text_899033d11b")];
+      if (matchGenshinAvatarCard(message)) return [$t("index.text_899033d11b")];
+      if (matchGenshinPanelExport(message)) return [$t("index.text_81f59af71e")];
+      if (matchGenshinShowcase(message) || matchGenshinPanelDiscard(message) || matchGenshinPanelHelp(message)) return [$t("index.text_81f59af71e")];
+      if (matchDamageSettingsCommand(message)) return [$t("index.text_b4d7e6ae87")];
+      if (matchPublicDamageRank(message, "gs")) return [$t("index.text_81f59af71e")];
+      if (matchWeaponList(message)) return [$t("index.text_447ad6a676")];
+      if (matchGenshinBlueprint(message)) return [$t("index.text_28d4105f5c")];
+      if (matchGenshinPayLog(message)) return [$t("index.text_f8ef8d98f1")];
+      if (matchGenshinBirthdayPhoto(message)) return [$t("index.text_370d1e8fab")];
+      if (matchGenshinTarotCards(message)) return [$t("index.text_50df92775a")];
+      if (matchWishAdministration(message)) return [$t("index.text_eb069d3961")];
       if (matchesWishReincarnation(message)) return [wishReincarnationFeature];
-      if (matchGenshinAbyssTeam(message)) return ["[genshin] 深渊配队"];
-      if (matchPersonalHardChallenge(message)) return ["[genshin] 幽境危战", "[genshin] 角色查询"];
-      if (matchStygianConsentCommand(message) || matchStygianGroupRank(message)) return ["[genshin] 幽境危战群榜"];
-      if (matchGenshinCommission(message) !== undefined) return ["[genshin] 委托查询"];
+      if (matchGenshinAbyssTeam(message)) return [$t("index.text_c1b39973d7")];
+      if (matchPersonalHardChallenge(message)) return [$t("index.text_6d42fb06e0"), $t("index.text_30fc38b132")];
+      if (matchStygianConsentCommand(message) || matchStygianGroupRank(message)) return [$t("index.text_e3d88c81d1")];
+      if (matchGenshinCommission(message) !== undefined) return [$t("index.text_43c6d3f2af")];
       const personal = matchPersonalRecord(message);
-      if (personal) return [personal.type === "exploration" ? "[genshin] 探索" : "[genshin] 角色查询"];
+      if (personal) return [personal.type === "exploration" ? $t("index.text_3011c4b449") : $t("index.text_30fc38b132")];
       if (achievements.explicit(context)) return [];
-      if (genshinBackpackCommand.test(message)) return ["[genshin] 背包"];
-      if (worldBossCommand.test(message) || worldBossRankingCommand.test(message)) return ["[genshin] 世界 BOSS"];
+      if (genshinBackpackCommand.test(message)) return [$t("index.text_81d424623f")];
+      if (worldBossCommand.test(message) || worldBossRankingCommand.test(message)) return [$t("index.text_04fe8978cd")];
       const gacha = gachaImportCommand.test(message) || helpCommand.test(message) || deviceHelpCommand.test(message) || updateCommand.test(message) ||
         gachaRepairCommand.test(message) || externalGachaCommand.test(message) || exportCommand.test(message) || matchGachaQuery(message) ||
         (!message.trim() && attachment && /\.json$/iu.test(attachment.name));
-      if (gacha) return ["[gacha] 抽卡记录"];
+      if (gacha) return [$t("index.text_5f636b7036")];
       const customRank = await resolveGroupPanelRank(message);
       if (customRank) {
         groupRankMatches.set(context, customRank);
-        return ["[genshin] 角色面板"];
+        return [$t("index.text_81f59af71e")];
       }
       return [];
     },
@@ -482,10 +485,10 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
           const png = await renderStygianRankCard({ ...result.board, rows: result.board.rows.slice(0, limit) }, theme,
             { signal: result.signal, inlineImageByteLimit: context.inlineImageByteLimit });
           if (result.signal.aborted) return [];
-          if (!isDeepStrictEqual(await result.verify(), result.board)) return "幽境危战群榜的成员授权或档案已变化，请重新查询。";
+          if (!isDeepStrictEqual(await result.verify(), result.board)) return $t("index.text_b535cf0a5f");
           return { type: "image", file: png.png } as const;
         } catch {
-          return result.signal.aborted ? [] : "幽境危战成绩已读取，暂时无法生成群榜图片。";
+          return result.signal.aborted ? [] : $t("index.text_7fe090591d");
         }
       }
       const challenge = matchPersonalChallenge(context.normalizedMessage);
@@ -518,7 +521,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       if (rankStats !== undefined) return rankStats;
       const resolvedRank = groupRankMatches.get(context) ?? matchGroupPanelRank(context.normalizedMessage);
       const groupPanelRank = await groupRank.query(resolvedRank, context, readPanelTheme)
-        .catch(() => signal.aborted ? undefined : "群面板排名暂时无法读取，请稍后查询。");
+        .catch(() => signal.aborted ? undefined : $t("index.text_85f1be73b9"));
       if (groupPanelRank !== undefined) return groupPanelRank;
       const panelReply = await panel(context.normalizedMessage, context);
       if (panelReply !== undefined) return panelReply;
@@ -540,11 +543,11 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       const repairMatch = gachaRepairCommand.exec(context.normalizedMessage);
       if (repairMatch) {
         if (context.isDelegated || !Number.isSafeInteger(context.user_id) || !context.user_id || context.user_id < 1 ||
-            (context.message_type !== "private" && context.message_type !== "group")) return "请从本人 QQ 会话设置抽卡修复。";
+            (context.message_type !== "private" && context.message_type !== "group")) return $t("index.text_56f358bf65");
         try {
           return repair.set(String(context.user_id), !/^(?:关|off)$/iu.test(repairMatch[1] ?? ""));
         } catch {
-          return "暂时无法保存抽卡修复设置，请稍后重试。";
+          return $t("index.text_dd8e83787c");
         }
       }
       const matched = updateCommand.exec(context.normalizedMessage);
@@ -556,14 +559,14 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       if (profileId > MAX_PROFILE_ID) return;
       const { user_id } = context;
       if (typeof user_id !== "number" || !Number.isSafeInteger(user_id) || user_id < 1) {
-        return "请从登录档案对应的 QQ 会话使用原神抽卡记录。";
+        return $t("index.text_4e4b1e42a3");
       }
       const qq = String(user_id);
       if (exportMatch) {
         const version = exportMatch[2] === "v2" ? "v2" : "v4";
         if (context.message_type === "group" && !exportMatch[1]) {
           const suffix = `${version === "v2" ? "jsonv2" : ""}${profileId === 1 ? "" : profileId}`;
-          return `建议私聊导出，若你确认要在此导出，请发送【#强制导出记录${suffix}】。`;
+          return $t("index.text_b8d9e3c25d", { "suffix": suffix });
         }
         return exportHistory(qq, profileId, version, context);
       }
@@ -571,20 +574,20 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       if (query) return view(qq, profileId, query.view, query.all, context);
       try {
         const result = await gachaUpdate(qq, profileId, () =>
-          context.reply(`正在更新原神抽卡记录（档案 ${profileId}）。`), { isDelegated: context.isDelegated });
-        if (!result) return "该档案的原神抽卡记录正在更新。";
+          context.reply($t("index.text_0e196425f5", { "profileId": profileId })), { isDelegated: context.isDelegated });
+        if (!result) return $t("index.text_7909ad9b3c");
         try {
           const { png } = await renderGenshinGachaResult(qq, result);
           return { type: "image" as const, file: png };
         } catch {
-          return "抽卡记录更新完成。";
+          return $t("index.text_be83202310");
         }
       } catch (error) {
         if (signal.aborted) return;
         if (error instanceof GenshinGachaRepairCancelledError || error instanceof GenshinGachaBusyError) return error.message;
         if (error instanceof ProfileError) {
-          if (error.code === "missing" || error.code === "login-required") return `请先登录档案 ${profileId}。`;
-          if (error.code === "role-missing") return `档案 ${profileId} 没有同步原神 UID。`;
+          if (error.code === "missing" || error.code === "login-required") return $t("index.text_76720712c8", { "profileId": profileId });
+          if (error.code === "role-missing") return $t("index.text_6658649baf", { "profileId": profileId });
         }
         const reason = error instanceof HoyoRequestError && error.status === 429 ? "rate-limited"
           : (error instanceof ProfileError && error.code === "changed") ||

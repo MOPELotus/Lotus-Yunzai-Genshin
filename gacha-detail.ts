@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gachaProbabilityFor, type GachaDisplaySettings } from "@lotus-yunzai/gacha/display-settings";
 import type { GenshinGachaPool } from "@lotus-yunzai/hoyo-client";
 import { applyGachaGuarantees, gachaLuckFor, type GachaLuck } from "@lotus-yunzai/gacha";
@@ -10,10 +13,10 @@ type DecimalOrZero = string | 0;
 export type GenshinDisplayPool = GenshinGachaPool | 100;
 
 const poolModels = {
-  301: { name: "角色", base: 0.006, soft: 74, step: 0.06, hard: 90, upRate: 0.55 },
-  302: { name: "武器", base: 0.007, soft: 63, step: 0.07, hard: 80, upRate: 0.75 },
-  200: { name: "常驻", base: 0.006, soft: 74, step: 0.06, hard: 90, upRate: 0 },
-  500: { name: "集录", base: 0.006, soft: 74, step: 0.06, hard: 90, upRate: 0 },
+  301: { name: $t("gacha-detail.text_c47b54e84e"), base: 0.006, soft: 74, step: 0.06, hard: 90, upRate: 0.55 },
+  302: { name: $t("gacha-detail.text_4fe131173e"), base: 0.007, soft: 63, step: 0.07, hard: 80, upRate: 0.75 },
+  200: { name: $t("gacha-detail.text_300b6634fe"), base: 0.006, soft: 74, step: 0.06, hard: 90, upRate: 0 },
+  500: { name: $t("gacha-detail.text_8f161c1237"), base: 0.006, soft: 74, step: 0.06, hard: 90, upRate: 0 },
 } as const;
 
 const pityItem = 888;
@@ -157,26 +160,26 @@ function dateAt(at: number | undefined): string {
 type SavedPull = GenshinGachaPull & { readonly isUp?: boolean };
 
 export function parseGenshinGachaRows(value: unknown, uid: string, pool: GenshinDisplayPool): SavedPull[] {
-  if (!Array.isArray(value)) throw new TypeError("原神抽卡历史须为逐抽数组。");
+  if (!Array.isArray(value)) throw new TypeError($t("gacha-detail.text_aa645c6c1c"));
   const rows = new Map<string, SavedPull>();
   for (const item of value as readonly unknown[]) {
-    if (typeof item !== "object" || !item || Array.isArray(item)) throw new TypeError("原神抽卡历史记录格式无效。");
+    if (typeof item !== "object" || !item || Array.isArray(item)) throw new TypeError($t("gacha-detail.text_d6942c5cc9"));
     const source = item as Record<string, unknown>;
     const id = decimal(source.id);
-    if (!id) throw new TypeError("原神抽卡历史记录编号无效或精度不足。");
+    if (!id) throw new TypeError($t("gacha-detail.text_08e42b854b"));
     const rawPool = decimal(source.gacha_type);
     const canonicalPool = String(pool);
     if ((source.uid != null && decimal(source.uid) !== uid) ||
         (source.gacha_type != null && rawPool !== canonicalPool && (pool !== 301 || rawPool !== "400")) ||
         (source.uigf_gacha_type != null && decimal(source.uigf_gacha_type) !== canonicalPool)) {
-      throw new TypeError("原神抽卡历史与当前角色或卡池不一致。");
+      throw new TypeError($t("gacha-detail.text_72a5d1704a"));
     }
     if (rows.has(id)) continue;
     const rank = decimal(source.rank_type);
     const name = typeof source.name === "string" ? source.name.trim() : "";
     const itemType = source.item_type === "角色" ? "char" : source.item_type === "武器" ? "weapon" : undefined;
     if ((rank !== "3" && rank !== "4" && rank !== "5") || !name || !itemType) {
-      throw new TypeError("原神抽卡历史物品缺少有效名称、类别或星级。");
+      throw new TypeError($t("gacha-detail.text_0571d517d9"));
     }
     const time = typeof source.time === "string" ? source.time.trim() : "";
     const itemId = decimal(source.item_id);
@@ -194,9 +197,9 @@ export function parseGenshinGachaRows(value: unknown, uid: string, pool: Genshin
 export function buildGenshinGachaDetail({
   uid, records, face, now = new Date(), resolveItem, resolvePool, pool = 301, display, maxRows = display?.detailRows ?? 30, page,
 }: GenshinGachaDetailOptions): GenshinGachaDetailModel | undefined {
-  if (!/^[1-9]\d*$/u.test(uid) || !Object.hasOwn(poolModels, pool)) throw new TypeError("原神抽卡详情 UID 或卡池无效。");
+  if (!/^[1-9]\d*$/u.test(uid) || !Object.hasOwn(poolModels, pool)) throw new TypeError($t("gacha-detail.text_16e575250e"));
   if (!Number.isSafeInteger(maxRows) || maxRows < 0 || (page !== undefined && (!Number.isSafeInteger(page) || page < 1))) {
-    throw new RangeError("原神抽卡详情分页参数无效。");
+    throw new RangeError($t("gacha-detail.text_69ace63a09"));
   }
   const model = poolModels[pool];
   const pulls = parseGenshinGachaRows(records[pool] ?? [], uid, pool);
@@ -253,19 +256,19 @@ export function buildGenshinGachaDetail({
     wai, isvalidNum, weaponNum: 0, weaponFourNum,
     upYs: upYs >= 10_000 ? `${(upYs / 10_000).toFixed(2)}w` : upYs.toFixed(0),
   };
-  let maxFour: GenshinGachaDetailModel["gacha"]["maxFour"] = { name: "无", count: 0 };
+  let maxFour: GenshinGachaDetailModel["gacha"]["maxFour"] = { name: $t("gacha-detail.text_484d556139"), count: 0 };
   for (const item of Object.values(items)) {
     if (item.star === 4 && (item.count ?? 0) > (maxFour.count ?? 0)) maxFour = item;
   }
 
   const pity: FiveStar[] = [];
   if (noFiveNum) {
-    items[pityItem] = { name: "已抽", abbr: "已抽", star: 5, img: "gacha/imgs/no-avatar.webp" };
+    items[pityItem] = { name: $t("gacha-detail.text_95b727161e"), abbr: $t("gacha-detail.text_95b727161e"), star: 5, img: "gacha/imgs/no-avatar.webp" };
     pity.push({ id: pityItem, date: dateAt(now.valueOf()), isUp: true, count: noFiveNum });
   }
 
   const pageCount = maxRows > 0 ? Math.max(1, Math.ceil(fiveNum / maxRows)) : 1;
-  if (page !== undefined && page > pageCount) throw new RangeError("原神抽卡详情页码超出范围。");
+  if (page !== undefined && page > pageCount) throw new RangeError($t("gacha-detail.text_712d6ee1da"));
   const from = maxRows ? ((page ?? 1) - 1) * maxRows : 0;
   const to = maxRows ? Math.min(fiveNum, from + maxRows) : fiveNum;
   const pageInfo = page !== undefined && pageCount > 1 ? { page, total: pageCount, from: from + 1, to, count: fiveNum } : undefined;

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { layoutTrialDamageTitles, trialDamageTitleLineHeight } from "../../../lib/panel-trial-display.ts";
 import { createHash } from "node:crypto";
@@ -27,16 +30,16 @@ function effectScale(ctx: Drawing): number {
 }
 const dark = "rgba(0,0,0,.4)";
 const statistics = [
-  ["hp", "生命值"], ["atk", "攻击力"], ["def", "防御力"], ["mastery", "元素精通"],
-  ["cpct", "暴击率"], ["cdmg", "暴击伤害"], ["recharge", "元素充能"], ["dmg", "伤害加成"],
+  ["hp", $t("panel.original-profile-skia.text_1a256e6376")], ["atk", $t("panel.original-profile-skia.text_b84ee11f4f")], ["def", $t("panel.original-profile-skia.text_1cb579e6ba")], ["mastery", $t("panel.original-profile-skia.text_7dca37c2aa")],
+  ["cpct", $t("panel.original-profile-skia.text_d4b0baf955")], ["cdmg", $t("panel.original-profile-skia.text_15bccc3951")], ["recharge", $t("panel.original-profile-skia.text_11889f7e9d")], ["dmg", $t("panel.original-profile-skia.text_4da2b666c4")],
 ] as const;
 const weaponStat: Readonly<Record<string, string>> = {
-  atkBase: "攻击", atkPct: "攻击", mastery: "精通", dmg: "伤害", hpPct: "生命", defPct: "防御",
-  cpct: "暴击", cdmg: "爆伤", phy: "物伤", recharge: "充能", heal: "治疗", shield: "护盾",
+  atkBase: $t("panel.original-profile-skia.text_8226ca02ff"), atkPct: $t("panel.original-profile-skia.text_8226ca02ff"), mastery: $t("panel.original-profile-skia.text_591f60433f"), dmg: $t("panel.original-profile-skia.text_30e1196888"), hpPct: $t("panel.original-profile-skia.text_45bc77bc1c"), defPct: $t("panel.original-profile-skia.text_75ba7a5727"),
+  cpct: $t("panel.original-profile-skia.text_59d499d937"), cdmg: $t("panel.original-profile-skia.text_c750f692ee"), phy: $t("panel.original-profile-skia.text_725e46fa35"), recharge: $t("panel.original-profile-skia.text_c0c253c271"), heal: $t("panel.original-profile-skia.text_c81995fafd"), shield: $t("panel.original-profile-skia.text_b65b6e3a2e"),
 };
 const shortStat: Readonly<Record<string, string>> = {
-  cpct: "暴击", cdmg: "爆伤", recharge: "充能", mastery: "精通",
-  hp: "生命", hpPlus: "生命", atk: "攻击", atkPlus: "攻击", def: "防御", defPlus: "防御",
+  cpct: $t("panel.original-profile-skia.text_59d499d937"), cdmg: $t("panel.original-profile-skia.text_c750f692ee"), recharge: $t("panel.original-profile-skia.text_c0c253c271"), mastery: $t("panel.original-profile-skia.text_591f60433f"),
+  hp: $t("panel.original-profile-skia.text_45bc77bc1c"), hpPlus: $t("panel.original-profile-skia.text_45bc77bc1c"), atk: $t("panel.original-profile-skia.text_8226ca02ff"), atkPlus: $t("panel.original-profile-skia.text_8226ca02ff"), def: $t("panel.original-profile-skia.text_75ba7a5727"), defPlus: $t("panel.original-profile-skia.text_75ba7a5727"),
 };
 const consColor = ["#666", "#5cbac2", "#339d61", "#3e95b9", "#3955b7", "#531ba9cf", "#ff5722"];
 const refineColor = ["#ebebebaa", "#ebebebaa", "#ddffdeaa", "#ddebffaa", "#ffddf0aa", "#fff6dd"];
@@ -260,7 +263,7 @@ export function drawOriginalProfileHero(ctx: Drawing, { font, write }: TextWrite
   ctx.save();
   shadow(ctx, "#000b", 4, 2);
   write(data.name, 580, 68, 50, { align: "right", title: true, maxWidth: 540 });
-  const cons = `${data.cons}命`;
+  const cons = $t("panel.original-profile-skia.text_3ef457527a", { "cons": data.cons });
   font(18);
   const badgeWidth = ctx.measureText(cons).width + 10;
   fill(ctx, consColor[data.cons] ?? consColor[0]!, [580 - badgeWidth, 78, badgeWidth, 22], 4);
@@ -321,7 +324,7 @@ export function drawOriginalProfileHero(ctx: Drawing, { font, write }: TextWrite
   ctx.restore();
   ctx.save();
   shadow(ctx, "#000", 1, 1);
-  write([data.dataSource && "数据源：" + data.dataSource, data.updateTime].filter(Boolean).join("  "),
+  write([data.dataSource && $t("panel.original-profile-skia.text_c6951992e6") + data.dataSource, data.updateTime].filter(Boolean).join("  "),
     580, 505, 12, { align: "right", color: "#ffffffd9" });
   ctx.restore();
 }
@@ -363,17 +366,17 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
 
     if (model.changeProfile) panel(ctx, card, [10, 515, 575, 35], () => {
       fill(ctx, "#0008", [10, 515, 575, 35]);
-      write(`该面板为非实际数据。当前替换命令： ${model.changeProfile}`, 25, 537, 12, { color: gold, maxWidth: 540 });
+      write($t("panel.original-profile-skia.text_28734ff8ea", { "changeProfile": model.changeProfile }), 25, 537, 12, { color: gold, maxWidth: 540 });
     });
     const markY = 515 + changeHeight;
     panel(ctx, card, [10, markY, 575, 103], () => {
       fill(ctx, dark, [10, markY, 185, 103]);
-      write("圣遗物总分", 61.25, markY + 27, 12, { align: "center", color: "#bbb" });
-      write("圣遗物评级", 143.75, markY + 27, 12, { align: "center", color: "#bbb" });
+      write($t("panel.original-profile-skia.text_7299a0c6d7"), 61.25, markY + 27, 12, { align: "center", color: "#bbb" });
+      write($t("panel.original-profile-skia.text_d6dfd0484c"), 143.75, markY + 27, 12, { align: "center", color: "#bbb" });
       write(rating.mark, 61.25, markY + 61, 30, { align: "center", bold: true });
       write(rating.markClass, 143.75, markY + 61, 30, { align: "center", bold: true, color: gradeColor(rating.markClass) });
       fill(ctx, "#0008", [10, markY + 78, 185, 25]);
-      write("评分规则：" + rating.classTitle, 102.5, markY + 95, 12, { align: "center", maxWidth: 175 });
+      write($t("panel.original-profile-skia.text_5d692f5a2b") + rating.classTitle, 102.5, markY + 95, 12, { align: "center", maxWidth: 175 });
       for (let i = 0; i < 9; i++) {
         fill(ctx, i % 2 ? dark : "rgba(50,50,50,.4)", [195 + Math.floor(i / 3) * 130, markY + i % 3 * 26, 130, 26]);
       }
@@ -386,7 +389,7 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
         write("+" + roll.value, x + 125, y + 19, 13, { align: "right", color: colour === "#888" ? colour : body });
       });
       fill(ctx, "#000b", [196, markY + 78, 389, 25]);
-      write(`评分沿用原有规则，仅供参考与娱乐。可使用 #${data.abbr}圣遗物 查看评分详情`, 393, markY + 94, 10, {
+      write($t("panel.original-profile-skia.text_69ab40be88", { "abbr": data.abbr }), 393, markY + 94, 10, {
         align: "center", color: "#aaa", maxWidth: 380,
       });
     });
@@ -400,7 +403,7 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
     write(data.weapon?.sName || data.weapon?.name, 25, artifactsTop + 29, 15, { bold: true, maxWidth: 162 });
     if (data.weapon?.affix !== undefined) {
       fill(ctx, refineColor[data.weapon.affix] ?? refineColor[0]!, [25, artifactsTop + 36, 37, 18], 4);
-      write("精" + data.weapon.affix, 43.5, artifactsTop + 50, 14, { align: "center", color: "#000" });
+      write($t("panel.original-profile-skia.text_29724f74bb") + data.weapon.affix, 43.5, artifactsTop + 50, 14, { align: "center", color: "#000" });
     }
     if (data.weapon?.level !== undefined) write("Lv." + data.weapon.level, 67, artifactsTop + 50, 14);
     fill(ctx, "#0005", [10, artifactsTop + 64, 185, 26]);
@@ -425,7 +428,7 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
       ctx.save();
       shadow(ctx, "#000b", 2, 1);
       write(piece.abbr || piece.name, x + 15, y + 30, 15, { bold: true, maxWidth: 166 });
-      write(`${piece.mark}分 - ${piece.markClass}`, x + 15, y + 49, 14, { color: gradeColor(piece.markClass) });
+      write($t("panel.original-profile-skia.text_37b08c3e12", { "mark": piece.mark, "markClass": piece.markClass }), x + 15, y + 49, 14, { color: gradeColor(piece.markClass) });
       ctx.restore();
       ctx.save();
       const detailHeight = Math.min(130, (piece.attrs.length + 1) * 26);
@@ -456,11 +459,11 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
       fill(ctx, dark, [10, damageTop, 575, 80]);
       fill(ctx, "rgba(50,50,50,.4)", [10, damageTop + 40, 575, 40]);
       for (const x of [10, 240, 424]) fill(ctx, "#fff4", [x, damageTop + 40, .65, 40]);
-      write("伤害计算", 30, damageTop + 25, 16, { color: gold });
-      write(`使用 #${data.abbr}伤害 命令可以查看伤害详情`, 104, damageTop + 25, 12, { color: "#aaa" });
-      write("伤害类型", 225, damageTop + 66, 15, { color: gold, align: "right" });
-      write("暴击伤害", 332, damageTop + 66, 15, { color: gold, align: "center" });
-      write("期望伤害", 504.5, damageTop + 66, 15, { color: gold, align: "center" });
+      write($t("panel.original-profile-skia.text_393374d45e"), 30, damageTop + 25, 16, { color: gold });
+      write($t("panel.original-profile-skia.text_ea07627e4e", { "abbr": data.abbr }), 104, damageTop + 25, 12, { color: "#aaa" });
+      write($t("panel.original-profile-skia.text_9b65f38ca8"), 225, damageTop + 66, 15, { color: gold, align: "right" });
+      write($t("panel.original-profile-skia.text_15bccc3951"), 332, damageTop + 66, 15, { color: gold, align: "center" });
+      write($t("panel.original-profile-skia.text_d5f4617e07"), 504.5, damageTop + 66, 15, { color: gold, align: "center" });
       rows.forEach((row, i) => {
         const { lines, top, height: rowHeight } = damageTitles.rows[i]!;
         const y = damageTop + 80 + top;
@@ -482,9 +485,9 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
       });
       const y = damageTop + damageHeight - 35;
       fill(ctx, "#0008", [10, y, 575, 35]);
-      write(`目标为${damage.enemyLv ?? ""}级${damage.enemyName || "小宝"}，使用 #敌人等级${damage.enemyLv ?? ""} 命令可指定等级`,
+      write($t("panel.original-profile-skia.text_91d6c72761", { "value1": damage.enemyLv ?? "", "value2": damage.enemyName || $t("panel.original-profile-skia.text_ea05b7f949"), "value3": damage.enemyLv ?? "" }),
         25, y + 22, 12, { color: "#aaa", maxWidth: 355 });
-      if (damage.createdBy) write("伤害计算来源：" + damage.createdBy, 570, y + 22, 12, {
+      if (damage.createdBy) write($t("panel.original-profile-skia.text_c620039e10") + damage.createdBy, 570, y + 22, 12, {
         align: "right", color: gold, maxWidth: 186,
       });
     });

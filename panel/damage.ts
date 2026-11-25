@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import type { TrialTitleMode } from "../../../lib/panel-trial-display.ts";
 import DmgAttr from "./miao/damage/DmgAttr.ts";
 import DmgCalc from "./miao/damage/DmgCalc.ts";
@@ -61,17 +64,17 @@ const sets: Readonly<Record<string, Partial<Record<number, Buff | readonly Buff[
   Readonly<Record<string, Partial<Record<number, Buff | readonly Buff[]>>>>;
 const weapons: Readonly<Record<string, readonly Buff[] | Buff>> = Object.assign({},
   ...[swordRules, bowRules, catalystRules, claymoreRules, polearmRules].map(factory => factory(step, constant)));
-const weaponClass: Readonly<Record<string, string>> = { sword: "单手剑", claymore: "双手剑", polearm: "长柄武器", bow: "弓", catalyst: "法器" };
-const elementNames: Readonly<Record<string, string>> = { pyro: "火", hydro: "水", anemo: "风", electro: "雷", dendro: "草", cryo: "冰", geo: "岩" };
+const weaponClass: Readonly<Record<string, string>> = { sword: $t("panel.damage.text_672bf41f03"), claymore: $t("panel.damage.text_3db03533c2"), polearm: $t("panel.damage.text_b4cc81a2da"), bow: $t("panel.damage.text_d97da89d3d"), catalyst: $t("panel.damage.text_8f83d07fae") };
+const elementNames: Readonly<Record<string, string>> = { pyro: $t("panel.damage.text_d4cfe8c82c"), hydro: $t("panel.damage.text_327b54d04f"), anemo: $t("panel.damage.text_be65bd5518"), electro: $t("panel.damage.text_5de1b913e7"), dendro: $t("panel.damage.text_91b246b5db"), cryo: $t("panel.damage.text_ce1b850700"), geo: $t("panel.damage.text_9638a2a0f9") };
 
 export function hasGenshinDamageRule(id: number, name: string): boolean {
-  const names = travelerIds.has(id) ? Object.keys(elementNames).map(element => `旅行者/${element}`) : [name];
+  const names = travelerIds.has(id) ? Object.keys(elementNames).map(element => $t("panel.damage.text_6a390a0ddd", { "element": element })) : [name];
   return names.some(key => Object.hasOwn(formulas, key) || (damageSettings.lolomicalc && Object.hasOwn(nativeRules, key)));
 }
 const weaponLevels = characterLevelBreakpoints.slice(0, -1);
 const attributeKeys = ["hp", "atk", "def", "mastery", "recharge", "cpct", "cdmg", "dmg", "phy", "heal", "shield", "coloringDmg"];
 const basePercent = ["hp", "atk", "def"];
-const masteryName: Readonly<Record<string, string>> = { vaporize: "蒸发", melt: "融化", swirl: "扩散", aggravate: "超激化", spread: "蔓激化" };
+const masteryName: Readonly<Record<string, string>> = { vaporize: $t("panel.damage.text_d8c812aa9f"), melt: $t("panel.damage.text_3ad2d041d4"), swirl: $t("panel.damage.text_46f1d54dc9"), aggravate: $t("panel.damage.text_9278c673c4"), spread: $t("panel.damage.text_6e8c43a177") };
 export const genshinDamageEnemyLevel = 103;
 
 export type DamageRow = {
@@ -107,7 +110,7 @@ function step(start: number, delta = 0) {
 }
 
 function constant(key: string, start: number, delta?: number) {
-  return { title: `${key}提高[key]`, isStatic: true, refine: { [key]: step(start, delta) } };
+  return { title: $t("panel.damage.text_13b0add08b", { "key": key }), isStatic: true, refine: { [key]: step(start, delta) } };
 }
 
 function list<T>(input: T | readonly T[] | undefined): readonly T[] {
@@ -124,7 +127,7 @@ function finite(input: unknown): number | undefined {
 function valueAt(left: unknown, right: unknown, after: number, width: number, kind: "linear" | "ascension" | "weapon") {
   const start = finite(left), end = finite(right);
   if (start === undefined || end === undefined || width < 1 || after < 0 || after > width) {
-    throw new Unavailable("旧版等级表缺少对应等级或突破数据。");
+    throw new Unavailable($t("panel.damage.text_8aa26860a8"));
   }
   if (kind === "linear") return start + (end - start) * after / width;
   const steps = kind === "weapon" ? Math.ceil(width / 5) : Math.round(width / 5);
@@ -136,7 +139,7 @@ function range(level: number | undefined, promote: number | undefined, levels: r
   const left = promote === undefined ? undefined : levels[promote];
   const right = promote === undefined ? undefined : levels[promote + 1];
   if (!left || !right || !level || level < left || level > right) {
-    throw new Unavailable("等级或突破数据不完整，请先更新面板。");
+    throw new Unavailable($t("panel.damage.text_69dc21ea39"));
   }
   return { left, right, after: level - left, width: right - left };
 }
@@ -144,7 +147,7 @@ function range(level: number | undefined, promote: number | undefined, levels: r
 function strictTable(table: Json) {
   return new Proxy(table, {
     get(target, key) {
-      if (!Object.hasOwn(target, key)) throw new Unavailable("旧版天赋倍率表缺少本场景所需的倍率。");
+      if (!Object.hasOwn(target, key)) throw new Unavailable($t("panel.damage.text_33ae56686f"));
       return target[key as string];
     },
   });
@@ -157,7 +160,7 @@ function talents(avatar: PanelAvatar, record: Json, archiveMeta: Json | undefine
   const levels = panelTalentLevels(avatar, record, archiveMeta, displayed);
   for (const [index, key] of talentKeys.entries()) {
     const level = levels[index];
-    if (!level || level.level > 15 || !object(talent?.[key])) throw new Unavailable("天赋等级或旧版倍率表不完整，请先更新面板。");
+    if (!level || level.level > 15 || !object(talent?.[key])) throw new Unavailable($t("panel.damage.text_184e1e6878"));
     talentLevel[key] = level;
     const values = Object.fromEntries(Object.entries(object(talent?.[key])!).flatMap(([label, rows]) => {
       if (!Array.isArray(rows)) return [];
@@ -166,7 +169,7 @@ function talents(avatar: PanelAvatar, record: Json, archiveMeta: Json | undefine
       if (Array.isArray(value) && value.length && value.every(x => finite(x) !== undefined)) return [[label, value]];
       return finite(value) === undefined ? [] : [[label, value]];
     }));
-    if (!Object.keys(values).length) throw new Unavailable("旧版天赋倍率表不包含当前等级。");
+    if (!Object.keys(values).length) throw new Unavailable($t("panel.damage.text_b2a3d21dca"));
     result[key] = native ? values : strictTable(values);
   }
   return { ...result, talentLevel };
@@ -178,7 +181,7 @@ function equipment(avatar: PanelAvatar, isolated = false) {
   for (const item of Object.values(avatar.artis)) {
     const properties = artifactStatRecord(item);
     if (!properties.main || item.scoreReady === false || properties.unrecognized || !item.set) {
-      throw new Unavailable("圣遗物主副词条或套装名称不全，请先更新面板。");
+      throw new Unavailable($t("panel.damage.text_57da007cff"));
     }
     stats.push(properties.main, ...properties.subs);
     count[item.set] = (count[item.set] ?? 0) + 1;
@@ -202,7 +205,7 @@ function weaponBuffs(name: string, refinement: number) {
     const data = { ...row.data };
     for (const [key, values] of Object.entries(row.refine ?? {})) {
       const value = finite(values[refinement - 1]);
-      if (value === undefined) throw new Unavailable("旧版武器精炼倍率缺失。");
+      if (value === undefined) throw new Unavailable($t("panel.damage.text_a0d68c1291"));
       data[key] = value * (row.buffCount || 1);
     }
     return { ...row, data, title: typeof row.title === "string" && !row.title.includes("：") ? `${name}：${row.title}` : row.title };
@@ -217,7 +220,7 @@ function readInitial(avatar: PanelAvatar, detail: Json, weapon: Json, buffs: rea
     const group = record[mapped?.[1] ?? key];
     if (!group) return;
     const value = finite(input);
-    if (value === undefined) throw new Unavailable("旧版静态属性字段缺失。");
+    if (value === undefined) throw new Unavailable($t("panel.damage.text_38b5ebc2a6"));
     const suffix = mapped?.[2];
     if (originalBase && (suffix === "Base" || natural)) {
       const attr = mapped?.[1] ?? key;
@@ -236,7 +239,7 @@ function readInitial(avatar: PanelAvatar, detail: Json, weapon: Json, buffs: rea
   const keys = attrs?.keys;
   const ascension = Array.isArray(keys) ? text(keys[3]) : text(object(keys)?.[3]);
   if (!Array.isArray(charLeft) || !Array.isArray(charRight) || !ascension) {
-    throw new Unavailable("缺少角色旧版基础属性表。");
+    throw new Unavailable($t("panel.damage.text_72f988f2b6"));
   }
   add("recharge", 100, true); add("cpct", 5, true); add("cdmg", 50, true);
   for (const [index, key] of ["hpBase", "atkBase", "defBase", ascension].entries()) {
@@ -278,15 +281,15 @@ function readInitial(avatar: PanelAvatar, detail: Json, weapon: Json, buffs: rea
 
 async function sourceData(theme: PanelTheme, avatar: PanelAvatar, name: string) {
   const load = theme.metadata;
-  if (!load || !avatar.weapon) throw new Unavailable("缺少本地主题或武器资料。");
+  if (!load || !avatar.weapon) throw new Unavailable($t("panel.damage.text_3b7daabc52"));
   const charPath = name.split("/");
   const detail = await load("meta-gs", "character", ...charPath, "data.json");
-  const expectedName = travelerIds.has(avatar.id) ? "旅行者" : avatar.name;
-  if (text(detail.name) !== expectedName) throw new Unavailable("旧主题缺少当前角色的数值表。");
+  const expectedName = travelerIds.has(avatar.id) ? $t("panel.damage.text_4bf6868aa0") : avatar.name;
+  if (text(detail.name) !== expectedName) throw new Unavailable($t("panel.damage.text_f1a712fabe"));
   const weaponType = text(detail.weapon) || text(object(theme.characters[avatar.id])?.weapon);
-  if (!Object.hasOwn(weaponClass, weaponType)) throw new Unavailable("旧主题缺少对应角色或武器种类。");
+  if (!Object.hasOwn(weaponClass, weaponType)) throw new Unavailable($t("panel.damage.text_238861f81e"));
   const weapon = await load("meta-gs", "weapon", weaponType, avatar.weapon.name, "data.json");
-  if (text(weapon.name) !== avatar.weapon.name) throw new Unavailable("旧主题缺少当前武器的属性表。");
+  if (text(weapon.name) !== avatar.weapon.name) throw new Unavailable($t("panel.damage.text_5693ee7958"));
   return { detail, weapon, weaponType };
 }
 
@@ -305,8 +308,8 @@ function normalBuffs(items: readonly (Buff | string)[]) {
   return items.flatMap(item => {
     if (typeof item === "string") {
       if (!masteryName[item]) return [];
-      const bonus = item === "aggravate" || item === "spread" ? "，造成的伤害值提升[_" + item + "num]" : "";
-      return [{ title: `元素精通：${masteryName[item]}伤害提高[_${item}]%${bonus}`, mastery: item, sort: 9, data: {} } satisfies Buff];
+      const bonus = item === "aggravate" || item === "spread" ? $t("panel.damage.text_66b2e73674") + item + "num]" : "";
+      return [{ title: $t("panel.damage.text_44ed7601fd", { "value1": masteryName[item], "item": item, "bonus": bonus }), mastery: item, sort: 9, data: {} } satisfies Buff];
     }
     return [{ ...item, data: { ...item.data } }];
   }).sort((a, b) => (a.sort ?? 1) - (b.sort ?? 1));
@@ -318,13 +321,13 @@ const resultValue = (value: unknown): number | string | undefined => {
 };
 
 async function panelInputs(avatar: PanelAvatar, theme: PanelTheme, engine?: DamageSettings["engineMode"]) {
-  if (!Object.hasOwn(elementNames, avatar.elem)) throw new Unavailable("面板缺少有效的角色元素。");
+  if (!Object.hasOwn(elementNames, avatar.elem)) throw new Unavailable($t("panel.damage.text_05dab5d573"));
   const cons = avatar.cons;
   const equippedWeapon = avatar.weapon;
   if (!equippedWeapon?.affix || cons === undefined || !Object.keys(avatar.artis).length) {
-    throw new Unavailable("伤害估算需要武器精炼、命座和圣遗物词条，请先更新面板。");
+    throw new Unavailable($t("panel.damage.text_59db9f4d4e"));
   }
-  const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+  const name = travelerIds.has(avatar.id) ? $t("panel.damage.text_2693821b85", { "elem": avatar.elem }) : avatar.name;
   const selectEngine = engine !== undefined;
   const [catalog, selected] = await Promise.all([
     selectEngine ? readNativeTables(name, avatar) : undefined,
@@ -332,11 +335,11 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme, engine?: Dama
   ]);
   const native = !!catalog && engine !== "miao";
   if (engine === "lolomi" && !native) {
-    throw new Unavailable("指定伤害引擎没有当前角色的数值表。");
+    throw new Unavailable($t("panel.damage.text_29d3c6ee8c"));
   }
   const inherited = Object.hasOwn(formulas, name) ? formulas[name]!() : undefined;
   const rule = (selected as Rule | undefined) ?? inherited;
-  if (!rule) throw new Unavailable("当前规则库没有这个角色的伤害规则。");
+  if (!rule) throw new Unavailable($t("panel.damage.text_fda9dda0c5"));
 
   const tables = selectEngine ? await panelTables(theme, avatar, name, catalog) : await sourceData(theme, avatar, name);
   const gear = equipment(avatar);
@@ -345,7 +348,7 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme, engine?: Dama
     native ? !nativeArtifactEffects(set, size).length : !Object.hasOwn(sets, set) || !sets[set]?.[size];
   if (avatar._source === "change" && Object.entries(gear.pieces).some(([set, count]) =>
     setMissing(set, 2) || (count === 4 && setMissing(set, 4)))) {
-    throw new Unavailable("旧伤害规则缺少这套装备生效的圣遗物套装数值。");
+    throw new Unavailable($t("panel.damage.text_8ea76e2648"));
   }
   const weapon = { ...equippedWeapon, type: tables.weaponType, typeName: weaponClass[tables.weaponType] };
   const originalWeapon = weaponBuffs(weapon.name, equippedWeapon.affix);
@@ -365,7 +368,7 @@ async function panelInputs(avatar: PanelAvatar, theme: PanelTheme, engine?: Dama
 
 export async function readOriginalPanelNumbers(avatar: PanelAvatar, theme: PanelTheme, { sourceOnly = false } = {}) {
   try {
-    const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+    const name = travelerIds.has(avatar.id) ? $t("panel.damage.text_2693821b85", { "elem": avatar.elem }) : avatar.name;
     const tables = sourceOnly ? await sourceData(theme, avatar, name) : await panelTables(theme, avatar, name);
     const gear = equipment(avatar);
     const rule = Object.hasOwn(formulas, name) ? formulas[name]!() : undefined;
@@ -381,7 +384,7 @@ export async function readOriginalPanelNumbers(avatar: PanelAvatar, theme: Panel
 
 export async function readOriginalWeapon(avatar: PanelAvatar, theme: PanelTheme) {
   try {
-    const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+    const name = travelerIds.has(avatar.id) ? $t("panel.damage.text_2693821b85", { "elem": avatar.elem }) : avatar.name;
     const { weapon, weaponType } = await panelTables(theme, avatar, name);
     const { left, right, after, width } = range(avatar.weapon?.level, avatar.weapon?.promote, weaponLevels);
     const attr = object(weapon.attr);
@@ -440,7 +443,7 @@ export async function readChangedPanelProperties(avatar: PanelAvatar, theme: Pan
   } catch (error) {
     if (!(error instanceof Unavailable)) throw error;
     try {
-      const name = travelerIds.has(avatar.id) ? `旅行者/${avatar.elem}` : avatar.name;
+      const name = travelerIds.has(avatar.id) ? $t("panel.damage.text_2693821b85", { "elem": avatar.elem }) : avatar.name;
       const { detail, weapon } = await sourceData(theme, avatar, name);
       const starting = readInitial(avatar, detail, weapon, [], { stats: [] });
       return basePercent.flatMap(key => {
@@ -545,7 +548,7 @@ async function estimateWithEngine(avatar: PanelAvatar, theme: PanelTheme, row: n
       const result = object(formula.dmg(ds, hit as ReturnType<typeof DmgCalc.getDmgFn>));
       const note = result?.type === "text" && object(result.avg);
       const narrated = typeof result?.avg === "string" ? text(result.avg)
-        : note ? Object.entries(note).flatMap(([name, count]) => typeof count === "number" ? [`${name}×${count}`] : []).join("、") || "无套装"
+        : note ? Object.entries(note).flatMap(([name, count]) => typeof count === "number" ? [`${name}×${count}`] : []).join("、") || $t("panel.damage.text_907a406be1")
         : undefined;
       return { ds, msg, average: resultValue(result?.avg) ?? (result?.type === "text" ? narrated : undefined), crit: resultValue(result?.dmg), unit: result?.unit === "%" ? "%" as const : undefined };
     }
@@ -553,7 +556,7 @@ async function estimateWithEngine(avatar: PanelAvatar, theme: PanelTheme, row: n
     for (const [index, raw] of rule.details.entries()) {
       if (ranking && (defaultKey ? typeof raw === "function" || raw.dmgKey !== defaultKey
         : index !== (typeof defaultIdx === "number" && defaultIdx >= 0 ? defaultIdx : 0))) continue;
-      let label = typeof raw !== "function" && typeof raw.title === "string" ? raw.title : `旧场景 ${index + 1}`;
+      let label = typeof raw !== "function" && typeof raw.title === "string" ? raw.title : $t("panel.damage.text_e267fc53d4", { "value1": index + 1 });
       try {
         if (typeof raw !== "function" && (raw.isStatic || (raw.cons && cons < raw.cons))) continue;
         const formula = typeof raw === "function" ? raw({ ...calc().ds, profile: { ...avatar, attr: starting } }) : raw;
@@ -574,10 +577,10 @@ async function estimateWithEngine(avatar: PanelAvatar, theme: PanelTheme, row: n
       }
     }
     if (row !== undefined && (row < 1 || row > titles.length)) {
-      return { message: `序号输入错误：${avatar.name}最多只支持${titles.length}种伤害计算哦。` };
+      return { message: $t("panel.damage.text_92a1af488e", { "name": avatar.name, "length": titles.length }) };
     }
     if (!titles.some(entry => !entry.unavailable)) {
-      return await retry() ?? { message: "旧伤害规则缺少该面板所需的倍率或条件数据。" };
+      return await retry() ?? { message: $t("panel.damage.text_b44fefdcbb") };
     }
     const selected = row === undefined ? (preferred < 0 ? titles.findIndex(entry => !entry.unavailable) : preferred) : row - 1;
     let comparison: DamageComparison | undefined;
@@ -638,17 +641,17 @@ async function estimateWithEngine(avatar: PanelAvatar, theme: PanelTheme, row: n
         const rowFor = (title: string, point: Point): DamageRow =>
           ({ title, average: Math.floor(point.average), crit: Math.floor(point.crit), buffs: [] });
         const change = (from: Point, to: Point) => from.average ? (to.average - from.average) / from.average * 100 : 0;
-        constellation = [rowFor("命座对比 " + here.title, here)];
+        constellation = [rowFor($t("panel.damage.text_43054c488b") + here.title, here)];
         if (previous && cons > 1) constellation.push(rowFor(
-          `对比 ${cons - 1} 命提升 ${Math.abs(change(here, previous)).toFixed(2)}%`, previous));
-        if (next) constellation.push(rowFor(`${cons + 1} 命预计提升 ${Math.abs(change(here, next)).toFixed(2)}%`, next));
+          $t("panel.damage.text_7ef44b473c", { "value1": cons - 1, "value2": Math.abs(change(here, previous)).toFixed(2) }), previous));
+        if (next) constellation.push(rowFor($t("panel.damage.text_7e0f093936", { "value1": cons + 1, "value2": Math.abs(change(here, next)).toFixed(2) }), next));
         const zero = cons === 1 ? previous : cons > 1 ? atConstellation(0) : undefined;
-        if (zero && zero.average > 0) constellation.push(rowFor(`对比 0 命总提升 ${change(zero, here).toFixed(2)}%`, zero));
+        if (zero && zero.average > 0) constellation.push(rowFor($t("panel.damage.text_ca0cbbf12f", { "value1": change(zero, here).toFixed(2) }), zero));
       }
     }
-    const ruleAuthors = text(rule.createdBy || (usesNativeRule ? "洛洛米" : "")).split("&").map(name => name.trim())
+    const ruleAuthors = text(rule.createdBy || (usesNativeRule ? $t("panel.damage.text_07dcbca64a") : "")).split("&").map(name => name.trim())
       .filter(name => name && name !== "喵喵");
-    return { rows: titles, selected, enemyLevel, enemyName: text(rule.enemyName) || "小宝", ruleAuthors, comparison, constellation,
+    return { rows: titles, selected, enemyLevel, enemyName: text(rule.enemyName) || $t("panel.damage.text_ea05b7f949"), ruleAuthors, comparison, constellation,
       engine: native ? "lolomi" : "miao" };
   } catch (error) {
     const fallback = await retry();

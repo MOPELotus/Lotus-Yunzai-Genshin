@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError, type createProfileStore, type ProfileRequestContext } from "@lotus-yunzai/account";
@@ -12,7 +15,7 @@ import { matchTarotTrade, readTarotCollection, tarotCount, tradeCards, writeTaro
 const commandPattern = /^#?(?:原神)?(?:月谕|月喻|越狱|幻想真境剧诗|幻想|幻境|剧诗)(?:圣牌|卡片|卡牌|塔罗牌|card|tarot)(收藏|收集|交换|互换|换牌)?\s*(?:(?:档案|profile)\s*([1-9]\d{0,2})|([1-9]\d{8,9})|([1-9]\d{0,2}))?\s*(?:数据)?$/iu;
 const lifetime = 30 * 24 * 60 * 60 * 1000;
 const maximumMembers = 10_000;
-const exchangeHelp = "本群暂无可互相交换的「月谕圣牌」用户。\n提示：需要群友先查询过 #月谕圣牌，才会进入本群交换匹配范围。";
+const exchangeHelp = $t("panel.tarot-cards.text_f6d602261a");
 
 export function matchGenshinTarotCards(message: string) {
   const match = commandPattern.exec(message.trim().replace(/^＃/u, "#"));
@@ -76,7 +79,7 @@ export function createGenshinTarotCards(directory: string, profiles: TarotProfil
   lockFile: AcquireRoleArchiveLock, lifecycle: AbortSignal, { now = Date.now, render = renderTarotCards } = {}) {
   const archiveDirectory = (scope: GroupScope) => join(directory, scope.adapter, String(scope.bot));
   const archive = (scope: GroupScope) => createRoleJsonArchive(archiveDirectory(scope), lockFile, {
-    subject: "月谕圣牌群交换登记", lockSuffix: "tarot-collection", maxBytes: 128 * 1024, rejectNull: true,
+    subject: $t("panel.tarot-cards.text_d56691e7f6"), lockSuffix: "tarot-collection", maxBytes: 128 * 1024, rejectNull: true,
   });
 
   async function stillPeer(qq: number, row: NonNullable<ReturnType<typeof cachedCollection>>) {
@@ -94,13 +97,13 @@ export function createGenshinTarotCards(directory: string, profiles: TarotProfil
     if (lifecycle.aborted || privateSession?.aborted || groupSession?.aborted) return;
     if (context.isDelegated || (context.message_type !== "private" && context.message_type !== "group") ||
         !positive(user) || user === bot || (Array.isArray(message) && message.some(part => part.type === "at" && String(part.qq) !== String(bot)))) {
-      return "请在本人 QQ 会话中查询月谕圣牌。";
+      return $t("panel.tarot-cards.text_b0f48c76a3");
     }
     const scope = scopeOf(context);
-    if (command.exchange && context.message_type !== "group") return "「月谕圣牌交换」仅支持在群聊中查询。";
-    if (command.exchange && !scope) return "暂时无法核对当前群的成员身份。";
+    if (command.exchange && context.message_type !== "group") return $t("panel.tarot-cards.text_c4f8c00c4f");
+    if (command.exchange && !scope) return $t("panel.tarot-cards.text_d0a6f84e81");
     const { profileId } = command;
-    if (profileId < 1 || profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (profileId < 1 || profileId > MAX_PROFILE_ID) return $t("panel.tarot-cards.text_3dd62228d2");
     const session = privateSession ?? groupSession;
     const signal = session ? AbortSignal.any([lifecycle, session]) : lifecycle;
     const qq = String(user);
@@ -108,8 +111,8 @@ export function createGenshinTarotCards(directory: string, profiles: TarotProfil
     try {
       const initial = await ownedGenshinRole(profiles, qq, profileId);
       const { role } = initial.source;
-      if (!genshinCnRecordRegion(role)) return "月谕圣牌当前仅支持已绑定的原神国服角色。";
-      if (command.uid && command.uid !== role.uid) return "指定 UID 必须与当前档案已选的原神角色一致。";
+      if (!genshinCnRecordRegion(role)) return $t("panel.tarot-cards.text_0a549db1c7");
+      if (command.uid && command.uid !== role.uid) return $t("panel.tarot-cards.text_6ab504dc5d");
       const login = await profiles.loginIdentity(qq, profileId);
       let revision = initial.source.revision;
       async function verify() {
@@ -117,20 +120,20 @@ export function createGenshinTarotCards(directory: string, profiles: TarotProfil
         const latest = await ownedGenshinRole(profiles, qq, profileId).catch(() => undefined);
         if (latest?.accountId !== initial.accountId || latest.source.revision !== revision || !sameRole(role, latest.source.role) ||
             await profiles.loginIdentity(qq, profileId).catch(() => undefined) !== login) {
-          throw new ProfileError("changed", "原神角色档案已变化。");
+          throw new ProfileError("changed", $t("panel.tarot-cards.text_0314226111"));
         }
         signal.throwIfAborted();
       }
 
       let members = scope && await groupMembers(scope, context);
-      if (command.exchange && !members) return "暂时无法核对当前群的成员身份。";
+      if (command.exchange && !members) return $t("panel.tarot-cards.text_d0a6f84e81");
       await verify();
       const observedAt = now();
       const official = await client.fetchGenshinTarotCollection(initial.source, { signal });
       revision = official.revision;
       await verify();
       const album = readTarotCollection(official.collection);
-      if (!album) return "暂未获得「月谕圣牌」收藏数据。";
+      if (!album) return $t("panel.tarot-cards.text_f995196746");
       if (scope && members) {
         members = await groupMembers(scope, context);
         if (members) {
@@ -148,10 +151,10 @@ export function createGenshinTarotCards(directory: string, profiles: TarotProfil
       let page: TarotCardPage = { uid: role.uid, album };
       const peers = new Map<number, NonNullable<ReturnType<typeof cachedCollection>>>();
       if (command.exchange) {
-        if (!scope || !members) return "暂时无法核对当前群的成员身份。";
+        if (!scope || !members) return $t("panel.tarot-cards.text_d0a6f84e81");
         const own = tradeCards(album);
-        if (!own.needs.size) return "你的「月谕圣牌」已全部收集，无需交换。";
-        if (!own.extras.length) return "你当前没有可用于交换的重复「月谕圣牌」。";
+        if (!own.needs.size) return $t("panel.tarot-cards.text_8d2ba09687");
+        if (!own.extras.length) return $t("panel.tarot-cards.text_6a57ac64ac");
         const store = archive(scope);
         const time = now();
         const files = await readdir(join(archiveDirectory(scope), String(scope.group))).catch(() => []);
@@ -181,25 +184,25 @@ export function createGenshinTarotCards(directory: string, profiles: TarotProfil
       if ("matches" in page && scope) {
         const latest = await groupMembers(scope, context);
         if (!latest || (await Promise.all(page.matches.map(({ qq }) => latest.has(qq) && stillPeer(qq, peers.get(qq)!)))).includes(false)) {
-          return "群成员或原神档案已变化，请重新查询交换。";
+          return $t("panel.tarot-cards.text_ae66ad6359");
         }
       }
       signal.throwIfAborted();
       if (picture) return { type: "image" as const, file: picture.png };
-      return "matches" in page ? ["月谕圣牌交换", ...page.matches.map(({ name, qq, uid, takes, gives }) =>
-        `${name}（QQ ${qq}，UID ${uid}）\nTA 给你：${takes.map(({ name, number }) => `${name} × ${number}`).join("、")}\n你给 TA：${gives.map(({ name, number }) => `${name} × ${number}`).join("、")}`)].join("\n")
-        : [`月谕圣牌 · UID ${page.uid} · 已收集 ${album.collected}/${album.total}`,
+      return "matches" in page ? [$t("panel.tarot-cards.text_f045e07b22"), ...page.matches.map(({ name, qq, uid, takes, gives }) =>
+        $t("panel.tarot-cards.text_57948ee3ad", { "name": name, "qq": qq, "uid": uid, "value4": takes.map(({ name, number }) => `${name} × ${number}`).join("、"), "value5": gives.map(({ name, number }) => `${name} × ${number}`).join("、") }))].join("\n")
+        : [$t("panel.tarot-cards.text_5098383475", { "uid": page.uid, "collected": album.collected, "total": album.total }),
           ...album.cards.map(({ name, copies }) => `${name} × ${copies}`)].join("\n");
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "changed") return "原神角色档案已变化，请重新查询月谕圣牌。";
-        if (error.code === "login-required" || error.code === "missing") return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 没有已同步的原神角色。`;
-        if (error.code === "invalid") return "档案的登录凭据与账号不一致，请重新登录。";
+        if (error.code === "changed") return $t("panel.tarot-cards.text_cfe362a8e6");
+        if (error.code === "login-required" || error.code === "missing") return $t("panel.tarot-cards.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("panel.tarot-cards.text_147d603571", { "profileId": profileId });
+        if (error.code === "invalid") return $t("panel.tarot-cards.text_dbd093cee6");
       }
       if (error instanceof GameRecordRequestError || error instanceof HoyoRequestError && ["profile-changed", "refresh", "invalid-input"].includes(error.code)) return error.message;
-      return "暂时无法查询月谕圣牌，请稍后重试。";
+      return $t("panel.tarot-cards.text_b7fec4bbd3");
     }
   };
 }

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { loadOfficialArtwork, loadPublicQqAvatar } from "@lotus-yunzai/account";
 import { loadImage } from "skia-canvas";
@@ -77,7 +80,7 @@ export async function renderPersonalExploration(model: PersonalExploration, {
     originalFonts(directory, "font", undefined, bodyFont),
   ]);
   const [banner, logo, frame, badge, regions] = await Promise.all([
-    original.picture("meta-gs", "character", "闲云", "imgs", "banner.webp"),
+    original.picture("meta-gs", "character", $t("panel.personal-exploration-card.text_6185247296"), "imgs", "banner.webp"),
     assets.picture("img", "other", "原神.png"),
     assets.picture("img", "other", "world-exploration-frame.png"),
     model.gcg && assets.picture("img", "deck", "七圣召唤.png"),
@@ -119,7 +122,7 @@ export async function renderPersonalExploration(model: PersonalExploration, {
     image(ctx, logo, 358, 1, 97);
 
     panel(ctx, devicePixels, 80, dataHeight);
-    tab(ctx, "数据总览", 80);
+    tab(ctx, $t("panel.personal-exploration-card.text_3c5118f194"), 80);
     let y = 100;
     for (const row of model.rows) {
       const cell = 410 / row.length;
@@ -146,11 +149,11 @@ export async function renderPersonalExploration(model: PersonalExploration, {
 
     if (model.gcg) {
       panel(ctx, devicePixels, gcgTop, 118, "#f5f5f5");
-      tab(ctx, "七圣召唤", gcgTop);
+      tab(ctx, $t("panel.personal-exploration-card.text_8c8df27f6c"), gcgTop);
       image(ctx, badge || undefined, 30, gcgTop + 20, 70, 70);
       drawText(ctx, model.gcg.level ?? "", 63.5, gcgTop + 67, 35, { color: badge ? "#fff" : "#1e1f20", align: "center" });
-      for (const [offset, label, value] of [[25, "已收集角色牌", model.gcg.characterCount],
-        [59, "已收集行动牌", model.gcg.actionCount]] as const) {
+      for (const [offset, label, value] of [[25, $t("panel.personal-exploration-card.text_bc9837a56a"), model.gcg.characterCount],
+        [59, $t("panel.personal-exploration-card.text_7d1ab563b5"), model.gcg.actionCount]] as const) {
         box(ctx, 114, gcgTop + offset, 320.4, 29, 0, "#ebeadc");
         box(ctx, 115, gcgTop + offset + 1, 318.4, 27, 0, "#f5eee4");
         drawText(ctx, label, 125, gcgTop + offset + 17, 13, { color: "#877254" });
@@ -159,7 +162,7 @@ export async function renderPersonalExploration(model: PersonalExploration, {
     }
 
     panel(ctx, devicePixels, mapTop, mapHeight);
-    tab(ctx, "地图探险", mapTop);
+    tab(ctx, $t("panel.personal-exploration-card.text_c265184e7c"), mapTop);
     for (const [index, area] of model.regions.entries()) {
       const x = 30 + index % 2 * 210;
       const top = mapTop + 25 + Math.floor(index / 2) * 95;
@@ -185,7 +188,7 @@ export async function renderPersonalExploration(model: PersonalExploration, {
         });
       });
     }
-    drawText(ctx, "Created By Lotus-Yunzai", width / 2, height - 13, 12, {
+    drawText(ctx, $t("panel.personal-exploration-card.text_d41c915582"), width / 2, height - 13, 12, {
       family: numberFont, color: "#fff", align: "center",
     });
   }, mode, { displayWidth, scale });

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { builtinResourceDirectory } from "../../../lib/builtin-resources.ts";
 import { join, resolve } from "node:path";
 import { loadImage } from "skia-canvas";
@@ -159,7 +162,7 @@ export async function renderLegacyGrowthCard(model: GrowthCard, legacy: LegacyGr
       ctx.restore();
       print(ctx, title, x + w / 2, 41, { align: "center", color: "#fff", size: 20, bold: false });
     }
-    banner("角色养成计算");
+    banner($t("grow.legacy-card.text_4c727f443a"));
     if (model.uid) banner(`UID : ${model.uid}`, true);
 
     rectangle(ctx, [margin, itemY, cardWidth, itemHeight], 5, "#e9e5dc");
@@ -167,7 +170,7 @@ export async function renderLegacyGrowthCard(model: GrowthCard, legacy: LegacyGr
     const cons = legacy.cons;
     if (cons && cons <= 6) {
       fill(ctx, cons <= 2 ? "#62a8ea" : cons <= 4 ? "#45b97c" : "#ff5722", [87, itemY + 11, 34, 20], 3);
-      print(ctx, `${cons}命`, 104, itemY + 22, { align: "center", color: "#fff", size: 16, bold: false });
+      print(ctx, $t("grow.legacy-card.text_3ef457527a", { "cons": cons }), 104, itemY + 22, { align: "center", color: "#fff", size: 16, bold: false });
     }
     print(ctx, model.title, 131, itemY + 37, { size: 24, max: 142 });
     levels(model, 131, itemY + 76, 16);
@@ -200,7 +203,7 @@ export async function renderLegacyGrowthCard(model: GrowthCard, legacy: LegacyGr
       print(ctx, String(row.to), 481, y + 38, { size: 20, align: "center" });
     });
     rectangle(ctx, [margin, dataTop, cardWidth, dataHeight], 5, "#f2eee6");
-    if (!sections.length) print(ctx, "毕业了，下一位 ！", width / 2, dataTop + 22, { align: "center", size: 16, bold: false });
+    if (!sections.length) print(ctx, $t("grow.legacy-card.text_05bc64f43b"), width / 2, dataTop + 22, { align: "center", size: 16, bold: false });
     let y = dataTop + 16;
     sections.forEach((section, sectionIndex) => {
       if (section.index !== 1) {
@@ -209,7 +212,7 @@ export async function renderLegacyGrowthCard(model: GrowthCard, legacy: LegacyGr
         wash.addColorStop(0, "#bba79733");
         wash.addColorStop(1, "#bba79766");
         fill(ctx, wash, [26, y, 498, 46], 3);
-        print(ctx, section.index === 2 ? legacy.weapon?.name ?? "武器" : model.title, 36, y + 23, { color: "#8c7770", size: 20 });
+        print(ctx, section.index === 2 ? legacy.weapon?.name ?? $t("grow.legacy-card.text_4fe131173e") : model.title, 36, y + 23, { color: "#8c7770", size: 20 });
         levels(result, 514, y + 23, 20, true);
         y += 66;
       }
@@ -219,7 +222,7 @@ export async function renderLegacyGrowthCard(model: GrowthCard, legacy: LegacyGr
           fill(ctx, "#bfa39980", [26, y + 12, 184, 1]);
           fill(ctx, "#bfa39980", [340, y + 12, 184, 1]);
         }
-        print(ctx, section.index === 0 ? "角色消耗" : "天赋消耗", width / 2, y + 12, { color: "#bfa399", align: "center" });
+        print(ctx, section.index === 0 ? $t("grow.legacy-card.text_95ba9691ec") : $t("grow.legacy-card.text_23237371c2"), width / 2, y + 12, { color: "#bfa399", align: "center" });
         y += 44;
       }
       section.rows.forEach((row, rowIndex) => {

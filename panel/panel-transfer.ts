@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { ProfileError } from "@lotus-yunzai/account";
 import { createPanelTransferCommand, type TransferWriteResult } from "../../../lib/panel-transfer-command.ts";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
@@ -19,7 +22,7 @@ export function createGenshinPanelTransfer(profiles: GenshinRoleProfiles, store:
       const latest = await ownedGenshinRole(profiles, qq, profileId);
       if (latest.source.revision !== bound.source.revision || latest.accountId !== bound.accountId ||
           latest.source.role.uid !== uid || latest.source.role.region !== region || latest.source.role.gameBiz !== gameBiz ||
-          await store.discardedAt(qq, uid) !== discarded) throw new ProfileError("changed", "原神面板档案已变更。");
+          await store.discardedAt(qq, uid) !== discarded) throw new ProfileError("changed", $t("panel.panel-transfer.text_c70abd941a"));
       active.throwIfAborted();
     }
     return {
@@ -53,7 +56,7 @@ export function createGenshinPanelTransfer(profiles: GenshinRoleProfiles, store:
         return store.update<TransferWriteResult>({ qq, uid }, verify, async current => {
           const raw = object(current);
           const boundary = whole(raw?.panelDiscardedAt, Number.MAX_SAFE_INTEGER) ?? 0;
-          if (boundary !== discarded) throw new ProfileError("changed", "原神面板档案已变更。");
+          if (boundary !== discarded) throw new ProfileError("changed", $t("panel.panel-transfer.text_c70abd941a"));
           const saved = readPanel(uid, current, catalog, false, true) ?? (!boundary ? await store.readLegacy(uid, catalog) : undefined);
           const additions = available.filter(([id]) => !Object.hasOwn(saved?.avatars ?? {}, id));
           if (Object.keys(saved?.avatars ?? {}).length + additions.length > 256) return { result: { state: "invalid" } };

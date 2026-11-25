@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { profileFonts } from "../panel/original-profile-skia.ts";
@@ -77,9 +80,9 @@ export async function renderGrowthCard(model: GrowthCard, theme: PanelTheme, mod
   const textNumber = (num: number) => groupPanelNumber(num.toLocaleString("zh-CN"), theme.commaGroup);
   const targetRows = Math.ceil(model.rows.length / 3);
   const targetHeight = 88 + targetRows * 25;
-  const groups = model.shortfall ? [{ title: "还需材料", desc: model.shortfall.complete ? "已扣除背包内材料（含可合成材料）" : "已核对的背包缺口",
+  const groups = model.shortfall ? [{ title: $t("grow.card.text_2ba8e77500"), desc: model.shortfall.complete ? $t("grow.card.text_c4ab4bf9b3") : $t("grow.card.text_b9ef3d16d2"),
     items: model.shortfall.rows,
-    empty: model.shortfall.complete ? "背包材料已足够" : "官方缺口资料不完整" }, ...model.groups] : model.groups;
+    empty: model.shortfall.complete ? $t("grow.card.text_5bd089c524") : $t("grow.card.text_32a23bc026") }, ...model.groups] : model.groups;
   const groupHeights = groups.map(group => group.items.length ? 56 + Math.ceil(group.items.length / columns) * 105 : 93);
   const noteHeight = model.notice.length * 19.2;
   const height = 110 + targetHeight + groupHeights.reduce((sum, size) => sum + size + 5, 0) + noteHeight + 57;
@@ -113,13 +116,13 @@ export async function renderGrowthCard(model: GrowthCard, theme: PanelTheme, mod
     ctx.shadowOffsetY = 1;
     label(ctx, font, model.title, 115, model.uid ? 56 : 69, 30, "#fff", 282);
     const titleWidth = Math.min(282, ctx.measureText(model.title).width);
-    label(ctx, font, model.isWeapon ? "武器养成计算" : "养成计算", 125 + titleWidth, model.uid ? 56 : 69, 20, gold, 420 - titleWidth);
+    label(ctx, font, model.isWeapon ? $t("grow.card.text_cbf8fadc56") : $t("grow.card.text_b667b615e0"), 125 + titleWidth, model.uid ? 56 : 69, 20, gold, 420 - titleWidth);
     if (model.uid) label(ctx, font, `UID: ${model.uid}`, 116, 77, 14);
 
     ctx.restore();
 
     let y = 110;
-    block(ctx, font, texture, y, targetHeight, "养成目标");
+    block(ctx, font, texture, y, targetHeight, $t("grow.card.text_c1371cb85e"));
     model.rows.forEach((row, index) => {
       const x = 38 + (index % 3) * 180;
       const line = y + 62 + Math.floor(index / 3) * 25;
@@ -133,13 +136,13 @@ export async function renderGrowthCard(model: GrowthCard, theme: PanelTheme, mod
     const moraY = y + targetHeight - 14;
     ctx.fillStyle = "#ffffff20";
     ctx.fillRect(30, moraY - 26, 540, 1);
-    label(ctx, font, "摩拉合计", 38, moraY, 14, gold);
-    if (model.inventoryMora !== undefined) label(ctx, font, "已扣除背包", 105, moraY, 12, "#aaa");
+    label(ctx, font, $t("grow.card.text_10a9f14eb9"), 38, moraY, 14, gold);
+    if (model.inventoryMora !== undefined) label(ctx, font, $t("grow.card.text_54a9e3ee51"), 105, moraY, 12, "#aaa");
     label(ctx, font, textNumber(model.inventoryMora ?? model.moraTotal), 562, moraY, 16, "#ffcc66", 144, "right");
     y += targetHeight + 5;
     groups.forEach((group, index) => {
       block(ctx, font, texture, y, groupHeights[index]!, group.title, group.desc);
-      if (!group.items.length) label(ctx, font, "empty" in group ? group.empty : "已达成目标，无需额外材料", width / 2, y + 59, 14, gold, 440, "center");
+      if (!group.items.length) label(ctx, font, "empty" in group ? group.empty : $t("grow.card.text_7954050e9b"), width / 2, y + 59, 14, gold, 440, "center");
       group.items.forEach((item, slot) => {
         const x = 35 + slot % columns * 84;
         const top = y + 50 + Math.floor(slot / columns) * 105;
@@ -179,6 +182,6 @@ export async function renderGrowthCard(model: GrowthCard, theme: PanelTheme, mod
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
     model.notice.forEach((notice, index) => label(ctx, font, `* ${notice}`, 20, y + 17 + index * 19.2, 12, "#ddd", 560));
-    label(ctx, font, "Lotus-Yunzai", width / 2 + 8, height - 23, 14, "#fff", 420, "center");
+    label(ctx, font, $t("grow.card.text_3867834e77"), width / 2 + 8, height - 23, 14, "#fff", 420, "center");
   }, mode, { displayWidth: 840, inlineImageByteLimit, signal });
 }

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { join } from "node:path";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { avatarId, object, talentKeys, text, whole, type PanelAvatar, type PanelSnapshot } from "./model.ts";
@@ -16,7 +19,7 @@ function readDocument(raw: unknown, uid: string, accountId: string): Entries {
   const source = object(raw);
   const entries = object(source?.entries);
   if (source?.version !== 1 || source.uid !== uid || !entries || Object.keys(entries).length > 256) {
-    throw new TypeError("本地原神天赋存档格式无效。");
+    throw new TypeError($t("panel.refreshed-talents.text_efc0b4af7f"));
   }
   if (source.accountId !== accountId) return {};
   const result: Record<string, Entry> = {};
@@ -24,13 +27,13 @@ function readDocument(raw: unknown, uid: string, accountId: string): Entries {
     const row = object(value);
     const element = text(row?.element);
     const levels = object(row?.levels);
-    if (!avatarId(id) || !element || !levels) throw new TypeError("本地原神天赋存档格式无效。");
+    if (!avatarId(id) || !element || !levels) throw new TypeError($t("panel.refreshed-talents.text_efc0b4af7f"));
     result[id] = { element, levels: Object.fromEntries(talentKeys.flatMap(key => {
       if (!Object.hasOwn(levels, key)) return [];
       const cell = object(levels[key]);
       const value = whole(cell?.value, 10);
       const observedAt = whole(cell?.observedAt, Number.MAX_SAFE_INTEGER);
-      if (!value || !observedAt) throw new TypeError("本地原神天赋存档格式无效。");
+      if (!value || !observedAt) throw new TypeError($t("panel.refreshed-talents.text_efc0b4af7f"));
       return [[key, { value, observedAt }]];
     })) };
   }
@@ -39,7 +42,7 @@ function readDocument(raw: unknown, uid: string, accountId: string): Entries {
 
 export function createRefreshedTalentArchive(directory: string, lockFile: AcquireRoleArchiveLock) {
   const archive = createRoleJsonArchive(join(directory, "talents"), lockFile, {
-    subject: "原神天赋", lockSuffix: "talents", maxBytes: 128 * 1024, rejectNull: true,
+    subject: $t("panel.refreshed-talents.text_5ec9e134fe"), lockSuffix: "talents", maxBytes: 128 * 1024, rejectNull: true,
   });
   return {
     async apply(qq: string, accountId: string, snapshot: PanelSnapshot, discardedAt = 0): Promise<PanelSnapshot> {

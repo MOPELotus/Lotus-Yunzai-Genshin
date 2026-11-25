@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
@@ -55,9 +58,9 @@ export function createGenshinTalentRefresh(profiles: GenshinRoleProfiles, client
     if (lifecycle.aborted || context.privateCredentialSignal?.aborted) return;
     const { user_id: user, message_type: scene } = context;
     if (context.isDelegated || (scene !== "private" && scene !== "group") || !user || !Number.isSafeInteger(user) || user < 1) {
-      return "请在本人 QQ 会话中刷新原神天赋。";
+      return $t("panel.talent-refresh.text_a8a3cd440a");
     }
-    if (profileId < 1 || profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (profileId < 1 || profileId > MAX_PROFILE_ID) return $t("panel.talent-refresh.text_3dd62228d2");
     const qq = String(user);
     const signal = context.privateCredentialSignal ? AbortSignal.any([lifecycle, context.privateCredentialSignal]) : lifecycle;
     try {
@@ -65,7 +68,7 @@ export function createGenshinTalentRefresh(profiles: GenshinRoleProfiles, client
       const { uid, region, gameBiz } = source.role;
       let revision = source.revision;
       const key = `${qq}:${uid}`;
-      if (pending.has(key)) return "当前角色的原神天赋正在刷新，请稍后查询。";
+      if (pending.has(key)) return $t("panel.talent-refresh.text_513a1c2903");
       pending.add(key);
       try {
         async function verify() {
@@ -73,20 +76,20 @@ export function createGenshinTalentRefresh(profiles: GenshinRoleProfiles, client
           const latest = await ownedGenshinRole(profiles, qq, profileId).catch(() => undefined);
           if (latest?.accountId !== accountId || latest.source.revision !== revision || latest.source.role.uid !== uid ||
             latest.source.role.region !== region || latest.source.role.gameBiz !== gameBiz) {
-            throw new ProfileError("changed", "原神天赋档案已变化。");
+            throw new ProfileError("changed", $t("panel.talent-refresh.text_ae2937c387"));
           }
           signal.throwIfAborted();
         }
         const assets = await theme();
         const before = await archive.readPanel(qq, uid, assets, true, accountId);
         const eligible = Object.values(before?.avatars ?? {}).filter(avatar => avatar.elem && canRefreshTalent(avatar));
-        if (!eligible.length) return "当前档案没有可刷新天赋的角色，请先使用 #更新面板。";
+        if (!eligible.length) return $t("panel.talent-refresh.text_51910ccd6b");
         const characterIds = eligible.filter(avatar => {
           const levels = panelTalentLevels(avatar, object(assets.characters[avatar.id]));
           const cap = [1, 2, 4, 6, 8, 10][(avatar.promote ?? 0) - 1] ?? 10;
           return !levels.every(level => level && level.original >= cap);
         }).map(avatar => avatar.id);
-        if (!characterIds.length) return "当前面板角色的天赋均已达当前突破等级上限。";
+        if (!characterIds.length) return $t("panel.talent-refresh.text_b4cd0baf76");
         await verify();
         const observedAt = now();
         const result = await client.fetchGenshinTalents(source, { characterIds, signal });
@@ -104,32 +107,32 @@ export function createGenshinTalentRefresh(profiles: GenshinRoleProfiles, client
           return [[avatar.id, { element: avatar.elem,
             levels: Object.fromEntries(Object.entries(levels).map(([k, value]) => [k, { value, observedAt }])) }]];
         }));
-        if (!Object.keys(updates).length) return "米游社未返回可核对的原神天赋，已保留原有数据。";
+        if (!Object.keys(updates).length) return $t("panel.talent-refresh.text_9b90dc701d");
         const count = await archive.talents.update(qq, uid, accountId, updates, verify);
         await verify();
-        if (!count) return "原神天赋已有更新的记录，请重新查询。";
+        if (!count) return $t("panel.talent-refresh.text_79a19d503f");
         const incomplete = characterIds.length - Object.values(updates).filter(entry => Object.keys(entry.levels).length === 3).length;
         const suffix = profileId === 1 ? "" : String(profileId);
-        return `角色天赋更新成功，共 ${count} 个角色。${incomplete ? ` ${incomplete} 个角色的部分或全部天赋未返回，已保留原值。` : ""}\n可使用 #练度统计${suffix} 或 #天赋统计${suffix} 查看。`;
+        return $t("panel.talent-refresh.text_4abfba2a18", { "count": count, "value2": incomplete ? $t("panel.talent-refresh.text_a4952dade6", { "incomplete": incomplete }) : "", "suffix": suffix, "value4": suffix });
       } finally {
         pending.delete(key);
       }
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "changed") return "原神档案已变化，请重新刷新天赋。";
-        if (["missing", "login-required"].includes(error.code)) return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 没有已同步的原神角色。`;
-        if (error.code === "invalid") return "档案的登录凭据与账号不一致，请重新登录。";
+        if (error.code === "changed") return $t("panel.talent-refresh.text_5b1b0e25f2");
+        if (["missing", "login-required"].includes(error.code)) return $t("panel.talent-refresh.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("panel.talent-refresh.text_147d603571", { "profileId": profileId });
+        if (error.code === "invalid") return $t("panel.talent-refresh.text_dbd093cee6");
       }
       if (error instanceof GameRecordRequestError) {
-        if (error.retcode === 10102) return "此档案的原神米游社战绩未公开，或尚未绑定角色。";
-        if (error.retcode === 10101) return "原神米游社查询已达今日上限。";
+        if (error.retcode === 10102) return $t("panel.talent-refresh.text_ceb753de19");
+        if (error.retcode === 10101) return $t("panel.talent-refresh.text_f879a9c364");
         return error.message;
       }
-      if (error instanceof HoyoRequestError && error.code === "profile-changed") return "原神档案已变化，请重新刷新天赋。";
+      if (error instanceof HoyoRequestError && error.code === "profile-changed") return $t("panel.talent-refresh.text_5b1b0e25f2");
       if (error instanceof HoyoRequestError && error.code === "refresh") return error.message;
-      return "角色天赋未能更新，原有数据已保留。";
+      return $t("panel.talent-refresh.text_2e97b006f4");
     }
   };
 }

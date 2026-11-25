@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import type { MessageEvent } from "../../../lib/messages.ts";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
@@ -34,10 +37,10 @@ export function createGenshinSignedPanelExport(archive: SignedExportArchive, sig
     if (signal.aborted) return;
     const { message_type: messageType, self_id: botId, user_id: userId, isDelegated, privateCredentialSignal, uploadFile } = context;
     if (messageType !== "private" || isDelegated || !botId || !userId || !privateCredentialSignal) {
-      return "请在机器人好友私聊中导出本人原神面板。";
+      return $t("panel.panel-file.text_422a7cd8e3");
     }
-    if (!/^[1-9]\d{8,9}$/u.test(uid)) return "请输入本人原神 UID。";
-    if (!uploadFile) return "当前会话不支持发送原神面板文件。";
+    if (!/^[1-9]\d{8,9}$/u.test(uid)) return $t("panel.panel-file.text_34e040d89e");
+    if (!uploadFile) return $t("panel.panel-file.text_018bb6b443");
     const active = AbortSignal.any([signal, privateCredentialSignal]);
     const qq = String(userId);
     const verify = async () => {
@@ -46,27 +49,27 @@ export function createGenshinSignedPanelExport(archive: SignedExportArchive, sig
       active.throwIfAborted();
       return allowed;
     };
-    const unauthorized = "该 UID 的原神签名验证已失效，请重新验证。";
+    const unauthorized = $t("panel.panel-file.text_4cf6c28bb7");
     try {
       if (!await verify()) return unauthorized;
-      if (await archive.discardedAt(qq, uid)) return "暂无可导出的本人原神旧面板。";
+      if (await archive.discardedAt(qq, uid)) return $t("panel.panel-file.text_f5ad50c37a");
       const catalog = await readCatalog();
       active.throwIfAborted();
       const snapshot = await archive.readLegacy(uid, catalog);
       const file = snapshot?.uid === uid ? exportFile(snapshot) : undefined;
-      if (await archive.discardedAt(qq, uid)) return "原神面板已删除，请重新导出。";
+      if (await archive.discardedAt(qq, uid)) return $t("panel.panel-file.text_49a85d1f84");
       if (!await verify()) return unauthorized;
       active.throwIfAborted();
-      if (!file) return "暂无可导出的本人原神旧面板。";
+      if (!file) return $t("panel.panel-file.text_f5ad50c37a");
       const result = await uploadFile(file);
       if (active.aborted) return;
       switch (result) {
-        case "confirmed": return `已导出原神面板 ${file.name}。`;
-        case "rejected": return "原神面板文件发送失败。";
-        case "unknown": return "原神面板文件发送结果未确认，请检查当前私聊。";
+        case "confirmed": return $t("panel.panel-file.text_60c21c1bc5", { "name": file.name });
+        case "rejected": return $t("panel.panel-file.text_610ca27149");
+        case "unknown": return $t("panel.panel-file.text_8cf6f9420f");
       }
     } catch {
-      if (!active.aborted) return "原神面板文件暂时无法导出，请稍后再试。";
+      if (!active.aborted) return $t("panel.panel-file.text_7d83f78f1f");
     }
   };
 }
@@ -76,11 +79,11 @@ export function createGenshinPanelExport(profiles: GenshinRoleProfiles, archive:
   return async ({ profileId }: { profileId: number }, context: ExportContext) => {
     if (signal.aborted) return;
     const { message_type: messageType, self_id: botId, user_id: userId, isDelegated, privateCredentialSignal, uploadFile } = context;
-    if (!Number.isSafeInteger(profileId) || profileId < 1 || profileId > MAX_PROFILE_ID) return `档案编号须为 1–${MAX_PROFILE_ID}。`;
+    if (!Number.isSafeInteger(profileId) || profileId < 1 || profileId > MAX_PROFILE_ID) return $t("panel.panel-file.text_68901e8078", { "MAX_PROFILE_ID": MAX_PROFILE_ID });
     if (messageType !== "private" || isDelegated || !botId || !userId || !privateCredentialSignal) {
-      return "请在机器人好友私聊中导出本人原神面板。";
+      return $t("panel.panel-file.text_422a7cd8e3");
     }
-    if (!uploadFile) return "当前会话不支持发送原神面板文件。";
+    if (!uploadFile) return $t("panel.panel-file.text_018bb6b443");
     const active = AbortSignal.any([signal, privateCredentialSignal]);
     const qq = String(userId);
     try {
@@ -91,29 +94,29 @@ export function createGenshinPanelExport(profiles: GenshinRoleProfiles, archive:
       const snapshot = await archive.readPanel(qq, uid, await readCatalog(), true, accountId);
       active.throwIfAborted();
       const file = snapshot?.uid === uid ? exportFile(snapshot) : undefined;
-      if (!file) return "暂无本人原神面板，请先 #更新面板。";
+      if (!file) return $t("panel.panel-file.text_a6d488a775");
       const latest = await ownedGenshinRole(profiles, qq, profileId);
       if (latest.source.revision !== source.revision || latest.accountId !== accountId || latest.source.role.uid !== uid ||
           latest.source.role.region !== region || latest.source.role.gameBiz !== gameBiz ||
           await archive.discardedAt(qq, uid) !== discarded) {
-        return "档案或面板已变更，请重新导出。";
+        return $t("panel.panel-file.text_2c275d2d8b");
       }
       active.throwIfAborted();
       const result = await uploadFile(file);
       if (active.aborted) return;
       switch (result) {
-        case "confirmed": return `已导出原神面板 ${file.name}。`;
-        case "rejected": return "原神面板文件发送失败。";
-        case "unknown": return "原神面板文件发送结果未确认，请检查当前私聊。";
+        case "confirmed": return $t("panel.panel-file.text_60c21c1bc5", { "name": file.name });
+        case "rejected": return $t("panel.panel-file.text_610ca27149");
+        case "unknown": return $t("panel.panel-file.text_8cf6f9420f");
       }
     } catch (error) {
       if (active.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "login-required" || error.code === "missing") return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing" || error.code === "invalid") return "仅可导出所选档案中已同步的本人原神面板。";
-        if (error.code === "changed") return "档案或面板已变更，请重新导出。";
+        if (error.code === "login-required" || error.code === "missing") return $t("panel.panel-file.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing" || error.code === "invalid") return $t("panel.panel-file.text_6707ed5af5");
+        if (error.code === "changed") return $t("panel.panel-file.text_2c275d2d8b");
       }
-      return "原神面板文件暂时无法导出，请稍后再试。";
+      return $t("panel.panel-file.text_7d83f78f1f");
     }
   };
 }

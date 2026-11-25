@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { builtinResourceDirectory } from "../../lib/builtin-resources.ts";
 import { reportResourceProgress, type ResourceProgressCallback } from "../../lib/resource-progress.ts";
 import { createHash } from "node:crypto";
@@ -91,7 +94,7 @@ export async function prepareGenshinWishCalendar(checkout: URL, {
   readonly onProgress?: ResourceProgressCallback;
 } = {}) {
   const report = (message: string, completed?: number, total?: number) => reportResourceProgress(onProgress, signal, "wish-calendar", message, completed, total);
-  report("检查祈愿日历缓存");
+  report($t("wish-calendar.text_ad6b8d3dfd"));
   signal?.throwIfAborted();
   if (themeDirectory) return "local";
   const root = await realpath(fileURLToPath(checkout));
@@ -103,7 +106,7 @@ export async function prepareGenshinWishCalendar(checkout: URL, {
   const deadline = AbortSignal.timeout(12_000);
   const downloadSignal = signal ? AbortSignal.any([signal, deadline]) : deadline;
   const request = typeof download === "function" ? download : fetch;
-  report("下载祈愿日历");
+  report($t("wish-calendar.text_d610567482"));
   const contents = await downloadCalendar(request, downloadSignal).catch((error: NodeJS.ErrnoException) => {
     if (!downloadSignal.aborted && (error?.code === "ECONNRESET" || error?.code === "ETIMEDOUT")) {
       return downloadCalendar(request, downloadSignal).catch(() => undefined);
@@ -126,7 +129,7 @@ export async function prepareGenshinWishCalendar(checkout: URL, {
     await writeFile(temporary, contents, { mode: 0o600, flag: "wx", signal });
     signal?.throwIfAborted();
     await rename(temporary, destination);
-    report("祈愿日历已保存", 1, 1);
+    report($t("wish-calendar.text_f398dd81ac"), 1, 1);
     return "installed";
   } finally {
     await rm(stage, { recursive: true, force: true });

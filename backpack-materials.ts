@@ -1,16 +1,19 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { join } from "node:path";
 import { loadOfficialArtwork } from "@lotus-yunzai/account";
 import type { GenshinBackpackItem } from "@lotus-yunzai/hoyo-client";
 import type { GenshinBackpackCardModel } from "@lotus-yunzai/skia/genshin-backpack";
 
-const titles = ["基础材料", "采集物", "角色与武器培养素材", "武器突破素材", "角色天赋素材",
-  "角色突破素材", "首领材料", "周本材料", "其他"] as const;
+const titles = [$t("backpack-materials.text_ec39f97823"), $t("backpack-materials.text_43ce34aad4"), $t("backpack-materials.text_35eb8c53a7"), $t("backpack-materials.text_e9c429b8b5"), $t("backpack-materials.text_4c77a0c4a0"),
+  $t("backpack-materials.text_d9f0750f4e"), $t("backpack-materials.text_2597799085"), $t("backpack-materials.text_d430215ad1"), $t("backpack-materials.text_d2909f1647")] as const;
 type Category = typeof titles[number];
 const baseMaterials = new Set(["摩拉", "流浪者的经验", "冒险家的经验", "大英雄的经验", "精锻用杂矿", "精锻用良矿", "精锻用魔矿"]);
-const crown = "智识之冕";
+const crown = $t("backpack-materials.text_36c9680813");
 const kinds = {
-  specialty: "采集物", normal: "角色与武器培养素材", monster: "角色与武器培养素材", weapon: "武器突破素材",
-  talent: "角色天赋素材", gem: "角色突破素材", boss: "首领材料", weekly: "周本材料",
+  specialty: $t("backpack-materials.text_43ce34aad4"), normal: $t("backpack-materials.text_35eb8c53a7"), monster: $t("backpack-materials.text_35eb8c53a7"), weapon: $t("backpack-materials.text_e9c429b8b5"),
+  talent: $t("backpack-materials.text_4c77a0c4a0"), gem: $t("backpack-materials.text_d9f0750f4e"), boss: $t("backpack-materials.text_2597799085"), weekly: $t("backpack-materials.text_d430215ad1"),
 } as const satisfies Record<string, Category>;
 type Kind = keyof typeof kinds;
 type Json = Record<string, unknown>;
@@ -26,15 +29,15 @@ const weeklyIds = new Set([
 
 function officialCategory(id: string): Category {
   const itemId = Number(id);
-  if (itemId === 202 || /^(?:10400[1-3]|10401[1-3])$/u.test(id)) return "基础材料";
-  if (/^1041[1-7][1-4]$/u.test(id)) return "角色突破素材";
-  if (/^1043\d{2}$/u.test(id)) return "角色天赋素材";
-  if (/^114\d{3}$/u.test(id)) return "武器突破素材";
-  if (/^112\d{3}$/u.test(id)) return "角色与武器培养素材";
-  if (weeklyIds.has(itemId)) return "周本材料";
-  if (itemId >= 113001 && itemId <= 113093 && itemId !== 113021 && itemId !== 113063) return "首领材料";
-  if ((itemId >= 100021 && itemId <= 100058) || /^1012\d{2}$/u.test(id)) return "采集物";
-  return "其他";
+  if (itemId === 202 || /^(?:10400[1-3]|10401[1-3])$/u.test(id)) return $t("backpack-materials.text_ec39f97823");
+  if (/^1041[1-7][1-4]$/u.test(id)) return $t("backpack-materials.text_d9f0750f4e");
+  if (/^1043\d{2}$/u.test(id)) return $t("backpack-materials.text_4c77a0c4a0");
+  if (/^114\d{3}$/u.test(id)) return $t("backpack-materials.text_e9c429b8b5");
+  if (/^112\d{3}$/u.test(id)) return $t("backpack-materials.text_35eb8c53a7");
+  if (weeklyIds.has(itemId)) return $t("backpack-materials.text_d430215ad1");
+  if (itemId >= 113001 && itemId <= 113093 && itemId !== 113021 && itemId !== 113063) return $t("backpack-materials.text_2597799085");
+  if ((itemId >= 100021 && itemId <= 100058) || /^1012\d{2}$/u.test(id)) return $t("backpack-materials.text_43ce34aad4");
+  return $t("backpack-materials.text_d2909f1647");
 }
 
 function object(value: unknown): Json | undefined {
@@ -83,8 +86,8 @@ export async function groupGenshinBackpackMaterials(items: readonly GenshinBackp
   const byCategory = new Map(titles.map(title => [title, [] as GenshinBackpackItem[]]));
   for (const item of items) {
     const kind = definitions.get(item.name);
-    const category = baseMaterials.has(item.name) ? "基础材料" :
-      item.name === crown ? "角色天赋素材" : kind ? kinds[kind] : officialCategory(item.gameId ?? item.id);
+    const category = baseMaterials.has(item.name) ? $t("backpack-materials.text_ec39f97823") :
+      item.name === crown ? $t("backpack-materials.text_4c77a0c4a0") : kind ? kinds[kind] : officialCategory(item.gameId ?? item.id);
     const group = byCategory.get(category)!;
     if (item.name === crown) group.unshift(item);
     else group.push(item);

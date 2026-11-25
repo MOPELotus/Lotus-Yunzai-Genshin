@@ -1,4 +1,7 @@
 // @ts-nocheck — Fixed upstream formula source. The module adapter validates inputs and outputs.
+import { createTranslator as createTextTranslator } from "../../../../../packages/i18n/index.ts";
+import messageCatalog from "../../../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import lodash from '../compat.ts'
 
 // 星超导·极星辉域：根据超导反应攻击次数hit提升星超导伤害倍率，最高12层
@@ -8,51 +11,51 @@ export const stellarConductNum = [1, 1.45, 1.5, 1.54, 1.6, 1.64, 1.7, 1.75, 1.79
 // 元素反应类型及基数
 export const erType = {
   // 增幅反应
-  vaporize: { type: 'pct', num: ({ element }) => element === '水' ? 2 : 1.5, title: '蒸发' },
-  melt: { type: 'pct', num: ({ element }) => element === '火' ? 2 : 1.5, title: '融化' },
+  vaporize: { type: 'pct', num: ({ element }) => element === '水' ? 2 : 1.5, title: $t("panel.lolomi.engine.DmgCalcMeta.text_d8c812aa9f") },
+  melt: { type: 'pct', num: ({ element }) => element === '火' ? 2 : 1.5, title: $t("panel.lolomi.engine.DmgCalcMeta.text_3ad2d041d4") },
   // 结晶护盾
-  crystallize: { type: 'shield', num: () => 1, title: '结晶' },
+  crystallize: { type: 'shield', num: () => 1, title: $t("panel.lolomi.engine.DmgCalcMeta.text_a9182007f6") },
   // 剧变反应
-  burning: { type: 'fusion', num: () => 1, title: '燃烧' },
-  superConduct: { type: 'fusion', num: () => 6, title: '超导' },
-  swirl: { type: 'fusion', num: () => 2.4, title: '扩散' },
-  starSwirlAnemo: { type: 'stellar', num: () => 0.75, title: '星扩散(风)' },
-  starSwirlCryo: { type: 'stellar', num: () => 3, title: '星扩散(冰)' },
-  electroCharged: { type: 'fusion', num: () => 8, title: '感电' },
-  shatter: { type: 'fusion', num: () => 12, title: '碎冰' },
-  overloaded: { type: 'fusion', num: () => 11, title: '超载' },
-  bloom: { type: 'fusion', num: () => 8, title: '绽放' },
-  burgeon: { type: 'fusion', num: () => 12, title: '烈绽放' },
-  hyperBloom: { type: 'fusion', num: () => 12, title: '超绽放' },
+  burning: { type: 'fusion', num: () => 1, title: $t("panel.lolomi.engine.DmgCalcMeta.text_168f14137b") },
+  superConduct: { type: 'fusion', num: () => 6, title: $t("panel.lolomi.engine.DmgCalcMeta.text_e59bf7a56a") },
+  swirl: { type: 'fusion', num: () => 2.4, title: $t("panel.lolomi.engine.DmgCalcMeta.text_46f1d54dc9") },
+  starSwirlAnemo: { type: 'stellar', num: () => 0.75, title: $t("panel.lolomi.engine.DmgCalcMeta.text_287a91a834") },
+  starSwirlCryo: { type: 'stellar', num: () => 3, title: $t("panel.lolomi.engine.DmgCalcMeta.text_40956f703c") },
+  electroCharged: { type: 'fusion', num: () => 8, title: $t("panel.lolomi.engine.DmgCalcMeta.text_f102311d30") },
+  shatter: { type: 'fusion', num: () => 12, title: $t("panel.lolomi.engine.DmgCalcMeta.text_7b32e12dd8") },
+  overloaded: { type: 'fusion', num: () => 11, title: $t("panel.lolomi.engine.DmgCalcMeta.text_5844e8b9b0") },
+  bloom: { type: 'fusion', num: () => 8, title: $t("panel.lolomi.engine.DmgCalcMeta.text_6cc8c0db8a") },
+  burgeon: { type: 'fusion', num: () => 12, title: $t("panel.lolomi.engine.DmgCalcMeta.text_b7c2a93ebd") },
+  hyperBloom: { type: 'fusion', num: () => 12, title: $t("panel.lolomi.engine.DmgCalcMeta.text_6ca838a496") },
   // 激化反应
-  aggravate: { type: 'bonus', num: () => 4.6, title: '超激化' },
-  spread: { type: 'bonus', num: () => 5.0, title: '蔓激化' },
+  aggravate: { type: 'bonus', num: () => 4.6, title: $t("panel.lolomi.engine.DmgCalcMeta.text_9278c673c4") },
+  spread: { type: 'bonus', num: () => 5.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_6e8c43a177") },
   // 月反应
-  lunarBloom: { type: 'lunar', num: () => 8, title: '月绽放' },
-  lunarCharged: { type: 'lunar', num: () => 7.2, title: '月感电' },
-  lunarCrystallize: { type: 'lunar', num: () => 3.84, title: '月结晶' },
+  lunarBloom: { type: 'lunar', num: () => 8, title: $t("panel.lolomi.engine.DmgCalcMeta.text_a2a1d0b2b0") },
+  lunarCharged: { type: 'lunar', num: () => 7.2, title: $t("panel.lolomi.engine.DmgCalcMeta.text_fb7ff6c16e") },
+  lunarCrystallize: { type: 'lunar', num: () => 3.84, title: $t("panel.lolomi.engine.DmgCalcMeta.text_1d1982c72c") },
   // 星反应
-  stellarConduct: { type: 'stellar', num: () => 0, title: '星超导' },
-  stellarVortex: { type: 'stellar', num: () => 1, title: '星扩散' },
+  stellarConduct: { type: 'stellar', num: () => 0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_6144f0511d") },
+  stellarVortex: { type: 'stellar', num: () => 1, title: $t("panel.lolomi.engine.DmgCalcMeta.text_9c5554c0a5") },
   // 击破持续伤害
-  shock: { type: 'breakDot', num: () => 2.0, title: '触电' },
-  burn: { type: 'breakDot', num: () => 1.0, title: '灼烧' },
-  windShear: { type: 'breakDot', num: () => 1.0, title: '风化' },
-  bleed: { type: 'breakDot', num: () => 1.0, title: '裂伤' },
+  shock: { type: 'breakDot', num: () => 2.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_3d3fa34917") },
+  burn: { type: 'breakDot', num: () => 1.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_6e3c6d247d") },
+  windShear: { type: 'breakDot', num: () => 1.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_6a66b9977f") },
+  bleed: { type: 'breakDot', num: () => 1.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_6303851325") },
   // 击破附加伤害
-  entanglement: { type: 'breakPlus', num: () => 0.6, title: '纠缠' },
+  entanglement: { type: 'breakPlus', num: () => 0.6, title: $t("panel.lolomi.engine.DmgCalcMeta.text_ecf91d2fca") },
   // 击破伤害
-  ligntningBreak: { type: 'break', num: () => 1.0, title: '雷击破' },
-  fireBreak: { type: 'break', num: () => 2.0, title: '火击破' },
-  windBreak: { type: 'break', num: () => 1.5, title: '风击破' },
-  physicalBreak: { type: 'break', num: () => 2.0, title: '物理击破' },
-  quantumBreak: { type: 'break', num: () => 0.5, title: '量子击破' },
-  imaginaryBreak: { type: 'break', num: () => 0.5, title: '虚数击破' },
-  iceBreak: { type: 'break', num: () => 1.0, title: '冰击破' },
+  ligntningBreak: { type: 'break', num: () => 1.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_197d5e301d") },
+  fireBreak: { type: 'break', num: () => 2.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_5ccd56c408") },
+  windBreak: { type: 'break', num: () => 1.5, title: $t("panel.lolomi.engine.DmgCalcMeta.text_69e3056984") },
+  physicalBreak: { type: 'break', num: () => 2.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_0902794fdf") },
+  quantumBreak: { type: 'break', num: () => 0.5, title: $t("panel.lolomi.engine.DmgCalcMeta.text_9fbf0d18a9") },
+  imaginaryBreak: { type: 'break', num: () => 0.5, title: $t("panel.lolomi.engine.DmgCalcMeta.text_2600bb4760") },
+  iceBreak: { type: 'break', num: () => 1.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_c2ba285723") },
   // 超击破伤害
-  superBreak: { type: 'break', num: () => 1.0, title: '超击破' },
+  superBreak: { type: 'break', num: () => 1.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_badf5a4a8a") },
   // 欢愉伤害
-  elationDmg: { type: 'elation', num: () => 1.0, title: '欢愉' }
+  elationDmg: { type: 'elation', num: () => 1.0, title: $t("panel.lolomi.engine.DmgCalcMeta.text_17f4b35418") }
 }
 let erTmp = {}
 lodash.forEach(erType, (er, key) => {

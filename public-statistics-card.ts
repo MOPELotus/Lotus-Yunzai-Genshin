@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { renderGenshinCardForChat } from "./card-render.ts";
 import { object, text } from "./panel/model.ts";
 import { contain, fill, panel, profileFonts, round, shadow, typeset } from "./panel/original-profile-skia.ts";
@@ -21,7 +24,7 @@ function originalArtwork(ctx: Context, picture: Picture | undefined, at: number,
 }
 
 function pa(value: number | undefined) {
-  return value === undefined ? "未知" : value.toFixed(2);
+  return value === undefined ? $t("public-statistics-card.text_4d8c1c5b42") : value.toFixed(2);
 }
 
 function table(ctx: Context, { write }: Writer, data: Extract<StatisticsCard, { type: "ownership" }>,
@@ -37,11 +40,11 @@ function table(ctx: Context, { write }: Writer, data: Extract<StatisticsCard, { 
   ctx.clip();
   fill(ctx, "#ccc", [left, top, tableWidth, headingHeight]);
   write("#", left + 15, top + 24, 12, { color: "#222", align: "center" });
-  write("角色", left + 70, top + 24, 12, { color: "#222", align: "center", bold: true });
-  write("持有率", start - 27, top + 24, 12, { color: "#222", align: "center", bold: true });
+  write($t("public-statistics-card.text_c47b54e84e"), left + 70, top + 24, 12, { color: "#222", align: "center", bold: true });
+  write($t("public-statistics-card.text_4b3e91ce9a"), start - 27, top + 24, 12, { color: "#222", align: "center", bold: true });
   for (let column = 0; column < columns; column++) {
     fill(ctx, percentColors[column] ?? "#888", [start + column * unit, top, unit, headingHeight]);
-    write(column === 7 ? "无" : `${column}命`, start + (column + 0.5) * unit, top + 24, 12, { align: "center" });
+    write(column === 7 ? $t("public-statistics-card.text_484d556139") : $t("public-statistics-card.text_45a582f830", { "column": column }), start + (column + 0.5) * unit, top + 24, 12, { align: "center" });
   }
   data.rows.forEach((row, index) => {
     const y = top + headingHeight + index * rowHeight;
@@ -145,14 +148,14 @@ export async function renderPublicStatistics(data: StatisticsCard, theme: PanelT
     ctx.save();
     shadow(ctx, "#000", 2, 1);
     write(data.title, 35, 85, 36, { title: true, maxWidth: 485 });
-    write(data.type === "ownership" ? (data.showUnowned ? "全角色综合持有率统计" : "统计所有角色命座，无论角色是否出场")
-      : "出场总数 / 持有该角色的记录数", 35, 113, 16, { maxWidth: 460 });
+    write(data.type === "ownership" ? (data.showUnowned ? $t("public-statistics-card.text_d104901c6b") : $t("public-statistics-card.text_162d8023e9"))
+      : $t("public-statistics-card.text_b351e66371"), 35, 113, 16, { maxWidth: 460 });
     ctx.restore();
     contain(ctx, logo, [476, 47, 97, 55]);
     panel(ctx, texture, [left, 136, tableWidth, infoHeight], () => {
       fill(ctx, "#0007", [left, 136, tableWidth, infoHeight]);
       fill(ctx, "#ffffff48", [left, 172, tableWidth, 1]);
-      write(data.type === "ownership" ? "角色持有率说明" : "使用率统计", 35, 159, 16, { color: "#d3bc8e" });
+      write(data.type === "ownership" ? $t("public-statistics-card.text_3f6b510d43") : $t("public-statistics-card.text_fed8eb0a68"), 35, 159, 16, { color: "#d3bc8e" });
       data.notes.forEach((note, index) => {
         const y = 192 + index * 20;
         write("•", 34, y, 13);
@@ -163,7 +166,7 @@ export async function renderPublicStatistics(data: StatisticsCard, theme: PanelT
     else rankGrid(ctx, writer, data, pictures, rarity, contentTop);
     ctx.save();
     shadow(ctx, "#000", 2, 1);
-    write("Lotus-Yunzai", width / 2, height - 14, 15, { align: "center" });
+    write($t("public-statistics-card.text_3867834e77"), width / 2, height - 14, 15, { align: "center" });
     ctx.restore();
   }, mode, { displayWidth: 840, inlineImageByteLimit, signal });
 }

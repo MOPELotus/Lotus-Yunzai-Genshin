@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { parseWishSettings, wishDefaultRates, type WishSettings } from "../../../lib/genshin-wish-settings-model.ts";
 import { readWishAdminCatalogue } from "./admin-pools.ts";
 
@@ -11,7 +14,7 @@ const rates = {
 } as const;
 
 type Option = keyof typeof switches | keyof typeof rates | keyof typeof pools | "概率复位" | "随机卡池";
-const options = [...Object.keys(switches), ...Object.keys(rates), ...Object.keys(pools), "概率复位", "随机卡池"]
+const options = [...Object.keys(switches), ...Object.keys(rates), ...Object.keys(pools), $t("wish-sim.admin.text_077b20bfaa"), $t("wish-sim.admin.text_79013b55dd")]
   .sort((left, right) => right.length - left.length);
 const command = new RegExp(`^#*(?:原神)?抽卡设置(?:\\s*(${options.join("|")})\\s*(.*))?$`, "u");
 
@@ -28,7 +31,7 @@ export async function prepareWishAdministration({ option, argument }: Administra
     return (previous: WishSettings) => ({ ...previous, ...wishDefaultRates, featuredFive: 50 });
   }
   if (option in switches) {
-    if (argument !== "开启" && argument !== "关闭") throw new TypeError("请填写开启或关闭。");
+    if (argument !== "开启" && argument !== "关闭") throw new TypeError($t("wish-sim.admin.text_906f796bb7"));
     return (previous: WishSettings) => ({ ...previous, [switches[option as keyof typeof switches]]: argument === "开启" });
   }
   if (option === "随机卡池") {
@@ -39,23 +42,23 @@ export async function prepareWishAdministration({ option, argument }: Administra
   if (option in pools) {
     const field = pools[option as keyof typeof pools];
     const names = argument.split(/[,，]/u).map(name => name.trim());
-    if (names.some(name => !name)) throw new TypeError("请用逗号分隔有效物品名称。");
+    if (names.some(name => !name)) throw new TypeError($t("wish-sim.admin.text_a6301b1df5"));
     const catalog = await readWishAdminCatalogue();
     const canonical = catalog.resolve(field, names);
     return (previous: WishSettings) => parseWishSettings({ ...previous, [field]: canonical });
   }
-  if (!/^\d+$/u.test(argument)) throw new TypeError("请填写整数。");
+  if (!/^\d+$/u.test(argument)) throw new TypeError($t("wish-sim.admin.text_9f3c78c716"));
   return (previous: WishSettings) => parseWishSettings({ ...previous, [rates[option as keyof typeof rates]]: Number(argument) });
 }
 
 export function summarizeWishAdministration(settings: WishSettings) {
   const { enabled, multiple, characterFive, characterFour, weaponFive, weaponFour, featuredFive } = settings;
   return [
-    `原神模拟祈愿 · ${enabled ? "开启" : "关闭"}\n多连 · ${multiple ? "开启" : "关闭"}`,
-    `角色五星 ${characterFive}/10000 · 角色四星 ${characterFour}/10000`,
-    `武器五星 ${weaponFive}/10000 · 武器四星 ${weaponFour}/10000`,
-    `五星小保底：${featuredFive === null ? "角色 50% · 武器 75%" : featuredFive + "%"}`,
-    `卡池：${settings.automaticPools ? "自动同步" : "手工"}`,
-    ...(Object.entries(pools).map(([label, field]) => `手工${label}：${settings[field].join("、") || "沿用默认名单"}`)),
+    $t("wish-sim.admin.text_b67887097a", { "value1": enabled ? $t("wish-sim.admin.text_8da97ddda9") : $t("wish-sim.admin.text_3fd47edce4"), "value2": multiple ? $t("wish-sim.admin.text_8da97ddda9") : $t("wish-sim.admin.text_3fd47edce4") }),
+    $t("wish-sim.admin.text_a2ca3b80ca", { "characterFive": characterFive, "characterFour": characterFour }),
+    $t("wish-sim.admin.text_ff34e9d9a6", { "weaponFive": weaponFive, "weaponFour": weaponFour }),
+    $t("wish-sim.admin.text_451e8c98d0", { "value1": featuredFive === null ? $t("wish-sim.admin.text_81d733c456") : featuredFive + "%" }),
+    $t("wish-sim.admin.text_0efc76d55c", { "value1": settings.automaticPools ? $t("wish-sim.admin.text_6e9adb42a2") : $t("wish-sim.admin.text_c438d75430") }),
+    ...(Object.entries(pools).map(([label, field]) => $t("wish-sim.admin.text_fe411b8bb4", { "label": label, "value2": settings[field].join("、") || $t("wish-sim.admin.text_aeea7c0ba7") }))),
   ].join("\n");
 }

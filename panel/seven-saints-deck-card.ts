@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { loadOfficialArtwork } from "@lotus-yunzai/account";
 import type { GenshinDeck, GenshinDeckCard, GenshinDeckList, GenshinGcgCollection, GenshinGcgCollectionCard } from "@lotus-yunzai/hoyo-client";
@@ -15,11 +18,11 @@ export type DeckGroup = {
   readonly action: boolean;
 };
 export type DeckPage = readonly DeckGroup[];
-export const deckHint = (id: number, profileId: number) => `#七圣查询卡组${id}${profileId === 1 ? "" : ` 档案${profileId}`}`;
+export const deckHint = (id: number, profileId: number) => `#七圣查询卡组${id}${profileId === 1 ? "" : $t("panel.seven-saints-deck-card.text_31a2142f9f", { "profileId": profileId })}`;
 
 export function deckIndexPages(decks: readonly GenshinDeck[], profileId: number): readonly DeckPage[] {
   const groups = decks.map(deck => ({
-    title: `七圣卡组${deck.id} 使用 ${deckHint(deck.id, profileId)} 查看详情`,
+    title: $t("panel.seven-saints-deck-card.text_ad8df1f121", { "id": deck.id, "value2": deckHint(deck.id, profileId) }),
     cards: deck.characters, action: false,
   }));
   const pages: DeckPage[] = [];
@@ -29,8 +32,8 @@ export function deckIndexPages(decks: readonly GenshinDeck[], profileId: number)
 
 export function deckDetailPages(deck: GenshinDeck): readonly DeckPage[] {
   const allActions = deck.actions?.length ?? 0;
-  const characters: DeckGroup = { title: "角色牌详情", cards: deck.characters, action: false };
-  const actions: DeckGroup = { title: "行动牌详情", cards: deck.actions, action: true };
+  const characters: DeckGroup = { title: $t("panel.seven-saints-deck-card.text_463f850d6c"), cards: deck.characters, action: false };
+  const actions: DeckGroup = { title: $t("panel.seven-saints-deck-card.text_5e913108aa"), cards: deck.actions, action: true };
   if (allActions <= 16) return [[characters, actions]];
   return [[characters, { ...actions, cards: deck.actions!.slice(0, 16) }],
     [{ ...actions, cards: deck.actions!.slice(16) }]];
@@ -38,8 +41,8 @@ export function deckDetailPages(deck: GenshinDeck): readonly DeckPage[] {
 
 export function collectionPages(record: GenshinGcgCollection): readonly DeckPage[] {
   const groups = [
-    record.characters && { title: "角色牌详情", cards: record.characters, action: false },
-    record.actions && { title: "行动牌详情", cards: record.actions, action: true },
+    record.characters && { title: $t("panel.seven-saints-deck-card.text_463f850d6c"), cards: record.characters, action: false },
+    record.actions && { title: $t("panel.seven-saints-deck-card.text_5e913108aa"), cards: record.actions, action: true },
   ].filter(group => group !== undefined);
   const rows = groups.reduce((sum, group) => sum + Math.max(1, Math.ceil(group.cards.length / (group.action ? 5 : 4))), 0);
   if (rows <= 4) return [groups];
@@ -107,13 +110,13 @@ export async function renderSevenSaintsDeck(record: Pick<GenshinDeckList, "uid" 
   const collectionSummary = collection?.level ? 116 : 0;
   const height = Math.ceil(122 + collectionSummary + measured.reduce((sum, group) => sum + group.height + 16, 0) + 25);
   return renderGenshinCard(width, height, ctx => {
-    function text(value: string | number, x: number, y: number, size: number, ink = levelColor, align: CanvasTextAlign = "left", maxWidth = 395) {
+    function text(value: string | number, x: number, y: number, size: number, ink = levelColor, align: CanvasTextAlign = "left", maxWidth = 395, footer = false) {
       const normalized = String(value);
       ctx.font = `${size}px ${font}`;
       const measuredWidth = ctx.measureText(normalized).width;
       if (measuredWidth > maxWidth) ctx.font = `${Math.max(7, Math.floor(size * maxWidth / measuredWidth))}px ${font}`;
       ctx.fillStyle = ink; ctx.textAlign = align; ctx.textBaseline = "middle";
-      if (normalized.includes("Lotus-Yunzai")) ctx.fillStyle = brandTextColor(ctx, normalized, x, y);
+      if (footer) ctx.fillStyle = brandTextColor(ctx, normalized, x, y);
       ctx.fillText(normalized, x, y);
     }
     function panel(x: number, y: number, w: number, h: number) {
@@ -123,7 +126,7 @@ export async function renderSevenSaintsDeck(record: Pick<GenshinDeckList, "uid" 
     }
     ctx.fillStyle = "#ececec"; ctx.fillRect(0, 0, width, height);
     panel(left, 20, inner, 73);
-    const roleName = record.nickname || "七圣召唤";
+    const roleName = record.nickname || $t("panel.seven-saints-deck-card.text_8c8df27f6c");
     text(`${roleName}${!collection && record.level !== undefined ? `  lv:${record.level}` : ""}`, 35, 42, 23, levelColor, "left", 276);
     text(`UID: ${record.uid}`, 35, 72, 22);
     photo(ctx, logo, 338, 25, 97, 53);
@@ -131,11 +134,11 @@ export async function renderSevenSaintsDeck(record: Pick<GenshinDeckList, "uid" 
     if (collection && collectionSummary) {
       panel(left, y, inner, 100);
       box(ctx, "#d4b98c", left - 8, y - 10, 88, 24, 9);
-      text("七圣召唤", left + 4, y + 2, 14, "#fff");
+      text($t("panel.seven-saints-deck-card.text_8c8df27f6c"), left + 4, y + 2, 14, "#fff");
       photo(ctx, collectionBadge || undefined, 30, y + 20, 70, 70);
       text(collection.level!, 65, y + 53, 31, collectionBadge ? "#fff" : levelColor, "center");
       for (const [at, label, count] of [
-        [29, "已收集角色牌", collection.characterCount], [63, "已收集行动牌", collection.actionCount],
+        [29, $t("panel.seven-saints-deck-card.text_bc9837a56a"), collection.characterCount], [63, $t("panel.seven-saints-deck-card.text_7d1ab563b5"), collection.actionCount],
       ] as const) {
         box(ctx, "#f5eee4", 111, y + at - 12, 317, 24, 3);
         text(label, 124, y + at, 13, "#877254");
@@ -149,7 +152,7 @@ export async function renderSevenSaintsDeck(record: Pick<GenshinDeckList, "uid" 
       const labelWidth = Math.min(inner - 3, 31 + group.title.length * 10);
       box(ctx, "#d4b98c", left - 8, y - 10, labelWidth, 24, 9);
       text(group.title, left + 4, y + 2, 14, "#fff", "left", labelWidth - 18);
-      if (!group.cards?.length) text(group.cards ? collection ? "尚未收藏此类卡牌" : "该牌组暂无此类卡牌" : "米游社未返回此类卡牌",
+      if (!group.cards?.length) text(group.cards ? collection ? $t("panel.seven-saints-deck-card.text_97aafe7c10") : $t("panel.seven-saints-deck-card.text_1a6c321c19") : $t("panel.seven-saints-deck-card.text_ab7f72f254"),
         width / 2, y + 39, 15, hint, "center");
       group.cards?.forEach((card, i) => {
         const columnW = (inner - 10) / columns;
@@ -163,8 +166,8 @@ export async function renderSevenSaintsDeck(record: Pick<GenshinDeckList, "uid" 
         photo(ctx, frame, x, top, cardW, cardH);
         ctx.restore();
         if (!picture) {
-          text(card.name || `${group.action ? "行动牌" : "角色牌"} ${i + 1}`, x + cardW / 2, top + cardH / 2, 14, levelColor, "center", cardW - 12);
-          text("原图暂不可用", x + cardW / 2, top + cardH / 2 + 21, 10, hint, "center", cardW - 12);
+          text(card.name || `${group.action ? $t("panel.seven-saints-deck-card.text_fcaee3d650") : $t("panel.seven-saints-deck-card.text_e106770c98")} ${i + 1}`, x + cardW / 2, top + cardH / 2, 14, levelColor, "center", cardW - 12);
+          text($t("panel.seven-saints-deck-card.text_03e7e1741e"), x + cardW / 2, top + cardH / 2 + 21, 10, hint, "center", cardW - 12);
         }
         if (!group.action && card.hp !== undefined) {
           photo(ctx, health, x - 5, top + 2, 38, 38);
@@ -193,13 +196,13 @@ export async function renderSevenSaintsDeck(record: Pick<GenshinDeckList, "uid" 
         });
       });
       if (collection && group.cards?.length) {
-        text(group.action ? "左下角为使用次数，仅展示已有行动牌" : "左下角为胜利场数/使用次数，仅展示已有角色牌",
+        text(group.action ? $t("panel.seven-saints-deck-card.text_90f88243e5") : $t("panel.seven-saints-deck-card.text_9867e4c1a8"),
           width / 2, y + height - 13, 12, hint, "center");
       }
       y += height + 16;
     });
     const pageLabel = pageCount > 1 ? ` · ${page}/${pageCount}` : "";
-    const deckLabel = deckId !== undefined ? `卡组 ${deckId} · ` : "";
-    text(`${deckLabel}Lotus-Yunzai${pageLabel}`, width / 2, height - 16, 12, "#fff", "center");
+    const deckLabel = deckId !== undefined ? $t("panel.seven-saints-deck-card.text_a7c5f42512", { "deckId": deckId }) : "";
+    text($t("panel.seven-saints-deck-card.text_24432b1be5", { "deckLabel": deckLabel, "pageLabel": pageLabel }), width / 2, height - 16, 12, "#fff", "center", 395, true);
   }, mode);
 }

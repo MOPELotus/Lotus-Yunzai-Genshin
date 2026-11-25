@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../../packages/i18n/index.ts";
+import messageCatalog from "../../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { fileURLToPath } from "node:url";
 import { findRankCharacter } from "../../rank-statistics/stats.ts";
 import { matchBareEquipment, matchEquipmentChain, matchGenshinPanel, object, readPanel, selectAvatar, text, type PanelCommand, type PanelSnapshot } from "../model.ts";
@@ -5,10 +8,10 @@ import type { PanelTheme } from "../theme.ts";
 import { alias } from "./presets/aliases.ts";
 
 const presets = {
-  jx: { uid: "999999999", label: "极限面板" },
-  hb: { uid: "999999998", label: "核爆面板" },
-  fz: { uid: "999999997", label: "辅助面板" },
-  by: { uid: "999999996", label: "毕业面板" },
+  jx: { uid: "999999999", label: $t("panel.lolomi.presets.text_bda8dd0ff5") },
+  hb: { uid: "999999998", label: $t("panel.lolomi.presets.text_560c53cd31") },
+  fz: { uid: "999999997", label: $t("panel.lolomi.presets.text_eb59a1dad8") },
+  by: { uid: "999999996", label: $t("panel.lolomi.presets.text_8faaca1e02") },
 } as const;
 type PresetCode = keyof typeof presets;
 type Selection = {
@@ -70,7 +73,7 @@ export function matchPanelPreset(message: string): Selection | undefined {
     return;
   }
 
-  const normalized = `#${targetCode ? presets[targetCode].uid : ""}${rewritten}换${replacements.join("换")}`;
+  const normalized = `#${targetCode ? presets[targetCode].uid : ""}${rewritten}换${replacements.join($t("panel.lolomi.presets.text_1b5fdf01a4"))}`;
   const bareWeaponCommand = matchBareEquipment(normalized);
   const command = matchGenshinPanel(normalized) ?? matchEquipmentChain(normalized) ?? bareWeaponCommand;
   const name = command?.name && presetCharacterName(command.name);
@@ -101,7 +104,7 @@ export async function readPanelPreset(code: PresetCode, theme: PanelTheme): Prom
   });
   const artifactSets = new Map([...await knownSets, ...theme.artifactSets]);
   const snapshot = readPanel(uid, data, { ...theme, artifactSets });
-  if (!snapshot) throw new Error("原神公共预设数据缺失。");
+  if (!snapshot) throw new Error($t("panel.lolomi.presets.text_caa97d55b3"));
   return { ...snapshot, avatars: Object.fromEntries(Object.entries(snapshot.avatars).map(([id, avatar]) =>
     [id, { ...avatar, _source: label }])) };
 }

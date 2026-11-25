@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
@@ -12,13 +15,13 @@ import type { PanelTheme } from "./theme.ts";
 const percent = new Set(["hp", "atk", "def", "cpct", "cdmg", "recharge", "heal", "dmg",
   "pyro", "hydro", "electro", "cryo", "anemo", "geo", "dendro", "phy"]);
 const keys = ["hp", "atk", "def", "mastery", "cpct", "cdmg", "recharge", "dmg"] as const;
-const sourceNames: Readonly<Record<string, string>> = { mgg: "Mgg", mysPanel: "米游社", mys: "米游社", enka: "Enka",
-  hutao: "胡桃工具箱", homo: "Enka", change: "面板变换", local: "本地" };
+const sourceNames: Readonly<Record<string, string>> = { mgg: "Mgg", mysPanel: $t("panel.original-profile.text_6ca05b2485"), mys: $t("panel.original-profile.text_6ca05b2485"), enka: "Enka",
+  hutao: $t("panel.original-profile.text_8d075f9aa4"), homo: "Enka", change: $t("panel.original-profile.text_a92175dd34"), local: $t("panel.original-profile.text_bf4ad76184") };
 const artifactTitles: Readonly<Record<string, string>> = {
-  hp: "大生命", atk: "大攻击", def: "大防御", hpPlus: "小生命", atkPlus: "小攻击", defPlus: "小防御",
-  cpct: "暴击率", cdmg: "暴击伤害", recharge: "充能效率", mastery: "元素精通", heal: "治疗加成",
-  dmg: "元素伤害", phy: "物伤加成", pyro: "火伤加成", hydro: "水伤加成", geo: "岩伤加成",
-  cryo: "冰伤加成", electro: "雷伤加成", dendro: "草伤加成", anemo: "风伤加成",
+  hp: $t("panel.original-profile.text_dd1fad216f"), atk: $t("panel.original-profile.text_0d43934fdb"), def: $t("panel.original-profile.text_aeed4dc439"), hpPlus: $t("panel.original-profile.text_c2bb9b8f40"), atkPlus: $t("panel.original-profile.text_5085a8d5b4"), defPlus: $t("panel.original-profile.text_5a0e2465ee"),
+  cpct: $t("panel.original-profile.text_d4b0baf955"), cdmg: $t("panel.original-profile.text_15bccc3951"), recharge: $t("panel.original-profile.text_4e061c7460"), mastery: $t("panel.original-profile.text_7dca37c2aa"), heal: $t("panel.original-profile.text_6f2eca7102"),
+  dmg: $t("panel.original-profile.text_d92e83f400"), phy: $t("panel.original-profile.text_06ef280960"), pyro: $t("panel.original-profile.text_d52ac1b2d6"), hydro: $t("panel.original-profile.text_06dd4b828c"), geo: $t("panel.original-profile.text_3ccdfbe81b"),
+  cryo: $t("panel.original-profile.text_706a5f1095"), electro: $t("panel.original-profile.text_cadfaa86a6"), dendro: $t("panel.original-profile.text_618a4a13fa"), anemo: $t("panel.original-profile.text_7e197a6857"),
 };
 const scalar: Readonly<Record<string, number>> = attrPct;
 type FormatNumber = (value: number, digits?: number) => string;
@@ -126,7 +129,7 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
   const root = theme.resourceRoot;
   const traveler = travelerIds.has(avatar.id);
   const meta = object(theme.characters[avatar.id]);
-  const paths = ["meta-gs", "character", traveler ? "旅行者" : avatar.name];
+  const paths = ["meta-gs", "character", traveler ? $t("panel.original-profile.text_4bf6868aa0") : avatar.name];
   const icons = [...paths, ...(traveler ? [avatar.elem] : []), "icons"];
   const cons = panelTalentThresholds(avatar, meta);
   const [a, e, q] = panelTalentLevels(avatar, meta, meta, displayedTalent);
@@ -173,6 +176,6 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
 export async function renderOriginalProfile(snapshot: PanelSnapshot, avatar: PanelAvatar, theme: PanelTheme,
   options: Parameters<typeof originalProfileData>[3], chat?: Parameters<typeof drawOriginalProfile>[3]) {
   const data = await originalProfileData(snapshot, avatar, theme, options);
-  if (!data) throw new Error("原神原版面板资源不可用。");
+  if (!data) throw new Error($t("panel.original-profile.text_b9e658f2a5"));
   return drawOriginalProfile(data, theme, undefined, chat);
 }

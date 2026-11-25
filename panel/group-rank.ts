@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createGroupRankRefresh, type GameRole } from "@lotus-yunzai/account";
@@ -48,8 +51,8 @@ const renderLeader: StrongestRenderer = async (snapshot, avatar, theme, chat, en
   return renderOriginalProfile(snapshot, avatar, theme, { damage: "rows" in damage ? damage : undefined },
     { ...chat, displayWidth: 960 });
 };
-const subject = "原神群面板摘要";
-const changed = "群榜设置、群成员或档案已变化，请重新查询排行。";
+const subject = $t("panel.group-rank.text_958a451e06");
+const changed = $t("panel.group-rank.text_0a9c85fdef");
 const defaultLimit = 15;
 const maxMembers = 10_000;
 
@@ -70,10 +73,10 @@ function readObservations(input: unknown, scope: Scope, qq: number): Record<stri
   if (input === null) return {};
   const data = object(input);
   if (data?.version !== 1 || data.adapter !== scope.adapter || data.bot !== scope.bot || data.group !== scope.group || data.qq !== qq) {
-    throw new TypeError("原神群面板摘要与群成员不一致。");
+    throw new TypeError($t("panel.group-rank.text_08e7d69646"));
   }
   const profiles = object(data.profiles);
-  if (!profiles) throw new TypeError("原神群面板摘要缺少档案数据。");
+  if (!profiles) throw new TypeError($t("panel.group-rank.text_35d3f57644"));
   const result: Record<string, Observation> = {};
   for (const [key, value] of Object.entries(profiles)) {
     const recorded = object(value);
@@ -181,7 +184,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
     const verify = async () => {
       await verifyProfile();
       if (inactive() || !await isEnabled(scope) || (!item && !await currentMembers(scope, context)) || inactive()) {
-        throw new Error("原神群榜登记已失效。");
+        throw new Error($t("panel.group-rank.text_d4993da547"));
       }
     };
     await archive(scope).update({ qq: String(scope.group), uid: String(scope.qq) }, verify, async input => {
@@ -268,12 +271,12 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       const intent = typeof rank === "string" ? await resolveGroupPanelRank(rank) : rank;
       if (!intent || signal.aborted) return;
       const scope = scopeOf(context);
-      if (!scope) return "原神群面板排名只能在群聊中查询。";
-      if (!await isEnabled(scope)) return "本群未启用原神群面板排名。";
+      if (!scope) return $t("panel.group-rank.text_a0db884d7d");
+      if (!await isEnabled(scope)) return $t("panel.group-rank.text_4fedf3a6ad");
       const active = context.groupActivitySignal ? AbortSignal.any([signal, context.groupActivitySignal]) : signal;
       if (active.aborted) return;
       const members = await currentMembers(scope, context);
-      if (!members || active.aborted) return active.aborted ? undefined : "暂时无法核对本群成员，请稍后查询。";
+      if (!members || active.aborted) return active.aborted ? undefined : $t("panel.group-rank.text_64ba9d6e54");
       const { character, strongest } = intent;
       const mode = character ? availableRankMode(intent.mode, character) : intent.mode;
       const observations = await boundObservations(scope, members, () => true);
@@ -283,13 +286,13 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       for (const row of observations) {
         if ((subjects.get(row.role.uid)?.observedAt ?? -1) < row.observedAt) subjects.set(row.role.uid, row);
       }
-      if (!subjects.size) return "本群暂无已登记的原神 UID。可在本群查看自己的角色详情加入。";
+      if (!subjects.size) return $t("panel.group-rank.text_de173256fa");
       const [theme, selector] = await Promise.all([loadTheme(), readSelector()]);
       const requestShowcase = async (entry: BoundObservation, requestSignal: AbortSignal) => {
-        if (!await stillCurrent(entry)) throw new Error("原神群榜登记已失效。");
+        if (!await stillCurrent(entry)) throw new Error($t("panel.group-rank.text_d4993da547"));
         requestSignal.throwIfAborted();
         const snapshot = await readShowcase(entry.role, selector, theme, requestSignal);
-        if (snapshot && snapshot.uid !== entry.role.uid) throw new Error("公开展板返回了其他 UID。");
+        if (snapshot && snapshot.uid !== entry.role.uid) throw new Error($t("panel.group-rank.text_f5b6fc3500"));
         return snapshot;
       };
       if (!character) {
@@ -318,10 +321,10 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
           }
         }
         const title = aggregateTitles[mode];
-        const fallback = [...winners.values()].some(row => mode !== row.metric) ? "无伤害规则的角色按圣遗物评分。" : "";
+        const fallback = [...winners.values()].some(row => mode !== row.metric) ? $t("panel.group-rank.text_52e15b916d") : "";
         const scored = results.filter(row => row.status === "fresh").length;
-        const summary = `本轮可计分 UID ${scored}/${subjects.size} 个，共 ${winners.size} 位角色。 ${fallback}`.trimEnd();
-        if (!winners.size) return [title, summary, "本群本轮未取得可用于排行的公开展板。"].join("\n");
+        const summary = $t("panel.group-rank.text_197f87595a", { "scored": scored, "size": subjects.size, "value3": winners.size, "fallback": fallback }).trimEnd();
+        if (!winners.size) return [title, summary, $t("panel.group-rank.text_c0f1214885")].join("\n");
         const star = (row: Row) => Number(object(theme.characters[row.avatar.id])?.star) || 0;
         const ranked = [...winners.values()].sort((a, b) => a.role.uid.localeCompare(b.role.uid) || star(b) - star(a) || a.avatar.id - b.avatar.id);
         const owners = [...new Map(ranked.map(row => [row.role.uid, row])).values()];
@@ -356,7 +359,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         const publicAvatar = snapshot.avatars[String(character.id)];
         if (!publicAvatar) return;
         const avatar = await projectRankAvatar(publicAvatar, theme);
-        if (!avatar?.[mode]) throw new Error("公开展板资料不足以计算该项排行。");
+        if (!avatar?.[mode]) throw new Error($t("panel.group-rank.text_8c2067cb7d"));
         return { avatar, publicAvatar, snapshot };
       }, active).catch(error => {
         if (!active.aborted) throw error;
@@ -366,10 +369,10 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       const ranked = rankRows(candidates, mode, strongest ? 1 : await readLimit("gs", defaultLimit));
       const missing = results.filter(result => result.status === "not-listed").length;
       const failed = results.filter(result => result.status === "failed").length;
-      const summary = `本轮查询已登记 UID ${subjects.size} 个，可排名 ${candidates.length} 个，未展示 ${missing} 个，无法刷新或计算 ${failed} 个。` +
-        (mode !== intent.mode ? "该角色暂无伤害规则，按圣遗物评分排名。" : "");
+      const summary = $t("panel.group-rank.text_78e05eb970", { "size": subjects.size, "length": candidates.length, "missing": missing, "failed": failed }) +
+        (mode !== intent.mode ? $t("panel.group-rank.text_07475672f8") : "");
       const lead = ranked[0];
-      if (!lead) return [summary, `本群本轮未取得可用于${character.name}${rankModeNames[mode]}排行的公开展板。`].join("\n");
+      if (!lead) return [summary, $t("panel.group-rank.text_9e7699b10f", { "name": character.name, "value2": rankModeNames[mode] })].join("\n");
       const rows = ranked.map(row => ({ uid: row.role.uid, avatar: row.avatar }));
       const unchanged = async () => {
         if (active.aborted) return false;
@@ -389,12 +392,12 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       if (!await unchanged()) return active.aborted ? undefined : changed;
       const image = png && { type: "image" as const, file: png };
       if (strongest) {
-        const title = `${character.name} · 本轮${rankModeNames[mode]}榜首 · UID ${lead.role.uid}`;
+        const title = $t("panel.group-rank.text_03e59bbc8f", { "name": character.name, "value2": rankModeNames[mode], "uid": lead.role.uid });
         if (image) return [title + "\n" + summary, image];
-        return [title, summary, "本轮公开数据已取得，暂时无法生成完整面板。"].join("\n");
+        return [title, summary, $t("panel.group-rank.text_5e62b168a1")].join("\n");
       }
       if (image) return image;
-      return [`${character.name} · 本群${rankModeNames[mode]}排行`, summary, ...rows.map(({ uid, avatar }, index) => {
+      return [$t("panel.group-rank.text_affd1ad3b0", { "name": character.name, "value2": rankModeNames[mode] }), summary, ...rows.map(({ uid, avatar }, index) => {
         const score = displayedRankScore(avatar, mode)!;
         const formatted = mode === "crit" || mode === "valid" ? score.toFixed(1) : String(score);
         return `${index + 1}. UID ${uid} · ${groupPanelNumber(formatted, theme.commaGroup)}${mode === "damage" && avatar.damage?.percent ? "%" : ""}`;

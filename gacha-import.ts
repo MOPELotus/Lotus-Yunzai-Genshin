@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { ProfileError, type createProfileStore } from "@lotus-yunzai/account";
 import { createGachaFileImport } from "@lotus-yunzai/gacha/file-import";
 import { genshinGachaThemeDirectory, readGenshinUigfItems } from "./gacha-detail-source.ts";
@@ -15,9 +18,9 @@ function usesLegacyServerTime(input: unknown): boolean {
 
 function profileFailure(error: unknown, profileId: number): string | undefined {
   if (!(error instanceof ProfileError)) return;
-  if (error.code === "missing") return `请先登录档案 ${profileId}。`;
-  if (error.code === "role-missing") return `档案 ${profileId} 没有同步原神 UID。`;
-  if (error.code === "changed") return "原神档案角色已变化，请重新导入。";
+  if (error.code === "missing") return $t("gacha-import.text_76720712c8", { "profileId": profileId });
+  if (error.code === "role-missing") return $t("gacha-import.text_6658649baf", { "profileId": profileId });
+  if (error.code === "changed") return $t("gacha-import.text_633e965c7b");
 }
 
 export function createGenshinGachaImport(
@@ -26,7 +29,7 @@ export function createGenshinGachaImport(
   signal: AbortSignal,
 ) {
   return createGachaFileImport({
-    prefix: "#", gameName: "原神", signal,
+    prefix: "#", gameName: $t("gacha-import.text_d1597c51ed"), signal,
     savedRole: (qq, profileId) => profiles.savedRole(qq, profileId, "gs"),
     failure(error, profileId) {
       return profileFailure(error, profileId) ?? (error instanceof TypeError && /^(?:UIGF|该 UIGF)/u.test(error.message)
@@ -39,10 +42,10 @@ export function createGenshinGachaImport(
       const counts = new Map(snapshot.pools.map(({ type, records }) => [type, records.length]));
       const lines = result.pools.flatMap(({ type, name, total, added }) => {
         const count = counts.get(type);
-        return count ? [`${name}记录：读取 ${count} 条，新增 ${added} 条，共 ${total} 条`] : [];
+        return count ? [$t("gacha-import.text_103104a7fb", { "name": name, "count": count, "added": added, "total": total })] : [];
       });
-      return [`UID ${uid} · 原神抽卡记录导入成功`, ...lines,
-        `可使用 #抽卡记录${profileId === 1 ? "" : profileId} 查看。`].join("\n");
+      return [$t("gacha-import.text_c19e4aca91", { "uid": uid }), ...lines,
+        $t("gacha-import.text_436e2f29b6", { "value1": profileId === 1 ? "" : profileId })].join("\n");
     },
   });
 }

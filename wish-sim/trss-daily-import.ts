@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -43,13 +46,13 @@ async function authorization(path: string, now: number) {
       if (after.mtimeMs !== info.mtimeMs || after.ctimeMs !== info.ctimeMs || after.size !== info.size) throw new Error();
       input = record(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)));
     } finally { await file.close(); }
-  } catch { throw new TypeError("旧 TRSS 限抽授权须为有效的 UTF-8 JSON 文件。"); }
+  } catch { throw new TypeError($t("wish-sim.trss-daily-import.text_d782961b26")); }
   const captured = input?.capturedAt;
   const rows = input?.accounts;
   if (input?.source !== "trss-genshin-0290a17" || input.timeZone !== "Asia/Shanghai" ||
       typeof captured !== "number" || !Number.isSafeInteger(captured) || captured <= 0 || captured > now ||
       !Array.isArray(rows) || !rows.length || rows.length > 1000) {
-    throw new TypeError("授权须确认 trss-genshin-0290a17 副本、Asia/Shanghai、采样时间 capturedAt 与账号。");
+    throw new TypeError($t("wish-sim.trss-daily-import.text_603c264a3d"));
   }
   const seen = new Set<string>();
   const accounts: Scope[] = rows.map(raw => {
@@ -57,7 +60,7 @@ async function authorization(path: string, now: number) {
     if (typeof qq !== "string" || !validWishGroup(qq) || seen.has(qq) || !Array.isArray(conversations) ||
         !conversations.length || conversations.length > 201 || new Set(conversations).size !== conversations.length ||
         conversations.some(scope => typeof scope !== "string" || (scope !== "private" && !validWishGroup(scope)))) {
-      throw new TypeError("授权须明确列出合法且不重复的 QQ 与会话。");
+      throw new TypeError($t("wish-sim.trss-daily-import.text_f39fc82e12"));
     }
     seen.add(qq);
     return { qq, conversations };
@@ -128,7 +131,7 @@ export async function importTrssWishLimits(options: ImportOptions, lockFile: Acq
   const snapshot = URL.parse(sourceUrl);
   if (snapshot?.protocol !== "redis:" || snapshot.hostname !== "127.0.0.1" || !snapshot.port || snapshot.port === "6379" ||
       !/^[A-Za-z0-9_-]+$/u.test(snapshot.username) || snapshot.username === "default" || !snapshot.password) {
-    throw new TypeError("旧 TRSS 限抽须提供带只读账号的独立本机 Valkey 副本地址。");
+    throw new TypeError($t("wish-sim.trss-daily-import.text_855e879489"));
   }
   const manifest = await authorization(authorizationFile, now());
   const totals = { accounts: manifest.accounts.length, carried: 0, existing: 0, conflict: 0, missing: 0,
@@ -143,7 +146,7 @@ export async function importTrssWishLimits(options: ImportOptions, lockFile: Acq
   const redis = new Bun.RedisClient(sourceUrl, { autoReconnect: false, enableOfflineQueue: false, connectionTimeout: 2000 });
   try {
     try { await redis.connect(); }
-    catch { throw new Error("无法连接隔离的旧 TRSS 限抽副本。"); }
+    catch { throw new Error($t("wish-sim.trss-daily-import.text_a674f6464a")); }
     for (const { qq, conversations } of manifest.accounts) {
       const candidates = new Map<string, WishLimitCarry>();
       for (const scope of conversations) {

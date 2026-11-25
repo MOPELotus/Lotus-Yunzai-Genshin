@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { miaoTemplateFont } from "../../../lib/game-template-fonts.ts";
 import { layoutTrialDamageTitles, trialDamageTitleLineHeight } from "../../../lib/panel-trial-display.ts";
@@ -30,8 +33,8 @@ const elements: Readonly<Record<string, string>> = {
 };
 const tableKeys = ["hp", "atk", "def", "mastery", "cpct", "cdmg", "recharge", "dmg"];
 const sourceLabels: Readonly<Record<string, string>> = {
-  mysPanel: "米游社", enka: "Enka", miao: "第三方面板", mgg: "MiniGG", hutao: "Hutao", homo: "第三方面板",
-  change: "面板变换", customize: "自定义", share: "共享", local: "本地",
+  mysPanel: $t("panel.card.text_6ca05b2485"), enka: "Enka", miao: $t("panel.card.text_ff00775f29"), mgg: "MiniGG", hutao: "Hutao", homo: $t("panel.card.text_ff00775f29"),
+  change: $t("panel.card.text_a92175dd34"), customize: $t("panel.card.text_4eafa9e925"), share: $t("panel.card.text_4d6a4bc105"), local: $t("panel.card.text_bf4ad76184"),
 };
 const time = new Intl.DateTimeFormat("zh-CN", {
   timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
@@ -79,7 +82,7 @@ function frame(ctx: Context, image: Picture | undefined, element: string, width:
 }
 
 function footer(ctx: Context, width: number, height: number) {
-  label(ctx, "Lotus-Yunzai", width / 2, height - 14, 12, "#fff", 550, "center");
+  label(ctx, $t("panel.card.text_3867834e77"), width / 2, height - 14, 12, "#fff", 550, "center");
 }
 
 const character = (theme: PanelTheme, name: string, ...rest: string[]) => theme.picture("meta-gs", "character", name, ...rest);
@@ -147,7 +150,7 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
           if (!face) label(ctx, owner.name, x + 47, top + 47, 16, ink, 89, "center");
           if (avatar.cons) {
             block(ctx, avatar.cons === 6 ? "#dd5838" : "#68637d", x + 4, top + 4, 30, 17);
-            label(ctx, `${avatar.cons}命`, x + 19, top + 16, 11, "#fff", 26, "center");
+            label(ctx, $t("panel.card.text_3ef457527a", { "cons": avatar.cons }), x + 19, top + 16, 11, "#fff", 26, "center");
           }
           block(ctx, "#302d3ba0", x + 23, top + 74, 50, 18);
           label(ctx, `Lv.${avatar.level}`, x + 48, top + 87, 12, "#fff", 48, "center");
@@ -177,8 +180,8 @@ export async function renderDailyMaterialCard(uid: string, day: string, groups: 
       });
       y += groupHeight + 14;
     });
-    label(ctx, "仅显示已装备的武器 · 资料来自当前档案", 16, height - 23, 12, muted, 532);
-    label(ctx, "Lotus-Yunzai", 683, height - 23, 11, "#fff", 100, "right");
+    label(ctx, $t("panel.card.text_dd8166efcb"), 16, height - 23, 12, muted, 532);
+    label(ctx, $t("panel.card.text_3867834e77"), 683, height - 23, 11, "#fff", 100, "right");
   }, mode, options);
 }
 
@@ -213,11 +216,11 @@ function drawDamageSummary(ctx: Context, model: DamageSummary, texture: Picture 
   }
   ctx.fillStyle = "#0006";
   ctx.fillRect(x, y, width, summaryHeaderHeight);
-  label(ctx, "伤害计算", x + 20, y + 26, 16, "#d3bc8e");
-  if (detailCommand) label(ctx, `使用 ${detailCommand} 查看伤害详情`, x + 100, y + 25, 12, "#c6c3c2", 460);
-  label(ctx, "伤害类型", x + typeWidth - 15, y + 66, 15, "#d3bc8e", typeWidth - 20, "right");
-  label(ctx, "暴击伤害", critCenter, y + 66, 15, "#d3bc8e", valueWidth - 15, "center");
-  label(ctx, "期望伤害", averageCenter, y + 66, 15, "#d3bc8e", valueWidth - 15, "center");
+  label(ctx, $t("panel.card.text_393374d45e"), x + 20, y + 26, 16, "#d3bc8e");
+  if (detailCommand) label(ctx, $t("panel.card.text_fc00d6880d", { "detailCommand": detailCommand }), x + 100, y + 25, 12, "#c6c3c2", 460);
+  label(ctx, $t("panel.card.text_9b65f38ca8"), x + typeWidth - 15, y + 66, 15, "#d3bc8e", typeWidth - 20, "right");
+  label(ctx, $t("panel.card.text_15bccc3951"), critCenter, y + 66, 15, "#d3bc8e", valueWidth - 15, "center");
+  label(ctx, $t("panel.card.text_d5f4617e07"), averageCenter, y + 66, 15, "#d3bc8e", valueWidth - 15, "center");
   model.rows.forEach((row, index) => {
     const { lines, top: offset, height: rowHeight } = titles.rows[index]!;
     const top = y + summaryHeaderHeight + offset;
@@ -233,7 +236,7 @@ function drawDamageSummary(ctx: Context, model: DamageSummary, texture: Picture 
     const damageCell = (key: "average" | "crit", left: number, maxWidth: number) => {
       const delta = row.trial?.[key];
       const change = damageTrialLabel(delta);
-      label(ctx, row.unavailable ? "数据不全" : displayDamage(row[key], row.unit), left,
+      label(ctx, row.unavailable ? $t("panel.card.text_4fd7325d79") : displayDamage(row[key], row.unit), left,
         top + (change ? 18 : 27), 18, row.unavailable ? "#cecad7" : "#fff", maxWidth, "center");
       if (delta !== undefined && change) label(ctx, change, left, top + 35, 13,
         delta === 0 ? "#cecad7" : delta > 0 ? "#9de4b3" : "#ffad9e", maxWidth, "center");
@@ -249,9 +252,9 @@ function drawDamageSummary(ctx: Context, model: DamageSummary, texture: Picture 
   });
   ctx.fillStyle = "#0008";
   ctx.fillRect(x, tableBottom, width, summaryFooterHeight);
-  label(ctx, `目标为 ${model.enemyLevel} 级${model.enemyName} · #敌人等级${model.enemyLevel}${profileSuffix}`, x + 15,
+  label(ctx, $t("panel.card.text_d4b57a96ed", { "enemyLevel": model.enemyLevel, "enemyName": model.enemyName, "value3": model.enemyLevel, "profileSuffix": profileSuffix }), x + 15,
     tableBottom + 22, 12, "#e8e4dd", model.ruleAuthors.length ? 335 : width - 30);
-  if (model.ruleAuthors.length) label(ctx, `规则作者 · ${model.ruleAuthors.join("、")}`, x + width - 15,
+  if (model.ruleAuthors.length) label(ctx, $t("panel.card.text_8c43e09bd6", { "value1": model.ruleAuthors.join("、") }), x + width - 15,
     tableBottom + 22, 12, "#e8e4dd", 195, "right");
   ctx.restore();
 }
@@ -267,10 +270,10 @@ export interface EquipmentNotice {
 
 function drawEquipmentChange(ctx: Context, width: number, y: number, change: EquipmentNotice) {
   block(ctx, "#382a25df", 12, y, width - 24, change.reason ? 61 : 42);
-  const title = change.characterLevel ? "临时等级试算" : change.displayedTalent ? "临时天赋试算" :
-    change.constellation ? "临时命座试算" : "临时换装面板";
+  const title = change.characterLevel ? $t("panel.card.text_51222b308a") : change.displayedTalent ? $t("panel.card.text_6b05b6349e") :
+    change.constellation ? $t("panel.card.text_2ac287fec4") : $t("panel.card.text_b521fd8f99");
   label(ctx, `${title} · ${change.equipped}`, 24, y + 17, 13, gold, width - 48);
-  label(ctx, `当前替换命令 ${change.command}`, 24, y + 34, 12, "#f2e9df", width - 48);
+  label(ctx, $t("panel.card.text_77d3007d8e", { "command": change.command }), 24, y + 34, 12, "#f2e9df", width - 48);
   if (change.reason) label(ctx, change.reason, 24, y + 53, 12, "#ffe0b8", width - 48);
 }
 
@@ -280,7 +283,7 @@ export async function panelDetailIcons(avatar: PanelAvatar, theme: PanelTheme, e
   const talentCons = panelTalentThresholds(avatar, meta);
   const weaponType = traveler ? "sword" : text(meta?.weapon);
   const constellation = (level: number) => traveler
-    ? character(theme, "旅行者", element, "icons", `cons-${level}.webp`)
+    ? character(theme, $t("panel.card.text_4bf6868aa0"), element, "icons", `cons-${level}.webp`)
     : character(theme, avatar.name, "icons", `cons-${level}.webp`);
   const constellations = Array.from({ length: 6 }, (_, index) => constellation(index + 1));
   return Promise.all([
@@ -342,14 +345,14 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
     art(ctx, splash, "contain", ...bgBox);
     if (!splash) label(ctx, avatar.name, 137, 289, 45, "#ffffff65", 220, "center");
     label(ctx, avatar.name, 579, 68, 49, "#fff0d5", 300, "right");
-    label(ctx, `UID ${snapshot.uid} · Lv.${avatar.level}${avatar.cons === undefined ? "" : ` · ${avatar.cons}命`}`, 579, 95, 17, blue, 295, "right");
+    label(ctx, `UID ${snapshot.uid} · Lv.${avatar.level}${avatar.cons === undefined ? "" : $t("panel.card.text_1c1a1dd606", { "cons": avatar.cons })}`, 579, 95, 17, blue, 295, "right");
     levels.forEach((level, index) => {
       const x = 288 + index * 98;
       const y = 110;
       art(ctx, badge, "contain", x, y, 88, 88);
       const img = talents[index];
       if (img) art(ctx, img, "contain", x + 22, y + 16, 44, 44);
-      else label(ctx, ["普攻", "战技", "爆发"][index]!, x + 44, y + 45, 13, "#fff", 60, "center");
+      else label(ctx, [$t("panel.card.text_8b79df27ba"), $t("panel.card.text_6d8c868f52"), $t("panel.card.text_2f2c7421e9")][index]!, x + 44, y + 45, 13, "#fff", 60, "center");
       if (level) {
         const increased = level.level > level.original;
         block(ctx, increased ? "#303441" : "#f3eee5", x + 25, y + 53, 38, 24);
@@ -370,7 +373,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
       label(ctx, propertyLabels[key]!, 311, y + 22, 13);
       const valueX = property?.base && !property.value ? 506 : 520;
       label(ctx, property?.value || "—", valueX, y + 22, 17, "#fff", 91, "right");
-      if (property?.base) label(ctx, property.value ? property.base : `基础 ${property.base}`, 575,
+      if (property?.base) label(ctx, property.value ? property.base : $t("panel.card.text_481310a67b", { "base": property.base }), 575,
         y + (property.plus ? 13 : 22), 11, "#eee", property.value ? 43 : 78, "right");
       if (property?.plus) label(ctx, `+${property.plus}`, 575, y + 25, 11, "#a8ef24", 43, "right");
     });
@@ -383,7 +386,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
       else label(ctx, String(index + 1), x + 22, 471, 13, "#fff", 25, "center");
       ctx.restore();
     });
-    label(ctx, `数据源：${sourceLabels[avatar._source] ?? "本地"}${avatar._time && Number.isFinite(new Date(avatar._time).getTime()) ? ` · ${time.format(avatar._time)}` : ""}`, 580, 505, 11, "#eee", 425, "right");
+    label(ctx, $t("panel.card.text_fa7ec322f7", { "value1": sourceLabels[avatar._source] ?? $t("panel.card.text_bf4ad76184"), "value2": avatar._time && Number.isFinite(new Date(avatar._time).getTime()) ? ` · ${time.format(avatar._time)}` : "" }), 580, 505, 11, "#eee", 425, "right");
 
     if (change) drawEquipmentChange(ctx, width, 516, change);
     let start = 520 + changeHeight;
@@ -391,11 +394,11 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
       block(ctx, "#24262dd9", 10, start, 580, 92);
       art(ctx, equip, "contain", 20, start + 7, 77, 77);
       label(ctx, avatar.weapon.name, 104, start + 34, 24, "#fff0d5", 412);
-      label(ctx, `武器${avatar.weapon.level === undefined ? "" : ` · Lv.${avatar.weapon.level}`}${avatar.weapon.affix === undefined ? "" : ` · 精${avatar.weapon.affix}`}`, 106, start + 63, 14, gold);
+      label(ctx, $t("panel.card.text_d9ca024308", { "value1": avatar.weapon.level === undefined ? "" : ` · Lv.${avatar.weapon.level}`, "value2": avatar.weapon.affix === undefined ? "" : $t("panel.card.text_89cfa03e42", { "affix": avatar.weapon.affix }) }), 106, start + 63, 14, gold);
       start += 104;
     }
     if (showRelics) {
-      label(ctx, equipment.length ? "圣遗物" : "当前面板没有圣遗物数据", 19, start + 21, 18, gold);
+      label(ctx, equipment.length ? $t("panel.card.text_fc2ee58f3d") : $t("panel.card.text_bb6f46e9c3"), 19, start + 21, 18, gold);
       equipment.forEach(([, relic], index) => {
         const x = 10 + index % 2 * 293;
         const y = start + 30 + Math.floor(index / 2) * 133;
@@ -411,7 +414,7 @@ export async function renderPanelDetail(snapshot: PanelSnapshot, avatar: PanelAv
       });
     }
     if (summary) {
-      const profileSuffix = profileId === 1 ? "" : ` 档案${profileId}`;
+      const profileSuffix = profileId === 1 ? "" : $t("panel.card.text_31a2142f9f", { "profileId": profileId });
       const name = text(meta?.abbr) || avatar.name;
       drawDamageSummary(ctx, summary, summaryTexture, summaryY, change ? undefined : `#${name}伤害${profileSuffix}`, profileSuffix, summaryTitles);
     }

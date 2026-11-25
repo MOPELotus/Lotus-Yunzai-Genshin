@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { lolomiArtifactRules } from "./lolomi/artifact-rules.ts";
 import { damageSettings } from "./lolomi/config.ts";
 import characterMetadata from "./miao/character-artifact-base.json";
@@ -22,12 +25,12 @@ const subCandidates = ["atk", "atkPlus", "def", "defPlus", "hp", "hpPlus", "mast
 const baseAlias: Readonly<Record<string, string>> = { hpPlus: "hp", atkPlus: "atk", defPlus: "def" };
 const characters: Readonly<Record<string, { name: string; abbr: string; baseAttr: Weights }>> = characterMetadata;
 const weapons: Readonly<Record<string, string>> = weaponMetadata;
-const setNames: Readonly<Record<string, string>> = { 绝缘: "绝缘之旗印", 冰套: "冰风迷途的勇士" };
+const setNames: Readonly<Record<string, string>> = { 绝缘: $t("panel.artifact-score.text_b81aad62fc"), 冰套: $t("panel.artifact-score.text_fb6076acb2") };
 const supportedWeapons: Readonly<Record<string, { attr: string; abbr?: string; max?: number; min?: number }>> = {
-  磐岩结绿: { attr: "hp", abbr: "绿剑", max: 30, min: 15 },
+  磐岩结绿: { attr: "hp", abbr: $t("panel.artifact-score.text_1c115562a4"), max: 30, min: 15 },
   猎人之径: { attr: "mastery" },
-  薙草之稻光: { attr: "recharge", abbr: "薙刀" },
-  护摩之杖: { attr: "hp", abbr: "护摩", max: 18, min: 10 },
+  薙草之稻光: { attr: "recharge", abbr: $t("panel.artifact-score.text_d7b3caeb1f") },
+  护摩之杖: { attr: "hp", abbr: $t("panel.artifact-score.text_fd2937281e"), max: 18, min: 10 },
 };
 
 type Weights = Readonly<Record<string, number>>;
@@ -72,15 +75,15 @@ class Missing extends Error {}
 
 function requirements(item: PanelArtifact, slot: string): RatingInput {
   const { main, subs, unrecognized } = artifactStatRecord(item);
-  if (item.scoreReady === false || !main) throw new Missing(`第 ${slot} 位圣遗物词条不完整`);
-  if (unrecognized) throw new Missing(`第 ${slot} 位圣遗物副词条无法识别`);
+  if (item.scoreReady === false || !main) throw new Missing($t("panel.artifact-score.text_d2bde79b7a", { "slot": slot }));
+  if (unrecognized) throw new Missing($t("panel.artifact-score.text_bd3be8adf9", { "slot": slot }));
   return { main, subs };
 }
 
 function selectRule(avatar: PanelAvatar, pieces: Readonly<Record<string, RatingInput>>, abbr: string, lolomi: boolean): RuleResult {
   const weapon = avatar.weapon;
   if (!weapon || weapon.promote === undefined || !Object.keys({ ...avatar.talent, ...avatar.refreshedTalent }).length) {
-    throw new Missing("缺少完整武器或天赋，请先更新面板");
+    throw new Missing($t("panel.artifact-score.text_6eb260e8ce"));
   }
   const properties = new Map(avatar._lotus?.properties?.flatMap(property => {
     const value = Number(property.value.replace(/%$/u, ""));
@@ -89,7 +92,7 @@ function selectRule(avatar: PanelAvatar, pieces: Readonly<Record<string, RatingI
   const attr: RuleInputs["attr"] = new Proxy(Object.create(null), {
     get(_target, key) {
       const value = properties.get(String(key));
-      if (value === undefined) throw new Missing(`缺少角色最终属性 ${propertyLabels[String(key)] ?? String(key)}，请先更新面板`);
+      if (value === undefined) throw new Missing($t("panel.artifact-score.text_98f83bb0ca", { "value1": propertyLabels[String(key)] ?? String(key) }));
       return value;
     },
   });
@@ -111,7 +114,7 @@ function selectRule(avatar: PanelAvatar, pieces: Readonly<Record<string, RatingI
         const count = equipped.filter(item => item.set === name).length;
         if (count >= needed) return true;
         if (count + equipped.filter(item => !item.set).length >= needed) {
-          throw new Missing("缺少圣遗物套装名称，请先更新面板");
+          throw new Missing($t("panel.artifact-score.text_ffaa23c217"));
         }
         return false;
       });
@@ -125,7 +128,7 @@ function selectRule(avatar: PanelAvatar, pieces: Readonly<Record<string, RatingI
       const old = next[cfg.attr] ?? 0;
       if (old !== 100) {
         const affix = weapon!.affix;
-        if (!affix) throw new Missing("缺少武器精炼等级，请先更新面板");
+        if (!affix) throw new Missing($t("panel.artifact-score.text_d833b9b25c"));
         const min = cfg.min ?? 10;
         const max = cfg.max ?? 20;
         next[cfg.attr] = Math.min(Math.round(old + min + (max - min) * (affix - 1) / 4), 100);
@@ -133,31 +136,31 @@ function selectRule(avatar: PanelAvatar, pieces: Readonly<Record<string, RatingI
       }
     }
     const cap = Math.max(next.atk ?? 0, next.hp ?? 0, next.def ?? 0, next.mastery ?? 0);
-    if (artis.is("绝缘4") && (next.recharge ?? 0) < cap) {
+    if (artis.is($t("panel.artifact-score.text_8f5c8dab18")) && (next.recharge ?? 0) < cap) {
       next.recharge = Math.min(Math.round((next.recharge ?? 0) + 75), cap);
-      title.push("绝缘4");
+      title.push($t("panel.artifact-score.text_8f5c8dab18"));
     }
     if (/^西风(长枪|大剑|剑|猎弓|秘典)$/u.test(weapon!.name) && (next.cpct ?? 0) < 100) {
       next.cpct = 100;
-      title.push("西风");
+      title.push($t("panel.artifact-score.text_ece6f15b1e"));
     }
-    return { title: `${abbr}-${title.length ? title.join("|") : "通用"}`, attrWeight: next };
+    return { title: `${abbr}-${title.length ? title.join("|") : $t("panel.artifact-score.text_835b700e02")}`, attrWeight: next };
   }
 
-  const name = [10000005, 10000007, 20000000].includes(avatar.id) ? "旅行者" : avatar.name;
+  const name = [10000005, 10000007, 20000000].includes(avatar.id) ? $t("panel.artifact-score.text_4bf6868aa0") : avatar.name;
   const select = (lolomi && Object.hasOwn(lolomiArtifactRules, name) ? lolomiArtifactRules[name] : undefined) ??
     (Object.hasOwn(rules, name) ? rules[name] : undefined);
   if (select) {
     return select({
       elem: avatar.elem, attr, artis, def,
       get cons() {
-        if (avatar.cons === undefined) throw new Missing("缺少命座，请先更新面板");
+        if (avatar.cons === undefined) throw new Missing($t("panel.artifact-score.text_e783026fe2"));
         return avatar.cons;
       },
       weapon: {
         name: weapon.name,
         get bonusKey() {
-          if (!Object.hasOwn(weapons, weapon.name)) throw new Missing("缺少旧版武器属性资料");
+          if (!Object.hasOwn(weapons, weapon.name)) throw new Missing($t("panel.artifact-score.text_632d465535"));
           return weapons[weapon.name]!;
         },
       },
@@ -177,7 +180,7 @@ function weights(config: RuleResult, base: Weights) {
     let mark = weight / value;
     if (parent) {
       const stat = base[parent];
-      if (!stat || !Number.isFinite(stat)) throw new Missing("缺少旧版角色基础属性资料");
+      if (!stat || !Number.isFinite(stat)) throw new Missing($t("panel.artifact-score.text_3c721b2193"));
       mark = weight / (basicNum * scalars[parent]!) / (stat + (parent === "atk" ? 520 : 0)) * 100;
     }
     result[key] = { weight, mark, fixWeight: parent ? mark * value : weight };
@@ -231,7 +234,7 @@ function rate(piece: RatingInput, slot: number, attributes: Readonly<Record<stri
   const { main, subs } = piece;
   if (slot >= 3) {
     if (slot === 4 && elements.has(main.key) && !avatar.elem && avatar.id !== 10000128) {
-      throw new Missing("缺少角色元素，无法识别元素伤害杯");
+      throw new Missing($t("panel.artifact-score.text_a46088f7aa"));
     }
     const key = slot === 4 && (avatar.elem === main.key || avatar.id === 10000128) && main.key !== "recharge" ? "dmg" : main.key;
     const best = attributes[optimal]?.fixWeight ?? 0;
@@ -247,7 +250,7 @@ function rate(piece: RatingInput, slot: number, attributes: Readonly<Record<stri
     raw += contribution;
     return { ...attr, contribution: contribution * shownScale };
   });
-  if (ceiling <= 0) throw new Missing("这套旧评分规则没有有效词条权重");
+  if (ceiling <= 0) throw new Missing($t("panel.artifact-score.text_33eda6a9f9"));
   const coefficient = (1 + trim) / 2;
   const score = Math.min(70, raw * coefficient / ceiling * 66);
   // The legacy detail column shows a main-stat preview independently of the score formula above.
@@ -262,8 +265,8 @@ function rate(piece: RatingInput, slot: number, attributes: Readonly<Record<stri
 export function scoreArtifacts(avatar: PanelAvatar, lolomi = damageSettings.lolomiartis): ArtifactScore {
   try {
     const metadata = characters[String(avatar.id)];
-    if (!metadata) throw new Missing("缺少此角色的旧版评分资料");
-    if (!Object.keys(avatar.artis).length) throw new Missing("未能获得圣遗物详情，请重新获取面板信息后查看");
+    if (!metadata) throw new Missing($t("panel.artifact-score.text_020b530cf5"));
+    if (!Object.keys(avatar.artis).length) throw new Missing($t("panel.artifact-score.text_17236aee3c"));
     const inputs = Object.fromEntries(Object.entries(avatar.artis).map(([slot, item]) => [slot, requirements(item, slot)]));
     const config = selectRule(avatar, inputs, metadata.abbr, lolomi);
     const attr = weights(config, metadata.baseAttr);

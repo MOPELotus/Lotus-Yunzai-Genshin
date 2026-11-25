@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { Canvas } from "skia-canvas";
 import { renderGenshinCardForChat } from "../card-render.ts";
@@ -19,7 +22,7 @@ const width = 600, left = 10, tableWidth = width - 25;
 const gold = "#d3bc8e";
 const number = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 1 });
 const totalDamage = (value: number | undefined) => value === undefined ? "—" :
-  value >= 10_000 ? `${Math.round(value / 1_000) / 10}万` : String(value);
+  value >= 10_000 ? $t("panel.team-damage-card.text_b2e8dfa288", { "value1": Math.round(value / 1_000) / 10 }) : String(value);
 
 export function teamDamagePages(card: TeamDamageCard) {
   const pages: DetailPage[] = [];
@@ -64,24 +67,24 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
   const tables: Table[] = [];
   const details: Table[] = [];
   if (overview) {
-    tables.push({ header: ["总伤害", "DPS", "时间", "评级"],
+    tables.push({ header: [$t("panel.team-damage-card.text_a3c16bf938"), "DPS", $t("panel.team-damage-card.text_8b6ff49851"), $t("panel.team-damage-card.text_0cc6b0da25")],
       rows: [[totalDamage(result.total), result.dps || "—", result.seconds ? `${result.seconds}s` : "—", result.rank || "—"]] });
-    tables.push({ header: ["#", "角色", "等级 / 命座", "装备"], faces, widths: [28, 160, 100, tableWidth - 288],
-      rows: members.map((member, index) => [index + 1, member.name, `Lv.${member.level} · ${member.cons}命`,
-        `${member.weapon}\nLv.${member.weaponLevel} · ${member.weaponAffix}精炼`]) });
+    tables.push({ header: ["#", $t("panel.team-damage-card.text_c47b54e84e"), $t("panel.team-damage-card.text_17c9e0b75f"), $t("panel.team-damage-card.text_144a327039")], faces, widths: [28, 160, 100, tableWidth - 288],
+      rows: members.map((member, index) => [index + 1, member.name, $t("panel.team-damage-card.text_9aed0b10e2", { "level": member.level, "cons": member.cons }),
+        $t("panel.team-damage-card.text_bc476f09ea", { "weapon": member.weapon, "weaponLevel": member.weaponLevel, "weaponAffix": member.weaponAffix })]) });
     if (members.length) {
-      tables.push({ header: ["面板属性", ...members.map(member => member.name)], widths: [110, ...members.map(() => (tableWidth - 110) / members.length)],
+      tables.push({ header: [$t("panel.team-damage-card.text_40f5aab11c"), ...members.map(member => member.name)], widths: [110, ...members.map(() => (tableWidth - 110) / members.length)],
         rows: members[0]!.stats.map(([name], i) => [name, ...members.map(member => member.stats[i]?.[1])]) });
     }
     if (result.contributions.length) {
       const sum = result.contributions.reduce((total, row) => total + row.value, 0);
-      tables.push({ header: ["伤害贡献", "伤害", "占比"], rows: result.contributions.map(row =>
+      tables.push({ header: [$t("panel.team-damage-card.text_9970928ac0"), $t("panel.team-damage-card.text_30e1196888"), $t("panel.team-damage-card.text_cc87b27b64")], rows: result.contributions.map(row =>
         [row.name, number(row.value), `${sum ? (row.value / sum * 100).toFixed(1) : "0"}%`]) });
     }
   }
-  if (page?.timeline.length) details.push({ header: ["时间", "动作", "伤害"], widths: [65, 185, tableWidth - 250],
+  if (page?.timeline.length) details.push({ header: [$t("panel.team-damage-card.text_8b6ff49851"), $t("panel.team-damage-card.text_be37d84119"), $t("panel.team-damage-card.text_30e1196888")], widths: [65, 185, tableWidth - 250],
     rows: page.timeline.map(row => [`${row.time}s`, row.action, row.values]) });
-  if (page?.buffs.length) details.push({ header: ["时间", "增益", "说明"], widths: [65, 185, tableWidth - 250],
+  if (page?.buffs.length) details.push({ header: [$t("panel.team-damage-card.text_8b6ff49851"), $t("panel.team-damage-card.text_76d70b2006"), $t("panel.team-damage-card.text_4262c45dc7")], widths: [65, 185, tableWidth - 250],
     rows: page.buffs.map(row => [`${row.time}s`, row.name, row.detail]) });
 
   const measureContext = new Canvas(1, 1).getContext("2d");
@@ -137,7 +140,7 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
       ctx.save(); ctx.beginPath(); ctx.roundRect(left, top, tableWidth, height, 10); ctx.clip();
       ctx.fillStyle = "#00000080"; ctx.fillRect(left, top, tableWidth, height);
       ctx.fillStyle = "#0006"; ctx.fillRect(left, top, tableWidth, titleHeight);
-      drawText(ctx, "输出手法", left + 20, top + 10, 20, gold);
+      drawText(ctx, $t("panel.team-damage-card.text_1611050fd8"), left + 20, top + 10, 20, gold);
       drawText(ctx, "•", left + 15, top + titleHeight + 10, 14, "#fff");
       lines.forEach((line, i) => drawText(ctx, line, left + 40, top + titleHeight + 10 + i * 22, 14, "#fff"));
       ctx.restore();
@@ -162,15 +165,15 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
     ctx.save();
     if (back || cover) { ctx.shadowColor = "#000"; ctx.shadowBlur = 2; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1; }
     const titleColor = back || cover ? "#fff" : "#252521";
-    drawText(ctx, "原神队伍伤害", 35, 30, 36, titleColor, "left", titleFont);
-    drawText(ctx, `UID ${card.uid} · 档案 ${card.profileId}${totalPages > 1 ? ` · ${pageNumber}/${totalPages}` : ""}`, 35, 75, 16, titleColor);
+    drawText(ctx, $t("panel.team-damage-card.text_faf5c83475"), 35, 30, 36, titleColor, "left", titleFont);
+    drawText(ctx, $t("panel.team-damage-card.text_823d985155", { "uid": card.uid, "profileId": card.profileId, "value3": totalPages > 1 ? ` · ${pageNumber}/${totalPages}` : "" }), 35, 75, 16, titleColor);
     ctx.restore();
     drawings.forEach(draw => draw(ctx));
     ctx.save();
     if (back) { ctx.shadowColor = "#000"; ctx.shadowBlur = 2; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1; }
     const footerColor = back ? "#fff" : "#35342f";
-    drawText(ctx, "数据来源：提瓦特小助手", width / 2, cursor + 15, 12, footerColor, "center");
-    drawText(ctx, "Lotus-Yunzai", width / 2, cursor + 33, 12, "#fff", "center");
+    drawText(ctx, $t("panel.team-damage-card.text_afcff200b1"), width / 2, cursor + 15, 12, footerColor, "center");
+    drawText(ctx, $t("panel.team-damage-card.text_3867834e77"), width / 2, cursor + 33, 12, "#fff", "center");
     ctx.restore();
   }, mode, { displayWidth: 720, inlineImageByteLimit, signal });
 }

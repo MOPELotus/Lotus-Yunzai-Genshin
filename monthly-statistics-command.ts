@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import type { createGenshinMonthlyArchive } from "./monthly-archive.ts";
@@ -17,12 +20,12 @@ type StatisticsContext = Parameters<ReturnType<typeof import("./monthly-command.
 type Archive = Pick<ReturnType<typeof createGenshinMonthlyArchive>, "read" | "record">;
 
 function formatStatistics(model: GenshinMonthlyStatistics) {
-  return [`${model.period.year ? `${model.period.year}年` : "最近12个月"}原石统计 · UID ${model.uid}`,
-    `已归档 ${model.months.length}/${model.period.expectedMonths} 个月`,
-    `总原石：${model.primogems ?? "—"}（约 ${model.primogems === undefined ? "—" : (model.primogems / 160).toFixed(0)} 抽）`,
-    `总摩拉：${model.mora ?? "—"}`,
+  return [$t("monthly-statistics-command.text_413958d223", { "value1": model.period.year ? $t("monthly-statistics-command.text_c0bb9ad757", { "year": model.period.year }) : $t("monthly-statistics-command.text_bed98211d5"), "uid": model.uid }),
+    $t("monthly-statistics-command.text_1f27e2d0bd", { "length": model.months.length, "expectedMonths": model.period.expectedMonths }),
+    $t("monthly-statistics-command.text_a08c7b4c45", { "value1": model.primogems ?? "—", "value2": model.primogems === undefined ? "—" : (model.primogems / 160).toFixed(0) }),
+    $t("monthly-statistics-command.text_e467509620", { "value1": model.mora ?? "—" }),
     ...model.months.map(({ year, finalized, snapshot }) =>
-      `${year}年${snapshot.month}月：原石 ${snapshot.primogems ?? "—"}，摩拉 ${snapshot.mora ?? "—"}${finalized ? "" : "（未汇总完整）"}`),
+      $t("monthly-statistics-command.text_de912287a9", { "year": year, "month": snapshot.month, "value3": snapshot.primogems ?? "—", "value4": snapshot.mora ?? "—", "value5": finalized ? "" : $t("monthly-statistics-command.text_b8cdc5b399") })),
     ...model.sources.map(({ name, total }) => `${name}：${total}`),
   ].join("\n");
 }
@@ -30,7 +33,7 @@ function formatStatistics(model: GenshinMonthlyStatistics) {
 export function createGenshinStatisticsQuery(profiles: GenshinRoleProfiles,
   client: Pick<ReturnType<typeof createProfileHoyoClient>, "fetchGenshinMonthly">, archive: Archive,
   lifecycle: AbortSignal, { now = Date.now, render = renderGenshinStatistics } = {}) {
-  const changed = "原神档案已变化，请重新查询原石统计。";
+  const changed = $t("monthly-statistics-command.text_81df13b959");
 
   return async ({ selection, profileId }: NonNullable<ReturnType<typeof matchGenshinStatistics>>, context: StatisticsContext) => {
     const { user_id: user, self_id: self, message_type: scene, message } = context;
@@ -38,12 +41,12 @@ export function createGenshinStatisticsQuery(profiles: GenshinRoleProfiles,
     if (signal.aborted) return;
     if (context.isDelegated || (scene !== "private" && scene !== "group") || !Number.isSafeInteger(user) ||
         !user || user < 1 || user === self || (Array.isArray(message) && message.some(part => part.type === "at" && String(part.qq) !== String(self)))) {
-      return "请从本人 QQ 会话查询原石统计。";
+      return $t("monthly-statistics-command.text_8b6ba801bc");
     }
-    if (profileId < 1 || profileId > MAX_PROFILE_ID) return `档案编号须为 1–${MAX_PROFILE_ID}。`;
+    if (profileId < 1 || profileId > MAX_PROFILE_ID) return $t("monthly-statistics-command.text_68901e8078", { "MAX_PROFILE_ID": MAX_PROFILE_ID });
     const time = now();
     const period = genshinStatisticsPeriod(time, selection);
-    if (!period) return "请指定原神上线至今年之间的年份。";
+    if (!period) return $t("monthly-statistics-command.text_5ba113bcf5");
     const qq = String(user);
     try {
       const { source, accountId } = await ownedGenshinRole(profiles, qq, profileId);
@@ -72,7 +75,7 @@ export function createGenshinStatisticsQuery(profiles: GenshinRoleProfiles,
           } catch (error) {
             if (error instanceof HoyoRequestError && error.code === "profile-changed") return changed;
             await verify();
-            failed = error instanceof GameRecordRequestError || error instanceof HoyoRequestError ? error.message : "本次未能更新米游社数据。";
+            failed = error instanceof GameRecordRequestError || error instanceof HoyoRequestError ? error.message : $t("monthly-statistics-command.text_68a9ba153a");
             break;
           }
           revision = live.revision;
@@ -83,7 +86,7 @@ export function createGenshinStatisticsQuery(profiles: GenshinRoleProfiles,
                 async () => { await verify(); });
             } catch {
               await verify();
-              failed = "本次札记数据未能保存到本地档案。";
+              failed = $t("monthly-statistics-command.text_776e2e7791");
               break;
             }
           }
@@ -92,20 +95,20 @@ export function createGenshinStatisticsQuery(profiles: GenshinRoleProfiles,
       const saved = selection ? initial : await archive.read(identity);
       await verify();
       const model = buildGenshinStatistics(uid, saved, period);
-      if (!model) return failed ?? `${period.year ? `${period.year}年` : "最近12个月"}暂无原石统计存档。可先查询 #原石。`;
+      if (!model) return failed ?? $t("monthly-statistics-command.text_577d74b585", { "value1": period.year ? $t("monthly-statistics-command.text_c0bb9ad757", { "year": period.year }) : $t("monthly-statistics-command.text_bed98211d5") });
       const card = await render(model, { signal, inlineImageByteLimit: context.inlineImageByteLimit }).catch(() => undefined);
       await verify();
       const image = card ? { type: "image" as const, file: card.png } : formatStatistics(model);
-      return failed ? [image, failed + " 已显示本地存档。"] as const : image;
+      return failed ? [image, failed + $t("monthly-statistics-command.text_972cd578cc")] as const : image;
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
         if (error.code === "changed") return changed;
-        if (error.code === "missing" || error.code === "login-required") return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 没有已同步的原神角色。`;
-        if (error.code === "invalid") return "档案的登录凭据与账号不一致，请重新登录。";
+        if (error.code === "missing" || error.code === "login-required") return $t("monthly-statistics-command.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("monthly-statistics-command.text_147d603571", { "profileId": profileId });
+        if (error.code === "invalid") return $t("monthly-statistics-command.text_dbd093cee6");
       }
-      return "暂时无法读取原石统计存档，请稍后重试。";
+      return $t("monthly-statistics-command.text_1a130a09e4");
     }
   };
 }

@@ -1,10 +1,13 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import type { CommandReply } from "../../../lib/commands.ts";
 import type { MessageEvent } from "../../../lib/messages.ts";
 import { resolveGenshinCharacter } from "../rank-statistics/stats.ts";
 import { renderVoiceList, voiceTitles } from "./card.ts";
 import { createVoiceSource, type CharacterVoices, type VoiceLanguage } from "./source.ts";
 
-export const genshinVoiceFeature = "[genshin] 角色语音";
+export const genshinVoiceFeature = $t("voice.command.text_9004d20a0d");
 export type VoiceContext = Partial<Pick<MessageEvent,
   "sub_type" | "self_id" | "group_id" | "user_id" | "message" | "reply_id" | "lookupMediaReply" |
   "groupActivitySignal" | "privateCredentialSignal" | "inlineImageByteLimit" | "isDelegated"
@@ -13,8 +16,8 @@ export type VoiceContext = Partial<Pick<MessageEvent,
   readonly isBotMaster?: (id: number) => boolean; };
 
 const phraseLanguages: Readonly<Record<string, VoiceLanguage>> = {
-  汉语: "汉语", 汉文: "汉语", 中文: "汉语", 华语: "汉语",
-  日语: "日语", 日文: "日语", 英语: "英语", 英文: "英语", 外语: "英语", 韩语: "韩语", 韩文: "韩语",
+  汉语: $t("voice.command.text_65312c5c6c"), 汉文: $t("voice.command.text_65312c5c6c"), 中文: $t("voice.command.text_65312c5c6c"), 华语: $t("voice.command.text_65312c5c6c"),
+  日语: $t("voice.command.text_3a944ddb38"), 日文: $t("voice.command.text_3a944ddb38"), 英语: $t("voice.command.text_d1648bacbc"), 英文: $t("voice.command.text_d1648bacbc"), 外语: $t("voice.command.text_d1648bacbc"), 韩语: $t("voice.command.text_259cdcf751"), 韩文: $t("voice.command.text_259cdcf751"),
 };
 const languagePattern = Object.keys(phraseLanguages).join("|");
 const selectionPattern = new RegExp(`^(?:([1-9][0-9]{0,2})(?:\\s*(${languagePattern}))?|(${languagePattern})\\s*([1-9][0-9]{0,2}))$`, "u");
@@ -24,7 +27,7 @@ const directNumberBefore = /^(#)(原神)?([^#\s\p{Cc}\p{Cf}0-9]{1,24}?)([1-9][0-
 
 function selection(value: string) {
   const match = selectionPattern.exec(value);
-  return match && { index: Number(match[1] ?? match[4]) - 1, language: phraseLanguages[match[2] ?? match[3] ?? "汉语"]! };
+  return match && { index: Number(match[1] ?? match[4]) - 1, language: phraseLanguages[match[2] ?? match[3] ?? $t("voice.command.text_65312c5c6c")]! };
 }
 
 type Action = { readonly kind: "clear" | "catalog" }
@@ -99,17 +102,17 @@ export function createCharacterVoiceCommands(signal: AbortSignal, {
 
   async function play(data: CharacterVoices, index: number, language: VoiceLanguage, active: AbortSignal, context: VoiceContext) {
     const line = data.lines[index];
-    if (!line?.title) return "这个编号没有可用语音，请按列表中的编号重试。";
+    if (!line?.title) return $t("voice.command.text_95f077dc3e");
     const clip = line.clips[language];
-    if (!clip) return `该语音暂无${language}音频。`;
+    if (!clip) return $t("voice.command.text_82ec9e0e93", { "language": language });
     const audio = await source.audio(clip, active).catch(() => undefined);
     if (active.aborted) return [];
-    if (!audio) return "暂时无法读取该条角色语音。";
+    if (!audio) return $t("voice.command.text_788570b4aa");
     const title = `${data.name} · ${index + 1}. ${line.title} · ${language}`;
     const said = await Promise.resolve(context.reply(title + (clip.text ? "\n" + clip.text : ""))).catch(() => false);
     if (active.aborted || said !== true) return [];
     const sent = await Promise.resolve(context.reply({ type: "record", file: audio })).catch(() => false);
-    return sent === true || active.aborted ? [] : "语音送达未确认，请在当前会话查看。";
+    return sent === true || active.aborted ? [] : $t("voice.command.text_130def3ae3");
   }
 
   return {
@@ -124,13 +127,13 @@ export function createCharacterVoiceCommands(signal: AbortSignal, {
       if (live.aborted) return [];
       const active = AbortSignal.any([live, AbortSignal.timeout(12_000)]);
       if (action.kind === "clear") {
-        if (!context.user_id || !context.isBotMaster?.(context.user_id)) return "只有当前机器人的主人可以清理语音列表缓存。";
+        if (!context.user_id || !context.isBotMaster?.(context.user_id)) return $t("voice.command.text_311978537f");
         for (const key of receipts.keys()) if (key.startsWith(room.name + ":")) receipts.delete(key);
         source.clear();
-        return "已清理当前会话的语音列表缓存。";
+        return $t("voice.command.text_627bf13788");
       }
       if (action.kind === "quote" && receipt) {
-        if (receipt.day !== cacheDay(now())) return "这张语音列表已过期，请重新查询。";
+        if (receipt.day !== cacheDay(now())) return $t("voice.command.text_f9fb5f9cd9");
         const quote = await context.lookupMediaReply?.(active).catch(() => undefined);
         if (live.aborted) return [];
         if (quote?.user_id !== room.bot || quote.message.length !== 1 || quote.message[0]?.type !== "image") return;
@@ -139,7 +142,7 @@ export function createCharacterVoiceCommands(signal: AbortSignal, {
       if (action.kind === "catalog") {
         const catalog = await source.catalog(active).catch(() => undefined);
         if (live.aborted) return [];
-        if (!catalog) return "暂时无法读取原神角色语音目录。";
+        if (!catalog) return $t("voice.command.text_3b52743fa0");
         return Array.from(catalog.keys()).join("、");
       }
       if (action.kind !== "character") return;
@@ -149,16 +152,16 @@ export function createCharacterVoiceCommands(signal: AbortSignal, {
       if (!role && !action.explicit) return;
       const data = await source.character(role?.name ?? action.name, active).catch(() => undefined);
       if (live.aborted) return [];
-      if (!data) return "暂时无法读取这个原神角色的语音列表。";
+      if (!data) return $t("voice.command.text_6c9a2164b2");
       if (action.selection) return play(data, action.selection.index, action.selection.language, active, context);
       if (action.random) {
         const available = data.lines.flatMap((line, index) => line.clips.汉语 ? [index] : []);
-        if (!available.length) return "该角色暂无汉语音频。";
-        return play(data, available[Math.floor(Math.random() * available.length)]!, "汉语", active, context);
+        if (!available.length) return $t("voice.command.text_d7ab885f2d");
+        return play(data, available[Math.floor(Math.random() * available.length)]!, $t("voice.command.text_65312c5c6c"), active, context);
       }
       const image = await render(data.name, voiceTitles(data), { signal: active, inlineImageByteLimit: context.inlineImageByteLimit }).catch(() => undefined);
       if (live.aborted) return [];
-      if (!image) return "暂时无法生成语音列表图片。";
+      if (!image) return $t("voice.command.text_595ada5a71");
       return { type: "delivery", message: { type: "image", file: image.png }, onDelivered(confirmed) {
         const id = messageId(confirmed, room.milky);
         if (id === undefined || live.aborted) return;

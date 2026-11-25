@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 // Month mapping and roster rules follow MIT Miao-Plugin 2860761836069af80bacee5cb85b6dd2e91ea0b0, apps/profile/ProfileStat.js.
 import { fileURLToPath } from "node:url";
 import { createAtlasRuntimeCatalog } from "@lotus-yunzai/atlas/catalog";
@@ -10,8 +13,8 @@ const elements = new Map([
 ]);
 const knownElementsKeys = new Set(elements.values());
 const bossActs = new Map([
-  ["第三幕", "第三幕"], ["第六幕", "第六幕"], ["第八幕", "第八幕"], ["第十幕", "第十幕"],
-  ["圣牌一", "圣牌挑战 I"], ["圣牌二", "圣牌挑战 II"],
+  ["第三幕", $t("panel.theater-statistics.text_b16420e17e")], ["第六幕", $t("panel.theater-statistics.text_25b0c6cabc")], ["第八幕", $t("panel.theater-statistics.text_6b807c2cb3")], ["第十幕", $t("panel.theater-statistics.text_877001e388")],
+  ["圣牌一", $t("panel.theater-statistics.text_ec5e44e3a3")], ["圣牌二", $t("panel.theater-statistics.text_965920886e")],
 ]);
 const manekins = new Set([10000117, 10000118]);
 
@@ -61,8 +64,8 @@ export function selectTheaterStatistics(snapshot: PanelSnapshot, theme: PanelThe
       const star = whole(meta?.star, 5);
       return name && knownElementsKeys.has(elem) && star ? [{ id, name, elem, star }] : [];
     });
-  const opening = knownRoles("开幕角色");
-  const invited = knownRoles("特邀角色");
+  const opening = knownRoles($t("panel.theater-statistics.text_8bd1d453a7"));
+  const invited = knownRoles($t("panel.theater-statistics.text_175721fa68"));
   if (!knownElements.length || !opening.length || !invited.length) return;
 
   const roster = new Map(Object.values(snapshot.avatars)
@@ -80,9 +83,9 @@ export function selectTheaterStatistics(snapshot: PanelSnapshot, theme: PanelThe
   const avatars = [...roster.values()].filter(({ id, elem, level }) =>
     level >= 70 && !manekins.has(id) && (invitedIds.has(id) || allowed.has(elem)));
   const information = [
-    `限制元素：${knownElements.map(({ name }) => name).join("、")}`,
-    `开幕角色：${opening.map(({ name }) => name).join("、")}`,
-    `特邀角色：${invited.map(({ name }) => name).join("、")}`,
+    $t("panel.theater-statistics.text_d3304fa5e7", { "value1": knownElements.map(({ name }) => name).join("、") }),
+    $t("panel.theater-statistics.text_e644ea72ac", { "value1": opening.map(({ name }) => name).join("、") }),
+    $t("panel.theater-statistics.text_2623f91622", { "value1": invited.map(({ name }) => name).join("、") }),
     ...[...bossActs].flatMap(([act, label]) => {
       const enemies = theater.acts.find(({ name }) => name === act)?.enemies;
       return enemies?.length ? [`${label}：${enemies.map(({ name }) => name).join("、")}`] : [];

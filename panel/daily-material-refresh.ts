@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import type { ProfileRequestContext } from "@lotus-yunzai/account";
 import { HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -23,7 +26,7 @@ export interface DailyMaterialClient {
 
 export function createDailyMaterialRefresh(directory: string, lock: AcquireRoleArchiveLock, client: DailyMaterialClient, now: () => number) {
   const archive = createRoleJsonArchive(join(directory, "daily-materials"), lock,
-    { subject: "原神每日素材角色", lockSuffix: "daily-materials", maxBytes: 1024 * 1024, rejectNull: true });
+    { subject: $t("panel.daily-material-refresh.text_bbbd60b78b"), lockSuffix: "daily-materials", maxBytes: 1024 * 1024, rejectNull: true });
   const pending = new Map<string, Promise<{ snapshot?: PanelSnapshot; revision: string }>>();
 
   return async (source: ProfileRequestContext, accountId: string, assets: PanelTheme, local: PanelSnapshot | undefined,

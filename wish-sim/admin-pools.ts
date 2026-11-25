@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { isDeepStrictEqual } from "node:util";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -65,11 +68,11 @@ export async function readWishAdminCatalogue() {
       const resolved = requested.map(name => {
         if (pool.available.has(name)) return name;
         const result = validWishPoolName(name) && resolveGenshinCatalogTarget(name, pool.source);
-        if (!result || result === "ambiguous") throw new TypeError(`无法确认「${name}」对应的卡池物品或星级。`);
+        if (!result || result === "ambiguous") throw new TypeError($t("wish-sim.admin-pools.text_067aeefd9e", { "name": name }));
         return result.name;
       });
       if (pool.stock.length && pool.stock.every(name => resolved.includes(name))) {
-        throw new TypeError("请在对应星级保留至少一项常规卡池物品。");
+        throw new TypeError($t("wish-sim.admin-pools.text_676d38ea79"));
       }
       return resolved;
     },
@@ -79,7 +82,7 @@ export async function readWishAdminCatalogue() {
         const count = poolTypes[key].count;
         const reserved = stock.length <= count ? stock[0] : undefined;
         const available = [...all].filter(name => name !== reserved);
-        if (available.length < count) throw new TypeError("本机卡池目录没有足够的不同物品用于随机生成。");
+        if (available.length < count) throw new TypeError($t("wish-sim.admin-pools.text_8218286fff"));
         return [key, Array.from({ length: count }, () => available.splice(Math.floor(random() * available.length), 1)[0]!)];
       }));
     },

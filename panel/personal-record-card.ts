@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { builtinResourceDirectory } from "../../../lib/builtin-resources.ts";
 import { createHash, randomInt } from "node:crypto";
@@ -109,7 +112,7 @@ export async function renderPersonalOverview(model: PersonalOverview, theme: Pan
     ctx.roundRect(25, 205, 365, 233, 10);
     ctx.stroke();
     fill(ctx, "#d4b98c", [10, 198, 82, 25], 9);
-    type("数据总览", 51, 215, 14, 72);
+    type($t("panel.personal-record-card.text_3c5118f194"), 51, 215, 14, 72);
     model.rows.forEach((row, r) => row.forEach(([label, value], c) => {
       const x = 25 + (c + 0.5) * 365 / row.length;
       type(value, x, 250 + r * 53, 22, 56);
@@ -133,17 +136,17 @@ export async function renderPersonalOverview(model: PersonalOverview, theme: Pan
       type(`Lv ${avatar.level}`, x + 30, y + 174, 15, 61, "#1e1f20");
       if (avatar.cons) {
         fill(ctx, consColour[avatar.cons]!, [x, y + 140, 38, 17], 2);
-        type(`${avatar.cons}命`, x + 18, y + 154, 13, 35);
+        type($t("panel.personal-record-card.text_3ef457527a", { "cons": avatar.cons }), x + 18, y + 154, 13, 35);
       }
     });
-    type("Lotus-Yunzai", 812, 454, 11, 100, "#fff", "right");
+    type($t("panel.personal-record-card.text_3867834e77"), 812, 454, 11, 100, "#fff", "right");
   }, mode);
 }
 
 function activeSince(days: number | undefined) {
   if (!days) return "";
   const y = Math.floor(days / 365), m = Math.floor(days % 365 / 30.41), d = Math.floor(days % 365 % 30.41);
-  return [y && `${y}年`, m && `${m}个月`, d && `${d}天`].filter(Boolean).join("");
+  return [y && $t("panel.personal-record-card.text_6a7d8ebcda", { "y": y }), m && $t("panel.personal-record-card.text_27f77a3866", { "m": m }), d && $t("panel.personal-record-card.text_ddf93a56c6", { "d": d })].filter(Boolean).join("");
 }
 
 function rosterPortraitName(theme: PanelTheme, hint: PanelSnapshot["rosterFace"]) {
@@ -237,8 +240,8 @@ export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readon
     const nick = overview?.name ?? `#${snapshot.uid}`;
     type(`${nick}${overview?.level && overview.level > 1 ? ` Lv.${overview.level}` : ""}`, 111, 65, 24, 240, "#414e64", "left");
     type(`#${snapshot.uid} ${activeSince(overview?.days)}`, 111, 91, 16, 245, "#414e64", "left");
-    const metrics = [["成就", overview?.achievement], ["锚点", overview?.waypoint],
-      ["角色", Math.max(overview?.avatarCount ?? 0, count)], ["五星角色", fiveStars], ["金卡总数", gold]]
+    const metrics = [[$t("panel.personal-record-card.text_52b0e1703d"), overview?.achievement], [$t("panel.personal-record-card.text_1821ae192b"), overview?.waypoint],
+      [$t("panel.personal-record-card.text_c47b54e84e"), Math.max(overview?.avatarCount ?? 0, count)], [$t("panel.personal-record-card.text_6c7911d1da"), fiveStars], [$t("panel.personal-record-card.text_d2d186f90c"), gold]]
       .filter(([, value]) => value !== undefined && value !== 0);
     const options = metrics.map((_, i) => i === 0 || i === metrics.length - 1 ? 80 : 70);
     const statWidth = options.reduce((sum, value) => sum + value, 0);
@@ -259,7 +262,7 @@ export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readon
 
     let y = 125;
     if (!overview) {
-      type("当前展示本人本地档案，信息可能不完整", width / 2, 136, 13, 680);
+      type($t("panel.personal-record-card.text_9518eff3ea"), width / 2, 136, 13, 680);
       y += 24;
     }
     if (overview && hasAreas) {
@@ -295,7 +298,7 @@ export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readon
     crop(ctx, 10, [15, gridTop, 710, noticeTop + 35 - gridTop]);
     fill(ctx, "#0008", [15, gridTop, 710, noticeTop + 35 - gridTop]);
     fill(ctx, "#0006", [15, gridTop, 710, 36]);
-    type(pages > 1 ? `角色列表 · ${page}/${pages}` : "角色列表", 30, gridTop + 24, 16, 300, "#d3bc8e", "left");
+    type(pages > 1 ? $t("panel.personal-record-card.text_c515094d3c", { "page": page, "pages": pages }) : $t("panel.personal-record-card.text_83be44950d"), 30, gridTop + 24, 16, 300, "#d3bc8e", "left");
     rows.forEach((row, index) => {
       const [portrait, weapon, relics] = mini[index]!;
       const x = 28 + index % columns * 115, top = gridTop + 49 + Math.floor(index / columns) * rowHeight;
@@ -323,7 +326,7 @@ export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readon
         fill(ctx, talent?.original === 10 ? "#d3bc8e" : "#d3d1c7", [tx, top + 110, 27, 24], 4);
         type(talent?.level, tx + 13.5, top + 128, 17, 26, talent && talent.level > talent.original ? "#0284b9" : "#222");
       });
-      else type("暂无天赋数据", x + 52, top + 127, 13, 96, "#6c6c66");
+      else type($t("panel.personal-record-card.text_8110e9898a"), x + 52, top + 127, 13, 96, "#6c6c66");
 
       if (row.weapon) {
         const star = rarityImage(row.weapon.star);
@@ -351,18 +354,18 @@ export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readon
     });
     fill(ctx, "#0008", [15, noticeTop, 710, 35]);
     if (profile || mys) {
-      const timestamps: [string, string][] = [["数据更新时间", "#d3bc8e"]];
-      if (profile) timestamps.push([`   #更新面板：${profile}`, "#aaa"]);
-      if (mys) timestamps.push([`   米游社：${mys}`, "#aaa"]);
+      const timestamps: [string, string][] = [[$t("panel.personal-record-card.text_d3f348a8d6"), "#d3bc8e"]];
+      if (profile) timestamps.push([$t("panel.personal-record-card.text_fb3d58c5b9", { "profile": profile }), "#aaa"]);
+      if (mys) timestamps.push([$t("panel.personal-record-card.text_498f979c81", { "mys": mys }), "#aaa"]);
       ctx.font = `600 12px ${family}`;
       let x = 710 - timestamps.reduce((sum, [label]) => sum + ctx.measureText(label).width, 0);
       for (const [label, colour] of timestamps) {
         type(label, x, noticeTop + 23, 12, 690, colour, "left");
         x += ctx.measureText(label).width;
       }
-    } else type("暂无数据更新时间，可使用 #更新面板 刷新角色资料。", 710, noticeTop + 23, 12, 680, "#aaa", "right");
+    } else type($t("panel.personal-record-card.text_879e2c0bb9"), 710, noticeTop + 23, 12, 680, "#aaa", "right");
     ctx.restore();
-    type("Lotus-Yunzai", 375, height - 23, 14, 170, "#fff");
+    type($t("panel.personal-record-card.text_3867834e77"), 375, height - 23, 14, 170, "#fff");
   };
   const displayWidth = 1036;
   if (scale !== 2) return renderGenshinCardForChat(width, height, draw, mode, { displayWidth, inlineImageByteLimit, signal });
@@ -370,7 +373,7 @@ export async function renderPersonalRoster(snapshot: PanelSnapshot, rows: readon
   const result = await renderGenshinCard(width, height, draw, mode, { displayWidth, scale });
   signal?.throwIfAborted();
   if (inlineImageByteLimit !== undefined && result.png.byteLength > inlineImageByteLimit) {
-    throw new ImageSizeLimitError("原神角色名单分片超过当前会话的单图大小上限。");
+    throw new ImageSizeLimitError($t("panel.personal-record-card.text_e38883806c"));
   }
   return result;
 }

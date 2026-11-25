@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { fileURLToPath } from "node:url";
 import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -25,7 +28,7 @@ export function matchGenshinShowcase(message: string) {
     const profileId = uid && selected === undefined ? 1 : gameCommandProfileId("gs", selected);
     return { uid, profileId, explicitProfile: selected !== undefined };
   }
-  if (reserved.test(normalized)) return "用法：#展板更新面板 [UID] [档案编号]" as const;
+  if (reserved.test(normalized)) return $t("panel.showcase-command.text_f7c80d20d1");
   const named = namedShowcase.exec(normalized);
   const characterName = named?.[1]?.trim();
   if (characterName) return { characterName, uid: undefined, profileId: gameCommandProfileId("gs", named?.[2]), explicitProfile: !!named?.[2] };
@@ -57,58 +60,58 @@ export function createGenshinShowcaseCommand(profiles: GenshinRoleProfiles, lock
     const user = context.user_id;
     if (!user || !Number.isSafeInteger(user) || user < 1 || context.isDelegated ||
         (context.message_type !== "group" && context.message_type !== "private")) {
-      return "请在本人 QQ 会话中查询原神公开展板。";
+      return $t("panel.showcase-command.text_b1aeeab3a3");
     }
     const { uid, profileId, explicitProfile } = command;
-    if (profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (profileId > MAX_PROFILE_ID) return $t("panel.showcase-command.text_3dd62228d2");
     const signal = context.privateCredentialSignal ? AbortSignal.any([lifecycle, context.privateCredentialSignal]) : lifecycle;
     const qq = String(user);
     try {
       // An explicitly supplied UID is independently public. A profile selector is always verified.
       const bound = uid && !explicitProfile ? undefined : await profiles.savedRole(qq, profileId, "gs");
-      if (uid && bound && uid !== bound.uid) return "指定 UID 必须与当前档案选中的原神角色一致。";
-      if (!uid && !bound) return "请先绑定档案的原神 UID。";
+      if (uid && bound && uid !== bound.uid) return $t("panel.showcase-command.text_5f487760db");
+      if (!uid && !bound) return $t("panel.showcase-command.text_40a96aadfb");
       const target = genshinShowcaseTarget(bound ?? { uid: uid!, region: "", gameBiz: "" }, await readSelector());
       async function verify() {
         signal.throwIfAborted();
         if (bound) {
           const latest = await profiles.savedRole(qq, profileId, "gs").catch(() => undefined);
           if (!latest || latest.uid !== bound.uid || latest.region !== bound.region || latest.gameBiz !== bound.gameBiz) {
-            throw new ProfileError("changed", "原神档案已变化。");
+            throw new ProfileError("changed", $t("panel.showcase-command.text_f5ed9a42ca"));
           }
         }
         signal.throwIfAborted();
       }
       const baseline = await storage.baseline(qq, target.uid);
-      await context.reply(`正在通过 ${showcaseNames[target.provider]} 查询公开展板，仅发送游戏 UID。`);
+      await context.reply($t("panel.showcase-command.text_f6eebec5ff", { "value1": showcaseNames[target.provider] }));
       await verify();
       const requestedAt = Date.now();
       const result = await fetchShowcase(target, signal, { fresh: true });
       await verify();
       const assets = await theme();
       const snapshot = await decodeGenshinShowcaseResponse(target, result, assets);
-      if (!snapshot) return "游戏内没有可读取的公开展板角色，请检查是否展示角色详情。已有面板已保留。";
+      if (!snapshot) return $t("panel.showcase-command.text_d484c5a803");
       const written = await storage.replace(qq, snapshot, baseline, verify);
-      if (!written) return "原神公开展板已变更，请重新查询。";
+      if (!written) return $t("panel.showcase-command.text_835aee3e29");
       const avatars = Object.values(snapshot.avatars).sort((a, b) =>
         (b.star ?? 0) - (a.star ?? 0) || b.level - a.level || b.id - a.id);
       if (groupRank && bound && !uid && !("characterName" in command)) {
         await groupRank.register(context, profileId, bound, requestedAt, async () => {
-          if (!await isCurrent()) throw new ProfileError("changed", "原神公开展板已变更。");
+          if (!await isCurrent()) throw new ProfileError("changed", $t("panel.showcase-command.text_8c0520198c"));
         }).catch(() => undefined);
       }
       try {
         const { png } = await render(snapshot, avatars, assets, { updated: true, profileId });
         await verify();
         if (!await isCurrent()) {
-          return "原神公开展板已变更，请重新查询。";
+          return $t("panel.showcase-command.text_835aee3e29");
         }
         return { type: "image", file: png } as const;
       } catch (error) {
         if (error instanceof ProfileError) throw error;
         await verify();
-        if (!await isCurrent()) return "原神公开展板已变更，请重新查询。";
-        return `UID ${target.uid} · 公开展板已更新 · ${avatars.map(avatar => avatar.name).join("、")}`;
+        if (!await isCurrent()) return $t("panel.showcase-command.text_835aee3e29");
+        return $t("panel.showcase-command.text_81fb82f1fc", { "uid": target.uid, "value2": avatars.map(avatar => avatar.name).join("、") });
       }
       async function isCurrent() {
         const current = await storage.baseline(qq, target.uid);
@@ -118,12 +121,12 @@ export function createGenshinShowcaseCommand(profiles: GenshinRoleProfiles, lock
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "changed") return "原神档案已变化，请重新查询公开展板。";
+        if (error.code === "changed") return $t("panel.showcase-command.text_208180797e");
         if (["missing", "role-missing", "login-required"].includes(error.code)) {
-          return `档案 ${profileId} 未绑定原神 UID。如需查询公开角色，请使用 #展板更新面板 UID。`;
+          return $t("panel.showcase-command.text_1609db87d6", { "profileId": profileId });
         }
       }
-      return error instanceof GenshinShowcaseError ? error.message : "原神公开展板暂时无法更新，请稍后重试。";
+      return error instanceof GenshinShowcaseError ? error.message : $t("panel.showcase-command.text_0456c6df6c");
     }
   };
 }

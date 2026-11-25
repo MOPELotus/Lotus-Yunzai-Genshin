@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { genshinGachaTimestamp } from "./gacha-detail.ts";
 import { alias as knownCharacterAliases } from "./panel/miao/character-alias.ts";
 
@@ -11,13 +14,13 @@ const versionToken = new RegExp(`^${versionPattern}$`, "u");
 const itemCommand = /^#(原神)?([^#]{1,64}?)卡池(详情|详细)?$/u;
 const reprintCommand = /^#(原神)?([^\s#]{1,64}?)复刻$/u;
 const permanentCharacters = new Set(["安柏", "凯亚", "丽莎", "刻晴", "莫娜", "七七", "迪卢克", "琴", "提纳里", "迪希雅", "梦见月瑞希"]);
-const mixedNames = new Map([["2024-03-13", "晨风之诗"], ["2025-01-21", "玉岩之忆"]]);
+const mixedNames = new Map([["2024-03-13", $t("gacha-pool.text_835dbded03")], ["2025-01-21", $t("gacha-pool.text_b683da5b99")]]);
 const halfOrder = { 下半: 1, 上半: 0, 中场: 0, "": 0 } as const;
 const groups = [
-  { key: "char5", type: "character", star: 5, title: "五星角色" },
-  { key: "char4", type: "character", star: 4, title: "四星角色" },
-  { key: "weapon5", type: "weapon", star: 5, title: "五星武器" },
-  { key: "weapon4", type: "weapon", star: 4, title: "四星武器" },
+  { key: "char5", type: "character", star: 5, title: $t("gacha-pool.text_6c7911d1da") },
+  { key: "char4", type: "character", star: 4, title: $t("gacha-pool.text_2ae9e8f1f1") },
+  { key: "weapon5", type: "weapon", star: 5, title: $t("gacha-pool.text_77eeb23906") },
+  { key: "weapon4", type: "weapon", star: 4, title: $t("gacha-pool.text_2388a52b6d") },
 ] as const;
 const dayMs = 86_400_000;
 const safeName = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= 64 &&
@@ -81,8 +84,8 @@ function times(from: unknown, to: unknown): PoolTimes {
   const rawFrom = typeof from === "string" ? from.trim() : "";
   const rawTo = typeof to === "string" ? to.trim() : "";
   const startedAt = timestamp(rawFrom), endedAt = timestamp(rawTo);
-  if (startedAt !== undefined && endedAt !== undefined && startedAt > endedAt) return { from: "未知", to: "未知" };
-  return { from: startedAt === undefined ? "未知" : rawFrom, to: endedAt === undefined ? "未知" : rawTo, startedAt, endedAt };
+  if (startedAt !== undefined && endedAt !== undefined && startedAt > endedAt) return { from: $t("gacha-pool.text_4d8c1c5b42"), to: $t("gacha-pool.text_4d8c1c5b42") };
+  return { from: startedAt === undefined ? $t("gacha-pool.text_4d8c1c5b42") : rawFrom, to: endedAt === undefined ? $t("gacha-pool.text_4d8c1c5b42") : rawTo, startedAt, endedAt };
 }
 
 function period(input: unknown, isMix: boolean, names: (name: string, type: ItemType) => string): Period | undefined {
@@ -116,14 +119,14 @@ function reprintInfo(periods: readonly Period[], now: number): PoolReprint | und
   for (const pool of periods) {
     const { startedAt, endedAt } = pool;
     if (startedAt === undefined || endedAt === undefined || startedAt > now) continue;
-    if (endedAt >= now) return { up: true, days: 0, text: "该角色/武器正在UP" };
+    if (endedAt >= now) return { up: true, days: 0, text: $t("gacha-pool.text_76977879b7") };
     lastEnd = Math.max(lastEnd ?? endedAt, endedAt);
   }
   const lastKnownEnd = lastEnd;
   if (lastKnownEnd === undefined || periods.some(({ startedAt, endedAt }) => (startedAt ?? -Infinity) <= now &&
       (endedAt ?? Infinity) > lastKnownEnd && (startedAt === undefined || endedAt === undefined))) return;
   const days = Math.floor((now - lastKnownEnd) / dayMs);
-  return { up: false, days, text: `该角色/武器已 ${days} 天未复刻` };
+  return { up: false, days, text: $t("gacha-pool.text_236a3fcfdf", { "days": days }) };
 }
 
 const normalizeName = (name: string) => name.normalize("NFKC").replace(/[\s·・]/gu, "").toLowerCase();
@@ -174,14 +177,14 @@ function poolHistory(sources: PublicPoolSources) {
 
 function legacyReprintStatus(period: Period, now: number) {
   const { startedAt, endedAt } = period;
-  if (startedAt === undefined || endedAt === undefined) return "暂无法确认复刻时间。";
+  if (startedAt === undefined || endedAt === undefined) return $t("gacha-pool.text_b521c5b127");
   const chinaDay = (time: number) => Math.floor((time + 8 * 3_600_000) / dayMs);
   const today = chinaDay(now);
   const until = chinaDay(endedAt) - today;
-  if (until < 0) return `${-until}天未复刻`;
+  if (until < 0) return $t("gacha-pool.text_d7693df1b7", { "value1": -until });
   const before = chinaDay(startedAt) - today;
-  if (before > 0) return `下期UP，还有${before}天开启卡池`;
-  return `当期UP，${until ? `还有${until}天` : "今天"}结束卡池`;
+  if (before > 0) return $t("gacha-pool.text_3a82d6e00c", { "before": before });
+  return $t("gacha-pool.text_cd98cf1512", { "value1": until ? $t("gacha-pool.text_10ee5798a5", { "until": until }) : $t("gacha-pool.text_d5f5a7a010") });
 }
 
 export function buildGenshinReprint(query: NonNullable<ReturnType<typeof matchGenshinReprint>>, sources: PublicPoolSources, now: number) {
@@ -190,36 +193,36 @@ export function buildGenshinReprint(query: NonNullable<ReturnType<typeof matchGe
   const roleID = /^\d{8}$/u.test(roleAlias) ? [...sources.characters.values()].find(item => String(item.id) === roleAlias)?.name : undefined;
   const role = roleAlias && resolveGenshinCatalogTarget(roleID ?? roleAlias, sources, history);
   const item = role && role !== "ambiguous" && role.type === "character" ? role : resolveGenshinCatalogTarget(query.name, sources, history);
-  if (item === "ambiguous") return "有多个原神角色或武器匹配，请使用完整名称查询复刻。";
-  if (!item) return query.explicit ? `未找到 ${query.name} 的复刻信息。` : undefined;
-  if (item.type === "character" && permanentCharacters.has(item.name)) return "常驻角色不支持查询";
+  if (item === "ambiguous") return $t("gacha-pool.text_e23f914bec");
+  if (!item) return query.explicit ? $t("gacha-pool.text_358d1b8102", { "name": query.name }) : undefined;
+  if (item.type === "character" && permanentCharacters.has(item.name)) return $t("gacha-pool.text_169eb52154");
   const matched = history.filter(pool => groups.some(group => group.type === item.type && pool.membership[group.key].includes(item.name)))
     .sort((a, b) => (b.startedAt ?? -Infinity) - (a.startedAt ?? -Infinity) || (a.endedAt ?? Infinity) - (b.endedAt ?? Infinity));
-  if (!matched.length) return query.explicit ? `未找到 ${item.name} 的复刻信息。` : undefined;
+  if (!matched.length) return query.explicit ? $t("gacha-pool.text_358d1b8102", { "name": item.name }) : undefined;
   const pools = matched.map(({ version, half, name, from, to, membership, isMix }) => {
     const featured = (star: 4 | 5) => groups.filter(group => group.star === star && (isMix || group.type === item.type))
       .flatMap(({ key }) => membership[key]).join("，");
     const five = featured(5), four = featured(4);
-    return [`所属版本：${version}${half ? ` ${half}` : ""}${isMix ? " · 集录" : ""}`,
-      name && `卡池名称：${name.replaceAll("|", "，")}`, five && `五星UP：${five}`, four && `四星UP：${four}`,
-      `开始时间：${from}`, `结束时间：${to}`].filter(Boolean).join("\n");
+    return [$t("gacha-pool.text_f80372100b", { "version": version, "value2": half ? ` ${half}` : "", "value3": isMix ? $t("gacha-pool.text_f6ae18e3cc") : "" }),
+      name && $t("gacha-pool.text_34723fb7a9", { "value1": name.replaceAll("|", "，") }), five && $t("gacha-pool.text_144a4f2d5d", { "five": five }), four && $t("gacha-pool.text_72179c9f0c", { "four": four }),
+      $t("gacha-pool.text_a0169e92ef", { "from": from }), $t("gacha-pool.text_7ed2671010", { "to": to })].filter(Boolean).join("\n");
   });
-  return { type: "forward" as const, nodes: [`${item.name}卡池详情`, legacyReprintStatus(matched[0]!, now), ...pools] };
+  return { type: "forward" as const, nodes: [$t("gacha-pool.text_df9624fa97", { "name": item.name }), legacyReprintStatus(matched[0]!, now), ...pools] };
 }
 
 export function buildGenshinPublicPool(query: Exclude<GenshinPoolQuery, { type: "help" }>, sources: PublicPoolSources,
   now: number): GenshinPoolModel | { readonly message: string } | undefined {
   const history = poolHistory(sources);
   const item = query.type === "item" ? resolveGenshinCatalogTarget(query.name, sources, history) : undefined;
-  if (item === "ambiguous") return { message: "有多个原神角色或武器匹配，请使用完整名称查询卡池。" };
+  if (item === "ambiguous") return { message: $t("gacha-pool.text_fea12c228e") };
   if (query.type === "item" && !item && !query.explicitlyGenshin) return;
   const matching = history.filter(pool => query.type === "version"
     ? pool.version === query.version && (!query.half || pool.half === query.half)
     : item && groups.some(group => group.type === item.type && pool.membership[group.key].includes(item.name)));
   if (!matching.length) {
     if (query.type === "item" && !query.explicitlyGenshin) return;
-    const name = query.type === "version" ? `原神${query.version}${query.half ?? ""}` : query.name;
-    return { message: `未找到 ${name} 的卡池信息` };
+    const name = query.type === "version" ? $t("gacha-pool.text_d9238959e5", { "version": query.version, "value2": query.half ?? "" }) : query.name;
+    return { message: $t("gacha-pool.text_4ccf72686b", { "name": name }) };
   }
   const pools: CardPool[] = matching.sort((a, b) => compareVersions(a.version, b.version) || halfOrder[b.half] - halfOrder[a.half])
     .map(({ version, half, isMix, from, to, membership }) => ({ version, half, isMix, from, to, groups: groups.flatMap(group => {

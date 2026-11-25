@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import type { TeamDamageArtifact, TeamDamagePayload, TeamDamageRole } from "@lotus-yunzai/hoyo-client";
 import { readTeamPanelProperties } from "./damage.ts";
 import { artifactStatRecord, object, text, type Json, type PanelAvatar } from "./model.ts";
@@ -5,17 +8,17 @@ import { panelTalentLevels } from "./talent-levels.ts";
 import type { PanelTheme } from "./theme.ts";
 
 const stats = {
-  def: "防御力", defPlus: "防御力", hp: "生命值", hpPlus: "生命值", atk: "攻击力", atkPlus: "攻击力", recharge: "元素充能效率",
-  mastery: "元素精通", cpct: "暴击率", cdmg: "暴击伤害", heal: "治疗加成", pyro: "火", hydro: "水", cryo: "冰", electro: "雷",
-  anemo: "风", geo: "岩", phy: "物理", dendro: "草",
+  def: $t("panel.team-damage-model.text_1cb579e6ba"), defPlus: $t("panel.team-damage-model.text_1cb579e6ba"), hp: $t("panel.team-damage-model.text_1a256e6376"), hpPlus: $t("panel.team-damage-model.text_1a256e6376"), atk: $t("panel.team-damage-model.text_b84ee11f4f"), atkPlus: $t("panel.team-damage-model.text_b84ee11f4f"), recharge: $t("panel.team-damage-model.text_8d3b6cfa30"),
+  mastery: $t("panel.team-damage-model.text_7dca37c2aa"), cpct: $t("panel.team-damage-model.text_d4b0baf955"), cdmg: $t("panel.team-damage-model.text_15bccc3951"), heal: $t("panel.team-damage-model.text_6f2eca7102"), pyro: $t("panel.team-damage-model.text_d4cfe8c82c"), hydro: $t("panel.team-damage-model.text_327b54d04f"), cryo: $t("panel.team-damage-model.text_ce1b850700"), electro: $t("panel.team-damage-model.text_5de1b913e7"),
+  anemo: $t("panel.team-damage-model.text_be65bd5518"), geo: $t("panel.team-damage-model.text_9638a2a0f9"), phy: $t("panel.team-damage-model.text_a454f17872"), dendro: $t("panel.team-damage-model.text_91b246b5db"),
 } as const;
-const slots = ["生之花", "死之羽", "时之沙", "空之杯", "理之冠"];
+const slots = [$t("panel.team-damage-model.text_e45345201e"), $t("panel.team-damage-model.text_adf91db091"), $t("panel.team-damage-model.text_be1d0fee1b"), $t("panel.team-damage-model.text_30da915e81"), $t("panel.team-damage-model.text_a2c8b90550")];
 const flat = new Set(["hpPlus", "atkPlus", "defPlus", "mastery"]);
 const pct = (value: number) => `${round1(value)}%`;
 const round1 = (value: number) => Math.round(value * 10) / 10;
 const attrLabel = (name: string) => stats[name as keyof typeof stats] ?? name;
 const attrValue = ({ key, value }: { key: string; value: number }) => `${value.toFixed(1)}${flat.has(key) ? "" : "%"}`;
-const unavailable = (name: string) => new TypeError(`当前档案的 ${name} 缺少可核对的武器、天赋或圣遗物数值，请先使用 #更新面板。`);
+const unavailable = (name: string) => new TypeError($t("panel.team-damage-model.text_e842a3b1fb", { "name": name }));
 
 const regions: Readonly<Record<string, string>> = { cn_gf01: "cn_gf01", cn_qd01: "cn_qd01",
   os_usa: "us", os_euro: "eur", os_asia: "asia", os_cht: "hk" };
@@ -59,7 +62,7 @@ async function convert(uid: string, avatar: PanelAvatar, theme: PanelTheme) {
   const elemental = (key: string) => pct(avatar.elem === key ? properties.dmg : 0);
   const wire: TeamDamageRole = {
     uid, role: avatar.name, role_class: cons, level: avatar.level, weapon: weapon.name, weapon_level: weapon.level,
-    weapon_class: `精炼${weapon.affix}阶`,
+    weapon_class: $t("panel.team-damage-model.text_6963fe7f05", { "affix": weapon.affix }),
     hp: Math.round(properties.hp), base_hp: Math.round(properties.hpBase),
     attack: Math.round(properties.atk), base_attack: Math.round(properties.atkBase),
     defend: Math.round(properties.def), base_defend: Math.round(properties.defBase),
@@ -72,15 +75,15 @@ async function convert(uid: string, avatar: PanelAvatar, theme: PanelTheme) {
   };
   const member: TeamMember = {
     id: avatar.id, name: avatar.name, level: avatar.level, cons, weapon: weapon.name, weaponLevel: weapon.level, weaponAffix: weapon.affix,
-    stats: [["暴击率", wire.crit], ["暴击伤害", wire.crit_dmg], ["生命值", wire.hp], ["攻击力", wire.attack], ["防御力", wire.defend],
-      ["元素精通", wire.element], ["治疗加成", wire.heal], ["元素充能效率", wire.recharge]],
+    stats: [[$t("panel.team-damage-model.text_d4b0baf955"), wire.crit], [$t("panel.team-damage-model.text_15bccc3951"), wire.crit_dmg], [$t("panel.team-damage-model.text_1a256e6376"), wire.hp], [$t("panel.team-damage-model.text_b84ee11f4f"), wire.attack], [$t("panel.team-damage-model.text_1cb579e6ba"), wire.defend],
+      [$t("panel.team-damage-model.text_7dca37c2aa"), wire.element], [$t("panel.team-damage-model.text_6f2eca7102"), wire.heal], [$t("panel.team-damage-model.text_8d3b6cfa30"), wire.recharge]],
   };
   return { member, wire };
 }
 
 export async function buildTeamDamagePayload(uid: string, region: string, selected: readonly PanelAvatar[], theme: PanelTheme) {
   const server = teamDamageServer(uid, region);
-  if (!server) throw new TypeError("原神档案的 UID 与区服不一致。");
+  if (!server) throw new TypeError($t("panel.team-damage-model.text_7829a70972"));
   const roles = await Promise.all(selected.map(avatar => convert(uid, avatar, theme)));
   const payload: TeamDamagePayload = { uid, server, role_data: roles.map(row => row.wire) };
   return { payload, members: roles.map(row => row.member) };
@@ -96,7 +99,7 @@ function decimal(value: unknown) {
 const rows = (value: unknown, max: number) => {
   if (value === undefined) return [];
   if (!Array.isArray(value) || value.length > max || value.some(row => !object(row))) {
-    throw new TypeError("提瓦特小助手返回了无效的队伍计算数据。");
+    throw new TypeError($t("panel.team-damage-model.text_420f6670d8"));
   }
   return value.map(item => object(item)!);
 };
@@ -109,11 +112,11 @@ export function parseTeamDamageResult(raw: Json, members: readonly TeamMember[])
   const contributions = rows(raw.chart_data, 16).map(row => {
     const [name, amount] = String(row.name ?? "").split("\n");
     const value = decimal(amount);
-    if (!name || !names.has(name) || value === undefined) throw new TypeError("提瓦特小助手返回了无效的队伍伤害占比。");
+    if (!name || !names.has(name) || value === undefined) throw new TypeError($t("panel.team-damage-model.text_1b7fa6c858"));
     return { name, value: Math.round(value) };
   }).sort((a, b) => b.value - a.value);
   for (const row of rows(raw.role_list, 16)) {
-    if (!names.has(text(row.role))) throw new TypeError("提瓦特小助手返回了其他队伍角色。");
+    if (!names.has(text(row.role))) throw new TypeError($t("panel.team-damage-model.text_d2a3afe2a0"));
   }
   const total = declaredTotal !== undefined ? Math.round(declaredTotal) :
     contributions.length ? contributions.reduce((sum, row) => sum + row.value, 0) : undefined;
@@ -121,7 +124,7 @@ export function parseTeamDamageResult(raw: Json, members: readonly TeamMember[])
   const dpsValue = valueText(raw.zdl_result);
   const dps = /\d/u.test(dpsValue) ? dpsValue : "";
   const rank = valueText(raw.zdl_tips2) || dps;
-  if (total === undefined && !dps) throw new TypeError("提瓦特小助手没有返回可显示的队伍伤害。");
+  if (total === undefined && !dps) throw new TypeError($t("panel.team-damage-model.text_0e20c6ad48"));
   const actions = typeof raw.combo_intro === "string" ? raw.combo_intro.split(",").map(text).filter(Boolean).slice(0, 80) : [];
   const timeline = rows(raw.advice, 500).flatMap(row => {
     const content = text(row.content);

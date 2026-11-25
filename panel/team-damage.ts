@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { ProfileError } from "@lotus-yunzai/account";
 import { HoyoRequestError, readGenshinTeamDamage } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
@@ -10,12 +13,12 @@ import { buildTeamDamagePayload, parseTeamDamageResult, type TeamDamageResult } 
 import { readPanelTheme } from "./theme.ts";
 
 const help = [
-  "#队伍伤害神鹤万心 或 #队伍伤害 神里绫华 申鹤 万叶 心海",
-  "#队伍伤害详情3 雷九万班 查询本人档案 3，可用「过程」或「全图」查看时间线。",
-  "可在队名前填写该档案已绑定的原神 UID，查询该角色的面板。",
-  "省略角色时取本人已有的前四份面板。队伍伤害由提瓦特小助手计算，发送前会先告知资料范围。",
+  $t("panel.team-damage.text_7fc18280dc"),
+  $t("panel.team-damage.text_8903948c71"),
+  $t("panel.team-damage.text_909f8bdced"),
+  $t("panel.team-damage.text_ddd07c4343"),
 ].join("\n");
-const localUnavailable = "当前配置要求本地队伍伤害，但原神队伍伤害使用提瓦特小助手。需要恢复原远端计算时，请移除 LOTUS_GENSHIN_GCSIM_MODE=local 或改为 legacy，再重启。";
+const localUnavailable = $t("panel.team-damage.text_ea7263a1a5");
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Context = { readonly user_id?: number; readonly message_type?: string; readonly isDelegated?: boolean;
   readonly privateCredentialSignal?: AbortSignal; readonly inlineImageByteLimit?: number;
@@ -40,7 +43,7 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
     }
     const { user_id: user, message_type: scene } = context;
     if (context.isDelegated || (scene !== "private" && scene !== "group") || !user || !Number.isSafeInteger(user) || user < 1) {
-      return "请在本人 QQ 会话中查询原神队伍伤害。";
+      return $t("panel.team-damage.text_e0d94f5b1f");
     }
     let command;
     try { command = parseTeamDamage(message); }
@@ -57,9 +60,9 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
       const { source, accountId } = await resolveRole();
       const { uid, region, gameBiz } = source.role;
       const expectedGameBiz = region.startsWith("os_") ? "hk4e_global" : "hk4e_cn";
-      if (gameBiz !== expectedGameBiz) return "原神档案的 UID 与区服不一致。";
+      if (gameBiz !== expectedGameBiz) return $t("panel.team-damage.text_7829a70972");
       const key = `${qq}:${profileId}:${uid}`;
-      if (pending.has(key)) return "当前档案的原神队伍伤害正在计算。";
+      if (pending.has(key)) return $t("panel.team-damage.text_10df844aec");
       pending.add(key);
       try {
         async function verify() {
@@ -67,7 +70,7 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
           const latest = await resolveRole().catch(() => undefined);
           if (latest?.accountId !== accountId || latest.source.revision !== source.revision || latest.source.role.uid !== uid ||
             latest.source.role.region !== region || latest.source.role.gameBiz !== gameBiz) {
-            throw new ProfileError("changed", "原神队伍伤害档案已变化。");
+            throw new ProfileError("changed", $t("panel.team-damage.text_db0b545af3"));
           }
           signal.throwIfAborted();
         }
@@ -75,7 +78,7 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
         try {
           assets = await theme();
           const snapshot = await archive.readPanel(qq, uid, assets, false, accountId);
-          if (!snapshot) return "当前档案没有原神角色面板，请先使用 #更新面板。";
+          if (!snapshot) return $t("panel.team-damage.text_24e0fe5400");
           team = selectTeam(command.tokens, snapshot, assets.customAliases);
           ({ members, payload } = await buildTeamDamagePayload(uid, region, team, assets));
         } catch (error) {
@@ -85,8 +88,8 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
         await verify();
         let result: TeamDamageResult;
         try {
-          const note = `正在使用提瓦特小助手（api.lelaer.com）计算档案 ${profileId} 的队伍伤害。将发送本人的原神 UID、区服和 ${members.map(member => member.name).join("、")} 的等级、天赋、属性与配装。`;
-          if (!await sendConfirmed(context, note)) return "队伍伤害的来源提示未能送出，请重试。";
+          const note = $t("panel.team-damage.text_079bae878b", { "profileId": profileId, "value2": members.map(member => member.name).join("、") });
+          if (!await sendConfirmed(context, note)) return $t("panel.team-damage.text_0feb7b8f66");
           await verify();
           result = parseTeamDamageResult(await request(payload, { signal }), members);
         } catch (error) {
@@ -107,7 +110,7 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
           }
           const pages = teamDamagePages(card);
           const count = pages.length;
-          if (count < 2) throw new ImageSizeLimitError("图片超过当前会话的单图大小上限。");
+          if (count < 2) throw new ImageSizeLimitError($t("panel.team-damage.text_8140b8068f"));
           for (let index = 0; index < count; index++) {
             await verify();
             const { png } = await render(card, assets, { ...imageOptions, page: pages[index], pageNumber: index + 1,
@@ -115,28 +118,28 @@ export function createTeamDamageQuery(profiles: GenshinRoleProfiles, archive: Pi
             await verify();
             const image: Image = { type: "image", file: png };
             if (index + 1 === count) return image;
-            if (!await sendConfirmed(context, image)) return "队伍伤害图片未能送出，请重新查询。";
+            if (!await sendConfirmed(context, image)) return $t("panel.team-damage.text_b1f03b84bb");
           }
         } catch (error) {
           if (error instanceof ProfileError || signal.aborted) throw error;
-          const lines = [`原神队伍伤害 · ${members.map(member => member.name).join(" / ")}`,
-            `总伤害 ${result.total ?? "—"} · DPS ${result.dps || "—"} · 时间 ${result.seconds ? `${result.seconds} 秒` : "—"} · 评级 ${result.rank || "—"}`,
+          const lines = [$t("panel.team-damage.text_bb74ce8772", { "value1": members.map(member => member.name).join(" / ") }),
+            $t("panel.team-damage.text_d536bf79f8", { "value1": result.total ?? "—", "value2": result.dps || "—", "value3": result.seconds ? $t("panel.team-damage.text_622b117f29", { "seconds": result.seconds }) : "—", "value4": result.rank || "—" }),
             ...result.contributions.map(row => `${row.name} ${row.value}`),
-            "数据来源：提瓦特小助手"];
+            $t("panel.team-damage.text_afcff200b1")];
           return lines.join("\n");
         }
       } finally { pending.delete(key); }
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "changed") return "原神档案已变化，请重新查询队伍伤害。";
-        if (["missing", "login-required"].includes(error.code)) return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return requestedUid ? "此 UID 与当前档案绑定的原神角色不一致。" :
-          `档案 ${profileId} 没有已同步的原神角色。`;
-        if (error.code === "invalid") return "档案的登录凭据与账号不一致，请重新登录。";
+        if (error.code === "changed") return $t("panel.team-damage.text_37ec13bdd2");
+        if (["missing", "login-required"].includes(error.code)) return $t("panel.team-damage.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return requestedUid ? $t("panel.team-damage.text_be2f3f1646") :
+          $t("panel.team-damage.text_147d603571", { "profileId": profileId });
+        if (error.code === "invalid") return $t("panel.team-damage.text_dbd093cee6");
       }
       if (error instanceof HoyoRequestError) return error.message;
-      return "暂时无法计算原神队伍伤害。";
+      return $t("panel.team-damage.text_10dcc5aefe");
     }
   };
 }

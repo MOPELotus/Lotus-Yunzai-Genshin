@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../../packages/i18n/index.ts";
+import messageCatalog from "../../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { fileURLToPath } from "node:url";
 import { object, text, type Json, type PanelAvatar } from "../model.ts";
 import { nativeRules } from "./sources.ts";
@@ -17,7 +20,7 @@ export { nativeAttr, nativeCalc };
 const step = (start: number, delta = start / 4) =>
   Array.from({ length: 6 }, (_, index) => start + (delta || start / 4) * index);
 const staticStep = (key: string, start: number, delta?: number) => ({
-  title: `${key}提高[key]`, isStatic: true, refine: { [key]: step(start, delta) },
+  title: $t("panel.lolomi.native.text_13b0add08b", { "key": key }), isStatic: true, refine: { [key]: step(start, delta) },
 });
 const weaponEffects: Readonly<Record<string, unknown>> = Object.assign({}, ...[bow, catalyst, claymore, polearm, sword]
   .map(factory => factory(step, staticStep)));

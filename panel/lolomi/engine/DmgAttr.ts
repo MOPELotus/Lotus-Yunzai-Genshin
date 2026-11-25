@@ -1,4 +1,7 @@
 // @ts-nocheck — Fixed upstream formula source. The module adapter validates inputs and outputs.
+import { createTranslator as createTextTranslator } from "../../../../../packages/i18n/index.ts";
+import messageCatalog from "../../../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 /*
 * 迁移 miao-plugin models/dmg/DmgAttr.js
 * */
@@ -184,10 +187,10 @@ let DmgAttr = {
 
       if (buff.mastery) {
         let mKey = {
-          vaporize: '蒸发', melt: '融化', swirl: '扩散'
+          vaporize: $t("panel.lolomi.engine.DmgAttr.text_d8c812aa9f"), melt: $t("panel.lolomi.engine.DmgAttr.text_3ad2d041d4"), swirl: $t("panel.lolomi.engine.DmgAttr.text_46f1d54dc9")
         }
         let mKey2 = {
-          aggravate: '超激化', spread: '蔓激化'
+          aggravate: $t("panel.lolomi.engine.DmgAttr.text_9278c673c4"), spread: $t("panel.lolomi.engine.DmgAttr.text_6e8c43a177")
         }
 
         let mastery = Math.max(0, attr.mastery.base + attr.mastery.plus)

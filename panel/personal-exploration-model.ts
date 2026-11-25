@@ -1,21 +1,24 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gameRegionDisplayName, normalizeProfileRoleArtworkUrl } from "@lotus-yunzai/account";
 import type { GenshinGcgSummary } from "@lotus-yunzai/hoyo-client";
 import { object, text, whole, type Json } from "./model.ts";
 
-const areaNames = ["", "蒙德", "璃月", "雪山", "稻妻", "渊下宫", "层岩巨渊", "层岩地下", "须弥", "枫丹", "沉玉谷",
-  "来歆山", "沉玉谷·南陵", "沉玉谷·上谷", "旧日之海", "纳塔", "远古圣山", "挪德卡莱", "风息山", "空之神殿", "至冬"];
+const areaNames = ["", $t("panel.personal-exploration-model.text_6b557bf926"), $t("panel.personal-exploration-model.text_8c78af3e64"), $t("panel.personal-exploration-model.text_c3bb797acf"), $t("panel.personal-exploration-model.text_0b93dbd19e"), $t("panel.personal-exploration-model.text_d900657a10"), $t("panel.personal-exploration-model.text_a1bd8fdfe6"), $t("panel.personal-exploration-model.text_667ceed3b1"), $t("panel.personal-exploration-model.text_68335fcf17"), $t("panel.personal-exploration-model.text_e8ac469478"), $t("panel.personal-exploration-model.text_39e68359aa"),
+  $t("panel.personal-exploration-model.text_4134073dbf"), $t("panel.personal-exploration-model.text_7fc65b2835"), $t("panel.personal-exploration-model.text_ceb9b55aa8"), $t("panel.personal-exploration-model.text_f6767366e1"), $t("panel.personal-exploration-model.text_979954d006"), $t("panel.personal-exploration-model.text_0698ac5f5e"), $t("panel.personal-exploration-model.text_3e929dfa54"), $t("panel.personal-exploration-model.text_c6b49c1145"), $t("panel.personal-exploration-model.text_20a29b2435"), $t("panel.personal-exploration-model.text_488a37f68b")];
 const reputationAreas = new Set([1, 2, 4, 8, 9]);
 const offeringAreas = new Set([3, 4, 6, 8, 9, 10, 15, 19]);
 const nestedAreas: Readonly<Partial<Record<number, readonly number[]>>> = { 6: [7], 10: [13, 12, 11] };
 const hiddenAreas = new Set([7, 11, 12, 13]);
 const abyssDifficulty = ["I", "II", "III", "IV", "V", "VI"];
 const statsSources = {
-  common: ["普通宝箱", "common_chest_number", 3838], exquisite: ["精致宝箱", "exquisite_chest_number", 3372],
-  precious: ["珍贵宝箱", "precious_chest_number", 1073], luxurious: ["华丽宝箱", "luxurious_chest_number", 410],
-  magic: ["奇馈宝箱", "magic_chest_number", 416], anemo: ["风神瞳", "anemoculus_number", 66],
-  geo: ["岩神瞳", "geoculus_number", 131], electro: ["雷神瞳", "electroculus_number", 181],
-  dendro: ["草神瞳", "dendroculus_number", 271], hydro: ["水神瞳", "hydroculus_number", 271],
-  pyro: ["火神瞳", "pyroculus_number", 271], lunar: ["月神瞳", "moonoculus_number", 271],
+  common: [$t("panel.personal-exploration-model.text_91c08bdc15"), "common_chest_number", 3838], exquisite: [$t("panel.personal-exploration-model.text_768cb85062"), "exquisite_chest_number", 3372],
+  precious: [$t("panel.personal-exploration-model.text_fd3b6e8246"), "precious_chest_number", 1073], luxurious: [$t("panel.personal-exploration-model.text_d81eb1fbbf"), "luxurious_chest_number", 410],
+  magic: [$t("panel.personal-exploration-model.text_621866408b"), "magic_chest_number", 416], anemo: [$t("panel.personal-exploration-model.text_5a7b053454"), "anemoculus_number", 66],
+  geo: [$t("panel.personal-exploration-model.text_28e40752d0"), "geoculus_number", 131], electro: [$t("panel.personal-exploration-model.text_9041d1b550"), "electroculus_number", 181],
+  dendro: [$t("panel.personal-exploration-model.text_4430295157"), "dendroculus_number", 271], hydro: [$t("panel.personal-exploration-model.text_50a6059df0"), "hydroculus_number", 271],
+  pyro: [$t("panel.personal-exploration-model.text_d298290149"), "pyroculus_number", 271], lunar: [$t("panel.personal-exploration-model.text_ba87117a54"), "moonoculus_number", 271],
 } as const;
 const chestTypes = ["common", "exquisite", "precious", "luxurious", "magic"] as const;
 
@@ -57,7 +60,7 @@ export function buildPersonalExploration(uid: string, region: string, data: Json
     ? chests.reduce((sum, chest) => sum + Number(chest.value), 0) : undefined;
   const rate = totalChests === undefined ? undefined : Math.round(totalChests * 10_000 / maxChests) / 100;
   const [grade, color] = rate === undefined ? ["", undefined] : score(rate);
-  const acquisition: ExplorationMetric = { label: "宝箱获取率", value: grade === "D" ? grade : rate === undefined ? undefined : `${grade}[${rate}%]`, color };
+  const acquisition: ExplorationMetric = { label: $t("panel.personal-exploration-model.text_701c00340b"), value: grade === "D" ? grade : rate === undefined ? undefined : `${grade}[${rate}%]`, color };
   const theatre = object(stats.role_combat);
   const hard = object(stats.hard_challenge);
   const turn = whole(theatre?.max_round_id, 99);
@@ -66,25 +69,25 @@ export function buildPersonalExploration(uid: string, region: string, data: Json
   const avatarCount = count("avatar_number");
 
   const rows: (readonly ExplorationMetric[])[] = [
-    [metric("活跃天数", count("active_day_number"), Math.floor((now - Date.UTC(2020, 8, 15)) / 86_400_000) + 1),
-      metric("深境螺旋", name(stats.spiral_abyss) || undefined),
-      metric("幻想真境剧诗", theatre?.is_unlock === false ? "未解锁" : theatre?.has_detail_data && turn !== undefined
-        ? `第${turn}幕${medals ? ` 圣牌${medals}` : ""}` : undefined),
-      metric("幽境危战", hard?.is_unlock === false ? "未解锁" : hard?.has_data && difficulty
+    [metric($t("panel.personal-exploration-model.text_829827347a"), count("active_day_number"), Math.floor((now - Date.UTC(2020, 8, 15)) / 86_400_000) + 1),
+      metric($t("panel.personal-exploration-model.text_82f72c6585"), name(stats.spiral_abyss) || undefined),
+      metric($t("panel.personal-exploration-model.text_8cb870ae6a"), theatre?.is_unlock === false ? $t("panel.personal-exploration-model.text_308d62ba23") : theatre?.has_detail_data && turn !== undefined
+        ? $t("panel.personal-exploration-model.text_d9de113500", { "turn": turn, "value2": medals ? $t("panel.personal-exploration-model.text_db259684a6", { "medals": medals }) : "" }) : undefined),
+      metric($t("panel.personal-exploration-model.text_c3354e0ec8"), hard?.is_unlock === false ? $t("panel.personal-exploration-model.text_308d62ba23") : hard?.has_data && difficulty
         ? abyssDifficulty[difficulty - 1] : undefined)],
-    [metric("角色数", avatarCount, cap("avatar", 121)), metric("满好感角色", count("full_fetter_avatar_num"),
+    [metric($t("panel.personal-exploration-model.text_dc584a653c"), avatarCount, cap("avatar", 121)), metric($t("panel.personal-exploration-model.text_63f6f759c3"), count("full_fetter_avatar_num"),
       avatarCount !== undefined && avatarCount >= 3 ? avatarCount - 3 : undefined),
-      metric("传送点", count("way_point_number"), cap("way_point", 839)), metric("秘境", count("domain_number"), cap("domain", 74)),
-      metric("成就", count("achievement_number"), cap("achievement", 1844))],
-    [metric("宝箱总数", totalChests, maxChests), acquisition, ...chests.slice(0, 3)],
+      metric($t("panel.personal-exploration-model.text_9ae8a7ba33"), count("way_point_number"), cap("way_point", 839)), metric($t("panel.personal-exploration-model.text_61cc0e09df"), count("domain_number"), cap("domain", 74)),
+      metric($t("panel.personal-exploration-model.text_52b0e1703d"), count("achievement_number"), cap("achievement", 1844))],
+    [metric($t("panel.personal-exploration-model.text_07ee14024b"), totalChests, maxChests), acquisition, ...chests.slice(0, 3)],
     [...chests.slice(3), fromStats("anemo"), fromStats("geo"), fromStats("electro")],
     [fromStats("dendro"), fromStats("hydro"), fromStats("pyro"), fromStats("lunar"),
-      metric("冰神瞳", count("iceculus_number") ?? count("cryoculus_number"), cap("cryoculus", 140))],
+      metric($t("panel.personal-exploration-model.text_00aca78702"), count("iceculus_number") ?? count("cryoculus_number"), cap("cryoculus", 140))],
   ];
   const home = Array.isArray(data.homes) && object(data.homes[0]);
-  if (home) rows.push([metric("家园等级", whole(home.level, 10)), metric("最高仙力", whole(home.comfort_num, 100_000_000)),
-    metric("洞天名称", name(home.comfort_level_name) || undefined), metric("获得摆设", whole(home.item_num, 100_000_000)),
-    metric("历史访客", whole(home.visit_num, 100_000_000))]);
+  if (home) rows.push([metric($t("panel.personal-exploration-model.text_12291e5435"), whole(home.level, 10)), metric($t("panel.personal-exploration-model.text_0d3df62a9e"), whole(home.comfort_num, 100_000_000)),
+    metric($t("panel.personal-exploration-model.text_441c4c32b0"), name(home.comfort_level_name) || undefined), metric($t("panel.personal-exploration-model.text_36cf43c16e"), whole(home.item_num, 100_000_000)),
+    metric($t("panel.personal-exploration-model.text_fac827d9bd"), whole(home.visit_num, 100_000_000))]);
 
   const areas = new Map<number, Json>();
   const entries = Array.isArray(data.world_explorations) ? data.world_explorations.slice(0, 100) : [];
@@ -106,7 +109,7 @@ export function buildPersonalExploration(uid: string, region: string, data: Json
     const extras: ExplorationMetric[] = [];
     if (reputationAreas.has(id)) {
       const level = whole(row.level, 100);
-      if (level !== undefined) extras.push(metric("声望", `${level}级`));
+      if (level !== undefined) extras.push(metric($t("panel.personal-exploration-model.text_22cc9072ab"), $t("panel.personal-exploration-model.text_53b1d12334", { "level": level })));
     }
     details.push(...extras);
     for (const child of nestedAreas[id] ?? []) {
@@ -118,7 +121,7 @@ export function buildPersonalExploration(uid: string, region: string, data: Json
       const label = name(offering?.name, 22).replace(/^.*流明石.*$/u, "流明石").replace(/^.*摹忆中枢.*$/u, "摹忆中枢");
       const level = whole(offering?.level, 100);
       if (label && level !== undefined) {
-        const offering = metric(label, `${level}级`);
+        const offering = metric(label, $t("panel.personal-exploration-model.text_53b1d12334", { "level": level }));
         details.push(offering);
         extras.push(offering);
       }

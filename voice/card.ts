@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadImage } from "skia-canvas";
@@ -34,7 +37,7 @@ export async function renderVoiceList(name: string, lines: readonly string[], {
     ctx.fillStyle = "#18304d4d";
     ctx.fillRect(0, 0, width, height);
     const { write } = typeset(ctx, fonts);
-    write(`${name}语音列表`, width / 2, 59, 43, { bold: true, title: true, align: "center", maxWidth: width - 48 });
+    write($t("voice.card.text_3235af7555", { "name": name }), width / 2, 59, 43, { bold: true, title: true, align: "center", maxWidth: width - 48 });
     ctx.fillStyle = "#11192780";
     ctx.beginPath();
     ctx.roundRect(20, 85, width - 40, 34 * Math.ceil(lines.length / columns), 10);
@@ -45,12 +48,12 @@ export async function renderVoiceList(name: string, lines: readonly string[], {
       write(String(index + 1), x + 25, y, 20, { align: "center", color: "#ebd9aa" });
       write(title, x + 51, y, 20, { maxWidth: columnWidth - 60 });
     });
-    write("回复这张图的序号可播放汉语。也可回复「日语12」「13韩语」「英语15」。",
+    write($t("voice.card.text_2991d8f9fd"),
       28, height - 55, 20, { maxWidth: width - 56 });
-    write("Lotus-Yunzai", width / 2, height - 21, 15, { align: "center" });
+    write($t("voice.card.text_3867834e77"), width / 2, height - 21, 15, { align: "center" });
   }, mode, { signal, inlineImageByteLimit });
 }
 
 export function voiceTitles(data: CharacterVoices) {
-  return data.lines.map(line => line.title || "该编号暂无语音");
+  return data.lines.map(line => line.title || $t("voice.card.text_a219208fd4"));
 }

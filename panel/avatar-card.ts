@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { randomInt } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
@@ -15,28 +18,28 @@ import { createGenshinPanelArchive } from "./panel.ts";
 import { readPanelTheme, type PanelTheme } from "./theme.ts";
 
 const groups = {
-  wife: ["老婆", "媳妇", "妻子", "娘子", "宝贝"],
-  husband: ["老公", "丈夫", "夫君", "郎君", "死鬼"],
-  gf: ["女朋友", "女友", "女神", "女王", "女票"],
-  bf: ["男朋友", "男友", "男神", "男票"],
-  daughter: ["女儿", "闺女", "小宝贝"],
-  son: ["儿子", "犬子"],
+  wife: [$t("panel.avatar-card.text_120a3a2fc2"), $t("panel.avatar-card.text_37f445e6f5"), $t("panel.avatar-card.text_55c4fadb32"), $t("panel.avatar-card.text_c02bff4a89"), $t("panel.avatar-card.text_203f1a8259")],
+  husband: [$t("panel.avatar-card.text_19db0f2f50"), $t("panel.avatar-card.text_142646ce30"), $t("panel.avatar-card.text_a32044b30c"), $t("panel.avatar-card.text_12f0f16968"), $t("panel.avatar-card.text_32d796b4e7")],
+  gf: [$t("panel.avatar-card.text_f7d17744be"), $t("panel.avatar-card.text_08686931fa"), $t("panel.avatar-card.text_6752b062d6"), $t("panel.avatar-card.text_8655bf651c"), $t("panel.avatar-card.text_172dcbadb6")],
+  bf: [$t("panel.avatar-card.text_8da927115e"), $t("panel.avatar-card.text_991ccf21c5"), $t("panel.avatar-card.text_61e866fea3"), $t("panel.avatar-card.text_0c2a61f1a5")],
+  daughter: [$t("panel.avatar-card.text_115425d59e"), $t("panel.avatar-card.text_e8ae255d95"), $t("panel.avatar-card.text_ed94f6a8c9")],
+  son: [$t("panel.avatar-card.text_9231b93fd6"), $t("panel.avatar-card.text_1817f6b2f7")],
 } as const;
 type Relation = keyof typeof groups;
 const relationNames = Object.entries(groups).flatMap(([key, names]) => names.map(name => [name, key as Relation] as const));
 const relationPattern = new RegExp(`^(?:${relationNames.map(([name]) => name).join("|")})`, "u");
 const relationAction = /^(设置|选择|挑选|指定|添加|列表|查询|是谁|是|照片|相片|图片|写真|图像|卡片)\s*(.*)$/u;
 const female = [
-  "琴,丽莎,荧,芭芭拉,安柏,香菱,北斗,凝光,菲谢尔,诺艾尔,甘雨,莫娜,刻晴,砂糖,辛焱,罗莎莉亚,胡桃,烟绯,优菈",
-  "绫华,宵宫,雷神,心海,九条裟罗,八重神子,埃洛伊,申鹤,云堇,夜兰,久岐忍,柯莱,多莉,妮露,坎蒂丝,迪希雅,莱依拉,珐露珊,绮良良",
-  "琳妮特,夏洛蒂,芙宁娜,夏沃蕾,娜维娅,闲云,千织,仆人,克洛琳德,玛拉妮,希诺宁,恰斯卡,玛薇卡,茜特菈莉,蓝砚,梦见月瑞希,伊安珊,瓦雷莎,爱可菲,丝柯克,伊涅芙",
-  "菈乌玛,奈芙尔,雅珂达,哥伦比娅,兹白,莉奈娅,尼可,桑多涅,奥黛塔,薇斯纳,沃雅妮莎,达妮卡,安娜丝塔夏",
+  $t("panel.avatar-card.text_d74f4585f9"),
+  $t("panel.avatar-card.text_4720d51149"),
+  $t("panel.avatar-card.text_a7af3779d0"),
+  $t("panel.avatar-card.text_6bb5cf1bc2"),
 ].join(",");
 const male = [
-  "空,凯亚,迪卢克,雷泽,温迪,行秋,魈,钟离,班尼特,公子,重云,阿贝多,万叶,托马,五郎,一斗,平藏,绫人,提纳里,流浪者,赛诺,卡维,艾尔海森,米卡,白术",
-  "林尼,菲米尼,莱欧斯利,那维莱特,嘉明,塞索斯,基尼奇,欧洛伦,伊法,塔利雅,菲林斯,叶洛亚,法尔伽,洛恩,阿罗夏,米提亚,瓦列里",
+  $t("panel.avatar-card.text_ea8b134985"),
+  $t("panel.avatar-card.text_a791f5f8ca"),
 ].join(",");
-const children = "可莉,七七,迪奥娜,早柚,派蒙,瑶瑶,纳西妲,希格雯,卡齐娜,爱诺,布伦妮";
+const children = $t("panel.avatar-card.text_22815df428");
 const eligibleNames: Readonly<Record<Relation, string>> = { wife: female, gf: female, husband: male, bf: male, daughter: children, son: "" };
 const defaultDirectory = fileURLToPath(new URL("../../../data/genshin/avatar-card-preferences/", import.meta.url));
 type NamedCard = { readonly kind: "named"; readonly profileId: number; readonly input: string; readonly uid?: string };
@@ -102,12 +105,12 @@ export function matchGenshinAvatarCard(message: string): Command | undefined {
 function storedChoices(input: unknown): Choices {
   if (input === null || input === undefined) return {};
   const source = object(input);
-  if (!source) throw new TypeError("角色偏好存档无效。");
+  if (!source) throw new TypeError($t("panel.avatar-card.text_d3972d209c"));
   return Object.fromEntries(Object.keys(groups).flatMap(key => {
     const values = source[key];
     if (values === undefined) return [];
     if (!Array.isArray(values) || values.length > 64 || values.some(name => typeof name !== "string" || !name || name.length > 30)) {
-      throw new TypeError("角色偏好存档无效。");
+      throw new TypeError($t("panel.avatar-card.text_d3972d209c"));
     }
     return [[key, values]];
   }));
@@ -115,7 +118,7 @@ function storedChoices(input: unknown): Choices {
 
 async function readLegacyChoices(source: string | undefined, qq: string, signal: AbortSignal) {
   if (!source) return {};
-  if (!["redis:", "rediss:"].includes(URL.parse(source)?.protocol ?? "")) throw new Error("旧角色偏好来源无效。");
+  if (!["redis:", "rediss:"].includes(URL.parse(source)?.protocol ?? "")) throw new Error($t("panel.avatar-card.text_27379f619f"));
   const redis = new Bun.RedisClient(source, { autoReconnect: false, enableOfflineQueue: false, connectionTimeout: 1500, idleTimeout: 1500 });
   const deadline = AbortSignal.any([signal, AbortSignal.timeout(2500)]);
   const close = () => redis.close();
@@ -127,7 +130,7 @@ async function readLegacyChoices(source: string | undefined, qq: string, signal:
     const raw: unknown = await read("miao") || await read("genshin");
     deadline.throwIfAborted();
     if (!raw) return {};
-    if (typeof raw !== "string" || Buffer.byteLength(raw, "utf8") > 65536) throw new TypeError("旧角色偏好过大。");
+    if (typeof raw !== "string" || Buffer.byteLength(raw, "utf8") > 65536) throw new TypeError($t("panel.avatar-card.text_31de8baebf"));
     return storedChoices(object(JSON.parse(raw))?.wife);
   } finally {
     deadline.removeEventListener("abort", close);
@@ -153,7 +156,7 @@ export function createGenshinAvatarCards(profiles: GenshinRoleDirectory, client:
     readonly theme?: typeof readPanelTheme; readonly render?: typeof renderAvatarCard; readonly readLegacy?: typeof readLegacyChoices;
     readonly photoStorage?: AvatarPhotoStorage } = {},
 ) {
-  const settings = createRoleJsonArchive(directory, lock, { subject: "原神角色偏好", lockSuffix: "avatar-choices", maxBytes: 65536, rejectNull: true });
+  const settings = createRoleJsonArchive(directory, lock, { subject: $t("panel.avatar-card.text_b7b7aac16c"), lockSuffix: "avatar-choices", maxBytes: 65536, rejectNull: true });
   const photos = createAvatarPhotoLedger(photoStorage, lifecycle);
   async function query(command: Command | undefined, context: AvatarContext): Promise<MessageReply | DeliveryCommandReply | undefined> {
     if (!command) return;
@@ -162,12 +165,12 @@ export function createGenshinAvatarCards(profiles: GenshinRoleDirectory, client:
     const signal = AbortSignal.any([lifecycle, ...[context.privateCredentialSignal, context.groupActivitySignal].filter(value => value !== undefined)]);
     if (signal.aborted) return;
     let { profileId } = command;
-    if (profileId < 1 || profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (profileId < 1 || profileId > MAX_PROFILE_ID) return $t("panel.avatar-card.text_3dd62228d2");
     const qq = String(user);
     const explicitUid = command.kind === "named" ? command.uid : undefined;
     try {
       const owned = explicitUid ? await findOwnedGenshinUid(profiles, qq, explicitUid, signal) : await ownedGenshinRole(profiles, qq, profileId);
-      if (!owned) return "只可查询本人已登录且已同步的原神 UID。公开角色资料请使用 #角色名图鉴。";
+      if (!owned) return $t("panel.avatar-card.text_3bd09f23f6");
       const { source, accountId } = owned;
       profileId = source.profileId;
       const { uid, region, gameBiz } = source.role;
@@ -178,13 +181,13 @@ export function createGenshinAvatarCards(profiles: GenshinRoleDirectory, client:
           await ownedGenshinRole(profiles, qq, profileId);
         if (current.accountId !== accountId || current.source.revision !== revision || current.source.role.uid !== uid ||
           current.source.role.region !== region || current.source.role.gameBiz !== gameBiz) {
-          throw new ProfileError("changed", "原神角色档案已变化。");
+          throw new ProfileError("changed", $t("panel.avatar-card.text_0314226111"));
         }
         signal.throwIfAborted();
       }
       const assets = await theme();
       const relation = "relation" in command ? command.relation : undefined;
-      const label = relation ? groups[relation][0] : "角色";
+      const label = relation ? groups[relation][0] : $t("panel.avatar-card.text_c47b54e84e");
       const allowedIds = relation ? new Set(eligibleNames[relation].split(",").flatMap(name => {
         const role = resolve(name, assets);
         return role ? [role.id] : [];
@@ -200,25 +203,25 @@ export function createGenshinAvatarCards(profiles: GenshinRoleDirectory, client:
       if (command.kind === "list") {
         const chosen = await boundedChoices();
         await verify();
-        return chosen.length ? `你的${label}是：${chosen.join("，")}` : `尚未设置，可发送 #${label}设置 角色名。`;
+        return chosen.length ? $t("panel.avatar-card.text_113207b1cc", { "label": label, "value2": chosen.join("，") }) : $t("panel.avatar-card.text_0d2eac89eb", { "label": label });
       }
       if (command.kind === "set" || command.kind === "add") {
         const terms = command.input.split(/[,，、;；]/u).map(name => name.trim()).filter(Boolean);
-        if (!terms.length || terms.length > 64) return `请发送 #${label}设置 角色名，多位用逗号隔开。`;
-        const picks = terms.some(term => /^(?:随机|全部|任意|全都要)$/u.test(term)) ? ["随机"] :
+        if (!terms.length || terms.length > 64) return $t("panel.avatar-card.text_469a40514d", { "label": label });
+        const picks = terms.some(term => /^(?:随机|全部|任意|全都要)$/u.test(term)) ? [$t("panel.avatar-card.text_75ca4f9214")] :
           terms.flatMap(name => {
             const role = resolve(name, assets);
             return role && allowedIds?.has(role.id) ? [role.name] : [];
           });
-        if (!picks.length) return `未找到可设为「${label}」的原神角色。`;
+        if (!picks.length) return $t("panel.avatar-card.text_0840439bd5", { "label": label });
         const inherited = command.kind === "add" ? await boundedChoices() : [];
         const selected = await settings.update({ qq, uid: "1" }, verify, raw => {
           const current = storedChoices(object(raw)?.choices);
           const previous = command.kind === "add" ? current[command.relation] ?? inherited : [];
-          const result = picks[0] === "随机" ? ["随机"] : [...new Set([...previous.filter(value => value !== "随机"), ...picks])].slice(0, 64);
+          const result = picks[0] === "随机" ? [$t("panel.avatar-card.text_75ca4f9214")] : [...new Set([...previous.filter(value => value !== "随机"), ...picks])].slice(0, 64);
           return { document: { version: 1, choices: { ...current, [command.relation]: result } }, result };
         });
-        return `${label}已经设置：${selected.join("，")}`;
+        return $t("panel.avatar-card.text_3ac80b8b11", { "label": label, "value2": selected.join("，") });
       }
 
       let snapshot = await archive.readPanel(qq, uid, assets, true, accountId);
@@ -242,12 +245,12 @@ export function createGenshinAvatarCards(profiles: GenshinRoleDirectory, client:
         const choices = Object.values(snapshot?.avatars ?? {}).filter(avatar => !allowedIds || allowedIds.has(avatar.id));
         if (choices.length) named = resolve(choices[randomInt(choices.length)]!.name, assets);
       }
-      if (!named) return "当前档案暂无符合条件的角色。";
+      if (!named) return $t("panel.avatar-card.text_b92d685b36");
       const reply = await render(named.name, named.id, uid, snapshot?.avatars[named.id], assets, {
         photo: command.kind === "photo", inlineImageByteLimit: context.inlineImageByteLimit, signal,
       });
       await verify();
-      if (!reply) return `${named.name}暂无可用照片。`;
+      if (!reply) return $t("panel.avatar-card.text_4840bb2c05", { "name": named.name });
       const { original, ...message } = reply;
       if (!original || !context.self_id) return message;
       return { type: "delivery", message, async onDelivered(confirmed) {
@@ -257,10 +260,10 @@ export function createGenshinAvatarCards(profiles: GenshinRoleDirectory, client:
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "changed") return "原神角色档案已变化，请重新查询。";
-        return `请先登录并同步本人原神档案 ${profileId}。`;
+        if (error.code === "changed") return $t("panel.avatar-card.text_13fc73c4e3");
+        return $t("panel.avatar-card.text_34562f13ef", { "profileId": profileId });
       }
-      return "原神角色卡片或偏好暂时无法读取，请稍后再试。";
+      return $t("panel.avatar-card.text_8b40e241b6");
     }
   }
   return {
@@ -282,7 +285,7 @@ export function createGenshinAvatarCards(profiles: GenshinRoleDirectory, client:
         if (!await verify()) return;
         const file = await (await theme()).readPhoto?.(record.photo);
         if (!file || !await verify()) return;
-        if (context.inlineImageByteLimit !== undefined && file.byteLength > context.inlineImageByteLimit) return "原神角色卡片原图超过当前会话的图片大小上限。";
+        if (context.inlineImageByteLimit !== undefined && file.byteLength > context.inlineImageByteLimit) return $t("panel.avatar-card.text_5545fa62da");
         return { type: "image", file };
       } catch { return; }
     },

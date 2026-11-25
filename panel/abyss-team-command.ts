@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError } from "@lotus-yunzai/hoyo-client";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
@@ -36,9 +39,9 @@ export function createGenshinAbyssTeams(profiles: GenshinRoleProfiles,
     if (context.isDelegated || (message_type !== "private" && message_type !== "group") || !user_id ||
         !Number.isSafeInteger(user_id) || user_id < 1 ||
         (Array.isArray(message) && message.some(segment => segment.type === "at" && String(segment.qq ?? segment.id) !== String(self_id)))) {
-      return "请在本人 QQ 会话使用 #深渊配队。";
+      return $t("panel.abyss-team-command.text_820e7bf5a9");
     }
-    if (profileId < 1 || profileId > MAX_PROFILE_ID) return `档案编号须为 1–${MAX_PROFILE_ID}。`;
+    if (profileId < 1 || profileId > MAX_PROFILE_ID) return $t("panel.abyss-team-command.text_68901e8078", { "MAX_PROFILE_ID": MAX_PROFILE_ID });
     const qq = String(user_id);
     try {
       const { source, accountId } = await ownedGenshinRole(profiles, qq, profileId);
@@ -51,40 +54,40 @@ export function createGenshinAbyssTeams(profiles: GenshinRoleProfiles,
         const latest = await ownedGenshinRole(profiles, qq, profileId).catch(() => undefined);
         if (latest?.accountId !== accountId || latest.source.revision !== expected || latest.source.role.uid !== uid ||
             latest.source.role.region !== region || latest.source.role.gameBiz !== gameBiz ||
-            await archive.discardedAt(qq, uid) !== discardedAt) throw new ProfileError("changed", "原神档案已变化。");
+            await archive.discardedAt(qq, uid) !== discardedAt) throw new ProfileError("changed", $t("panel.abyss-team-command.text_f5ed9a42ca"));
         signal.throwIfAborted();
         return latest.source;
       }
       const [assets, publicData] = await Promise.all([theme(), readPublic().catch(() => undefined)]);
       await verify();
       const publicTeams = publicData === undefined ? undefined : decodePublicAbyssTeams(publicData, assets);
-      if (!publicTeams || !publicTeams.teams.length) return "提瓦特小助手的深渊 12 层配队统计暂不可用，请稍后重试。";
+      if (!publicTeams || !publicTeams.teams.length) return $t("panel.abyss-team-command.text_311f932933");
       const local = await archive.readPanel(qq, uid, assets, true, accountId);
       const snapshot = await trainingRoster(source, accountId, assets, local, discardedAt, signal, verify);
       await verify();
-      if (!snapshot || !Object.keys(snapshot.avatars).length) return "未取得本人原神角色练度，请使用 #更新面板 后重试。";
+      if (!snapshot || !Object.keys(snapshot.avatars).length) return $t("panel.abyss-team-command.text_fd47ceadea");
       const proposals = buildAbyssTeamPairs(publicTeams, snapshot, assets);
-      if (!proposals.length) return "本期公开统计暂未取得上下半角色互不重复的队伍。";
+      if (!proposals.length) return $t("panel.abyss-team-command.text_1c9994de88");
       try {
         const { png } = await render(proposals, publicTeams.updated, assets, { signal, inlineImageByteLimit: context.inlineImageByteLimit });
         await verify();
         return { type: "image" as const, file: png };
       } catch {
         await verify();
-        return ["深渊 12 层配队建议", ...proposals.map((pair, index) => {
-          const names = (team: typeof pair.up) => team.map(member => member.level === undefined ? `${member.name}（暂无）` : member.name).join("、");
-          return `第 ${index + 1} 组 · ${pair.count} 次记录\n上半 ${names(pair.up)}\n下半 ${names(pair.down)}`;
+        return [$t("panel.abyss-team-command.text_c46e68275d"), ...proposals.map((pair, index) => {
+          const names = (team: typeof pair.up) => team.map(member => member.level === undefined ? $t("panel.abyss-team-command.text_7fa418ab3e", { "name": member.name }) : member.name).join("、");
+          return $t("panel.abyss-team-command.text_c82dc2a76f", { "value1": index + 1, "count": pair.count, "value3": names(pair.up), "value4": names(pair.down) });
         })].join("\n");
       }
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing" || error.code === "login-required" || error.code === "invalid") return "请先登录本人原神档案。";
-        if (error.code === "role-missing") return "请先同步档案绑定的原神角色。";
-        if (error.code === "changed") return "当前原神档案已变化，请重新查询。";
+        if (error.code === "missing" || error.code === "login-required" || error.code === "invalid") return $t("panel.abyss-team-command.text_cad98ea684");
+        if (error.code === "role-missing") return $t("panel.abyss-team-command.text_1c2a8eaf4e");
+        if (error.code === "changed") return $t("panel.abyss-team-command.text_67f490823c");
       }
       if (error instanceof GameRecordRequestError) return error.message;
-      return "原神深渊配队暂时无法读取本档案的练度，请稍后重试。";
+      return $t("panel.abyss-team-command.text_d2b000e5e3");
     }
   };
 }

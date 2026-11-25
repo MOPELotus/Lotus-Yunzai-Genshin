@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gameCommandProfileId } from "@lotus-yunzai/account";
 import {
   loadOfficialArtwork, MAX_PROFILE_ID, normalizeProfileRoleArtworkUrl, ProfileError, type ProfileRequestContext,
@@ -72,7 +75,7 @@ function eventUrl(action: "index" | "post_my_draw", uid: string, region: string)
 
 function activityCookie(source: ProfileRequestContext) {
   const { cookie } = source.account;
-  if (!cookie.includes("=") || /[^\x20-\x7e]/u.test(cookie)) throw new ProfileError("invalid", "无法使用档案 Cookie。");
+  if (!cookie.includes("=") || /[^\x20-\x7e]/u.test(cookie)) throw new ProfileError("invalid", $t("birthday-photo.text_94e16159ff"));
   return cookie.split(";").map(field => field.trim()).filter(field => field && !/^e_hk4e_token\s*=/iu.test(field)).join("; ");
 }
 
@@ -128,9 +131,9 @@ export function createGenshinBirthdayPhotoCommand(profiles: GenshinRoleProfiles,
     if (lifecycle.aborted || session?.aborted) return;
     if (context.message_type !== "private" || !session || context.isDelegated || !user || !Number.isSafeInteger(user) || user < 1 ||
         user === bot || typeof message !== "string" && message?.some(part => part.type === "at" && String(part.qq) !== String(bot))) {
-      return "请在本人 QQ 私聊中领取原神生日画片。";
+      return $t("birthday-photo.text_2415381388");
     }
-    if (profileId < 1 || profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (profileId < 1 || profileId > MAX_PROFILE_ID) return $t("birthday-photo.text_3dd62228d2");
     const signal = AbortSignal.any([lifecycle, session]);
     const qq = String(user);
     let key: string | undefined;
@@ -138,9 +141,9 @@ export function createGenshinBirthdayPhotoCommand(profiles: GenshinRoleProfiles,
       const { source, accountId } = await ownedGenshinRole(profiles, qq, profileId);
       const { uid } = source.role;
       const region = genshinCnRecordRegion(source.role);
-      if (!region) return "留影叙佳期当前仅支持已绑定的原神国服角色。";
+      if (!region) return $t("birthday-photo.text_1b67136c52");
       const accountRole = `${accountId}:${uid}`;
-      if (active.has(accountRole)) return "这个原神角色的生日画片正在处理，请稍候。";
+      if (active.has(accountRole)) return $t("birthday-photo.text_6c8e97854d");
       active.add(accountRole);
       key = accountRole;
       let revision = source.revision;
@@ -149,7 +152,7 @@ export function createGenshinBirthdayPhotoCommand(profiles: GenshinRoleProfiles,
         signal.throwIfAborted();
         const latest = await ownedGenshinRole(profiles, qq, profileId).catch(() => undefined);
         if (latest?.accountId !== accountId || latest.source.revision !== revision || !sameRole(source, latest.source)) {
-          throw new ProfileError("changed", "原神档案或选用角色已变化。");
+          throw new ProfileError("changed", $t("birthday-photo.text_659fa1f783"));
         }
         signal.throwIfAborted();
         return latest.source;
@@ -163,14 +166,14 @@ export function createGenshinBirthdayPhotoCommand(profiles: GenshinRoleProfiles,
         return findPhotos(await verify(), region, signal, verify);
       });
       await verify();
-      if (!activity.roles.length) return "今天没有生日角色哦～";
+      if (!activity.roles.length) return $t("birthday-photo.text_d51cb1ad41");
       for (const { id, name, artwork } of activity.roles) {
-        if (await context.reply(`正在获取${name}的图片，请稍等～`) === false) return [] as const;
+        if (await context.reply($t("birthday-photo.text_11380b20c6", { "name": name })) === false) return [] as const;
         const image = (await loadArt([artwork], { signal })).get(artwork);
         await verify();
-        if (!image) return `暂时无法获取${name}的生日原图，尚未提交领取。`;
+        if (!image) return $t("birthday-photo.text_0d21f66a4c", { "name": name });
         if (context.inlineImageByteLimit !== undefined && image.byteLength > context.inlineImageByteLimit) {
-          return `${name}的生日原图超过当前会话单图上限，尚未提交领取。`;
+          return $t("birthday-photo.text_930b87754d", { "name": name });
         }
         if (await context.reply({ type: "image", file: image }) === false) return [] as const;
         await verify();
@@ -179,30 +182,30 @@ export function createGenshinBirthdayPhotoCommand(profiles: GenshinRoleProfiles,
         }, signal);
         await verify();
         if (result.retcode !== 0) {
-          if (typeof result.message === "string" && /已(?:经)?(?:领取|获得|收集)/u.test(result.message)) return `${name}的生日画片已经领取。`;
-          return `官方拒绝了${name}的生日画片领取，请在米游社活动页查看。`;
+          if (typeof result.message === "string" && /已(?:经)?(?:领取|获得|收集)/u.test(result.message)) return $t("birthday-photo.text_3b19fa5c2f", { "name": name });
+          return $t("birthday-photo.text_57ce7d1dec", { "name": name });
         }
-        if (await context.reply(`获取${name}的图片成功～`) === false) return [] as const;
+        if (await context.reply($t("birthday-photo.text_48e990f438", { "name": name })) === false) return [] as const;
       }
       return [] as const;
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "changed") return "原神档案或选用角色已变化，请重新发起领取。";
-        if (error.code === "missing" || error.code === "login-required") return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 没有已同步的原神角色。`;
-        if (error.code === "invalid") return "档案的登录凭据与账号不一致，请重新登录。";
+        if (error.code === "changed") return $t("birthday-photo.text_e551b1dc50");
+        if (error.code === "missing" || error.code === "login-required") return $t("birthday-photo.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("birthday-photo.text_147d603571", { "profileId": profileId });
+        if (error.code === "invalid") return $t("birthday-photo.text_dbd093cee6");
       }
       if (error instanceof HoyoRequestError) {
-        if (error.code === "profile-changed") return "原神档案已变化，请重新发起领取。";
-        if (error.code === "refresh") return "米游社登录已失效，请重新登录后领取。";
+        if (error.code === "profile-changed") return $t("birthday-photo.text_010ae2cd75");
+        if (error.code === "refresh") return $t("birthday-photo.text_4009c5ea64");
       }
       if (error instanceof BirthdayRequestError) {
-        if (error.stage === "claim") return "领取结果未确认，请先在米游社活动页查看画片是否到账。";
-        if (error.reason === "expired") return "米游社登录已失效，请重新登录后领取。";
-        if (error.stage === "badge") return "暂时无法建立米游社生日活动会话，请稍后重试。";
+        if (error.stage === "claim") return $t("birthday-photo.text_9a19824379");
+        if (error.reason === "expired") return $t("birthday-photo.text_4009c5ea64");
+        if (error.stage === "badge") return $t("birthday-photo.text_6538f39a84");
       }
-      return "暂时无法获取生日角色，请稍后重试。";
+      return $t("birthday-photo.text_c1e2f8fe43");
     } finally {
       if (key) active.delete(key);
     }

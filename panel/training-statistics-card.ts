@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { renderGenshinCard, renderGenshinCardForChat } from "../card-render.ts";
 import { contain, fill, panel, profileFonts, shadow, typeset } from "./original-profile-skia.ts";
@@ -16,12 +19,12 @@ const tableWidth = 575;
 const rowHeight = 36;
 const gold = "#d3bc8e";
 const ink = "#333";
-const header = ["#", "角色", "Lv", "命座", "好感", "A", "E", "Q", "武器", "圣遗物"];
+const header = ["#", $t("panel.training-statistics-card.text_c47b54e84e"), "Lv", $t("panel.training-statistics-card.text_5da80321f0"), $t("panel.training-statistics-card.text_5cc62471df"), "A", "E", "Q", $t("panel.training-statistics-card.text_4fe131173e"), $t("panel.training-statistics-card.text_fc2ee58f3d")];
 // Measured after the old table lays out its percentage and intrinsic-width columns, before its 1.4 transform.
 const edges = [10, 35.2, 131.2, 161.9, 199.1, 237.2, 266.1, 294.8, 325.2, 477.2, 585];
 const talentEdges = [10, 40, 140, 175, 215, 255, 290, 325, 360, 394.625, 585];
 const talentBookDays: Readonly<Record<string, string>> = { "周一/周四": "1/4", "周二/周五": "2/5", "周三/周六": "3/6" };
-const talentHeader = [...header.slice(0, 8), "周本", "天赋书"];
+const talentHeader = [...header.slice(0, 8), $t("panel.training-statistics-card.text_110d762ac9"), $t("panel.training-statistics-card.text_99bf2c141d")];
 const center = (column: number) => (edges[column]! + edges[column + 1]!) / 2;
 const stars = ["#bbbbbb59", "#c8c8c859", "#a8ff8559", "#89a8ff59", "#c386ff59", "#ffd48459"];
 const starInk = [ink, ink, ink, ink, "#720465", "#6f4b00"];
@@ -106,7 +109,7 @@ function drawRelics(ctx: Context, { write }: Writer, row: PanelStatisticRow, ima
     fill(ctx, badge, [x + 37, y + 11, 20, 14], 4);
     write(row.rating.rank ?? "—", x + 47, y + 22, 9, { align: "center", maxWidth: 18 });
     write(row.rating.score.toFixed(1), x + 61, y + 23, 14, { color: ink });
-  } else write("暂无面板数据", x + 46, y + 23, 10, { color: "#666" });
+  } else write($t("panel.training-statistics-card.text_75ef5c86a9"), x + 46, y + 23, 10, { color: "#666" });
 }
 
 async function materialPictures(theme: PanelTheme, materials: PanelStatisticRow["materials"]) {
@@ -127,7 +130,7 @@ function drawMaterials(ctx: Context, writer: Writer, materials: PanelStatisticRo
   const days = talentBookDays[talent?.days ?? ""];
   const name = talent ? [talent.region, talent.name].filter(Boolean).join("·") : "—";
   // The weekly drop is an icon in the original; the book keeps its region and schedule next to the icon.
-  leftFit(ctx, writer, `${name} (周${days ?? "—"})`, bookX + 39, y + 23, 14, right - bookX - 43, open ? "#6f4b00" : ink);
+  leftFit(ctx, writer, $t("panel.training-statistics-card.text_30596ad7d4", { "name": name, "value2": days ?? "—" }), bookX + 39, y + 23, 14, right - bookX - 43, open ? "#6f4b00" : ink);
   ctx.restore();
 }
 
@@ -177,7 +180,7 @@ export async function renderTrainingStatistics(snapshot: PanelSnapshot, rows: re
     ctx.save();
     shadow(ctx, "#000", 3, 1);
     write("#面板练度统计", 35, 63, 36, { title: true });
-    write(`UID:${snapshot.uid} 共${total}名角色`, 35, 88, 16);
+    write($t("panel.training-statistics-card.text_eebb4bced5", { "uid": snapshot.uid, "total": total }), 35, 88, 16);
     ctx.restore();
 
     panel(ctx, undefined, [tableX, tableY, tableWidth, noticeY - tableY + noticeHeight], () => {
@@ -221,20 +224,20 @@ export async function renderTrainingStatistics(snapshot: PanelSnapshot, rows: re
 
       fill(ctx, "#000b", [tableX, noticeY, tableWidth, noticeHeight]);
       if (profile || mys) {
-        centeredParts(ctx, writer, [["数据更新时间", gold], [profile ? `  #更新面板：${profile}` : "", "#fff"],
-          [mys ? `  米游社：${mys}` : "", "#fff"]], noticeY + 23);
-        if (mys) centeredParts(ctx, writer, [["可使用 ", "#fff"], ["#刷新天赋", gold], [" 更新天赋资料，需具备有效登录。", "#fff"]],
+        centeredParts(ctx, writer, [[$t("panel.training-statistics-card.text_d3f348a8d6"), gold], [profile ? $t("panel.training-statistics-card.text_bc82ee1f81", { "profile": profile }) : "", "#fff"],
+          [mys ? $t("panel.training-statistics-card.text_104b6a0249", { "mys": mys }) : "", "#fff"]], noticeY + 23);
+        if (mys) centeredParts(ctx, writer, [[$t("panel.training-statistics-card.text_24a8bf0d01"), "#fff"], ["#刷新天赋", gold], [$t("panel.training-statistics-card.text_582932bec2"), "#fff"]],
           noticeY + 47);
       } else {
-        centeredParts(ctx, writer, [["暂无已确认的数据更新时间。", "#fff"]], noticeY + 22);
-        centeredParts(ctx, writer, [["可使用 ", "#fff"], ["#扫码登录", gold], [" 绑定档案，或使用 ", "#fff"], ["#更新面板", gold],
-          [" 刷新角色资料。", "#fff"]], noticeY + 38);
+        centeredParts(ctx, writer, [[$t("panel.training-statistics-card.text_e73b7f1677"), "#fff"]], noticeY + 22);
+        centeredParts(ctx, writer, [[$t("panel.training-statistics-card.text_24a8bf0d01"), "#fff"], ["#扫码登录", gold], [$t("panel.training-statistics-card.text_3209c792a6"), "#fff"], ["#更新面板", gold],
+          [$t("panel.training-statistics-card.text_d322e8ffbc"), "#fff"]], noticeY + 38);
       }
     });
 
     ctx.save();
     shadow(ctx, "#000", 1, 1);
-    write("Lotus-Yunzai", 305, height - 23, 14, { align: "center" });
+    write($t("panel.training-statistics-card.text_3867834e77"), 305, height - 23, 14, { align: "center" });
     ctx.restore();
   };
   const displayWidth = 840;
@@ -243,7 +246,7 @@ export async function renderTrainingStatistics(snapshot: PanelSnapshot, rows: re
   const result = await renderGenshinCard(width, height, draw, mode, { displayWidth, scale });
   signal?.throwIfAborted();
   if (inlineImageByteLimit !== undefined && result.png.byteLength > inlineImageByteLimit) {
-    throw new ImageSizeLimitError("原神剧诗练度分片超过当前会话的单图大小上限。");
+    throw new ImageSizeLimitError($t("panel.training-statistics-card.text_6395a76c57"));
   }
   return result;
 }

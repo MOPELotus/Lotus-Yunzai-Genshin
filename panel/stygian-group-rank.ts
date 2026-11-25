@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { type StygianRankResult, type StygianRankSite, queryStygianRank } from "../../../lib/stygian-rank.ts";
 import { readStygianRankSites } from "../../../lib/group-panel-rank-settings.ts";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
@@ -39,7 +42,7 @@ async function readMembers(scope: Scope, context: GroupRankContext) {
 
 function readNickname(value: unknown) {
   return typeof value === "string" && value.isWellFormed()
-    ? Array.from(value.replace(/[\p{Cc}\p{Cf}]/gu, "").trim()).slice(0, 24).join("") || "群成员" : "群成员";
+    ? Array.from(value.replace(/[\p{Cc}\p{Cf}]/gu, "").trim()).slice(0, 24).join("") || $t("panel.stygian-group-rank.text_9d8692671d") : $t("panel.stygian-group-rank.text_9d8692671d");
 }
 
 function identicalGrant(left: Grant, right: Grant) {
@@ -106,20 +109,20 @@ export function createStygianGroupRank(profiles: GenshinRoleProfiles,
 
   return async (version: string | undefined, context: GroupRankContext) => {
     const scope = queryScope(context);
-    if (!scope) return { message: "请在已连接的 QQ 群聊中查询幽境危战排名。" } as const;
+    if (!scope) return { message: $t("panel.stygian-group-rank.text_183b4fed2a") } as const;
     const connection = context.groupActivitySignal!;
     const signal = AbortSignal.any([lifecycle, connection, AbortSignal.timeout(35_000)]);
     if (signal.aborted) return;
     const key = `${scope.adapter}:${scope.bot}:${scope.group}`;
-    if (running.has(key)) return { message: "本群的幽境危战排名正在查询。" } as const;
+    if (running.has(key)) return { message: $t("panel.stygian-group-rank.text_f9f2b1ef78") } as const;
     running.add(key);
     try {
       const period = await readPeriod(version);
-      if (!period) return { message: version ? "指定的幽境危战期数无效或尚未开始。" :
-        "暂时无法确定本期幽境危战。请更新原神卡池日历，或在指令后填写历史版本号。" } as const;
+      if (!period) return { message: version ? $t("panel.stygian-group-rank.text_f80e52f79d") :
+        $t("panel.stygian-group-rank.text_7557fe0433") } as const;
       const grants = await eligible(scope, context, signal);
-      if (!grants) return { message: "无法核对本群成员，请稍后重试。" } as const;
-      if (!grants.length) return { message: "本群暂无已授权成员。请在机器人好友私聊发送 #幽境群榜授权 群号 Ark|Akasha|双站。" } as const;
+      if (!grants) return { message: $t("panel.stygian-group-rank.text_f17442a687") } as const;
+      if (!grants.length) return { message: $t("panel.stygian-group-rank.text_6a9d5435ad") } as const;
       const states: Partial<Record<StygianRankSite, SiteState>> = {};
       const matches = new Map<StygianRankSite, readonly StygianRankResult[]>();
       await Promise.all(sites.map(async site => {
@@ -200,11 +203,11 @@ export function createStygianGroupRank(profiles: GenshinRoleProfiles,
       if (!board.rows.length) {
         const status = sites.filter(site => states[site] === "unavailable" || states[site] === "unverified")
           .map(site => site === "ark" ? "Ark" : "Akasha").join("、");
-        return { message: `${period.version} 版本暂无可展示的幽境危战成绩。${status ? ` ${status} 数据暂时无法核验。` : ""}` } as const;
+        return { message: $t("panel.stygian-group-rank.text_80fd654064", { "version": period.version, "value2": status ? $t("panel.stygian-group-rank.text_6c7a5cb902", { "status": status }) : "" }) } as const;
       }
       return { board, verify: verifiedBoard, signal } as const;
     } catch {
-      if (!signal.aborted) return { message: "幽境危战排名暂时无法查询，请稍后重试。" } as const;
+      if (!signal.aborted) return { message: $t("panel.stygian-group-rank.text_f239617f47") } as const;
     } finally {
       running.delete(key);
     }

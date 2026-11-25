@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { ImageSizeLimitError, nativeImageRasterScale, renderPng } from "@lotus-yunzai/skia";
 
 export function renderGenshinCard(width: number, height: number, draw: Parameters<typeof renderPng>[2],
@@ -29,6 +32,6 @@ export async function renderGenshinCardForChat(width: number, height: number, dr
   const half = nativeImageRasterScale() === 1 || high.reducedScaleReason ? high :
     await renderGenshinCard(width, height, draw, mode, { displayWidth, scale: 2 });
   signal?.throwIfAborted();
-  if (!fits(half.png)) throw new ImageSizeLimitError("图片超过当前会话的单图大小上限。");
-  return { ...half, reducedScaleReason: "四倍图超过当前会话的单图大小上限。" };
+  if (!fits(half.png)) throw new ImageSizeLimitError($t("card-render.text_8140b8068f"));
+  return { ...half, reducedScaleReason: $t("card-render.text_9ad645d65e") };
 }

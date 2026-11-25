@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { arkPublicUid } from "../../../lib/ark-custom-rank.ts";
 import { arkCustomRankGrade, createArkRankCommand } from "../../../lib/ark-custom-rank-command.ts";
 import { renderPanelDetail } from "../panel/card.ts";
@@ -49,9 +52,9 @@ export function createGenshinCustomRank(signal: AbortSignal) {
       const damage = await estimatePanelDamage(avatar, theme, undefined, undefined, { includeComparison: false }).catch(() => undefined);
       if (signal.aborted) return;
       const result = theme.resourceRoot ? await renderOriginalProfile(snapshot, avatar, theme, {
-        sourceLabel: "全服排行公开面板", damage: damage && "rows" in damage ? damage : undefined,
+        sourceLabel: $t("rank-statistics.custom-rank.text_ce5ee012b3"), damage: damage && "rows" in damage ? damage : undefined,
       }, { inlineImageByteLimit, signal }) : await renderPanelDetail(snapshot, avatar, theme);
-      if (inlineImageByteLimit !== undefined && result.png.byteLength > inlineImageByteLimit) throw new Error("图片超过发送上限。");
+      if (inlineImageByteLimit !== undefined && result.png.byteLength > inlineImageByteLimit) throw new Error($t("rank-statistics.custom-rank.text_c4df1c13cc"));
       return { type: "image", file: result.png };
     },
   });

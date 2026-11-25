@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -11,7 +14,7 @@ const defaultIdentities = new URL("./flower/identity.yaml", import.meta.url);
 const characters: Readonly<Record<string, { readonly elem: string; readonly title: string }>> = characterMetadata;
 const minute = 60_000;
 
-export const wishReincarnationFeature = "[genshin] 转生";
+export const wishReincarnationFeature = $t("wish-sim.reincarnation.text_08fee9eedf");
 export const matchesWishReincarnation = (message: string) => /^#*(?:原神)?转生$/u.test(message);
 
 interface ReincarnationContext {
@@ -52,32 +55,32 @@ export function createWishReincarnation({
   readonly render?: typeof renderWishReincarnation;
 }) {
   const archive = createRoleJsonArchive(join(stateDirectory, "reincarnation"), lockFile, {
-    subject: "原神转生", lockSuffix: "reincarnation", maxBytes: 1024, rejectNull: true,
+    subject: $t("wish-sim.reincarnation.text_0a85bacf89"), lockSuffix: "reincarnation", maxBytes: 1024, rejectNull: true,
   });
 
   return async (context: ReincarnationContext) => {
     const user = context.user_id;
-    if (typeof user !== "number" || !Number.isSafeInteger(user) || user <= 0) return "请在 QQ 会话使用原神转生。";
+    if (typeof user !== "number" || !Number.isSafeInteger(user) || user <= 0) return $t("wish-sim.reincarnation.text_5be4a2baf9");
     const qq = String(user);
-    const nickname = text(context.sender?.nickname, 40) || text(context.sender?.card, 40) || "旅行者";
+    const nickname = text(context.sender?.nickname, 40) || text(context.sender?.card, 40) || $t("wish-sim.reincarnation.text_4bf6868aa0");
     try {
       signal.throwIfAborted();
       const [{ reincarnationMinutes: minutes }, identities, colors] = await Promise.all([
         readSettings(), readIdentities(legacyDirectory),
         legacyDirectory && readOptionalWishYaml(join(legacyDirectory, "resources", "yaml", "color.yaml")),
       ]);
-      if (!identities.length) return "暂未找到可转生的原神角色，请检查本地身份表。";
+      if (!identities.length) return $t("wish-sim.reincarnation.text_018cc61257");
       const time = now();
       const owner = context.isMaster === true && !context.isDelegated && (!context.isBotMaster || context.isBotMaster(user));
       const blocked = await archive.update<number | undefined>({ qq, uid: "1" }, async () => signal.throwIfAborted(), raw => {
         const until = record(raw)?.until;
         if (raw !== null && (typeof until !== "number" || !Number.isSafeInteger(until) || until < 0)) {
-          throw new TypeError("原神转生冷却记录无效。");
+          throw new TypeError($t("wish-sim.reincarnation.text_08e3b25b43"));
         }
         if (!owner && typeof until === "number" && until > time) return { result: Math.ceil((until - time) / minute) };
         return { document: { until: time + minutes * minute }, result: undefined };
       });
-      if (blocked !== undefined) return `转生冷却中，还需等待 ${blocked} 分钟。`;
+      if (blocked !== undefined) return $t("wish-sim.reincarnation.text_9f26bb5953", { "blocked": blocked });
       signal.throwIfAborted();
       const role = identities[Math.floor(random() * identities.length)]!;
       try {
@@ -86,10 +89,10 @@ export function createWishReincarnation({
           inlineImageByteLimit: context.inlineImageByteLimit });
         if (!signal.aborted) return { type: "image", file: card.png } as const;
       } catch {
-        if (!signal.aborted) return `${nickname}，恭喜你转生成了 ${role.name} · ${role.title}。\n神之眼：${wishReincarnationElement(role.elem).label}\n身份：${role.identity}`;
+        if (!signal.aborted) return $t("wish-sim.reincarnation.text_8156a1298d", { "nickname": nickname, "name": role.name, "title": role.title, "label": wishReincarnationElement(role.elem).label, "identity": role.identity });
       }
     } catch {
-      if (!signal.aborted) return "原神转生暂时无法完成，请检查本地配置和存档。";
+      if (!signal.aborted) return $t("wish-sim.reincarnation.text_3a1508680e");
     }
   };
 }

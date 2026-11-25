@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { ProfileError, type createProfileStore } from "@lotus-yunzai/account";
 import type { createHoyoClient, GenshinGachaOptions } from "@lotus-yunzai/hoyo-client";
 import type { createGenshinGachaHistoryStore, PublishGenshinGachaRepair } from "./gacha-store.ts";
@@ -21,11 +24,11 @@ export function createGenshinGachaSync(
     const uid = original.role.uid;
     const { active, fetch, action } = sources[source];
     const key = JSON.stringify([qq, uid]);
-    if (active.has(key)) throw new GenshinGachaBusyError(`该账号的${action}，请稍后再试。`);
+    if (active.has(key)) throw new GenshinGachaBusyError($t("gacha-sync.text_62cd26943e", { "action": action }));
     active.add(key);
     try {
       const latest = await fetch(original, options);
-      if (latest.uid !== uid) throw new Error("原神抽卡快照与请求角色不一致。");
+      if (latest.uid !== uid) throw new Error($t("gacha-sync.text_6a6450830b"));
 
       async function verifyProfile() {
         options.signal?.throwIfAborted();
@@ -33,7 +36,7 @@ export function createGenshinGachaSync(
         if (current?.revision !== latest.revision || current?.role.uid !== uid ||
             (current.role.region && current.role.region !== latest.region) ||
             (current.role.gameBiz && current.role.gameBiz !== "hk4e_cn")) {
-          throw new ProfileError("changed", "保存原神抽卡历史时档案已变更，请重新发起请求。");
+          throw new ProfileError("changed", $t("gacha-sync.text_928d22712e"));
         }
         options.signal?.throwIfAborted();
       }

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { constants } from "node:fs";
 import { open, realpath } from "node:fs/promises";
 import { join } from "node:path";
@@ -38,17 +41,17 @@ async function readArchive(directory: string, qq: string, uid: string, signal: A
   if (!file) return;
   try {
     const before = await file.stat();
-    if (!before.isFile() || before.size > maxArchiveBytes) throw new TypeError("旧账本须为限长的 YAML 文件。");
+    if (!before.isFile() || before.size > maxArchiveBytes) throw new TypeError($t("pay-log-command.text_9b80913f4f"));
     const bytes = Buffer.alloc(before.size);
     for (let offset = 0; offset < bytes.length;) {
       signal.throwIfAborted();
       const { bytesRead } = await file.read(bytes, offset, bytes.length - offset, offset);
-      if (!bytesRead) throw new Error("读取期间旧账本发生变化。");
+      if (!bytesRead) throw new Error($t("pay-log-command.text_b173527486"));
       offset += bytesRead;
     }
     const after = await file.stat();
     if (before.size !== after.size || before.ctimeMs !== after.ctimeMs || before.mtimeMs !== after.mtimeMs) {
-      throw new Error("读取期间旧账本发生变化。");
+      throw new Error($t("pay-log-command.text_b173527486"));
     }
     signal.throwIfAborted();
     return readLegacyGenshinPayLog(Bun.YAML.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)), uid);
@@ -58,9 +61,9 @@ async function readArchive(directory: string, qq: string, uid: string, signal: A
 }
 
 function text(ledger: GenshinPayLog) {
-  return [`UID ${ledger.uid} · 充值统计`, `总消费：￥${ledger.paid} · 总结晶：${ledger.crystal}`,
-    ledger.highest && `消费最多：${ledger.highest.name} · ￥${ledger.highest.amount}`,
-    ledger.purchases.map(row => `${row.name}：${row.count} 次`).join(" · "),
+  return [$t("pay-log-command.text_ab6841601d", { "uid": ledger.uid }), $t("pay-log-command.text_b779ef4dee", { "paid": ledger.paid, "crystal": ledger.crystal }),
+    ledger.highest && $t("pay-log-command.text_6d0d20c83c", { "name": ledger.highest.name, "amount": ledger.highest.amount }),
+    ledger.purchases.map(row => $t("pay-log-command.text_2a04cf4bf2", { "name": row.name, "count": row.count })).join(" · "),
     ...ledger.bars.map(row => `${row.name}：￥${row.amount}`)].filter(Boolean).join("\n");
 }
 
@@ -79,26 +82,26 @@ export function createGenshinPayLogCommand(profiles: GenshinRoleProfiles, lifecy
 }: { readonly directory?: string; readonly activeDirectory?: string; readonly lockFile?: AcquireRoleArchiveLock;
   readonly fetchPurchases?: typeof readOnlineGenshinPayLog; readonly render?: typeof renderGenshinPayLog; readonly now?: () => number } = {}) {
   const archive = lockFile && createRoleJsonArchive(activeDirectory, lockFile,
-    { subject: "原神充值账本", lockSuffix: "pay-log", maxBytes: maxArchiveBytes, rejectNull: true });
+    { subject: $t("pay-log-command.text_e50a5ac482"), lockSuffix: "pay-log", maxBytes: maxArchiveBytes, rejectNull: true });
   const authorizations = new Map<string, { readonly value: string; readonly at: number; readonly identity: string }>();
   const running = new Set<string>();
   lifecycle.addEventListener("abort", () => authorizations.clear(), { once: true });
   return async (command: NonNullable<ReturnType<typeof matchGenshinPayLog>>, context: Context) => {
     if (lifecycle.aborted || context.privateCredentialSignal?.aborted) return;
-    if (command.kind === "help") return ["发送 #充值记录 查看已保存的账本，可追加「档案N」。",
-      "在米游社客服选择当前国服角色，获取充值记录自助查询链接，仅发送到本人好友私聊。链接后可追加「档案N」。",
-      "可在本次运行内用 #更新充值记录 再查。链接失效或重启后请重新获取。"].join("\n");
+    if (command.kind === "help") return [$t("pay-log-command.text_bd77a0c5bd"),
+      $t("pay-log-command.text_b06b7a4e08"),
+      $t("pay-log-command.text_57ef19c45c")].join("\n");
     const user = context.user_id;
     if (!user || user < 1 || !Number.isSafeInteger(user) || context.isDelegated ||
         (context.message_type !== "private" && context.message_type !== "group")) {
-      return "请在本人 QQ 会话中查询充值记录。";
+      return $t("pay-log-command.text_34c25cb5f4");
     }
     if (command.kind !== "read" && (context.message_type !== "private" || !context.privateCredentialSignal)) {
-      return command.kind === "update" ? "请在本人好友私聊刷新充值记录。" : undefined;
+      return command.kind === "update" ? $t("pay-log-command.text_6886445e15") : undefined;
     }
-    if (command.kind !== "read" && !archive) return "当前宿主未启用充值账本保存。";
+    if (command.kind !== "read" && !archive) return $t("pay-log-command.text_e7ed58f257");
     const { profileId } = command;
-    if (profileId < 1 || profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (profileId < 1 || profileId > MAX_PROFILE_ID) return $t("pay-log-command.text_3dd62228d2");
     const qq = String(user);
     const signal = context.privateCredentialSignal ? AbortSignal.any([lifecycle, context.privateCredentialSignal]) : lifecycle;
     try {
@@ -106,14 +109,14 @@ export function createGenshinPayLogCommand(profiles: GenshinRoleProfiles, lifecy
       const { uid, region, gameBiz } = initial.source.role;
       if (!/^[1-5]\d{8}$/u.test(uid) || gameBiz !== "hk4e_cn" ||
           region !== (uid.startsWith("5") ? "cn_qd01" : "cn_gf01")) {
-        return "旧充值账本只支持已同步的原神国服角色。";
+        return $t("pay-log-command.text_abef7508b9");
       }
       async function verify() {
         signal.throwIfAborted();
         const live = await ownedGenshinRole(profiles, qq, profileId).catch(() => undefined);
         if (!live || live.accountId !== initial.accountId || live.source.revision !== initial.source.revision ||
             live.source.role.uid !== uid || live.source.role.region !== region || live.source.role.gameBiz !== gameBiz) {
-          throw new ProfileError("changed", "档案已变化。");
+          throw new ProfileError("changed", $t("pay-log-command.text_0db52b27c1"));
         }
         signal.throwIfAborted();
       }
@@ -127,11 +130,11 @@ export function createGenshinPayLogCommand(profiles: GenshinRoleProfiles, lifecy
         result = live ? readLegacyGenshinPayLog(live, uid) : await readArchive(directory, qq, uid, signal);
       } else if (archive) {
         const roleKey = `${qq}:${uid}`;
-        if (running.has(roleKey)) return "本角色正在读取充值记录，请稍后再试。";
+        if (running.has(roleKey)) return $t("pay-log-command.text_a2b1a1976e");
         for (const [id, previous] of authorizations) if (now() - previous.at >= authorizationLifetime) authorizations.delete(id);
         const previous = authorizations.get(key);
         const authorization = command.kind === "authorize" ? command.authorization : previous?.identity === identity ? previous.value : undefined;
-        if (!authorization) return "未找到当前档案的有效授权，请在本人好友私聊发送米游社客服充值记录链接。";
+        if (!authorization) return $t("pay-log-command.text_94a52e792a");
         running.add(roleKey);
         try {
           const ledger = await fetchPurchases(authorization, uid, verify, AbortSignal.any([signal, AbortSignal.timeout(120_000)]));
@@ -147,8 +150,8 @@ export function createGenshinPayLogCommand(profiles: GenshinRoleProfiles, lifecy
         } finally { running.delete(roleKey); }
       }
       await verify();
-      if (!result) return "所选国服档案没有已保存的充值账本。";
-      if (!result.bars.length) return "该角色的充值账本没有可统计的消费。";
+      if (!result) return $t("pay-log-command.text_83534f9bf1");
+      if (!result.bars.length) return $t("pay-log-command.text_74c89985c4");
       const card = await render(result, { signal, inlineImageByteLimit: context.inlineImageByteLimit }).catch(() => undefined);
       await verify();
       if (!card || context.inlineImageByteLimit !== undefined && card.png.byteLength > context.inlineImageByteLimit) return text(result);
@@ -156,17 +159,17 @@ export function createGenshinPayLogCommand(profiles: GenshinRoleProfiles, lifecy
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof GenshinPayLogError) {
-        if (error.reason === "wrong-role") return "此链接对应的角色与当前档案不一致。";
-        if (error.reason === "expired") return "充值记录授权已失效，请重新获取客服查询链接。";
-        return "未能完整读取官方充值记录，本次未保存。";
+        if (error.reason === "wrong-role") return $t("pay-log-command.text_7b85219298");
+        if (error.reason === "expired") return $t("pay-log-command.text_cbb782b680");
+        return $t("pay-log-command.text_e1e2c39735");
       }
       if (error instanceof ProfileError) {
-        if (error.code === "changed") return "原神档案已变化，请重新查询充值记录。";
-        if (error.code === "missing" || error.code === "login-required") return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 没有已同步的原神角色。`;
-        if (error.code === "invalid") return "档案的登录凭据与账号不一致，请重新登录。";
+        if (error.code === "changed") return $t("pay-log-command.text_ab34d43437");
+        if (error.code === "missing" || error.code === "login-required") return $t("pay-log-command.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("pay-log-command.text_147d603571", { "profileId": profileId });
+        if (error.code === "invalid") return $t("pay-log-command.text_dbd093cee6");
       }
-      return command.kind === "read" ? "无法读取当前角色的充值账本，请检查文件格式后重试。" : "无法保存本次充值账本，请稍后再试。";
+      return command.kind === "read" ? $t("pay-log-command.text_d9d5a8b37b") : $t("pay-log-command.text_9d6af7045e");
     }
   };
 }

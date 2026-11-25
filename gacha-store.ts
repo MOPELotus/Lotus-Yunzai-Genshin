@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { createHash, randomUUID } from "node:crypto";
 import { constants, linkSync, lstatSync, renameSync, unlinkSync, type BigIntStats } from "node:fs";
 import { lstat, mkdir, mkdtemp, open, realpath, rm } from "node:fs/promises";
@@ -6,7 +9,7 @@ import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { genshinGachaPools, type GenshinGachaPool } from "@lotus-yunzai/hoyo-client";
 import { mergeGenshinGachaHistory, type GenshinGachaSnapshot } from "./gacha-history.ts";
 
-const subject = "原神抽卡历史";
+const subject = $t("gacha-store.text_d929f08616");
 const lockName = ".lotus-genshin-gacha.sqlite";
 const journalName = ".lotus-genshin-gacha-journal.json";
 const stagingPrefix = ".lotus-genshin-gacha-write-";
@@ -14,7 +17,7 @@ const maxPoolBytes = 64 * 1024 * 1024;
 const maxJournalBytes = 16 * 1024;
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 const digest = /^[0-9a-f]{64}$/u;
-const changed = () => new Error("原神抽卡文件已被其他进程改写，未覆盖现有数据。");
+const changed = () => new Error($t("gacha-store.text_a40b6dc7ba"));
 
 export type PublishGenshinGachaRepair = (publish: () => void) => void;
 
@@ -36,7 +39,7 @@ function missing(error: unknown): boolean {
 }
 
 function checkIdentity(qq: string, uid: string) {
-  if (!/^[1-9]\d*$/u.test(qq) || !/^[1-9]\d*$/u.test(uid)) throw new TypeError("原神抽卡档案的 QQ 或 UID 无效。");
+  if (!/^[1-9]\d*$/u.test(qq) || !/^[1-9]\d*$/u.test(uid)) throw new TypeError($t("gacha-store.text_97932feb47"));
 }
 
 function stamp(info: BigIntStats): string {
@@ -54,7 +57,7 @@ async function readSnapshot(path: string, limit = maxPoolBytes): Promise<Snapsho
   if (!handle) return;
   try {
     const info = await handle.stat({ bigint: true });
-    if (!info.isFile() || info.size > BigInt(limit)) throw new Error(`${subject}须为大小有效的普通 JSON 文件。`);
+    if (!info.isFile() || info.size > BigInt(limit)) throw new Error($t("gacha-store.text_41d1abfb9d", { "subject": subject }));
     const bytes = Buffer.allocUnsafe(Number(info.size));
     for (let offset = 0; offset < bytes.length;) {
       const { bytesRead } = await handle.read(bytes, offset, bytes.length - offset, offset);
@@ -78,7 +81,7 @@ function currentStamp(path: string): string | undefined {
 
 function decode(bytes: Buffer): unknown {
   try { return JSON.parse(utf8.decode(bytes)); }
-  catch { throw new Error(`${subject}的 JSON 格式无效。`); }
+  catch { throw new Error($t("gacha-store.text_9762775415", { "subject": subject })); }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -97,7 +100,7 @@ function isOwnership(value: unknown): value is Ownership {
 
 function readJournal(snapshot: Snapshot, { qq, uid }: Identity): Journal {
   const data = decode(snapshot.bytes);
-  const invalid = () => new Error("原神抽卡恢复日志无效，已保留原文件。");
+  const invalid = () => new Error($t("gacha-store.text_ae20dae20a"));
   if (!isRecord(data) || data.version !== 1 || data.qq !== qq || data.uid !== uid || typeof data.staging !== "string" ||
       !/^\.lotus-genshin-gacha-write-[A-Za-z0-9]{6}$/u.test(data.staging) || !Array.isArray(data.entries) ||
       !data.entries.length || data.entries.length > genshinGachaPools.length) throw invalid();
@@ -135,7 +138,7 @@ async function writeFile(path: string, bytes: Buffer, owner?: Ownership) {
 
 async function actualDirectory(path: string) {
   if (!(await lstat(path)).isDirectory() || await realpath(path) !== path) {
-    throw new Error(`${subject}的目录须为实体目录。`);
+    throw new Error($t("gacha-store.text_8ee6845498", { "subject": subject }));
   }
 }
 
@@ -175,7 +178,7 @@ async function recover(directory: string, identity: Identity) {
   try {
     for (const { entry } of pending) {
       const contents = await readSnapshot(poolPath(staging, entry.type));
-      if (contents?.sha256 !== entry.after) throw new Error("原神抽卡恢复内容与提交校验值不一致。");
+      if (contents?.sha256 !== entry.after) throw new Error($t("gacha-store.text_cc151cbfb2"));
       await writeFile(poolPath(replay, entry.type), contents.bytes, entry.owner);
     }
     for (const { file, current } of pending) if (currentStamp(file) !== current) throw changed();
@@ -217,7 +220,7 @@ async function readPools(directory: string) {
 
 function decodePool(file: Snapshot): unknown[] {
   const value = decode(file.bytes);
-  if (!Array.isArray(value)) throw new Error(`${subject}的旧卡池文件须为 JSON 数组。`);
+  if (!Array.isArray(value)) throw new Error($t("gacha-store.text_df0f38b4a9", { "subject": subject }));
   return value;
 }
 
@@ -269,7 +272,7 @@ export function createGenshinGachaHistoryStore(directory: string, acquireLock: A
       }
     },
     async merge(identity: Identity, latest: GenshinGachaSnapshot, verifyProfile: () => Promise<void>, publishRepair?: PublishGenshinGachaRepair) {
-      if (identity.uid !== latest.uid) throw new TypeError("原神抽卡快照与档案 UID 不一致。");
+      if (identity.uid !== latest.uid) throw new TypeError($t("gacha-store.text_21a8ce0880"));
       await verifyProfile();
       const role = (await locate(identity, true))!;
       const lock = await acquireLock(join(role, lockName), subject);
@@ -292,7 +295,7 @@ export function createGenshinGachaHistoryStore(directory: string, acquireLock: A
           for (const { type } of writes) {
             const original = files.get(type);
             const bytes = Buffer.from(`${JSON.stringify(result.records[type], null, "\t")}\n`);
-            if (bytes.length > maxPoolBytes) throw new Error(`${subject}的单池文件过大。`);
+            if (bytes.length > maxPoolBytes) throw new Error($t("gacha-store.text_a3e8fe453d", { "subject": subject }));
             const file = poolPath(staging, type);
             await writeFile(file, bytes);
             const info = await lstat(file);

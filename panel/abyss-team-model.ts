@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { findRankCharacter } from "../rank-statistics/stats.ts";
 import { object, text, whole, type PanelSnapshot } from "./model.ts";
 import { canRefreshTalent } from "./refreshed-talents.ts";
@@ -86,7 +89,7 @@ export function createPublicAbyssTeamsSource(transport: (url: string, init: Requ
     });
     if (!response.ok || !response.body || Number(response.headers.get("content-length")) > byteLimit) {
       await response.body?.cancel().catch(() => undefined);
-      throw Error("深渊配队公开统计不可用。");
+      throw Error($t("panel.abyss-team-model.text_1935f1e69d"));
     }
     const reader = response.body.getReader();
     const chunks: Uint8Array[] = [];
@@ -97,11 +100,11 @@ export function createPublicAbyssTeamsSource(transport: (url: string, init: Requ
         const { done, value } = await reader.read();
         if (done) break;
         length += value.byteLength;
-        if (length > byteLimit) throw Error("深渊配队公开统计超出大小限制。");
+        if (length > byteLimit) throw Error($t("panel.abyss-team-model.text_a541e41f46"));
         chunks.push(value);
       }
       const parsed: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, length)));
-      if (!Array.isArray(object(parsed)?.has_list) || !Array.isArray(object(parsed)?.result)) throw Error("深渊配队公开统计暂未更新。");
+      if (!Array.isArray(object(parsed)?.has_list) || !Array.isArray(object(parsed)?.result)) throw Error($t("panel.abyss-team-model.text_1cdfb9eadd"));
       cache = { value: parsed, expires: now() + cacheLifetime };
       return parsed;
     } finally {

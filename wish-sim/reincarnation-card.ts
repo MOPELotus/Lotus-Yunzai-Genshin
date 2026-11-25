@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { realpath, stat } from "node:fs/promises";
 import { join, sep } from "node:path";
@@ -11,10 +14,10 @@ const width = 1630;
 const height = 777;
 const fontFallback = '"Noto Sans CJK SC", sans-serif';
 const elements: Readonly<Record<string, { label: string; color: string }>> = {
-  pyro: { label: "火", color: "#f73f50" }, dendro: { label: "草", color: "#1d9b34" },
-  hydro: { label: "水", color: "#207cda" }, cryo: { label: "冰", color: "#20beda" },
-  electro: { label: "雷", color: "#a820da" }, geo: { label: "岩", color: "#da9b20" },
-  anemo: { label: "风", color: "#389078" },
+  pyro: { label: $t("wish-sim.reincarnation-card.text_d4cfe8c82c"), color: "#f73f50" }, dendro: { label: $t("wish-sim.reincarnation-card.text_91b246b5db"), color: "#1d9b34" },
+  hydro: { label: $t("wish-sim.reincarnation-card.text_327b54d04f"), color: "#207cda" }, cryo: { label: $t("wish-sim.reincarnation-card.text_ce1b850700"), color: "#20beda" },
+  electro: { label: $t("wish-sim.reincarnation-card.text_5de1b913e7"), color: "#a820da" }, geo: { label: $t("wish-sim.reincarnation-card.text_9638a2a0f9"), color: "#da9b20" },
+  anemo: { label: $t("wish-sim.reincarnation-card.text_be65bd5518"), color: "#389078" },
 };
 export const wishReincarnationElement = (elem: string) => elements[elem] ?? elements.anemo!;
 
@@ -72,7 +75,7 @@ function drawAvatar(ctx: DrawingContext, avatar: Picture | undefined, nickname: 
     const size = Math.min(avatar.width, avatar.height);
     ctx.drawImage(avatar, (avatar.width - size) / 2, (avatar.height - size) / 2, size, size, 100, 25, 150, 150);
   } else {
-    text(ctx, [...nickname][0] ?? "旅", 175, 122, 60, font, "#fff", 100);
+    text(ctx, [...nickname][0] ?? $t("wish-sim.reincarnation-card.text_6199808a7c"), 175, 122, 60, font, "#fff", 100);
   }
   ctx.restore();
 }
@@ -90,7 +93,7 @@ export async function renderWishReincarnation({
   const customColor = colors?.[element.label];
   const color = typeof customColor === "string" && /^#[\da-f]{6}$/iu.test(customColor) ? customColor : element.color;
   const [background, portrait, avatar, heading, body, footer] = await Promise.all([
-    (traveler ? resources.picture("meta-gs", "character", "旅行者", "anemo", "imgs", "card.webp")
+    (traveler ? resources.picture("meta-gs", "character", $t("wish-sim.reincarnation-card.text_4bf6868aa0"), "anemo", "imgs", "card.webp")
       .then(image => image ?? resources.picture(...dir, "card.webp")) : resources.picture(...dir, "card.webp"))
       .then(image => image ?? resources.picture("common", "bg", "bg-gs.webp")),
     resources.picture(...dir, "splash.webp").then(image => image ?? resources.picture(...dir, "gacha.webp")),
@@ -125,14 +128,14 @@ export async function renderWishReincarnation({
     ribbon.addColorStop(1, "#fff0");
     ctx.fillStyle = ribbon;
     ctx.fillRect(88, 220, 650, 171);
-    text(ctx, "恭喜你转生成了", 413, 276, 65, headingFont, color, 590, "center", true);
+    text(ctx, $t("wish-sim.reincarnation-card.text_bb1aed7651"), 413, 276, 65, headingFont, color, 590, "center", true);
     text(ctx, name, 413, 373, 100, headingFont, color, 590, "center", true);
-    for (const [index, field] of [`神之眼:${element.label}`, `称号:${title}`, `身份:${identity}`].entries()) {
+    for (const [index, field] of [$t("wish-sim.reincarnation-card.text_b6259cc243", { "label": element.label }), $t("wish-sim.reincarnation-card.text_a2856275b0", { "title": title }), $t("wish-sim.reincarnation-card.text_3cdb8d6b5c", { "identity": identity })].entries()) {
       const top = 440 + index * 80;
       ctx.fillStyle = ribbon;
       ctx.fillRect(88, top, 650, 55);
       text(ctx, field, 413, top + 44, 38, body ?? fontFallback, color, 607);
     }
-    text(ctx, "Lotus-Yunzai · Genshin", 1615, 765, 24, footer ?? fontFallback, "#fff", 430, "right");
+    text(ctx, $t("wish-sim.reincarnation-card.text_155a1af781"), 1615, 765, 24, footer ?? fontFallback, "#fff", 430, "right");
   }, mode ?? "auto", { inlineImageByteLimit, signal });
 }

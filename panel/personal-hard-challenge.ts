@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
@@ -37,9 +40,9 @@ export function createPersonalHardChallengeQuery(profiles: GenshinRoleProfiles,
     if (signal.aborted) return;
     const user = context.user_id;
     if (context.isDelegated || (context.message_type !== "private" && context.message_type !== "group") ||
-        !user || user < 1 || !Number.isSafeInteger(user)) return "请在本人 QQ 会话中查询幽境危战。";
+        !user || user < 1 || !Number.isSafeInteger(user)) return $t("panel.personal-hard-challenge.text_4d1c8d4023");
     const { profileId } = selection;
-    if (profileId < 1 || profileId > MAX_PROFILE_ID) return `档案编号须在 1 到 ${MAX_PROFILE_ID} 之间。`;
+    if (profileId < 1 || profileId > MAX_PROFILE_ID) return $t("panel.personal-hard-challenge.text_b4ba5fed47", { "MAX_PROFILE_ID": MAX_PROFILE_ID });
     const qq = String(user);
     try {
       const initial = await ownedGenshinRole(profiles, qq, profileId);
@@ -50,7 +53,7 @@ export function createPersonalHardChallengeQuery(profiles: GenshinRoleProfiles,
         const latest = await ownedGenshinRole(profiles, qq, profileId).catch(() => undefined);
         if (!latest || latest.accountId !== initial.accountId || latest.source.revision !== revision ||
             latest.source.role.uid !== uid || latest.source.role.region !== region || latest.source.role.gameBiz !== gameBiz) {
-          throw new ProfileError("changed", "原神角色档案已变化。");
+          throw new ProfileError("changed", $t("panel.personal-hard-challenge.text_0314226111"));
         }
         signal.throwIfAborted();
         return latest;
@@ -89,20 +92,20 @@ export function createPersonalHardChallengeQuery(profiles: GenshinRoleProfiles,
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "changed") return "原神档案已变化，请重新查询幽境危战。";
-        if (error.code === "login-required" || error.code === "missing") return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 没有已同步的原神角色。`;
-        if (error.code === "invalid") return "档案的登录凭据与账号不一致，请重新登录。";
+        if (error.code === "changed") return $t("panel.personal-hard-challenge.text_3903d30a64");
+        if (error.code === "login-required" || error.code === "missing") return $t("panel.personal-hard-challenge.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("panel.personal-hard-challenge.text_147d603571", { "profileId": profileId });
+        if (error.code === "invalid") return $t("panel.personal-hard-challenge.text_dbd093cee6");
       }
       if (error instanceof PersonalHardChallengeThemeError || error instanceof ImageSizeLimitError) return error.message;
       if (error instanceof GameRecordRequestError) {
-        if (error.retcode === 10102) return "此档案的原神米游社战绩未公开，或尚未在米游社绑定角色。";
-        if (error.retcode === 10101) return "原神米游社查询已达今日上限。";
+        if (error.retcode === 10102) return $t("panel.personal-hard-challenge.text_ecc2c2a204");
+        if (error.retcode === 10101) return $t("panel.personal-hard-challenge.text_f879a9c364");
         return error.message;
       }
-      if (error instanceof HoyoRequestError && error.code === "profile-changed") return "原神档案已变化，请重新查询幽境危战。";
+      if (error instanceof HoyoRequestError && error.code === "profile-changed") return $t("panel.personal-hard-challenge.text_3903d30a64");
       if (error instanceof HoyoRequestError && error.code === "refresh") return error.message;
-      return "暂时无法查询幽境危战，请稍后重试。";
+      return $t("panel.personal-hard-challenge.text_d11fd493d7");
     }
   };
 }

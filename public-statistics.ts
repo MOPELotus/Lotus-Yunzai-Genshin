@@ -1,9 +1,12 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { maxPublicFileBytes } from "../../lib/public-files.ts";
 import { createPublicStatisticsSources, type RoleStatistics, type StatRole, type UsageStatistics } from "./public-statistics-source.ts";
 import { renderPublicStatistics } from "./public-statistics-card.ts";
 import { readPanelTheme, type PanelTheme } from "./panel/theme.ts";
 
-const constellations = "零一二三四五满";
+const constellations = $t("public-statistics.text_ebccd9b25a");
 const ownership = /^#(?:原神)?角色(持有率?|命座|命之座|([0-6零一二三四五六满])命)(分布|统计|持有率?)?$/u;
 const usage = /^#(?:原神)?(深渊|深境螺旋|深境|幽境危战|幽境|危战)(?:第?([零一二三四五六七八九十\d&、和]+)层)?(?:角色)?(?:出场|使用)(?:率|统计)*$/u;
 
@@ -37,7 +40,7 @@ export function matchPublicStatistics(message: string): PublicStatisticsIntent |
 function ownershipCard(intent: Extract<PublicStatisticsIntent, { type: "ownership" }>,
   roles: RoleStatistics, abyss: UsageStatistics | undefined, cached: boolean): StatisticsCard {
   const { constellation, showUnowned } = intent;
-  const title = showUnowned ? "#角色持有率" : `#角色${constellation === undefined ? "命座" : constellations[constellation] + "命"}统计`;
+  const title = showUnowned ? "#角色持有率" : `#角色${constellation === undefined ? $t("public-statistics.text_5da80321f0") : constellations[constellation] + $t("public-statistics.text_42abb81858")}统计`;
   const rows = roles.rows.map(role => {
     const holding = abyss?.owned.get(role.name);
     return { name: role.name, stars: role.stars, holding,
@@ -47,25 +50,25 @@ function ownershipCard(intent: Extract<PublicStatisticsIntent, { type: "ownershi
     ? (left.holding ?? -1) - (right.holding ?? -1)
     : (right.percentages[constellation] ?? -1) - (left.percentages[constellation] ?? -1));
   return { type: "ownership", title, rows, showUnowned, notes: [
-    "命座来自 Lelaer，持有率来自提瓦特小助手，均为上传样本。",
-    showUnowned ? "命座分布按持有率折算，未知持有率保留为空。" : "命座分布统计持有该角色的样本，无论该角色是否登场。",
-    `命座 ${roles.version || "版本未知"} · 样本参考 ${roles.samples?.toLocaleString("zh-CN") ?? "未知"} · ${roles.updated || "时间未知"}`,
-    abyss ? `持有率数据 ${abyss.version || "版本未知"} · ${abyss.updated || "时间未知"}` : "持有率来源暂无数据，持有率显示未知。",
-    ...(cached ? ["上游暂不可用，正在显示缓存，时间以上方为准。"] : []),
+    $t("public-statistics.text_596144a8cb"),
+    showUnowned ? $t("public-statistics.text_6004557055") : $t("public-statistics.text_59b03fc671"),
+    $t("public-statistics.text_3d223cc27d", { "value1": roles.version || $t("public-statistics.text_dc73097905"), "value2": roles.samples?.toLocaleString("zh-CN") ?? $t("public-statistics.text_4d8c1c5b42"), "value3": roles.updated || $t("public-statistics.text_664939a1fa") }),
+    abyss ? $t("public-statistics.text_4355b3dcb9", { "value1": abyss.version || $t("public-statistics.text_dc73097905"), "value2": abyss.updated || $t("public-statistics.text_664939a1fa") }) : $t("public-statistics.text_fef891e8d5"),
+    ...(cached ? [$t("public-statistics.text_eef04dd41e")] : []),
   ] };
 }
 
 function usageCard(intent: Extract<PublicStatisticsIntent, { type: "abyss" | "hard" }>,
   data: UsageStatistics, cached: boolean): StatisticsCard {
   const hard = intent.type === "hard";
-  const name = hard ? "幽境危战" : "深渊", floor = hard ? "难度 5&6" : "第十二层";
+  const name = hard ? $t("public-statistics.text_c3354e0ec8") : $t("public-statistics.text_2c73012572"), floor = hard ? $t("public-statistics.text_0e13f6b0d2") : $t("public-statistics.text_09ca246e44");
   return { type: "usage", title: `#${name}${intent.floor ? floor : ""}使用率`, floor,
     groups: data.groups, notes: [
-      `数据来自 ${hard ? "Lelaer" : "提瓦特小助手"}。数据来自主动上传样本，供参考。`,
-      "使用率等于出场次数除以持有该角色的记录数。",
-      `${data.version || "版本未知"} · 样本 ${data.samples?.toLocaleString("zh-CN") ?? "未知"} 份`,
-      `数据更新时间 ${data.updated || "未知"}`,
-      ...(cached ? ["上游暂不可用，正在显示缓存，时间以上方为准。"] : []),
+      $t("public-statistics.text_0c2319733e", { "value1": hard ? "Lelaer" : $t("public-statistics.text_42c9105417") }),
+      $t("public-statistics.text_fec8b5d5e5"),
+      $t("public-statistics.text_6ee898171c", { "value1": data.version || $t("public-statistics.text_dc73097905"), "value2": data.samples?.toLocaleString("zh-CN") ?? $t("public-statistics.text_4d8c1c5b42") }),
+      $t("public-statistics.text_81198d540c", { "value1": data.updated || $t("public-statistics.text_4d8c1c5b42") }),
+      ...(cached ? [$t("public-statistics.text_eef04dd41e")] : []),
     ] };
 }
 
@@ -83,15 +86,15 @@ export function createGenshinPublicStatistics(signal: AbortSignal, {
     if (intent.type === "ownership") {
       const [roles, abyss] = await Promise.all([sources.roles(), sources.abyss()]);
       if (signal.aborted) return;
-      if (!roles) return "Lelaer 暂未提供角色命座数据，请稍后再试。";
-      if (intent.showUnowned && !abyss?.value.owned.size) return "提瓦特小助手暂未提供角色持有率。可用 #角色命座统计 查看命座分布。";
+      if (!roles) return $t("public-statistics.text_06e8e467c6");
+      if (intent.showUnowned && !abyss?.value.owned.size) return $t("public-statistics.text_b9add3c185");
       card = ownershipCard(intent, roles.value, abyss?.value, roles.cached || abyss?.cached === true);
     } else {
       const hard = intent.type === "hard";
-      if (!intent.supported) return hard ? "幽境危战来源只提供难度 5 和 6 的合并使用率。" : "深渊使用率来源只提供第十二层。";
+      if (!intent.supported) return hard ? $t("public-statistics.text_3845cfe9dd") : $t("public-statistics.text_5a8867e8f6");
       const result = await sources[intent.type]();
       if (signal.aborted) return;
-      if (!result?.value.groups.length) return hard ? "Lelaer 暂未提供幽境危战使用率，请稍后再试。" : "提瓦特小助手暂未提供深渊使用率，请稍后再试。";
+      if (!result?.value.groups.length) return hard ? $t("public-statistics.text_de5a82e349") : $t("public-statistics.text_da6bda58e4");
       card = usageCard(intent, result.value, result.cached);
     }
     try {
@@ -101,9 +104,9 @@ export function createGenshinPublicStatistics(signal: AbortSignal, {
     } catch {
       if (signal.aborted) return;
       const lines = card.type === "ownership" ? card.rows.slice(0, 12).map(row =>
-        `${row.name} · 持有 ${row.holding === undefined ? "未知" : row.holding.toFixed(2) + "%"} · 命座 ${row.percentages.map(value => value?.toFixed(2) ?? "—").join("/")}`)
+        $t("public-statistics.text_ca33f651e8", { "name": row.name, "value2": row.holding === undefined ? $t("public-statistics.text_4d8c1c5b42") : row.holding.toFixed(2) + "%", "value3": row.percentages.map(value => value?.toFixed(2) ?? "—").join("/") }))
         : card.groups.flatMap(group => group.rows.slice(0, 4).map(row => `${group.rank} · ${row.name} ${row.rate.toFixed(2)}%`));
-      return [card.title, ...card.notes, "图像未生成，以下为部分数据。", ...lines].join("\n");
+      return [card.title, ...card.notes, $t("public-statistics.text_7ffabef1f0"), ...lines].join("\n");
     }
   };
 }

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { gameCommandProfileId, MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { charExp, charMaxLv, charPromote, items, promoteLvs, talentCost, talentKeys, talentMax, weaponExp, weaponPromote, weaponPromoteStar } from "./tables.ts";
@@ -40,11 +43,11 @@ export interface GrowthRequest {
   readonly legacy?: { readonly weaponLevel: number };
 }
 
-export const growthHelp = ["养成计算格式", "#养成计算 刻晴 · 等级90、天赋10/10/10",
-  "#养成计算 刻晴 天赋 10 9 10", "#养成计算 刻晴 等级89 天赋 10 9 10",
-  "#养成计算 雾切 80 · 从1级升至80级，未突破", "#养成计算 雾切 50-80+ · 从50级升至80级并突破",
-  "#刻晴养成81 90 9 9 9 · 依次指定角色等级、当前装备的武器等级、三项天赋",
-  "登录后可在私聊扣除当前档案的背包，群聊需在指令中加上「扣除背包」。"].join("\n");
+export const growthHelp = [$t("grow.model.text_cf48cf9fd6"), $t("grow.model.text_dfd57f64f1"),
+  $t("grow.model.text_01a1b577eb"), $t("grow.model.text_3d4ae4a0de"),
+  $t("grow.model.text_f5ec4bcaf2"), $t("grow.model.text_b20ff060bc"),
+  $t("grow.model.text_690ce951d9"),
+  $t("grow.model.text_3cc4811b3a")].join("\n");
 
 export function matchGrowthCommand(message: string): GrowthRequest | "help" | undefined {
   const start = /^#(?:原神)?(?:养成|培养)计算/u.exec(message);
@@ -185,7 +188,7 @@ function materialGroup(title: string, resolve: ResolveMaterial) {
 const fmt = (number: number, commaGroup?: number) => groupPanelNumber(number.toLocaleString("zh-CN"), commaGroup);
 const experience = (table: readonly number[], from: number, to: number) => table.slice(from - 1, to - 1).reduce((a, b) => a + b, 0);
 const levelRows = (curr: GrowthLevel, to: GrowthLevel): GrowthRow[] => [
-  { title: "等级", from: `Lv.${curr.level}`, to: `Lv.${to.level}` }, { title: "突破", from: curr.promote, to: to.promote },
+  { title: $t("grow.model.text_3377171738"), from: `Lv.${curr.level}`, to: `Lv.${to.level}` }, { title: $t("grow.model.text_61191b616c"), from: curr.promote, to: to.promote },
 ];
 
 export function calculateCharacterGrowth(materials: MaterialNames, current: CharacterGrowth, request: Target,
@@ -201,7 +204,7 @@ export function calculateCharacterGrowth(materials: MaterialNames, current: Char
   const to = { level, promote, ...toTalents };
   const groups: GrowthGroup[] = [];
   try {
-    const levels = materialGroup("等级提升", resolve);
+    const levels = materialGroup($t("grow.model.text_9443d81a40"), resolve);
     for (let p = current.promote; p < to.promote; p++) {
       const cost = charPromote[p]!;
       levels.material(materials.gem, cost.gem[0], cost.gem[1], 1);
@@ -215,9 +218,9 @@ export function calculateCharacterGrowth(materials: MaterialNames, current: Char
     levels.addMora(Math.ceil(exp / items.charExp.mora));
     if (request.level || all || to.promote > current.promote || to.level > current.level) {
       const talentAscension = to.promote > Math.max(current.promote, goal.promote, getPromote(goal.level));
-      groups.push(levels.finish(`Lv.${current.level} → Lv.${to.level}，需经验 ${fmt(exp, commaGroup)}${talentAscension ? `，天赋${maxTalent}级需突破至${to.promote}阶` : ""}`));
+      groups.push(levels.finish($t("grow.model.text_5229b8133f", { "level": current.level, "value2": to.level, "value3": fmt(exp, commaGroup), "value4": talentAscension ? $t("grow.model.text_d6c44ae043", { "maxTalent": maxTalent, "promote": to.promote }) : "" })));
     }
-    const skills = materialGroup("天赋升级", resolve);
+    const skills = materialGroup($t("grow.model.text_acbdb9a2af"), resolve);
     for (const key of names) for (let level = current[key] + 1; level <= to[key]; level++) {
       const cost = talentCost[level as keyof typeof talentCost];
       skills.material(materials.talent, cost.talent[0], cost.talent[1], 5);
@@ -236,7 +239,7 @@ export function calculateWeaponGrowth(materials: MaterialNames, star: GrowthStar
   resolve: ResolveMaterial, commaGroup?: number): GrowthResult | undefined {
   const level = Math.max(current.level, target.level);
   const to = { level, promote: Math.max(current.promote, target.promote, getPromote(level)) };
-  const group = materialGroup("突破与升级", resolve);
+  const group = materialGroup($t("grow.model.text_f82809e3d6"), resolve);
   try {
     for (let p = current.promote; p < to.promote; p++) {
       const [weapon, monster, normal, mora] = weaponPromote[star][p]!;
@@ -249,6 +252,6 @@ export function calculateWeaponGrowth(materials: MaterialNames, star: GrowthStar
   const exp = experience(weaponExp[star], current.level, to.level);
   group.item("weaponExp", Math.ceil(exp / items.weaponExp.exp), 8);
   group.addMora(Math.ceil(exp / items.weaponExp.mora));
-  return { curr: current, to, rows: levelRows(current, to), groups: [group.finish(`Lv.${current.level} → Lv.${to.level}，需经验 ${fmt(exp, commaGroup)}`)],
+  return { curr: current, to, rows: levelRows(current, to), groups: [group.finish($t("grow.model.text_81990c305c", { "level": current.level, "value2": to.level, "value3": fmt(exp, commaGroup) }))],
     moraTotal: group.mora };
 }

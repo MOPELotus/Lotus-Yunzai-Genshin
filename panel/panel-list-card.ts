@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { nativeImageRasterScale } from "@lotus-yunzai/skia";
 import { renderGenshinCard } from "../card-render.ts";
 import type { PanelRankMarker } from "./group-rank.ts";
@@ -13,7 +16,7 @@ export const panelListColumns = 8;
 
 export class PanelListImageLimitError extends Error {
   constructor(readonly byteLength: number) {
-    super("单张原神面板图片超过当前协议发送上限。");
+    super($t("panel.panel-list-card.text_b3d8dd83d3"));
   }
 }
 
@@ -24,8 +27,8 @@ const consColors = ["#666", "#5cbac2", "#339d61", "#3e95b9", "#3955b7", "#531ba9
 const lastUpdate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai",
   dateStyle: "short", timeStyle: "short" });
 const services: Readonly<Record<string, string>> = {
-  mysPanel: "米游社", enka: "Enka", miao: "第三方面板", mgg: "第三方面板",
-  hutao: "胡桃工具箱", homo: "Enka", change: "面板变换", customize: "自定义", share: "共享", local: "本地",
+  mysPanel: $t("panel.panel-list-card.text_6ca05b2485"), enka: "Enka", miao: $t("panel.panel-list-card.text_ff00775f29"), mgg: $t("panel.panel-list-card.text_ff00775f29"),
+  hutao: $t("panel.panel-list-card.text_8d075f9aa4"), homo: "Enka", change: $t("panel.panel-list-card.text_a92175dd34"), customize: $t("panel.panel-list-card.text_4eafa9e925"), share: $t("panel.panel-list-card.text_4d6a4bc105"), local: $t("panel.panel-list-card.text_bf4ad76184"),
 };
 
 const isNew = (snapshot: PanelSnapshot, avatar: PanelAvatar, updated: boolean) =>
@@ -52,7 +55,7 @@ function renderRankBadge(ctx: Context, { write }: Writer, marker: PanelRankMarke
     if (marker.rank > 3) write(marker.rank, left + 38, top + 69, 10, { align: "center" });
   } else {
     fill(ctx, marker.mode === "damage" ? "#b84b3d" : "#99712e", [left + 23, top + 56, 29, 13], 4);
-    write(marker.rank === 1 ? "最强" : marker.rank, left + 38, top + 66, 10, { align: "center" });
+    write(marker.rank === 1 ? $t("panel.panel-list-card.text_64dfcc065c") : marker.rank, left + 38, top + 66, 10, { align: "center" });
   }
 }
 
@@ -109,13 +112,13 @@ function rankLegend(ctx: Context, writer: Writer, symbols: Picture | undefined, 
   };
   icon(25, false);
   if (!participating) {
-    write("本面板暂未参与排名，在本群查看本人角色详情后参与。", 44, top + 26, 12);
+    write($t("panel.panel-list-card.text_fc4f28c635"), 44, top + 26, 12);
     return;
   }
   icon(120, true);
-  write("综合练度排名", 44, top + 26, 12);
-  write("圣遗物评分排名", 139, top + 26, 12);
-  write("排名：本群内查看本人角色详情后参与", 237, top + 25, 10, { color: "#aaa" });
+  write($t("panel.panel-list-card.text_5e574e16da"), 44, top + 26, 12);
+  write($t("panel.panel-list-card.text_7fcda2632f"), 139, top + 26, 12);
+  write($t("panel.panel-list-card.text_4e6045c1c6"), 237, top + 25, 10, { color: "#aaa" });
 }
 
 export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly PanelAvatar[], theme: PanelTheme, {
@@ -161,11 +164,11 @@ export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly
     shadow(ctx, "#000b", 3, 1);
     write("#面板列表", 30, 53, 36, { title: true });
     font(36, false, true);
-    write(`UID:${snapshot.uid}${pageCount > 1 ? ` · 第 ${page}/${pageCount} 页` : ""}`,
+    write(`UID:${snapshot.uid}${pageCount > 1 ? $t("panel.panel-list-card.text_6d88e2bb3f", { "page": page, "pageCount": pageCount }) : ""}`,
       40 + ctx.measureText("#面板列表").width, 53, 14);
-    if (updated) write("获取角色面板数据成功", 30, 75, 14);
-    const demo = avatars[0] ? alias(avatars[0]) : "角色名";
-    const segments = ["你可以使用", `#${demo}面板${suffix}`, "、", `#${demo}伤害${suffix}`, "、", `#${demo}圣遗物${suffix}`, "命令来查看面板信息了"];
+    if (updated) write($t("panel.panel-list-card.text_64e4c4a560"), 30, 75, 14);
+    const demo = avatars[0] ? alias(avatars[0]) : $t("panel.panel-list-card.text_c0362bdb59");
+    const segments = [$t("panel.panel-list-card.text_994cf1c5d2"), `#${demo}面板${suffix}`, "、", `#${demo}伤害${suffix}`, "、", `#${demo}圣遗物${suffix}`, $t("panel.panel-list-card.text_00eec007eb")];
     const hintTop = updated ? 92 : 75;
     let hintX = 30;
     font(14);
@@ -193,18 +196,18 @@ export async function renderPanelList(snapshot: PanelSnapshot, avatars: readonly
       fill(ctx, "#0006", [10, footerTop, 625, 35]);
       if (updated) {
         dot(ctx, 29, footerTop + 18, "#90e800");
-        write("本次更新角色", 36, footerTop + 23, 12);
-      } else if (time) write(`更新时间：${time}`, 25, footerTop + 23, 12);
-      write("当前更新服务：" + (services[currentSource] ?? "本地"), 620, footerTop + 23, 12, { align: "right" });
+        write($t("panel.panel-list-card.text_8e5a316cfa"), 36, footerTop + 23, 12);
+      } else if (time) write($t("panel.panel-list-card.text_ef28088933", { "time": time }), 25, footerTop + 23, 12);
+      write($t("panel.panel-list-card.text_b3a446eb4a") + (services[currentSource] ?? $t("panel.panel-list-card.text_bf4ad76184")), 620, footerTop + 23, 12, { align: "right" });
     });
     ctx.save();
     shadow(ctx, "#000", 1, 1);
-    write("Lotus-Yunzai", 330, height - 13, 14, { align: "center" });
+    write($t("panel.panel-list-card.text_3867834e77"), 330, height - 13, 14, { align: "center" });
     ctx.restore();
   }, mode, { displayWidth, scale: outputScale, allowHalfScale: true });
   const full = await render(scale);
   if (inlineImageByteLimit === undefined || full.png.byteLength <= inlineImageByteLimit) return full;
   const reduced = nativeImageRasterScale() === 1 || scale === 2 || full.reducedScaleReason ? full : await render(2);
   if (reduced.png.byteLength > inlineImageByteLimit) throw new PanelListImageLimitError(reduced.png.byteLength);
-  return { ...reduced, reducedScaleReason: "四倍原神面板图片超过当前协议发送上限。" };
+  return { ...reduced, reducedScaleReason: $t("panel.panel-list-card.text_e5226f9357") };
 }

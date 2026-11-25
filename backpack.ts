@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { MAX_PROFILE_ID, ProfileError, type createProfileStore } from "@lotus-yunzai/account";
 import {
   GameRecordRequestError, HoyoRequestError, type GenshinBackpackItem, type createProfileHoyoClient,
@@ -34,7 +37,7 @@ function pagedCategories(categories: readonly Category[]) {
 }
 
 function textPages(categories: readonly Category[]) {
-  const pages = ["原神背包（≥ 表示至少拥有该数量）"];
+  const pages = [$t("backpack.text_672b199516")];
   let text = pages[0]!;
   for (const { name, items } of categories) {
     if (!items.length) continue;
@@ -43,7 +46,7 @@ function textPages(categories: readonly Category[]) {
       const line = `\n${item.name} · ${item.exact ? "" : "≥"}${item.count}`;
       if (text.length + line.length > 900) {
         pages[pages.length - 1] = text;
-        text = `原神背包 · ${name}`;
+        text = $t("backpack.text_4322814fe9", { "name": name });
         pages.push("");
       }
       text += line;
@@ -60,11 +63,11 @@ export function createGenshinBackpackQuery(
 ) {
   return async (profileId: number, context: { readonly user_id?: number; reply(message: BackpackReply): unknown }) => {
     if (signal.aborted) return;
-    if (profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (profileId > MAX_PROFILE_ID) return $t("backpack.text_3dd62228d2");
     const { user_id } = context;
-    if (!user_id || !Number.isSafeInteger(user_id) || user_id < 1) return "请从登录档案对应的 QQ 会话查询原神背包。";
+    if (!user_id || !Number.isSafeInteger(user_id) || user_id < 1) return $t("backpack.text_9d7ecb16f7");
     const qq = String(user_id);
-    const changed = "原神档案角色已变化，请重新查询。";
+    const changed = $t("backpack.text_5982fc0b5b");
     try {
       const source = await profiles.requestContext(qq, profileId, "gs");
       const result = await client.fetchGenshinBackpack(source, { probe: genshinBackpackProbe, signal });
@@ -75,7 +78,7 @@ export function createGenshinBackpackQuery(
           (!latest.role.region || latest.role.region === result.region);
       }
       if (!await currentRole()) return signal.aborted ? undefined : changed;
-      if (!result.items.length) return "官方养成计算器没有返回可查询的背包材料。";
+      if (!result.items.length) return $t("backpack.text_5a63d3d96d");
       const miaoResourceDirectory = genshinGachaThemeDirectory();
       const model = await groupGenshinBackpackMaterials(result.items, miaoResourceDirectory, signal);
       async function image(categories: readonly Category[]) {
@@ -108,14 +111,14 @@ export function createGenshinBackpackQuery(
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing" || error.code === "login-required") return `请先登录 profile ${profileId}。`;
-        if (error.code === "role-missing") return `profile ${profileId} 没有同步原神 UID。`;
+        if (error.code === "missing" || error.code === "login-required") return $t("backpack.text_3caf242584", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("backpack.text_028a00ae63", { "profileId": profileId });
         if (error.code === "changed") return changed;
       }
       if (error instanceof GameRecordRequestError || (error instanceof HoyoRequestError &&
         (error.code === "invalid-input" || error.code === "profile-changed" || error.code === "refresh" ||
           error.code === "response"))) return error.message;
-      return "原神背包暂时无法查询。";
+      return $t("backpack.text_bab001359f");
     }
   };
 }

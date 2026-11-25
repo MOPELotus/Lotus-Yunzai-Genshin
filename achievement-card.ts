@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { Canvas, loadImage, type CanvasRenderingContext2D as Context } from "skia-canvas";
 import { renderGenshinCard, renderGenshinCardForChat } from "./card-render.ts";
 import { profileFonts } from "./panel/original-profile-skia.ts";
@@ -64,7 +67,7 @@ export async function renderAchievementCard(card: AchievementCard, { mode = "aut
     profileFonts(theme.resourceRoot, { numberFont: false }),
   ]);
   const { text: bodyFont, title: headingFont } = faces;
-  if (!background || !banner) throw new Error("缺少原神成就卡的原版背景。");
+  if (!background || !banner) throw new Error($t("achievement-card.text_1180fe9512"));
   const metrics = new Canvas(1, 1).getContext("2d");
   metrics.font = `36px ${headingFont}`;
   const titleLines = lines(metrics, card.title, width - 70);
@@ -145,7 +148,7 @@ export async function renderAchievementCard(card: AchievementCard, { mode = "aut
       ctx.clip();
       rectangle(ctx, left, top, contentWidth, notesHeight, "rgba(0,0,0,.50)");
       rectangle(ctx, left, top, contentWidth, 44, "rgba(0,0,0,.40)");
-      text(ctx, ["说明"], left + 20, top + 10, 28, 20, gold, bodyFont);
+      text(ctx, [$t("achievement-card.text_4262c45dc7")], left + 20, top + 10, 28, 20, gold, bodyFont);
       let y = top + 54;
       for (const note of notes) {
         text(ctx, ["•"], left + 20, y, 22, 14, white, bodyFont);
@@ -160,7 +163,7 @@ export async function renderAchievementCard(card: AchievementCard, { mode = "aut
     ctx.shadowBlur = 2;
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
-    text(ctx, ["Lotus-Yunzai"], width / 2, top + 15, 18, 12, white, bodyFont);
+    text(ctx, [$t("achievement-card.text_3867834e77")], width / 2, top + 15, 18, 12, white, bodyFont);
   };
   return scale === 4 ? renderGenshinCardForChat(width, height, draw, mode, { displayWidth: 720, inlineImageByteLimit, signal })
     : renderGenshinCard(width, height, draw, mode, { displayWidth: 720, scale });

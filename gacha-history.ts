@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { isDeepStrictEqual } from "node:util";
 import { genshinGachaPools, type GenshinGachaPool, type GenshinGachaSnapshot } from "@lotus-yunzai/hoyo-client";
 
@@ -23,20 +26,20 @@ function supportedPool(value: unknown): value is GenshinGachaPool {
 }
 
 function usableRecord(value: unknown, uid: string, type: GenshinGachaPool, legacy: boolean) {
-  if (!isRecord(value)) throw new TypeError("原神抽卡记录须为对象。");
+  if (!isRecord(value)) throw new TypeError($t("gacha-history.text_ab7e06fbc5"));
   const id = decimalId(value.id);
-  if (!id) throw new TypeError("原神抽卡记录编号无效或精度不足。");
+  if (!id) throw new TypeError($t("gacha-history.text_85f3078e00"));
 
   // Some old exports only carry the UID in their enclosing file directory.
   if ((!legacy || value.uid !== undefined) && decimalId(value.uid) !== uid) {
-    throw new TypeError("原神抽卡记录的 UID 与档案不一致。");
+    throw new TypeError($t("gacha-history.text_68af4b9f66"));
   }
   const pool = decimalId(value.gacha_type);
   if (pool !== String(type) && !(type === 301 && pool === "400")) {
-    throw new TypeError("原神抽卡记录与文件所属卡池不一致。");
+    throw new TypeError($t("gacha-history.text_dedddae11b"));
   }
   if (value.uigf_gacha_type !== undefined && decimalId(value.uigf_gacha_type) !== String(type)) {
-    throw new TypeError("原神抽卡记录的标准卡池编号不一致。");
+    throw new TypeError($t("gacha-history.text_c6f15080b8"));
   }
   return { id, row: value as GenshinSavedGachaRow };
 }
@@ -101,18 +104,18 @@ export function mergeGenshinGachaHistory(
   if (!/^[1-5]\d{8}$/u.test(uid) || (region !== "cn_gf01" && region !== "cn_qd01") ||
       (uid.startsWith("5") !== (region === "cn_qd01")) ||
       (expected && (expected.uid !== uid || (expected.region && expected.region !== region)))) {
-    throw new TypeError("原神抽卡快照的 UID 或区服与档案不一致。");
+    throw new TypeError($t("gacha-history.text_7871a3c30e"));
   }
   if (!isRecord(previous) || Object.keys(previous).some((key) => !/^(?:200|301|302|500)$/u.test(key))) {
-    throw new TypeError("旧原神抽卡文件的卡池映射无效。");
+    throw new TypeError($t("gacha-history.text_d007ad125a"));
   }
   if (!Array.isArray(latest.pools) || latest.pools.length !== genshinGachaPools.length) {
-    throw new TypeError("原神抽卡快照须完整包含四个卡池。");
+    throw new TypeError($t("gacha-history.text_6ec10f36db"));
   }
   const incoming = new Map<GenshinGachaPool, readonly unknown[]>();
   for (const pool of latest.pools) {
     if (!isRecord(pool) || !supportedPool(pool.type) || incoming.has(pool.type) || !Array.isArray(pool.records)) {
-      throw new TypeError("原神抽卡快照包含缺失、重复或无效的卡池。");
+      throw new TypeError($t("gacha-history.text_c13ce4dcdd"));
     }
     incoming.set(pool.type, pool.records);
   }
@@ -120,7 +123,7 @@ export function mergeGenshinGachaHistory(
   const records: Record<GenshinGachaPool, readonly GenshinSavedGachaRow[]> = { 301: [], 302: [], 500: [], 200: [] };
   const pools = genshinGachaPools.map(({ type, name }) => {
     const old = Object.hasOwn(previous, type) ? previous[type] : undefined;
-    if (old !== undefined && !Array.isArray(old)) throw new TypeError("旧原神抽卡文件须为 JSON 数组。");
+    if (old !== undefined && !Array.isArray(old)) throw new TypeError($t("gacha-history.text_707d768ff0"));
     const merged = mergePool(old ?? [], incoming.get(type)!, uid, type, repairOfficialRows);
     records[type] = merged.records;
     return { type, name, added: merged.added, total: merged.records.length, changed: merged.changed,

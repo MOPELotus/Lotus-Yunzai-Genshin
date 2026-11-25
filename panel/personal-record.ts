@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError, type ProfileRequestContext } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError, type GenshinGcgSummary } from "@lotus-yunzai/hoyo-client";
 import { ImageSizeLimitError } from "@lotus-yunzai/skia";
@@ -79,12 +82,12 @@ export function createPersonalRecordQuery(profiles: GenshinRoleDirectory, client
     const { user_id: user, message_type: scene } = context;
     if (lifecycle.aborted || context.privateCredentialSignal?.aborted) return;
     if (context.isDelegated || (scene !== "private" && scene !== "group") || !user || !Number.isSafeInteger(user) || user < 1) {
-      return "请在本人 QQ 会话中查询原神角色。";
+      return $t("panel.personal-record.text_7edeb33d07");
     }
     const { type } = command;
     let { profileId } = command;
     const qq = String(user);
-    if (profileId < 1 || profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (profileId < 1 || profileId > MAX_PROFILE_ID) return $t("panel.personal-record.text_3dd62228d2");
     const signal = context.privateCredentialSignal ? AbortSignal.any([lifecycle, context.privateCredentialSignal]) : lifecycle;
     const includeRoster = type === "roster";
     const includeExploration = type === "exploration";
@@ -92,7 +95,7 @@ export function createPersonalRecordQuery(profiles: GenshinRoleDirectory, client
     const rarity = type === "roster" ? command.star : undefined;
     try {
       const owned = requestedUid ? await findOwnedGenshinUid(profiles, qq, requestedUid, signal) : await ownedGenshinRole(profiles, qq, profileId);
-      if (!owned) return "只可查询本人已登录且已同步的原神 UID。";
+      if (!owned) return $t("panel.personal-record.text_a9a89817f7");
       const { source, accountId } = owned;
       profileId = source.profileId;
       const { uid, region, gameBiz } = source.role;
@@ -103,7 +106,7 @@ export function createPersonalRecordQuery(profiles: GenshinRoleDirectory, client
           ownedGenshinRole(profiles, qq, profileId)).catch(() => undefined);
         if (latest?.accountId !== accountId || latest.source.revision !== revision || latest.source.role.uid !== uid ||
           latest.source.role.region !== region || latest.source.role.gameBiz !== gameBiz) {
-          throw new ProfileError("changed", "原神角色档案已变化。");
+          throw new ProfileError("changed", $t("panel.personal-record.text_0314226111"));
         }
         signal.throwIfAborted();
       }
@@ -121,12 +124,12 @@ export function createPersonalRecordQuery(profiles: GenshinRoleDirectory, client
         const model = buildPersonalExploration(uid, region, official.overview, official.gcg, {
           regionName: source.role.regionName, releaseCaps,
         });
-        if (!model) return "米游社未返回原神探索统计。";
+        if (!model) return $t("panel.personal-record.text_cdd70195a6");
         const { inlineImageByteLimit } = context;
         const { png } = await explore(model, { signal, qq, inlineImageByteLimit });
         await verify();
         if (inlineImageByteLimit !== undefined && png.byteLength > inlineImageByteLimit) {
-          return "原神探索图卡超过当前会话的图片大小限制。";
+          return $t("panel.personal-record.text_51de7fa26c");
         }
         return { type: "image", file: png };
       }
@@ -157,12 +160,12 @@ export function createPersonalRecordQuery(profiles: GenshinRoleDirectory, client
           })),
         };
       } else if (official) {
-        return "米游社没有返回原神角色列表。";
+        return $t("panel.personal-record.text_338b25df19");
       }
       const statistics = snapshot && await buildPanelStatistics(snapshot, assets, signal, false);
-      if (!snapshot || !statistics?.length) return "暂未获得原神角色数据，请使用 #更新面板 或刷新当前档案后重试。";
+      if (!snapshot || !statistics?.length) return $t("panel.personal-record.text_7226648650");
       const rows = rarity ? statistics.filter(row => row.star === rarity) : statistics;
-      if (!rows.length) return `本档案暂无 ${rarity} 星原神角色。`;
+      if (!rows.length) return $t("panel.personal-record.text_a1f1cc56ea", { "rarity": rarity });
       const gold = statistics.reduce((total, { avatar, star, weapon }) => total +
         (star === 5 && avatar.id !== 10000005 && avatar.id !== 10000007 ? (avatar.cons ?? 0) + 1 : 0) +
         (weapon?.star === 5 ? weapon.affix ?? 0 : 0), 0);
@@ -204,23 +207,23 @@ export function createPersonalRecordQuery(profiles: GenshinRoleDirectory, client
         return;
       }
       await verify();
-      return "原神角色名单超过当前会话的单图大小上限。";
+      return $t("panel.personal-record.text_9036e98b19");
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "changed") return "原神档案已变化，请重新查询角色。";
-        if (["missing", "login-required"].includes(error.code)) return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 没有已同步的原神角色。`;
-        if (error.code === "invalid") return "档案的登录凭据与账号不一致，请重新登录。";
+        if (error.code === "changed") return $t("panel.personal-record.text_cc12802646");
+        if (["missing", "login-required"].includes(error.code)) return $t("panel.personal-record.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("panel.personal-record.text_147d603571", { "profileId": profileId });
+        if (error.code === "invalid") return $t("panel.personal-record.text_dbd093cee6");
       }
       if (error instanceof GameRecordRequestError) {
-        if (error.retcode === 10102) return "此档案的原神米游社战绩未公开，或尚未在米游社绑定角色。";
-        if (error.retcode === 10101) return "原神米游社查询已达今日上限。";
+        if (error.retcode === 10102) return $t("panel.personal-record.text_ecc2c2a204");
+        if (error.retcode === 10101) return $t("panel.personal-record.text_f879a9c364");
         return error.message;
       }
-      if (error instanceof HoyoRequestError && error.code === "profile-changed") return "原神档案已变化，请重新查询角色。";
+      if (error instanceof HoyoRequestError && error.code === "profile-changed") return $t("panel.personal-record.text_cc12802646");
       if (error instanceof HoyoRequestError && error.code === "refresh") return error.message;
-      return "暂时无法查询原神角色，请稍后重试。";
+      return $t("panel.personal-record.text_49857bcb2a");
     }
   };
 }

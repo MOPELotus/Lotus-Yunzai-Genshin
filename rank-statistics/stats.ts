@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { characterAliasKey, readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
 import { fetchRankStats as fetchPublicRankStats, queryPublicDamageRank, rankPercentiles, type RankStatsTransport } from "../../../lib/rank-statistics.ts";
 import { alias } from "../panel/miao/character-alias.ts";
@@ -36,7 +39,7 @@ export async function resolveGenshinCharacter(name: string) {
 }
 
 export async function fetchRankStats(id: number, signal: AbortSignal, transport?: RankStatsTransport) {
-  if (!entries.some(row => row.id === id)) return { message: "此角色没有有效的原神角色编号。" };
+  if (!entries.some(row => row.id === id)) return { message: $t("rank-statistics.stats.text_2603794ff2") };
   return fetchPublicRankStats(id, signal, transport);
 }
 
@@ -54,7 +57,7 @@ export async function queryRankStats(message: string, signal: AbortSignal) {
     const { png } = await renderRankStats(character.name, result.stats);
     if (!signal.aborted) return { type: "image" as const, file: png };
   } catch {
-    if (!signal.aborted) return [`${character.name} · 排名趋势 · ${result.stats.title} · ${result.stats.total} 个 UID`,
+    if (!signal.aborted) return [$t("rank-statistics.stats.text_b25f3296f8", { "name": character.name, "title": result.stats.title, "total": result.stats.total }),
       ...result.stats.scores.map((damage, index) => `TOP ${rankPercentiles[index]}% · ${damage}`)].join("\n");
   }
 }

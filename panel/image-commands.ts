@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -11,9 +14,9 @@ const deletion = /^#?\s*(?:原神)?(?:移除|清除|删除)([^#\r\n]{1,40}?)面�
 const list = /^#?\s*(?:原神)?([^#\r\n]{1,40}?)面板图列表(?:\s+([1-9]\d{0,2}))?\s*$/u;
 const limit = 1_000;
 const visible = 4;
-const adminOnly = "只有当前机器人主人可以管理原神面板图。";
-const noRoot = "原神面板图可写目录尚未配置，请先准备独立的面板图目录。";
-const invalid = "面板图序号无效，请查看该角色的面板图列表。";
+const adminOnly = $t("panel.image-commands.text_2a94abac64");
+const noRoot = $t("panel.image-commands.text_f34a90c3fb");
+const invalid = $t("panel.image-commands.text_2a11dd7d89");
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Node = string | Image | readonly [string, Image];
 type Reply = string | { readonly type: "forward"; readonly nodes: readonly Node[]; readonly batchSize: number };
@@ -48,7 +51,7 @@ export function panelImageCommand(message: string) {
 
 export function createPanelImageCommands(lockFile: AcquireRoleArchiveLock, signal: AbortSignal, root = managedPanelImageRoot()) {
   const index = join(root, ".index");
-  const snapshots = createRoleJsonArchive(index, lockFile, { subject: "原神面板图序号", lockSuffix: "gallery",
+  const snapshots = createRoleJsonArchive(index, lockFile, { subject: $t("panel.image-commands.text_68c7da4fe4"), lockSuffix: "gallery",
     maxBytes: 512 * 1024, rejectNull: true });
   return async (context: Context): Promise<Reply | undefined> => {
     if (signal.aborted) return;
@@ -59,11 +62,11 @@ export function createPanelImageCommands(lockFile: AcquireRoleArchiveLock, signa
     const isOwner = () => id(context.user_id) && context.isBotMaster?.(context.user_id) === true;
     if (!key || !isOwner()) return adminOnly;
     const role = findRankCharacter((remove?.[1] ?? show?.[1] ?? "").trim());
-    if (!role) return "未找到可核对的原神角色。";
+    if (!role) return $t("panel.image-commands.text_fb61ecabc0");
     const { name } = role;
     const number = Number(remove?.[2] ?? show?.[2] ?? 1);
     if (number < 1 || number > limit) return invalid;
-    if (remove && !remove[2]) return `请写明序号，例如 #删除${name}面板图1。可用 #${name}面板图列表 查看序号。`;
+    if (remove && !remove[2]) return $t("panel.image-commands.text_c2f12172f7", { "name": name, "value2": name });
     const verify = async () => {
       signal.throwIfAborted();
       if (!isOwner()) throw new ImagePermission(adminOnly);
@@ -81,38 +84,38 @@ export function createPanelImageCommands(lockFile: AcquireRoleArchiveLock, signa
         const saved = remove || number > 1 ? savedPanelImages(previous, name) : undefined;
         if (saved) return { result: saved };
         const current = await panelImageCandidates(root, name);
-        if (current.length > limit) throw new RangeError("可管理的原神面板图超过 1000 张。");
+        if (current.length > limit) throw new RangeError($t("panel.image-commands.text_d742adda31"));
         return { document: { version: 1, name, entries: current }, result: current };
       });
       if (show) {
-        if (!entries.length) return `暂无可管理的${name}面板图。`;
+        if (!entries.length) return $t("panel.image-commands.text_486c246486", { "name": name });
         const pageCount = Math.ceil(entries.length / visible);
-        if (number > pageCount) return `面板图列表共 ${pageCount} 页。`;
+        if (number > pageCount) return $t("panel.image-commands.text_40a02de404", { "pageCount": pageCount });
         const start = (number - 1) * visible;
-        const nodes: Node[] = [`${name}面板图 · 共 ${entries.length} 张 · 第 ${number}/${pageCount} 页\n使用 #删除${name}面板图序号 可移除对应图片。`];
+        const nodes: Node[] = [$t("panel.image-commands.text_bcb99c4ab8", { "name": name, "length": entries.length, "number": number, "pageCount": pageCount, "value5": name })];
         let bytes = 0;
         for (const [index, entry] of entries.slice(start, start + visible).entries()) {
           const image = await readPanelImage(root, entry).catch(() => undefined);
           if (image) bytes += image.byteLength;
           const label = `${start + index + 1}.`;
-          nodes.push(image ? [label, { type: "image", file: image }] : `${label} 图片不可预览`);
+          nodes.push(image ? [label, { type: "image", file: image }] : $t("panel.image-commands.text_2f3fa0adc4", { "label": label }));
         }
         await verify();
         return { type: "forward", nodes, batchSize: bytes <= 16 * 1024 * 1024 ? nodes.length : 1 };
       }
       const selected = entries[number - 1];
       if (!selected) return invalid;
-      const lock = await lockFile(join(index, `.role-${role.id}.sqlite`), "原神面板图");
+      const lock = await lockFile(join(index, `.role-${role.id}.sqlite`), $t("panel.image-commands.text_21a46eebc8"));
       try {
         const outcome = await retirePanelImage(root, name, selected, verify);
-        if (outcome === "success") return `已删除${name}面板图 ${number}。`;
-        if (outcome === "removed") return "该序号对应的面板图已删除。请重新查看列表获取当前序号。";
-        return "此序号对应的面板图已变化，请重新查看列表。";
+        if (outcome === "success") return $t("panel.image-commands.text_c213bf3ccd", { "name": name, "number": number });
+        if (outcome === "removed") return $t("panel.image-commands.text_c76f3aa94e");
+        return $t("panel.image-commands.text_1d2973a4cb");
       } finally { lock.close(); }
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ImagePermission || error instanceof RangeError || error instanceof TypeError) return error.message;
-      return "原神面板图暂时无法管理，请检查可写目录或稍后重试。";
+      return $t("panel.image-commands.text_57fdd03087");
     }
   };
 }

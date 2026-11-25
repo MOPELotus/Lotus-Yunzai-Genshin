@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gameCommandProfileId, MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { alias } from "./miao/character-alias.ts";
 import { artifactMainIdMapping, propertyType2attrName } from "./miao/property-mappings.ts";
@@ -23,10 +26,10 @@ const mainKeys: Readonly<Record<string, string>> = mainIdMap;
 const multipliers: Readonly<Record<string, number>> = attrPct;
 
 export const propertyLabels: Readonly<Record<string, string>> = {
-  hp: "生命值", hpPlus: "生命值", atk: "攻击力", atkPlus: "攻击力", def: "防御力", defPlus: "防御力",
-  mastery: "元素精通", cpct: "暴击率", cdmg: "暴击伤害", recharge: "元素充能", heal: "治疗加成", dmg: "伤害加成",
-  pyro: "火伤加成", hydro: "水伤加成", anemo: "风伤加成", electro: "雷伤加成", dendro: "草伤加成",
-  cryo: "冰伤加成", geo: "岩伤加成", phy: "物伤加成",
+  hp: $t("panel.model.text_1a256e6376"), hpPlus: $t("panel.model.text_1a256e6376"), atk: $t("panel.model.text_b84ee11f4f"), atkPlus: $t("panel.model.text_b84ee11f4f"), def: $t("panel.model.text_1cb579e6ba"), defPlus: $t("panel.model.text_1cb579e6ba"),
+  mastery: $t("panel.model.text_7dca37c2aa"), cpct: $t("panel.model.text_d4b0baf955"), cdmg: $t("panel.model.text_15bccc3951"), recharge: $t("panel.model.text_11889f7e9d"), heal: $t("panel.model.text_6f2eca7102"), dmg: $t("panel.model.text_4da2b666c4"),
+  pyro: $t("panel.model.text_d52ac1b2d6"), hydro: $t("panel.model.text_06dd4b828c"), anemo: $t("panel.model.text_7e197a6857"), electro: $t("panel.model.text_cadfaa86a6"), dendro: $t("panel.model.text_618a4a13fa"),
+  cryo: $t("panel.model.text_706a5f1095"), geo: $t("panel.model.text_3ccdfbe81b"), phy: $t("panel.model.text_06ef280960"),
 };
 const displayPropertyKeys: Readonly<Record<number, string>> = {
   2000: "hp", 2001: "atk", 2002: "def", 28: "mastery", 20: "cpct", 22: "cdmg", 23: "recharge",
@@ -167,7 +170,7 @@ function matchNamedEquipment(message: string, bare = false): PanelCommand | unde
       input = input.slice(lvl[0].length);
     } else if (refine && affix === undefined) {
       const value = (refine[1] ?? refine[2])!;
-      affix = Number(value) || "一二三四五".indexOf(value === "满" ? "五" : value) + 1;
+      affix = Number(value) || $t("panel.model.text_3c040c8ec5").indexOf(value === "满" ? $t("panel.model.text_c9b87f516a") : value) + 1;
       input = input.slice(refine[0].length);
     } else break;
   }
@@ -191,7 +194,7 @@ export function matchConstellationChange(message: string): PanelCommand | undefi
   const cons = /^([0-6零一二三四五六满])(?:命|星魂|魂)$/u.exec(raw?.trim() ?? "")?.[1];
   const profileId = gameCommandProfileId("gs", profile);
   if (!target?.trim() || !cons || (leadingUid && trailingUid) || profileId > MAX_PROFILE_ID) return;
-  const constellationChange = /^\d$/u.test(cons) ? Number(cons) : "零一二三四五六".indexOf(cons === "满" ? "六" : cons);
+  const constellationChange = /^\d$/u.test(cons) ? Number(cons) : $t("panel.model.text_3c409887ef").indexOf(cons === "满" ? $t("panel.model.text_de07b53838") : cons);
   return { type: "change", name: target.trim(), profileId, uid: leadingUid ?? trailingUid,
     mode: damage ? "damage" : "profile", damageRow: row ? Number(row) : undefined, constellationChange };
 }
@@ -232,7 +235,7 @@ function splitChanges(message: string, maxParts: 2 | 3 | 4 | 5) {
   const [target, ...parts] = (profile ? message.slice(0, profile.index) : message).split("换");
   if (!target || parts.length < 2 || parts.length > maxParts || parts.some(part => !part)) return;
   const suffix = profile?.[0] ?? "";
-  return parts.map(part => `${target}换${part}${suffix}`);
+  return parts.map(part => $t("panel.model.text_ee13bb1bcc", { "target": target, "part": part, "suffix": suffix }));
 }
 
 export function matchCharacterLevelCombination(message: string): PanelCommand | undefined {
@@ -356,7 +359,7 @@ export function matchEquipmentChain(message: string): PanelCommand | undefined {
   const source: DonorEquipment[] = [];
   let head: PanelCommand | undefined;
   for (const donor of donors) {
-    const command = matchTemporaryEquipment(`${target}换${donor}${profile?.[0] ?? ""}`);
+    const command = matchTemporaryEquipment($t("panel.model.text_cdca74dabb", { "target": target, "donor": donor, "value3": profile?.[0] ?? "" }));
     const equipment = command?.equipmentChange;
     if (!equipment || "weaponName" in equipment) return;
     head ??= command;
@@ -377,7 +380,7 @@ export function matchConstellationEquipment(message: string): PanelCommand | und
   const donors: string[] = [];
   let constellationChange: number | undefined;
   for (const part of parts) {
-    const candidate = matchConstellationChange(`${target}换${part}${suffix}`);
+    const candidate = matchConstellationChange($t("panel.model.text_ee13bb1bcc", { "target": target, "part": part, "suffix": suffix }));
     if (candidate?.constellationChange === undefined) {
       donors.push(part);
     } else {
@@ -386,7 +389,7 @@ export function matchConstellationEquipment(message: string): PanelCommand | und
     }
   }
   if (constellationChange === undefined || donors.length === 0) return;
-  const equipment = `${target}换${donors.join("换")}${suffix}`;
+  const equipment = $t("panel.model.text_c1064b5fd8", { "target": target, "value2": donors.join($t("panel.model.text_1b5fdf01a4")), "suffix": suffix });
   const command = donors.length > 1 ? matchEquipmentChain(equipment) : matchTemporaryEquipment(equipment);
   if (command?.equipmentChange) return { ...command, constellationChange };
 }
@@ -398,7 +401,7 @@ const statisticsElements = { 风: "anemo", 岩: "geo", 雷: "electro", 草: "den
 function statisticsDay(when?: string): TalentStatisticsSelection["day"] {
   if (when === "今日" || when === "今天") return "today";
   if (when === "明日" || when === "明天") return "tomorrow";
-  if (when?.startsWith("周")) return Number(when[1]) || "一二三四五六日".indexOf(when[1] === "天" ? "日" : when[1]!) + 1;
+  if (when?.startsWith("周")) return Number(when[1]) || $t("panel.model.text_80caf9b17c").indexOf(when[1] === "天" ? $t("panel.model.text_85217f7aff") : when[1]!) + 1;
 }
 
 function statisticsCommand(value: string | undefined, talentStatistics?: TalentStatisticsSelection): PanelCommand | undefined {
@@ -604,10 +607,10 @@ export function officialPanel(uid: string, raw: readonly Json[], catalog: PanelC
     const base = object(row.base);
     const id = avatarId(base?.id);
     const level = whole(base?.level, 100);
-    if (!id || !level || avatars[id]) throw new TypeError("原神面板含有无效或重复的角色数据。");
+    if (!id || !level || avatars[id]) throw new TypeError($t("panel.model.text_f677707434"));
     const meta = object(catalog.characters[id]);
     const name = text(meta?.name) || text(base?.name);
-    if (!name) throw new TypeError("原神面板角色名称缺失。");
+    if (!name) throw new TypeError($t("panel.model.text_2eaff9fb3c"));
     const elem = panelElement(base?.element ?? meta?.elem);
     const cons = whole(base?.actived_constellation_num, 6);
     const talents: Partial<Record<TalentKey, number>> = {};
@@ -653,7 +656,7 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
   const root = object(raw);
   const data = object(root?.avatars);
   if (String(root?.uid) !== uid || !data || Object.keys(data).length > 256) {
-    throw new TypeError("面板文件不属于当前原神 UID 或格式无效。");
+    throw new TypeError($t("panel.model.text_ebdea08060"));
   }
   const avatars: Record<string, PanelAvatar> = {};
   for (const [key, value] of Object.entries(data)) {
@@ -662,7 +665,7 @@ export function readPanel(uid: string, raw: unknown, catalog: PanelCatalog, isLe
     const level = whole(row?.level, 100);
     if (!id || key !== String(id) || !level || !row) {
       if (isLegacy) continue;
-      throw new TypeError("原神面板角色格式无效。");
+      throw new TypeError($t("panel.model.text_4de8a68260"));
     }
     const meta = object(catalog.characters[id]);
     const name = text(meta?.name) || text(row.name);

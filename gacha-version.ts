@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import type { GenshinGachaPool } from "@lotus-yunzai/hoyo-client";
 import {
   genshinGachaTimestamp, insideGenshinGachaPeriod, parseGenshinGachaRows, type GenshinGachaDetailOptions, type GenshinGachaDetailPeriod,
@@ -6,12 +9,12 @@ import {
 import type { GenshinPreviousGacha } from "./gacha-history.ts";
 
 const selections = {
-  up: { pools: [301, 302], name: "抽卡" },
-  char: { pools: [301], name: "角色" },
-  weapon: { pools: [302], name: "武器" },
-  mix: { pools: [500], name: "集录" },
-  normal: { pools: [200], name: "常驻", aggregate: "常驻池" },
-  all: { pools: [301, 302, 200, 500], name: "全部", aggregate: "全部统计" },
+  up: { pools: [301, 302], name: $t("gacha-version.text_02d44306fd") },
+  char: { pools: [301], name: $t("gacha-version.text_c47b54e84e") },
+  weapon: { pools: [302], name: $t("gacha-version.text_4fe131173e") },
+  mix: { pools: [500], name: $t("gacha-version.text_8f161c1237") },
+  normal: { pools: [200], name: $t("gacha-version.text_300b6634fe"), aggregate: $t("gacha-version.text_d0cf5ec4c8") },
+  all: { pools: [301, 302, 200, 500], name: $t("gacha-version.text_5c55a67935"), aggregate: $t("gacha-version.text_5336683ac2") },
 } as const satisfies Record<string, { pools: readonly GenshinGachaPool[]; name: string; aggregate?: string }>;
 
 type Selection = keyof typeof selections;
@@ -155,9 +158,9 @@ function windows(rows: readonly GenshinGachaVersionPeriod[]) {
 export function buildGenshinGachaVersion({
   uid, records, face, schedule, weaponSchedule = schedule, mixedSchedule, resolveItem, type = "up", maxRows = 10, page,
 }: GenshinGachaVersionOptions): GenshinGachaVersionModel | undefined {
-  if (!/^[1-9]\d*$/u.test(uid) || !Object.hasOwn(selections, type)) throw new TypeError("原神抽卡统计 UID 或卡池无效。");
+  if (!/^[1-9]\d*$/u.test(uid) || !Object.hasOwn(selections, type)) throw new TypeError($t("gacha-version.text_4540ee147b"));
   if (!Number.isSafeInteger(maxRows) || maxRows < 0 || (page !== undefined && (!Number.isSafeInteger(page) || page < 1))) {
-    throw new RangeError("原神抽卡统计分页参数无效。");
+    throw new RangeError($t("gacha-version.text_9d406fd4c1"));
   }
   const selection = selections[type];
   const aggregate = "aggregate" in selection ? selection.aggregate : undefined;
@@ -199,12 +202,12 @@ export function buildGenshinGachaVersion({
     rows = grouped.toSorted((left, right) => right.start - left.start).flatMap((period) => {
       if (!period.draws.stats.totalNum) return [];
       const name = period.name ?? period.char5.map((char) => knownCharacterNames.get(char) ?? char).join(" / ");
-      const half = type === "up" && !regular.includes(period) ? `武器池·${period.half}` : period.half;
+      const half = type === "up" && !regular.includes(period) ? $t("gacha-version.text_3665f644a1", { "half": period.half }) : period.half;
       return [compact(period.draws, { version: period.version, half, name,
         from: day.format(period.start).slice(2), to: day.format(period.end).slice(2) }, itemMap)];
     });
     if (unknown.stats.totalNum) rows.push(compact(unknown, {
-      version: "未判定期次", half: "", from: "", to: "", name: "", unassigned: true,
+      version: $t("gacha-version.text_2e59e4b5fc"), half: "", from: "", to: "", name: "", unassigned: true,
     }, itemMap));
   }
 
@@ -214,7 +217,7 @@ export function buildGenshinGachaVersion({
   };
   const count = rows.length;
   const total = maxRows ? Math.max(1, Math.ceil(count / maxRows)) : 1;
-  if (page !== undefined && page > total) throw new RangeError("原神抽卡统计页码超出范围。");
+  if (page !== undefined && page > total) throw new RangeError($t("gacha-version.text_31a3a4f129"));
   const from = maxRows ? ((page ?? 1) - 1) * maxRows : 0;
   const to = maxRows ? Math.min(count, from + maxRows) : count;
   const pageInfo = page !== undefined && total > 1 ? { page, total, from: from + 1, to, count } : undefined;

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { join } from "node:path";
 import { loadOfficialArtwork } from "@lotus-yunzai/account";
 import type { GenshinBlueprint } from "@lotus-yunzai/hoyo-client";
@@ -68,8 +71,8 @@ export async function renderGenshinBlueprint(model: GenshinBlueprint, signal: Ab
       ctx.textAlign = "center";
       ctx.fillText(value, x + badgeWidth / 2, 47 + (height - 30), badgeWidth - (right ? 8 : 12));
     }
-    badge("尘歌壶模数养成计算", 15);
-    badge(`模数ID : ${model.code}`, 441, { right: true, max: 230 });
+    badge($t("grow.blueprint-card.text_e7251498b0"), 15);
+    badge($t("grow.blueprint-card.text_b60e1f8c17", { "code": model.code }), 441, { right: true, max: 230 });
     badge(`UID : ${model.uid}`, 635, { right: true, max: 190, height: 30 });
     rectangle(ctx, "#d9d3c7", 15, 75, 620, height - 90, 5);
     rectangle(ctx, "#f2eee6", 16, 76, 618, height - 92, 4);
@@ -100,7 +103,7 @@ export async function renderGenshinBlueprint(model: GenshinBlueprint, signal: Ab
         ctx.fillText(quantity, x + 65 + shownNameWidth, top + 32);
       });
     }
-    section("所需模具", 91, model.furniture);
-    section("所需消耗", 83 + sectionHeight(model.furniture.length), model.materials);
+    section($t("grow.blueprint-card.text_12c7038a08"), 91, model.furniture);
+    section($t("grow.blueprint-card.text_c22a606143"), 83 + sectionHeight(model.furniture.length), model.materials);
   }, mode, { displayWidth: 962, inlineImageByteLimit, signal });
 }

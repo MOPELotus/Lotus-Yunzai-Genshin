@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { readLiteralObjectExport } from "@lotus-yunzai/gacha/literal-exports";
@@ -155,8 +158,8 @@ function weaponSchedule(schedule: readonly GenshinGachaVersionPeriod[]): readonl
     row.from === "2021-03-02 18:00:00" && row.to === "2021-03-16 14:59:59");
   const matches = (row: GenshinGachaVersionPeriod | undefined, expected: readonly string[]) =>
     row?.weapon5.length === expected.length && expected.every(name => row.weapon5.includes(name));
-  const early = ["磐岩结绿", "和璞鸢"];
-  const late = ["护摩之杖", "狼的末路"];
+  const early = [$t("gacha-detail-source.text_951c828cf6"), $t("gacha-detail-source.text_ac227e5784")];
+  const late = [$t("gacha-detail-source.text_8db1cff0c4"), $t("gacha-detail-source.text_c03d3de436")];
   if (!first || !last || !matches(first, early) || !matches(middle, [...early, ...late]) || !matches(last, late)) return schedule;
 
   // The original Miao calendar combines both weapon sets during Keqing's character banner.

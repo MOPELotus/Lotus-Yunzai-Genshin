@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { fileURLToPath } from "node:url";
 import { loadImage } from "skia-canvas";
 import { renderGenshinCardForChat } from "../card-render.ts";
@@ -33,7 +36,7 @@ type Rank = NonNullable<StygianRankCardRow[Site]>;
 
 const sites = ["ark", "akasha"] as const;
 const siteNames = { ark: "Ark", akasha: "Akasha" };
-const states = { ok: "", unavailable: "暂不可用", unverified: "回包未核实", disabled: "未启用", "not-requested": "本期未查询" };
+const states = { ok: "", unavailable: $t("panel.stygian-rank-card.text_f36cac9622"), unverified: $t("panel.stygian-rank-card.text_df81a799db"), disabled: $t("panel.stygian-rank-card.text_f95ea7f4c0"), "not-requested": $t("panel.stygian-rank-card.text_dae36e7e66") };
 const uidPattern = /^[1-9]\d{8,9}$/u;
 const formatter = new Intl.NumberFormat("en-US");
 const gold = "#d3bc8e", muted = "#aaa";
@@ -102,8 +105,8 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
   const columns = sourceStates.filter(({ state }) => state !== "disabled" && state !== "not-requested");
   const sources = sourceStates.map(({ site, state }) =>
     state === "ok" ? siteNames[site] : `${siteNames[site]}（${states[state]}）`);
-  if (data.localSources?.personal) sources.push("本地米游社记录");
-  if (data.localSources?.legacy) sources.push("旧本地成绩");
+  if (data.localSources?.personal) sources.push($t("panel.stygian-rank-card.text_c967553b26"));
+  if (data.localSources?.legacy) sources.push($t("panel.stygian-rank-card.text_d8eec08a34"));
   const width = 580 + 140 * columns.length;
   const displayWidth = Math.round(width * 1.4);
   const height = rowTop + Math.max(1, data.rows.length) * (rowHeight + rowGap) + 29;
@@ -127,12 +130,12 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
     panel(ctx, texture, [10, infoTop, width - 25, 126], () => {
       fill(ctx, "#0006", [10, infoTop, width - 25, 40]);
       fill(ctx, "#ffffff5c", [10, infoTop + 40, width - 25, 1]);
-      write("幽境危战排名说明", 30, infoTop + 25, 16, { color: gold });
+      write($t("panel.stygian-rank-card.text_fd36332fbc"), 30, infoTop + 25, 16, { color: gold });
       fill(ctx, "#0008", [10, infoTop + 41, width - 25, 85]);
       const lines = [
-        ["幽境危战版本", clean(data.version, 40) || "未提供"],
-        ["统计周期", [clean(data.period?.start, 40), clean(data.period?.end, 40)].filter(Boolean).join(" - ") || "未提供"],
-        ["数据源", sources.join(" | ")],
+        [$t("panel.stygian-rank-card.text_07351af43e"), clean(data.version, 40) || $t("panel.stygian-rank-card.text_756762e293")],
+        [$t("panel.stygian-rank-card.text_f4f09df9e1"), [clean(data.period?.start, 40), clean(data.period?.end, 40)].filter(Boolean).join(" - ") || $t("panel.stygian-rank-card.text_756762e293")],
+        [$t("panel.stygian-rank-card.text_186be2232e"), sources.join(" | ")],
       ] as const;
       lines.forEach(([title, value], index) => {
         const y = infoTop + 62 + index * 19, x = 57;
@@ -145,14 +148,14 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
     });
 
     if (!data.rows.length) panel(ctx, texture, [10, rowTop, width - 25, rowHeight], () => {
-      write("当前版本暂无可显示的群成员成绩。", 30, rowTop + 36, 16);
+      write($t("panel.stygian-rank-card.text_cca88b433b"), 30, rowTop + 36, 16);
     });
 
     data.rows.forEach((row, index) => {
       const y = rowTop + index * (rowHeight + rowGap);
       const uid = stygianRankDisplayUid(row.uid, data.maskUid);
       const rawName = clean(row.nickname, 80);
-      const nickname = rawName && rawName !== row.uid ? rawName : "群成员";
+      const nickname = rawName && rawName !== row.uid ? rawName : $t("panel.stygian-rank-card.text_9d8692671d");
       const medal = medalName(row.difficulty, row.seconds);
       panel(ctx, texture, [10, y, width - 25, rowHeight], () => {
         if (rankBadge) {
@@ -178,7 +181,7 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
         ctx.stroke();
         font(18, true);
         write(nicknameForWidth(ctx, nickname, 96), 124, y + 29, 18, { color: muted, bold: true });
-        write(uid ? `UID ${uid}` : "UID 已隐藏", 124, y + 47, 12, { maxWidth: 96 });
+        write(uid ? `UID ${uid}` : $t("panel.stygian-rank-card.text_990cc93dd4"), 124, y + 47, 12, { maxWidth: 96 });
 
         columnRule(ctx, 224, y);
         const image = medal && medals.get(medal);
@@ -193,17 +196,17 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
           }
           contain(ctx, image, [233, y + 3, 47, 54]);
         }
-        write("难度", 284, y + 22, 12, { color: muted });
+        write($t("panel.stygian-rank-card.text_87b1bf8b51"), 284, y + 22, 12, { color: muted });
         write(medal ? row.difficulty : "—", 284, y + 46, 18);
 
         columnRule(ctx, 364, y);
-        write("时间", 379, y + 22, 12, { color: muted });
-        write(Number.isSafeInteger(row.seconds) && row.seconds >= 0 ? `${row.seconds}秒` : "—", 379, y + 46, 18);
+        write($t("panel.stygian-rank-card.text_8b6ff49851"), 379, y + 22, 12, { color: muted });
+        write(Number.isSafeInteger(row.seconds) && row.seconds >= 0 ? $t("panel.stygian-rank-card.text_651573f06f", { "seconds": row.seconds }) : "—", 379, y + 46, 18);
 
         columns.forEach(({ site, state }, column) => {
           const x = 511 + column * 172;
           columnRule(ctx, x - 12, y);
-          write(`全服排名(${siteNames[site]})`, x, y + 22, 12, { color: muted });
+          write($t("panel.stygian-rank-card.text_29fa06c8bc", { "value1": siteNames[site] }), x, y + 22, 12, { color: muted });
           write(state === "ok" ? place(row[site]) : states[state], x, y + 46, state === "ok" ? 18 : 14,
             { color: state === "ok" ? "#fff" : gold, maxWidth: Math.min(145, width - x - 25) });
         });
@@ -212,7 +215,7 @@ export async function renderStygianRankCard(data: StygianRankCard, theme: PanelT
 
     ctx.save();
     shadow(ctx, "#000", 3, 1);
-    write("Lotus-Yunzai", width / 2, height - 12, 14, { align: "center" });
+    write($t("panel.stygian-rank-card.text_3867834e77"), width / 2, height - 12, 14, { align: "center" });
     ctx.restore();
   }, mode, { displayWidth, inlineImageByteLimit, signal });
 }

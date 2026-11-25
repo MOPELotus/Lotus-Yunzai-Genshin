@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { characterAliasKey, readGameCharacterAliases } from "../../../lib/game-character-aliases.ts";
 import { findRankCharacter } from "../rank-statistics/stats.ts";
@@ -9,7 +12,7 @@ import type { PanelTheme } from "./theme.ts";
 
 export type RankMode = "damage" | "artifacts" | "crit" | "valid";
 export const rankModeNames: Readonly<Record<RankMode, string>> = {
-  damage: "伤害", artifacts: "圣遗物评分", crit: "双爆副词条", valid: "加权有效词条",
+  damage: $t("panel.group-rank-model.text_30e1196888"), artifacts: $t("panel.group-rank-model.text_0e1133fcd3"), crit: $t("panel.group-rank-model.text_8239a4e7ae"), valid: $t("panel.group-rank-model.text_60ac93fb6d"),
 };
 
 export function availableRankMode(mode: RankMode, character: { id: number; name: string }): RankMode {
@@ -30,7 +33,7 @@ export interface RankAvatar {
   readonly valid?: { readonly score: number };
 }
 
-const rankMetric = "(?:圣遗物)?(?:双[暴爆](?:副?词条)?|加权(?:有效)?词条|有效词条|词条|评分)|圣遗物";
+const rankMetric = $t("panel.group-rank-model.text_211a75e9a1");
 const metricPrefix = new RegExp(`^(?:${rankMetric})`, "u");
 const metricSuffix = new RegExp(`(?:${rankMetric})$`, "u");
 const rankEnding = /(?:排名|排行)榜?$/u;

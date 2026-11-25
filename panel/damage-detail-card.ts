@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { layoutTrialDamageTitles, trialDamageTitleLineHeight } from "../../../lib/panel-trial-display.ts";
 import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { Canvas } from "skia-canvas";
@@ -27,7 +30,7 @@ const dark = "#0006";
 const alternate = "#32323266";
 const line = "#fff4";
 const legacyAxisTitles: Readonly<Record<string,string>> = {
-  攻击力: "大攻击", 防御力: "大防御", 生命值: "大生命", 元素充能: "充能效率", 伤害加成: "元素伤害",
+  攻击力: $t("panel.damage-detail-card.text_0d43934fdb"), 防御力: $t("panel.damage-detail-card.text_aeed4dc439"), 生命值: $t("panel.damage-detail-card.text_dd1fad216f"), 元素充能: $t("panel.damage-detail-card.text_4e061c7460"), 伤害加成: $t("panel.damage-detail-card.text_d92e83f400"),
 };
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -73,15 +76,15 @@ function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined,
   const columns = [x, x + 100, x + 300.5, x + 438.3, x + width];
   const center = (i: number) => (columns[i]! + columns[i + 1]!) / 2;
   panel(ctx, texture, [x, top, width, height], () => {
-    heading(ctx, writer, top, "伤害计算");
+    heading(ctx, writer, top, $t("panel.damage-detail-card.text_393374d45e"));
     const head = top + 40;
     fill(ctx, alternate, [x, head, width, 40]);
     fill(ctx, dark, [x, head, width, 40]);
     grid(ctx, head, 40, columns);
     write("#", columns[1]! - 15, head + 26, 15, { color: gold, align: "right" });
-    write("伤害类型", columns[2]! - 15, head + 26, 15, { color: gold, align: "right" });
-    write("暴击伤害", center(2), head + 26, 15, { color: gold, align: "center" });
-    write("期望伤害", center(3), head + 26, 15, { color: gold, align: "center" });
+    write($t("panel.damage-detail-card.text_9b65f38ca8"), columns[2]! - 15, head + 26, 15, { color: gold, align: "right" });
+    write($t("panel.damage-detail-card.text_15bccc3951"), center(2), head + 26, 15, { color: gold, align: "center" });
+    write($t("panel.damage-detail-card.text_d5f4617e07"), center(3), head + 26, 15, { color: gold, align: "center" });
     entries.forEach((row, index) => {
       const { lines, top: offset, height: rowHeight } = titles.rows[index]!;
       const y = top + 80 + offset;
@@ -97,7 +100,7 @@ function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined,
       const damageCell = (key: "average" | "crit", left: number, maxWidth: number) => {
         const delta = row.trial?.[key];
         const change = damageTrialLabel(delta);
-        fit(ctx, writer, row.unavailable ? "数据不全" : display(row[key], row.unit), left,
+        fit(ctx, writer, row.unavailable ? $t("panel.damage-detail-card.text_4fd7325d79") : display(row[key], row.unit), left,
           y + (change ? 18 : 27), 18, maxWidth, "center", row.unavailable ? muted : bright);
         if (delta !== undefined && change) fit(ctx, writer, change, left, y + 35, 13, maxWidth, "center",
           delta === 0 ? muted : delta > 0 ? "#9de4b3" : "#ffad9e");
@@ -110,10 +113,10 @@ function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined,
     });
     const footer = top + height - 35;
     fill(ctx, "#0008", [x, footer, width, 35]);
-    const profile = profileId > 1 ? ` · 档案 ${profileId}` : "";
-    write(`目标为${model.enemyLevel}级${model.enemyName}，使用 #敌人等级${model.enemyLevel} 命令可指定等级${profile}`,
+    const profile = profileId > 1 ? $t("panel.damage-detail-card.text_a337eaf269", { "profileId": profileId }) : "";
+    write($t("panel.damage-detail-card.text_0356651825", { "enemyLevel": model.enemyLevel, "enemyName": model.enemyName, "value3": model.enemyLevel, "profile": profile }),
       x + 15, footer + 22, 12, { color: muted, maxWidth: model.ruleAuthors.length ? 355 : 535 });
-    if (model.ruleAuthors.length) write("伤害计算来源：" + model.ruleAuthors.join("、"), x + width - 15, footer + 22, 12,
+    if (model.ruleAuthors.length) write($t("panel.damage-detail-card.text_c620039e10") + model.ruleAuthors.join("、"), x + width - 15, footer + 22, 12,
       { color: gold, align: "right", maxWidth: 186 });
   });
 }
@@ -121,10 +124,10 @@ function damageTable(ctx: Context, writer: Writer, texture: Picture | undefined,
 function matrixNotes(abbr: string) {
   // Keep the original line breaks for the two fixed paragraphs in the 520px note area.
   return [
-    "大数字的含义为圣遗物副词条置换后平均伤害的变化，下方的详情数字为平均伤害/暴击伤\n害。",
-    "关于平均伤害：是将暴击率计算在内的伤害期望，能反映综合的输出能力，不等于实际伤害数\n字。",
-    "可用于评估当前面板下圣遗物副词条的侧重方向。实际游戏情况更加复杂，结果供参考~",
-    `如需更换计算的伤害类型，可使用命令 #${abbr}伤害+序号来切换，序号参见伤害计算板块`,
+    $t("panel.damage-detail-card.text_b4bd96b1a0"),
+    $t("panel.damage-detail-card.text_faa1a8fa04"),
+    $t("panel.damage-detail-card.text_04bd8c08bb"),
+    $t("panel.damage-detail-card.text_37f3aa9c23", { "abbr": abbr }),
   ];
 }
 
@@ -137,11 +140,11 @@ function drawMatrix(ctx: Context, writer: Writer, texture: Picture | undefined, 
   const centers = columns.slice(1).map((edge, i) => (edge + columns[i]!) / 2);
   const axes = comparison.axes.map(axis => legacyAxisTitles[axis] ?? axis);
   panel(ctx, texture, [x, top, width, height], () => {
-    heading(ctx, writer, top, "词条伤害计算", `#${abbr}伤害${index + 1}  当前计算为「${selected.title}」`, 122);
+    heading(ctx, writer, top, $t("panel.damage-detail-card.text_5ff6169f43"), $t("panel.damage-detail-card.text_56cbcbc77e", { "abbr": abbr, "value2": index + 1, "title": selected.title }), 122);
     const head = top + 40;
     fill(ctx, dark, [x, head, width, 47]);
     grid(ctx, head, 47, columns);
-    write("词条变化", centers[0]!, head + 31, 15, { align: "center", color: gold });
+    write($t("panel.damage-detail-card.text_ba0abfbf06"), centers[0]!, head + 31, 15, { align: "center", color: gold });
     axes.forEach((axis, i) => {
       write(axis, centers[i + 1]!, head + 22, 15, { align: "center", color: gold });
       const step = comparison.axisSteps?.[i];
@@ -192,7 +195,7 @@ function drawBuffs(ctx: Context, writer: Writer, texture: Picture | undefined,
   const { write } = writer;
   const titleWidth = 172;
   panel(ctx, texture, [x, top, width, height], () => {
-    heading(ctx, writer, top, "Buff列表", "部分 Buff 的触发条件和层数会影响实际伤害结果", 89, 36);
+    heading(ctx, writer, top, $t("panel.damage-detail-card.text_abcbe2bec6"), $t("panel.damage-detail-card.text_73d1ff157d"), 89, 36);
     let y = top + 36;
     rows.forEach(({ title, body, height: rowHeight }, i) => {
       fill(ctx, i % 2 ? alternate : dark, [x, y, width, rowHeight]);
@@ -212,7 +215,7 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
     (typeof value === "number" ? groupPanelNumber(number.format(value), theme.commaGroup) : value) + (unit ?? "");
   const profile = await originalProfileData(snapshot, avatar, theme, { allowMissingTheme: true,
     change: change?.command, displayedTalent: change?.displayedTalent });
-  if (!profile) throw new Error("原神伤害详情无法读取基础面板。");
+  if (!profile) throw new Error($t("panel.damage-detail-card.text_f3fe86cfae"));
   const [hero, texture] = await Promise.all([readOriginalProfileHero(theme, profile), theme.picture("common", "cont", "card-bg.png")]);
   const selected = model.rows[model.selected];
   const comparison = selected && model.comparison && model.comparison.axes.length >= 2 ? model.comparison : undefined;
@@ -251,10 +254,10 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
     drawOriginalProfileHero(ctx, writer, profile, hero);
     if (change) panel(ctx, texture, [x, 515, width, changeHeight], () => {
       fill(ctx, "#0008", [x, 515, width, changeHeight]);
-      const action = change.characterLevel ? "临时等级试算" : change.displayedTalent ? "临时天赋试算" :
-        change.constellation ? "临时命座试算" : "临时换装";
-      write(`该面板为非实际数据 · ${action} · ${change.equipped}`, x + 15, 534, 12, { color: gold, maxWidth: 545 });
-      write(`当前替换命令 ${change.command}`, x + 15, 551, 12, { color: muted, maxWidth: 545 });
+      const action = change.characterLevel ? $t("panel.damage-detail-card.text_51222b308a") : change.displayedTalent ? $t("panel.damage-detail-card.text_6b05b6349e") :
+        change.constellation ? $t("panel.damage-detail-card.text_2ac287fec4") : $t("panel.damage-detail-card.text_29d3780830");
+      write($t("panel.damage-detail-card.text_ba9b57ee66", { "action": action, "equipped": change.equipped }), x + 15, 534, 12, { color: gold, maxWidth: 545 });
+      write($t("panel.damage-detail-card.text_77d3007d8e", { "command": change.command }), x + 15, 551, 12, { color: muted, maxWidth: 545 });
       if (change.reason) write(change.reason, x + 15, 568, 12, { color: muted, maxWidth: 545 });
     });
     damageTable(ctx, writer, texture, model, tableTop, profileId, display, titles);
@@ -262,7 +265,7 @@ export async function renderDamageCard(snapshot: PanelSnapshot, avatar: PanelAva
     drawBuffs(ctx, writer, texture, buffs, buffsTop, buffsHeight);
     ctx.save();
     shadow(ctx, "#000", 1, 1);
-    write("Lotus-Yunzai", 305, contentEnd + 24, 14, { align: "center" });
+    write($t("panel.damage-detail-card.text_3867834e77"), 305, contentEnd + 24, 14, { align: "center" });
     ctx.restore();
   }, mode, { displayWidth, scale: profile.scale });
 }

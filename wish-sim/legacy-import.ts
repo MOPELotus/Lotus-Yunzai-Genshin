@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { readFile } from "node:fs/promises";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { createWishPoolSource, record } from "./pools.ts";
@@ -33,7 +36,7 @@ function identity(value: unknown): value is string {
 async function authorization(file: string): Promise<AuthorizedAccount[]> {
   const input: unknown = JSON.parse(await readFile(file, "utf8"));
   if (!Array.isArray(input) || !input.length || input.length > 1000) {
-    throw new TypeError("授权文件须列出 1 至 1000 个 QQ。");
+    throw new TypeError($t("wish-sim.legacy-import.text_6dd7031b36"));
   }
   const seen = new Set<string>();
   return input.map((value: unknown) => {
@@ -41,7 +44,7 @@ async function authorization(file: string): Promise<AuthorizedAccount[]> {
     const groups: unknown = row?.groups ?? [];
     if (!identity(row?.qq) || seen.has(row.qq) || !Array.isArray(groups) ||
       groups.length > 200 || groups.some((group) => !identity(group)) || new Set(groups).size !== groups.length) {
-      throw new TypeError("授权文件的 QQ 或群号无效或重复。");
+      throw new TypeError($t("wish-sim.legacy-import.text_9ad2c014d6"));
     }
     seen.add(row.qq);
     return { qq: row.qq, groups };
@@ -55,16 +58,16 @@ async function readKey(
   if (value === null || ttl === -2 || ttl === 0) return;
   if (typeof ttl !== "number" || !Number.isSafeInteger(ttl) || ttl < 1 || ttl > maximumTtl ||
     Buffer.byteLength(value, "utf8") > 256 * 1024) {
-    throw new TypeError("旧模拟数据的过期时间或大小无效。");
+    throw new TypeError($t("wish-sim.legacy-import.text_8795759dcb"));
   }
   const data = record(JSON.parse(value));
-  if (!data) throw new TypeError("旧模拟数据须为 JSON 对象。");
+  if (!data) throw new TypeError($t("wish-sim.legacy-import.text_2ba5fac453"));
   return { data, ttl };
 }
 
 function count(value: unknown, upper: number = Number.MAX_SAFE_INTEGER): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0 || value > upper) {
-    throw new TypeError("旧模拟计数无效。");
+    throw new TypeError($t("wish-sim.legacy-import.text_fffa4e912e"));
   }
   return value;
 }
@@ -76,7 +79,7 @@ function expiry(value: unknown): number {
 function decodeBalance(data: Record<string, unknown>, now: number): WishBalance | undefined {
   const until = expiry(data.expire);
   if (until < now) return;
-  if (until - now > wishDayMs * 7 / 6) throw new TypeError("旧模拟球数的刷新时间无效。");
+  if (until - now > wishDayMs * 7 / 6) throw new TypeError($t("wish-sim.legacy-import.text_5fa1bbe797"));
   return { day: wishDailyKey(now), pink: count(data.pink), blue: count(data.blue) };
 }
 
@@ -97,7 +100,7 @@ async function decodeConversation(
   const daily = wishDailyKey(now);
   const week = record(data.week);
   const until = expiry(week?.expire);
-  if (until - now > 8 * wishDayMs) throw new TypeError("旧模拟每周五星计数的刷新时间无效。");
+  if (until - now > 8 * wishDayMs) throw new TypeError($t("wish-sim.legacy-import.text_b26cd05900"));
   const weaponState = record(data.weapon);
   const index = count(weaponState?.type, 2);
   const fate = count(weaponState?.lifeNum);
@@ -121,7 +124,7 @@ async function decodeConversation(
   if (legacyToday && expiry(legacyToday.expire) >= now && Array.isArray(legacyToday.star)) {
     const preview = legacyToday.star.slice(0, 8).map(raw => {
       const row = record(raw);
-      if (typeof row?.name !== "string" || row.name.length > 120) throw new TypeError("旧模拟五星记录无效。");
+      if (typeof row?.name !== "string" || row.name.length > 120) throw new TypeError($t("wish-sim.legacy-import.text_9a07303c51"));
       return { name: row.name, pity: count(row.num, 90) };
     });
     today = { day: daily, normalDraws: count(legacyToday.num), weaponDraws: count(legacyToday.weaponNum),
@@ -136,13 +139,13 @@ export async function importLegacyWishes(options: ImportOptions, lockFile: Acqui
     signal = new AbortController().signal } = options;
   const accounts = await authorization(authorizationFile);
   const protocol = URL.parse(sourceUrl)?.protocol;
-  if (protocol !== "redis:" && protocol !== "rediss:") throw new Error("旧模拟数据的 Valkey 地址须使用 redis:// 或 rediss://。");
+  if (protocol !== "redis:" && protocol !== "rediss:") throw new Error($t("wish-sim.legacy-import.text_aa5cb842e8"));
   const target = createLegacyWishImport(destinationDirectory, lockFile, signal);
   const oldPool = legacyDirectory ? createWishPoolSource({ legacyDirectory, bannerFile: "" }) : undefined;
   const redis = new Bun.RedisClient(sourceUrl, { autoReconnect: false, enableOfflineQueue: false, connectionTimeout: 2000 });
   try {
     try { await redis.connect(); }
-    catch { throw new Error("无法连接旧模拟数据的 Valkey。"); }
+    catch { throw new Error($t("wish-sim.legacy-import.text_cabab5daa1")); }
 
     const results = { accounts: accounts.length, imported: 0, already: 0, empty: 0, balances: 0, sessions: 0 };
     for (const { qq, groups } of accounts) {
@@ -163,7 +166,7 @@ export async function importLegacyWishes(options: ImportOptions, lockFile: Acqui
           if (entry) conversations[group] = await decodeConversation(entry, now(), qq, oldPool);
         }
       } catch {
-        throw new Error("读取旧模拟球数、保底或定轨失败，请检查授权键格式、过期时间和旧卡池。");
+        throw new Error($t("wish-sim.legacy-import.text_94ec02cbdf"));
       }
       const merged = await target.mergeAccount(qq, { balance, conversations }, apply);
       results[merged.status]++;

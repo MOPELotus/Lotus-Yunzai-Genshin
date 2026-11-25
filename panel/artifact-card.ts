@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { Canvas } from "skia-canvas";
 import { renderGenshinCard } from "../card-render.ts";
 import type { ArtifactListEntry } from "./artifact-list.ts";
@@ -15,14 +18,14 @@ type Rated = Rating["items"][string];
 
 const themeElements = new Set(["anemo", "geo", "electro", "dendro", "hydro", "pyro", "cryo"]);
 const artifactTitles: Readonly<Record<string, string>> = {
-  hp: "大生命", hpPlus: "小生命", atk: "大攻击", atkPlus: "小攻击", def: "大防御", defPlus: "小防御",
-  recharge: "充能效率", dmg: "元素伤害",
+  hp: $t("panel.artifact-card.text_dd1fad216f"), hpPlus: $t("panel.artifact-card.text_c2bb9b8f40"), atk: $t("panel.artifact-card.text_0d43934fdb"), atkPlus: $t("panel.artifact-card.text_5085a8d5b4"), def: $t("panel.artifact-card.text_aeed4dc439"), defPlus: $t("panel.artifact-card.text_5a0e2465ee"),
+  recharge: $t("panel.artifact-card.text_4e061c7460"), dmg: $t("panel.artifact-card.text_d92e83f400"),
 };
 const statTitle = (key: string) => artifactTitles[key] ?? propertyLabels[key] ?? key;
 const flatKeys = new Set(["hpPlus", "atkPlus", "defPlus", "mastery"]);
 const rollGrowth: Readonly<Record<string, number>> = attrPct;
 const statValue = (key: string, value: number, digits = 1) => value.toFixed(digits) + (flatKeys.has(key) ? "" : "%");
-const positionTitles = ["生之花", "死之羽", "时之沙", "空之杯", "理之冠"];
+const positionTitles = [$t("panel.artifact-card.text_e45345201e"), $t("panel.artifact-card.text_adf91db091"), $t("panel.artifact-card.text_be1d0fee1b"), $t("panel.artifact-card.text_30da915e81"), $t("panel.artifact-card.text_a2c8b90550")];
 const gold = "#d3bc8e";
 const boosted = "#ffe699";
 const consColors = ["#666", "#5cbac2", "#339d61", "#3e95b9", "#3955b7", "#531ba9cf", "#ff5722"];
@@ -40,7 +43,7 @@ function background(ctx: Context, picture: Picture | undefined, width: number, h
 function copyright(ctx: Context, writer: Writer, width: number, height: number) {
   ctx.save();
   shadow(ctx, "#000", 3, 1);
-  writer.write("Lotus-Yunzai", width / 2, height - 12, 14, { align: "center" });
+  writer.write($t("panel.artifact-card.text_3867834e77"), width / 2, height - 12, 14, { align: "center" });
   ctx.restore();
 }
 
@@ -54,7 +57,7 @@ function artifactHeader(ctx: Context, { write }: Writer, item: PanelArtifact, ra
   write(item.name, x + 15, y + 30, 15, { bold: true, maxWidth: width - 65 });
   const rank = rated?.rank ?? "";
   const score = rated?.score.toFixed(1) ?? "—";
-  write(`${score}分${rank ? ` - ${rank}` : ""}`, x + 15, y + 50, 14, { color: gradeColor(rank), bold: Boolean(rank) });
+  write($t("panel.artifact-card.text_5b3f53741f", { "score": score, "value2": rank ? ` - ${rank}` : "" }), x + 15, y + 50, 14, { color: gradeColor(rank), bold: Boolean(rank) });
   if (!list) {
     fill(ctx, "#000c", [x + width - 38, y + 38, 30, 18], 5);
     write(`+${item.level}`, x + width - 23, y + 51, 12, { align: "center" });
@@ -106,7 +109,7 @@ function drawArtifactRows(ctx: Context, { write }: Writer, rows: readonly GearRo
     });
     if (!list) {
       fill(ctx, "#0006", [x + width - pointsWidth, y, pointsWidth, rowHeight]);
-      write(points === undefined ? "—" : `${points.toFixed(1)}分`, x + width - 6, y + 19, 12,
+      write(points === undefined ? "—" : $t("panel.artifact-card.text_ca9143963d", { "value1": points.toFixed(1) }), x + width - 6, y + 19, 12,
         { align: "right", maxWidth: pointsWidth - 6 });
     }
   });
@@ -127,8 +130,8 @@ function detailCard(ctx: Context, writer: Writer, texture: Picture | undefined, 
     const { write } = writer;
     const scoreTop = y + originalHeaderHeight + rows.length * rowHeight;
     const factors = [
-      ["总分对齐", rated.scale],
-      ...(slot > 2 ? [["最优主词缀", rated.coefficient] as const] : []),
+      [$t("panel.artifact-card.text_d12a6fe4b3"), rated.scale],
+      ...(slot > 2 ? [[$t("panel.artifact-card.text_effce16500"), rated.coefficient] as const] : []),
     ] as const;
     factors.forEach(([label, ratio], line) => {
       const row = scoreTop + line * rowHeight;
@@ -139,8 +142,8 @@ function detailCard(ctx: Context, writer: Writer, texture: Picture | undefined, 
     });
     const result = scoreTop + factors.length * rowHeight;
     fill(ctx, "#000b", [x, result, width, 30]);
-    write("最终得分", x + 15, result + 20, 14);
-    write(`${rated.score.toFixed(1)}分`, x + width - 8, result + 21, 18, { align: "right" });
+    write($t("panel.artifact-card.text_ef9c2aa30c"), x + 15, result + 20, 14);
+    write($t("panel.artifact-card.text_ca9143963d", { "value1": rated.score.toFixed(1) }), x + width - 8, result + 21, 18, { align: "right" });
   }, picture ? () => artifactIcon(ctx, picture, x + width - 90, y - 12) : undefined);
 }
 
@@ -155,39 +158,39 @@ function ruleSections(name: string, rating: Rating): readonly Section[] {
   const { attributes, positions } = artifactRatingRules(rating);
   const show = (value: number | undefined, decimals = 1) => value === undefined ? "—" : value.toFixed(decimals);
   return [{
-    title: `${name}评分规则：${rating.title}`,
-    headings: ["属性", "评分权重", "词条成长", "每点得分", "副词条最高分", "主词条最高分"],
+    title: $t("panel.artifact-card.text_dae0a65aca", { "name": name, "title": rating.title }),
+    headings: [$t("panel.artifact-card.text_86de52d178"), $t("panel.artifact-card.text_57526346b5"), $t("panel.artifact-card.text_c516c07c73"), $t("panel.artifact-card.text_139bdd3b8d"), $t("panel.artifact-card.text_0b4c47ddbc"), $t("panel.artifact-card.text_15d8868a40")],
     rows: attributes.map(({ key, weight, growth, perPoint, subLimit, mainLimit }) =>
       [statTitle(key), String(weight), statValue(key, growth, 2), show(perPoint, 2), show(subLimit), show(mainLimit)]),
     notes: [
-      "每个角色有不同的词条评分权重，表中已隐藏权重为 0 的词条。",
-      "以权重值 100 的单词条理论最高分 46.6 分为基准，根据词条成长和权重计算每点得分。",
-      "词条得分为词条数值乘以每点得分，小攻击、小防御和小生命折算为对应的百分比词条计分。",
-      "原始总分是副词条评分之和，时之沙、空之杯、理之冠另外计入 25% 的主词条评分。",
+      $t("panel.artifact-card.text_509101f7df"),
+      $t("panel.artifact-card.text_319a9a0789"),
+      $t("panel.artifact-card.text_a6acbbb11f"),
+      $t("panel.artifact-card.text_78606d041d"),
     ],
   }, {
-    title: "圣遗物评分计算",
-    headings: ["位置", ...positionTitles],
+    title: $t("panel.artifact-card.text_655ed45ecf"),
+    headings: [$t("panel.artifact-card.text_1fb4d574da"), ...positionTitles],
     rows: [
-      ["最高分（对齐前）", ...positions.map(({ rawLimit }) => show(rawLimit))],
-      ["总分对齐比例", ...positions.map(({ scale }) => scale === undefined ? "—" : `${show(scale * 100)}%`)],
-      ["最优主词缀权重", ...positions.map(({ optimalWeight }) => show(optimalWeight, 0))],
+      [$t("panel.artifact-card.text_d9c080e186"), ...positions.map(({ rawLimit }) => show(rawLimit))],
+      [$t("panel.artifact-card.text_07808af625"), ...positions.map(({ scale }) => scale === undefined ? "—" : `${show(scale * 100)}%`)],
+      [$t("panel.artifact-card.text_78a586e49d"), ...positions.map(({ optimalWeight }) => show(optimalWeight, 0))],
     ],
     notes: [
-      `总分对齐比例按${name}每个位置可选词条的理论最高原始分计算。评分的对齐基准为 66 分，比例为 66 ÷ 理论最高原始分 × 100%。`,
-      "最优主词缀比例按实际主词条与位置最高权重的差值扣分，包含元素杯属性不符的情况，最多扣 50%。主词条为充能时不扣分。",
-      "最终得分为原始总分 × 总分对齐比例 × 最优主词缀比例。",
-      "得分级别从高到低为 MAX（56 分起）、ACE（49 分起）、SSS（42 分起）、SS（35 分起）、S（28 分起）、A、B、C、D。",
+      $t("panel.artifact-card.text_b2384c7012", { "name": name }),
+      $t("panel.artifact-card.text_955484dffc"),
+      $t("panel.artifact-card.text_2db161e40a"),
+      $t("panel.artifact-card.text_fa5c29f558"),
     ],
   }, {
-    title: "圣遗物评分补充说明",
+    title: $t("panel.artifact-card.text_ab91ef4860"),
     notes: [
-      "圣遗物评分用于快速评估角色的圣遗物词条。评分较高的圣遗物通常更适合该角色。",
-      "词条收益并非线性，也受属性平衡影响，评分仅供参考。",
-      `使用 #${name}伤害 可以分析伤害和各词条的收益。`,
-      "当前评分规则按各角色的实际需求制定，角色之间的评分口径有所不同。",
-      "这些权重用于当前角色配装，跨角色或不同评分规则的分数不宜直接比较。",
-      "同一角色的不同流派可能偏好不同词条，例如生命向钟离和输出向芭芭拉。",
+      $t("panel.artifact-card.text_16e2037bc5"),
+      $t("panel.artifact-card.text_55a31243a0"),
+      $t("panel.artifact-card.text_1c0e23baf4", { "name": name }),
+      $t("panel.artifact-card.text_a09b93d4b8"),
+      $t("panel.artifact-card.text_c1f5a84b4f"),
+      $t("panel.artifact-card.text_dc93cdae8f"),
     ],
   }];
 }
@@ -290,7 +293,7 @@ export async function renderArtifactCard(snapshot: PanelSnapshot, avatar: PanelA
     shadow(ctx, "#000b", 4, 2);
     write(avatar.name, 640, 70, 50, { align: "right", title: true, maxWidth: 415 });
     font(18);
-    const badge = avatar.cons === undefined ? undefined : `${avatar.cons}命`;
+    const badge = avatar.cons === undefined ? undefined : $t("panel.artifact-card.text_3ef457527a", { "cons": avatar.cons });
     const badgeWidth = badge ? ctx.measureText(badge).width + 10 : 0;
     if (badge && avatar.cons !== undefined) {
       fill(ctx, consColors[avatar.cons] ?? consColors[0]!, [640 - badgeWidth, 78, badgeWidth, 22], 4);
@@ -302,13 +305,13 @@ export async function renderArtifactCard(snapshot: PanelSnapshot, avatar: PanelA
     panel(ctx, undefined, [387, 120, 253, 103], () => {
       fill(ctx, "#0006", [387, 120, 253, 103]);
       fill(ctx, "#0008", [387, 120, 253, 25]);
-      write(rating ? `评分规则：${rating.title}` : "圣遗物评分待补全", 513.5, 137, 12,
+      write(rating ? $t("panel.artifact-card.text_4d228107d2", { "title": rating.title }) : $t("panel.artifact-card.text_e6803102a8"), 513.5, 137, 12,
         { align: "center", maxWidth: 227 });
       if (rating) {
         write(rating.rank ?? "—", 450, 182, 30, { color: gradeColor(rating.rank ?? ""), align: "center" });
         write(rating.total.toFixed(1), 577, 182, 30, { align: "center" });
-        write("圣遗物评级", 450, 204, 16, { align: "center" });
-        write("圣遗物总分", 577, 204, 16, { align: "center" });
+        write($t("panel.artifact-card.text_d6dfd0484c"), 450, 204, 16, { align: "center" });
+        write($t("panel.artifact-card.text_7299a0c6d7"), 577, 204, 16, { align: "center" });
       } else write(missing, 513.5, 181, 13, { align: "center", maxWidth: 230 });
     });
 
@@ -331,7 +334,7 @@ export async function renderArtifactCard(snapshot: PanelSnapshot, avatar: PanelA
 
 export async function renderArtifactList(snapshot: PanelSnapshot, entries: readonly ArtifactListEntry[], theme: PanelTheme,
   mode: Mode = "auto") {
-  if (!entries.length) throw new Error("原神圣遗物列表没有可绘制的条目。");
+  if (!entries.length) throw new Error($t("panel.artifact-card.text_3df298a916"));
   const [faces, backdrop, texture, rollSprites, pictures] = await Promise.all([
     profileFonts(theme.resourceRoot), theme.picture("common", "bg", "bg-hydro.webp"),
     theme.picture("common", "cont", "card-bg.png"),

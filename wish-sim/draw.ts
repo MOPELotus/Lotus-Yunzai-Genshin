@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { wishDefaultRates, type WishRates } from "../../../lib/genshin-wish-settings-model.ts";
 import type { PoolKind, WishItem, WishPool } from "./pools.ts";
 
@@ -25,7 +28,7 @@ export interface WishPull extends WishItem {
   readonly star: 3 | 4 | 5;
   readonly at: number;
   readonly pity?: number;
-  readonly guaranteed?: "大保底" | "定轨";
+  readonly guaranteed?: string;
 }
 
 export const emptyPity = (): Pity => ({ num4: 0, num5: 0, isUp4: false, isUp5: false });
@@ -85,11 +88,11 @@ export function drawWish(
       let guaranteed: WishPull["guaranteed"];
       if (target && weapon.lifeNum >= 1) {
         item = target;
-        guaranteed = "定轨";
+        guaranteed = $t("wish-sim.draw.text_5a3f221d3e");
         state.isUp5 = false;
       } else if (limited && (state.isUp5 || roll(rates.featuredFive ?? (kind === "weapon" ? 75 : 50), 100))) {
         item = pick(pool.up5);
-        if (state.isUp5) guaranteed = "大保底";
+        if (state.isUp5) guaranteed = $t("wish-sim.draw.text_35de1616a1");
         state.isUp5 = false;
       } else {
         item = pick(kind === "weapon" || (!limited && !roll(50, 100)) ? pool.weapon5 : pool.role5);

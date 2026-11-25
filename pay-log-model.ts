@@ -1,5 +1,8 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 const prices = [68, 30, 648, 328, 198, 98, 30, 6] as const;
-const products = ["大月卡", "小月卡", "648", "328", "198", "98", "30", "6"] as const;
+const products = [$t("pay-log-model.text_b0f1a24562"), $t("pay-log-model.text_37ffc1a93d"), "648", "328", "198", "98", "30", "6"] as const;
 
 function object(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
@@ -8,7 +11,7 @@ function whole(value: unknown) {
   const numeric = typeof value === "string" && /^\d{1,16}$/u.test(value) ? Number(value) : value;
   return typeof numeric === "number" && Number.isSafeInteger(numeric) && numeric >= 0 ? numeric : undefined;
 }
-const invalid = () => new TypeError("当前角色的旧充值账本格式无效。");
+const invalid = () => new TypeError($t("pay-log-model.text_11e352ad59"));
 
 export function readLegacyGenshinPayLog(document: unknown, uid: string) {
   const root = object(document);

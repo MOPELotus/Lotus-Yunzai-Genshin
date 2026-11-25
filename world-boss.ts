@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { fileURLToPath } from "node:url";
 import { MAX_PROFILE_ID, ProfileError, type createProfileStore } from "@lotus-yunzai/account";
 import { createAtlasRuntimeCatalog, type AtlasEntry } from "@lotus-yunzai/atlas/catalog";
@@ -15,13 +18,13 @@ export const worldBossRankingCommand = /^#(?:原神)?(?:世界)?BOSS击杀排行
 
 const atlasRoot = fileURLToPath(new URL("../../data/atlas/", import.meta.url));
 const bossesPerCard = 60;
-const changed = "原神档案角色已变化，请重新查询。";
+const changed = $t("world-boss.text_5982fc0b5b");
 type Group = GenshinWorldBossSnapshot["groups"][number];
 type Reply = string | { readonly type: "image"; readonly file: Uint8Array };
 type Ranking = ReturnType<typeof createGenshinWorldBossRanking>;
 
 // https://github.com/devil233-ui/resources/tree/7c14a7034f3b1a0ffea02b0cb46fdb639f3c9643/resources/json/mihoyo
-const districtOrder = ["蒙德", "龙脊雪山", "璃月", "稻妻", "渊下宫", "层岩巨渊", "须弥", "枫丹", "沉玉谷", "纳塔"];
+const districtOrder = [$t("world-boss.text_6b557bf926"), $t("world-boss.text_f56f9d0212"), $t("world-boss.text_8c78af3e64"), $t("world-boss.text_0b93dbd19e"), $t("world-boss.text_d900657a10"), $t("world-boss.text_a1bd8fdfe6"), $t("world-boss.text_68335fcf17"), $t("world-boss.text_e8ac469478"), $t("world-boss.text_39e68359aa"), $t("world-boss.text_979954d006")];
 const legacyExcludedDistricts = new Set(["沉玉谷·上谷", "沉玉谷·南陵", "来歆山", "层岩巨渊·地下矿区", "旧日之海"]);
 
 export function orderWorldBossGroups(groups: readonly Group[]): readonly Group[] {
@@ -83,9 +86,9 @@ export function createWorldBossQuery(
 ) {
   return async (profileId: number, context: { readonly user_id?: number; reply(message: Reply): unknown }) => {
     if (signal.aborted) return;
-    if (profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (profileId > MAX_PROFILE_ID) return $t("world-boss.text_3dd62228d2");
     const { user_id } = context;
-    if (!user_id || !Number.isSafeInteger(user_id) || user_id < 1) return "请从登录档案对应的 QQ 会话查询。";
+    if (!user_id || !Number.isSafeInteger(user_id) || user_id < 1) return $t("world-boss.text_e7d0967585");
     const qq = String(user_id);
     try {
       const source = await profiles.requestContext(qq, profileId, "gs");
@@ -98,7 +101,7 @@ export function createWorldBossQuery(
           (!latest.role.region || latest.role.region === result.region);
       }
       if (!await matchesProfile()) return signal.aborted ? undefined : changed;
-      if (result.status === "unavailable") return "当前米游社战绩未提供世界 BOSS 击杀统计。";
+      if (result.status === "unavailable") return $t("world-boss.text_64f31b4fc9");
       const groups = orderWorldBossGroups(result.groups);
       let rankingNotice = "";
       try {
@@ -107,11 +110,11 @@ export function createWorldBossQuery(
         });
       } catch (error) {
         if (error instanceof ProfileError && error.code === "changed") throw error;
-        rankingNotice = "世界 BOSS 排行暂未更新。";
+        rankingNotice = $t("world-boss.text_319615b78f");
       }
       if (!await matchesProfile()) return signal.aborted ? undefined : changed;
       if (!groups.some(({ bosses }) => bosses.length)) {
-        return ["官方记录暂无世界 BOSS 击杀条目。", rankingNotice].filter(Boolean).join("\n");
+        return [$t("world-boss.text_008e5a231a"), rankingNotice].filter(Boolean).join("\n");
       }
 
       const imageFor = await worldBossArtwork();
@@ -135,13 +138,13 @@ export function createWorldBossQuery(
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing" || error.code === "login-required") return `请先登录 profile ${profileId}。`;
-        if (error.code === "role-missing") return `profile ${profileId} 没有同步原神 UID。`;
+        if (error.code === "missing" || error.code === "login-required") return $t("world-boss.text_3caf242584", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("world-boss.text_028a00ae63", { "profileId": profileId });
         if (error.code === "changed") return changed;
       }
       if (error instanceof GameRecordRequestError || (error instanceof HoyoRequestError &&
         (error.code === "invalid-input" || error.code === "profile-changed" || error.code === "refresh"))) return error.message;
-      return "原神世界 BOSS 击杀数暂时无法查询。";
+      return $t("world-boss.text_d437371aae");
     }
   };
 }
@@ -153,7 +156,7 @@ export function createWorldBossRankingQuery(ranking: Pick<Ranking, "rank">, sign
     try {
       rankingRows = await ranking.rank();
     } catch {
-      if (!signal.aborted) return "原神世界 BOSS 击杀排行暂时无法读取。";
+      if (!signal.aborted) return $t("world-boss.text_a6891fc2e8");
       return;
     }
     const imageFor = await worldBossArtwork();
@@ -168,8 +171,8 @@ export function createWorldBossRankingQuery(ranking: Pick<Ranking, "rank">, sign
         reply = { type: "image", file: png };
       } catch {
         reply = page.length
-          ? ["BOSS击杀排行榜", ...page.map(({ name, killCount, uid }) => `${name} · ${killCount} · UID ${uid}`)].join("\n")
-          : "暂无世界 BOSS 击杀排行记录。";
+          ? [$t("world-boss.text_477d039f5c"), ...page.map(({ name, killCount, uid }) => `${name} · ${killCount} · UID ${uid}`)].join("\n")
+          : $t("world-boss.text_76af5ad10a");
       }
       if (signal.aborted || await context.reply(reply) === false) break;
     }

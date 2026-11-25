@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { constants } from "node:fs";
 import { open, realpath, stat } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -28,7 +31,7 @@ const maxUids = 4096;
 const maxBosses = 2048;
 
 function invalid(subject: string): never {
-  throw new Error(`${subject}格式无效。`);
+  throw new Error($t("world-boss-ranking-import.text_f73265b4b5", { "subject": subject }));
 }
 
 function object(input: unknown): Json | undefined {
@@ -74,12 +77,12 @@ async function readJsonFile(file: string, subject: string) {
       await handle.close();
     }
   } catch {
-    throw new Error(`无法读取${subject}，请检查副本的格式、大小和文件类型。`);
+    throw new Error($t("world-boss-ranking-import.text_70d294d9a2", { "subject": subject }));
   }
 }
 
 function readGrants(input: unknown): readonly Grant[] {
-  const subject = "授权清单";
+  const subject = $t("world-boss-ranking-import.text_9d0d413def");
   const data = object(input);
   if (data?.version !== 1 || !Array.isArray(data.roles) || data.roles.length > maxUids) invalid(subject);
   const unique = new Set<string>();
@@ -97,7 +100,7 @@ function readGrants(input: unknown): readonly Grant[] {
 }
 
 function readLegacy(input: unknown) {
-  const subject = "旧世界 BOSS 榜单";
+  const subject = $t("world-boss-ranking-import.text_7e5f434915");
   const data = object(input);
   if (!data) invalid(subject);
   const entries = Object.entries(data);
@@ -118,17 +121,17 @@ function readLegacy(input: unknown) {
 
 export async function importWorldBossRanking(options: ImportOptions, acquireLock: AcquireRoleArchiveLock) {
   const { sourceFile, authorizationFile, profileDirectory, destinationDirectory, apply = false } = options;
-  if (!profileDirectory || !destinationDirectory) throw new Error("必须显式指定档案目录和摘要目录。");
+  if (!profileDirectory || !destinationDirectory) throw new Error($t("world-boss-ranking-import.text_cfe4147db4"));
   const profileRoot = await realpath(profileDirectory);
   const destination = await realpath(destinationDirectory).catch((error: unknown) => {
     if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return resolve(destinationDirectory);
     throw error;
   });
   if (profileRoot === destination || !(await stat(profileRoot)).isDirectory()) {
-    throw new Error("已导入档案与摘要需要使用不同目录。");
+    throw new Error($t("world-boss-ranking-import.text_1d50878f68"));
   }
-  const grants = readGrants(await readJsonFile(authorizationFile, "授权清单"));
-  const legacy = readLegacy(await readJsonFile(sourceFile, "旧世界 BOSS 榜单"));
+  const grants = readGrants(await readJsonFile(authorizationFile, $t("world-boss-ranking-import.text_9d0d413def")));
+  const legacy = readLegacy(await readJsonFile(sourceFile, $t("world-boss-ranking-import.text_7e5f434915")));
   const profiles = createProfileStore(profileRoot);
   const ranking = createGenshinWorldBossRanking(destination, acquireLock);
   const approved = new Set(grants.map(({ uid }) => uid));
@@ -145,7 +148,7 @@ export async function importWorldBossRanking(options: ImportOptions, acquireLock
     async function ownership() {
       const context = await profiles.requestContext(qq, profileId, "gs", uid).catch(() => undefined);
       if (!context || context.role.region !== region || context.role.gameBiz !== "hk4e_cn") {
-        throw new ProfileError("changed", "授权档案未核实所选原神国服角色。");
+        throw new ProfileError("changed", $t("world-boss-ranking-import.text_fc51e83d4e"));
       }
       return context.revision;
     }
@@ -153,7 +156,7 @@ export async function importWorldBossRanking(options: ImportOptions, acquireLock
     try {
       const revision = await ownership();
       const result = await ranking.importLegacy({ qq, uid, region }, rows, apply, async () => {
-        if (await ownership() !== revision) throw new ProfileError("changed", "授权档案已变更。");
+        if (await ownership() !== revision) throw new ProfileError("changed", $t("world-boss-ranking-import.text_bde1760f7d"));
       });
       report[result]++;
     } catch (error) {

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import type { GameRole } from "@lotus-yunzai/account";
 import { withReadRetries } from "@lotus-yunzai/http";
 import { avatarId, object, panelElement, readPanel, text, whole, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
@@ -25,31 +28,31 @@ export function genshinShowcaseTarget(role: Pick<GameRole, "uid" | "region" | "g
   const regionIndex = region === "cn_gf01" ? 0 : region === "cn_qd01" ? 1 : 2;
   const gameBiz = regionIndex === 2 ? "hk4e_global" : "hk4e_cn";
   if (!region || Number(uid) < 100000006 || (role.region && role.region !== region) || (role.gameBiz && role.gameBiz !== gameBiz)) {
-    throw new GenshinShowcaseError("原神公开展板的 UID 或区服无效。");
+    throw new GenshinShowcaseError($t("panel.showcase-client.text_b6a2fabb9f"));
   }
-  if (!/^[0-4]{1,3}$/u.test(selector)) throw new GenshinShowcaseError("原神公开展板来源设置无效。");
+  if (!/^[0-4]{1,3}$/u.test(selector)) throw new GenshinShowcaseError($t("panel.showcase-client.text_33ea42b794"));
   const code = selector[regionIndex] ?? selector[0];
-  if (code === "1") throw new GenshinShowcaseError("此设置指向旧私有展板，请改为公开来源后重试。");
+  if (code === "1") throw new GenshinShowcaseError($t("panel.showcase-client.text_b42c00b1db"));
   const provider: ShowcaseProvider = code === "4" ? "hutao" : code === "2" || code === "0" && regionIndex === 2 ? "enka" : "mgg";
-  if (provider === "mgg" && regionIndex === 2) throw new GenshinShowcaseError("MiniGG 仅提供国服展板，国际服请使用 Enka。");
+  if (provider === "mgg" && regionIndex === 2) throw new GenshinShowcaseError($t("panel.showcase-client.text_8648490c04"));
   return { uid, provider } as const;
 }
 
 async function responseJson(response: Response, signal: AbortSignal): Promise<unknown> {
   const reader = response.body?.getReader();
-  if (!reader) throw new GenshinShowcaseError("公开展板返回空数据。");
+  if (!reader) throw new GenshinShowcaseError($t("panel.showcase-client.text_6255e49106"));
   const decoder = new TextDecoder("utf-8", { fatal: true });
   let size = 0, contents = "";
   const cancel = () => { void reader.cancel().catch(() => undefined); };
   signal.addEventListener("abort", cancel, { once: true });
   try {
-    if (Number(response.headers.get("content-length")) > maxBytes) throw new GenshinShowcaseError("公开展板响应过大。");
+    if (Number(response.headers.get("content-length")) > maxBytes) throw new GenshinShowcaseError($t("panel.showcase-client.text_c5f42149ad"));
     for (;;) {
       signal.throwIfAborted();
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > maxBytes) throw new GenshinShowcaseError("公开展板响应过大。");
+      if (size > maxBytes) throw new GenshinShowcaseError($t("panel.showcase-client.text_c5f42149ad"));
       contents += decoder.decode(value, { stream: true });
     }
     signal.throwIfAborted();
@@ -74,8 +77,8 @@ export function createGenshinShowcaseClient(transport: typeof fetch = fetch, now
     const date = now();
     const existing = cache.get(key);
     if (!fresh && existing && date < existing.until) return existing;
-    if (pending.has(key)) throw new GenshinShowcaseError("此 UID 的公开展板正在查询，请稍后再试。");
-    if (date < (cooldown.get(provider) ?? 0)) throw new GenshinShowcaseError("公开展板服务请求过于频繁，请稍后重试。");
+    if (pending.has(key)) throw new GenshinShowcaseError($t("panel.showcase-client.text_af546048bf"));
+    if (date < (cooldown.get(provider) ?? 0)) throw new GenshinShowcaseError($t("panel.showcase-client.text_c4843237cf"));
     pending.add(key);
     try {
       const deadline = AbortSignal.any([signal, AbortSignal.timeout(15_000)]);
@@ -86,7 +89,7 @@ export function createGenshinShowcaseClient(transport: typeof fetch = fetch, now
         headers: { Accept: "application/json", "User-Agent": "Lotus-Yunzai/1 (Genshin public showcase)" } });
       if (response.redirected || (response.url && response.url !== endpoint.href)) {
         await response.body?.cancel().catch(() => undefined);
-        throw new GenshinShowcaseError("公开展板服务返回了重定向。");
+        throw new GenshinShowcaseError($t("panel.showcase-client.text_f47721daa1"));
       }
       if (!response.ok) {
         if (response.status === 429) {
@@ -94,18 +97,18 @@ export function createGenshinShowcaseClient(transport: typeof fetch = fetch, now
           cooldown.set(provider, now() + (Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, 3600) : 60) * 1000);
         }
         await response.body?.cancel().catch(() => undefined);
-        if (response.status === 404) throw new GenshinShowcaseError("找不到此 UID 的公开展板，请检查 UID 和游戏内展板设置。");
-        if (response.status === 429) throw new GenshinShowcaseError("公开展板服务请求过于频繁，请稍后重试。");
-        throw new GenshinShowcaseError(`${showcaseNames[provider]} 公开展板暂时不可用。`);
+        if (response.status === 404) throw new GenshinShowcaseError($t("panel.showcase-client.text_39ea5e4770"));
+        if (response.status === 429) throw new GenshinShowcaseError($t("panel.showcase-client.text_c4843237cf"));
+        throw new GenshinShowcaseError($t("panel.showcase-client.text_175368f9cb", { "value1": showcaseNames[provider] }));
       }
       const raw = object(await responseJson(response, deadline));
       deadline.throwIfAborted();
       if (!raw || Object.hasOwn(raw, "uid") && String(raw.uid) !== uid || !object(raw.playerInfo)) {
-        throw new GenshinShowcaseError("公开展板返回了无效数据或其他 UID。");
+        throw new GenshinShowcaseError($t("panel.showcase-client.text_190e0f115a"));
       }
       const rows = raw.avatarInfoList;
       if (rows != null && (!Array.isArray(rows) || rows.length > 16 || rows.some(row => !object(object(row)?.propMap)))) {
-        throw new GenshinShowcaseError("公开展板返回的角色数据不完整。");
+        throw new GenshinShowcaseError($t("panel.showcase-client.text_4cf77ed006"));
       }
       const acquiredAt = now();
       const entry = { raw: { uid, avatarInfoList: rows }, acquiredAt, until: acquiredAt + Math.min(86_400, Math.max(60, whole(raw.ttl, 86_400) ?? 60)) * 1000 };
@@ -116,7 +119,7 @@ export function createGenshinShowcaseClient(transport: typeof fetch = fetch, now
     } catch (error) {
       if (signal.aborted) throw error;
       if (error instanceof GenshinShowcaseError) throw error;
-      throw new GenshinShowcaseError(`${showcaseNames[provider]} 公开展板请求未完成。`);
+      throw new GenshinShowcaseError($t("panel.showcase-client.text_edf23bcbf9", { "value1": showcaseNames[provider] }));
     } finally { pending.delete(key); }
   };
 }
@@ -157,7 +160,7 @@ export function normalizeGenshinShowcase({ uid, provider }: Target, payload: Jso
     const props = object(row?.propMap);
     const level = whole(object(props?.["4001"])?.val, 100);
     const promote = whole(object(props?.["1002"])?.val, 8);
-    if (!level || Object.hasOwn(avatars, id)) throw new GenshinShowcaseError("公开展板含无效或重复的角色。");
+    if (!level || Object.hasOwn(avatars, id)) throw new GenshinShowcaseError($t("panel.showcase-client.text_239c9a9b5f"));
     const talent: Partial<Record<"a" | "e" | "q", number>> = {};
     const detail = details.get(id);
     const symbols = object(meta.talentId) ?? object(detail?.talentId);
@@ -173,26 +176,26 @@ export function normalizeGenshinShowcase({ uid, provider }: Target, payload: Jso
     const arts: Record<string, Json> = {};
     let weapon: Json | undefined;
     const equipment = row?.equipList;
-    if (!Array.isArray(equipment) || equipment.length > 6) throw new GenshinShowcaseError("公开展板的装备不完整。");
+    if (!Array.isArray(equipment) || equipment.length > 6) throw new GenshinShowcaseError($t("panel.showcase-client.text_69fdb81be9"));
     for (const input of equipment) {
       const item = object(input), flat = object(item?.flat);
       const itemId = avatarId(item?.itemId);
       if (!itemId) continue;
       if (flat?.itemType === "ITEM_WEAPON") {
         const data = object(item?.weapon), name = weaponName(itemId);
-        if (weapon || !name || !data) throw new GenshinShowcaseError("公开展板含无法识别的武器。");
+        if (weapon || !name || !data) throw new GenshinShowcaseError($t("panel.showcase-client.text_91e373f987"));
         const refinements = Object.values(object(data.affixMap) ?? {});
         weapon = { name, level: whole(data.level, 100), promote: whole(data.promoteLevel, 8), affix: (whole(refinements[0], 4) ?? 0) + 1 };
         continue;
       }
       const slot = artifactSlots[text(flat?.equipType)], data = object(item?.reliquary), known = catalog.artifacts.get(itemId);
       if (!slot || !known || !data) continue;
-      if (Object.hasOwn(arts, slot)) throw new GenshinShowcaseError("公开展板含重复的圣遗物位置。");
+      if (Object.hasOwn(arts, slot)) throw new GenshinShowcaseError($t("panel.showcase-client.text_a7d0b45139"));
       const rolls = Array.isArray(data.appendPropIdList) ? data.appendPropIdList.slice(0, 12) : [];
       arts[slot] = { ...known, star: whole(flat?.rankLevel, 5) ?? 5, level: Math.min(20, Math.max(0, (whole(data.level, 30) ?? 1) - 1)),
         mainId: whole(data.mainPropId, 99_999), attrIds: rolls.flatMap(value => whole(value, 999_999) ?? []) };
     }
-    if (!weapon) throw new GenshinShowcaseError("公开展板角色缺少可解析的武器。");
+    if (!weapon) throw new GenshinShowcaseError($t("panel.showcase-client.text_f5f0ebd7da"));
     const costume = whole(row?.costumeId, 999_999);
     const outfits = Array.isArray(detail?.costume) ? detail.costume : meta.costume;
     const outfit = Array.isArray(outfits) && outfits.includes(costume) ? costume : undefined;

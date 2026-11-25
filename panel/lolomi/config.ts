@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../../packages/i18n/index.ts";
+import messageCatalog from "../../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -22,11 +25,11 @@ function readSettings(file: string | undefined): DamageSettings {
 }
 
 export function resolveDamageSettings(raw: unknown): DamageSettings {
-  if (raw !== undefined && (!raw || typeof raw !== "object" || Array.isArray(raw))) throw new TypeError("原神伤害设置必须为 YAML 对象。");
+  if (raw !== undefined && (!raw || typeof raw !== "object" || Array.isArray(raw))) throw new TypeError($t("panel.lolomi.config.text_44a9fab55a"));
   const cfg = (raw ?? {}) as Partial<DamageSettings>;
   if ([cfg.lolomicalc, cfg.lolomiartis, cfg.templateteam, cfg.conscompare].some(value => value !== undefined && typeof value !== "boolean") ||
     (cfg.engineMode !== undefined && !["auto", "lolomi", "miao"].includes(cfg.engineMode))) {
-    throw new TypeError("原神伤害引擎、圣遗物评分、预设配队或命座对比设置无效。");
+    throw new TypeError($t("panel.lolomi.config.text_16605ae36b"));
   }
   return Object.freeze({
     lolomicalc: cfg.lolomicalc ?? true,

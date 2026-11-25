@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -38,10 +41,10 @@ function boundScore(raw: unknown, scope: StygianConsentScope, qq: number, period
 export function createStygianPersonalScoreStore(directory: string, lock: AcquireRoleArchiveLock) {
   function archive(scope: StygianConsentScope, period: Period) {
     if ((scope.adapter !== "onebot" && scope.adapter !== "milky") || !id(scope.bot) || !id(scope.group) ||
-        !id(period.index) || !clockPattern.test(period.start) || !clockPattern.test(period.end)) throw new TypeError("幽境群榜战绩范围无效。");
+        !id(period.index) || !clockPattern.test(period.start) || !clockPattern.test(period.end)) throw new TypeError($t("panel.stygian-personal-score.text_2c4b64e4e0"));
     const slot = `${period.index}-${period.start.replace(/\D/gu, "")}-${period.end.replace(/\D/gu, "")}`;
     return createRoleJsonArchive(join(directory, scope.adapter, String(scope.bot), String(scope.group), slot), lock, {
-      subject: "幽境群榜本地战绩", lockSuffix: "stygian-score", maxBytes: 4096, rejectNull: true,
+      subject: $t("panel.stygian-personal-score.text_2a9260fc8a"), lockSuffix: "stygian-score", maxBytes: 4096, rejectNull: true,
     });
   }
   return {
@@ -99,7 +102,7 @@ export function createPersonalStygianScoreRecorder(consent: Pick<ReturnType<type
       const latest = await consent.read(scope, qq);
       if (matching.some(grant => !matchesStygianConsentProfile(grant, role) ||
           !latest.some(candidate => candidate.site === grant.site && candidate.confirmedAt === grant.confirmedAt &&
-            matchesStygianConsentProfile(candidate, role)))) throw Error("幽境群榜授权已变化。");
+            matchesStygianConsentProfile(candidate, role)))) throw Error($t("panel.stygian-personal-score.text_a5781499d2"));
       signal.throwIfAborted();
     };
     await scores.record(scope, qq, period, matching, observation, verifyWrite);

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import type { CommandReply } from "../../lib/commands.ts";
 import commissionData from "./commissions/thisee-xhh/NPCwt.json";
 
@@ -23,15 +26,15 @@ export function matchGenshinCommission(message: string): CommandReply | undefine
   const record = commissions.get(key);
   if (!record) {
     if (!explicit) return;
-    return key ? "未查到该委托，请核对游戏内的完整名称。" : "请发送 #委托 委托名称，例如 #委托 奇药庐中来。";
+    return key ? $t("commission-command.text_39a2c26704") : $t("commission-command.text_af99e48e9c");
   }
 
-  if (!record.miaosu) return `委托名：${record.name}\n地区：${record.diqu}\n成就：${record.cj}`;
+  if (!record.miaosu) return $t("commission-command.text_3cb24c1689", { "name": record.name, "diqu": record.diqu, "cj": record.cj });
   const video = videoSource.exec(record.yueyue)?.[1];
   const nodes = [
-    `委托名：${record.name}\n地区：${record.diqu}\n成就：${record.cj}`,
-    `重点描述\n${record.miaosu}`,
+    $t("commission-command.text_3cb24c1689", { "name": record.name, "diqu": record.diqu, "cj": record.cj }),
+    $t("commission-command.text_7985e74c7f", { "miaosu": record.miaosu }),
   ];
-  if (video) nodes.push(`影月月视频指引\nhttps://www.bilibili.com/video/${video}`);
-  return { type: "forward", nodes, senderName: "原神每日委托" };
+  if (video) nodes.push($t("commission-command.text_d8b0f450d5", { "video": video }));
+  return { type: "forward", nodes, senderName: $t("commission-command.text_7968583cad") };
 }

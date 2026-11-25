@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { resolveGrowthMaterials } from "../grow/catalogue.ts";
 import { talentRegions, talentSchedule, weaponSchedule } from "./miao/talent-schedule.ts";
 import { object, text, whole, type Json, type PanelSnapshot } from "./model.ts";
@@ -57,7 +60,7 @@ export async function buildDailyMaterials(snapshot: PanelSnapshot, theme: PanelT
   for (const owner of rows) {
     signal?.throwIfAborted();
     const { avatar, weapon, talents, star } = owner;
-    const path = travelerIds.has(avatar.id) ? ["旅行者", avatar.elem] : [avatar.name];
+    const path = travelerIds.has(avatar.id) ? [$t("panel.daily-materials.text_4bf6868aa0"), avatar.elem] : [avatar.name];
     let details = weapon && weapons.get(weapon.name);
     if (weapon && !details) {
       details = theme.metadata?.("meta-gs", "weapon", weapon.type, weapon.name, "data.json") ?? Promise.resolve(undefined);
@@ -66,7 +69,7 @@ export async function buildDailyMaterials(snapshot: PanelSnapshot, theme: PanelT
     const [character, equipped] = await Promise.all([
       theme.metadata?.("meta-gs", "character", ...path, "data.json"), details,
     ]);
-    if (character?.name === (travelerIds.has(avatar.id) ? "旅行者" : avatar.name)) {
+    if (character?.name === (travelerIds.has(avatar.id) ? $t("panel.daily-materials.text_4bf6868aa0") : avatar.name)) {
       const cap = dailyMaterialTalentCap(avatar.promote);
       const max = cap !== undefined && talents.every(talent => talent && talent.original >= cap);
       const score = avatar.level * 10 ** 6 + (star ?? 0) * 10 ** 4 + (avatar.cons ?? 0) * 100 + (avatar.id - 10000000);

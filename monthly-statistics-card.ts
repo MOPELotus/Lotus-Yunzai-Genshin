@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { renderGenshinCardForChat } from "./card-render.ts";
 import { nativeGenshinResourcesDirectory, originalFonts } from "./panel/personal-record-card.ts";
 import { readPanelTheme } from "./panel/theme.ts";
@@ -22,12 +25,12 @@ export async function renderGenshinStatistics(model: GenshinMonthlyStatistics, {
   const [native, miao, family] = await Promise.all([readPanelTheme(directory, ""), readPanelTheme(),
     originalFonts(directory, "font", "HYWenHei-55W.ttf")]);
   const [logo, banner] = await Promise.all([native.picture("img", "other", "原神.png"),
-    miao.picture("meta-gs", "character", "闲云", "imgs", "banner.webp")]);
-  if (!logo || !banner || model.sources.length > 12) throw Error("原石统计原主题或图表内容不适合单图。");
-  const heading = model.period.year ? `${model.period.year}年-原石统计` : "原石统计";
+    miao.picture("meta-gs", "character", $t("monthly-statistics-card.text_6185247296"), "imgs", "banner.webp")]);
+  if (!logo || !banner || model.sources.length > 12) throw Error($t("monthly-statistics-card.text_17279b1cba"));
+  const heading = model.period.year ? $t("monthly-statistics-card.text_e2078b81e4", { "year": model.period.year }) : $t("monthly-statistics-card.text_96f05745f3");
   const partial = model.months.some(row => !row.finalized);
   const coverage = model.months.length === model.period.expectedMonths && !partial
-    ? undefined : `已归档 ${model.months.length}/${model.period.expectedMonths} 个月${partial ? "，标有 * 的月份可能未收录完整" : ""}`;
+    ? undefined : $t("monthly-statistics-card.text_83972f33c3", { "length": model.months.length, "expectedMonths": model.period.expectedMonths, "value3": partial ? $t("monthly-statistics-card.text_755e9025ec") : "" });
   const maximum = model.bestPrimogems?.snapshot.primogems ?? 0;
   const step = barStep(maximum);
   const upper = Math.max(step, Math.ceil(maximum / step) * step);
@@ -80,15 +83,15 @@ export async function renderGenshinStatistics(model: GenshinMonthlyStatistics, {
     context.drawImage(logo, 403, 21, 97, 97 * logo.height / logo.width);
 
     panel(116, 149);
-    badge("数据总览", 116);
-    const month = (entry: GenshinMonthlyStatistics["bestMora"]) => entry ? `${entry.snapshot.month}月` : "—";
+    badge($t("monthly-statistics-card.text_3c5118f194"), 116);
+    const month = (entry: GenshinMonthlyStatistics["bestMora"]) => entry ? $t("monthly-statistics-card.text_3947001dc1", { "month": entry.snapshot.month }) : "—";
     const rows = [
-      [model.primogems === undefined ? "—" : `${(model.primogems / 10000).toFixed(2)}w`, "总原石"],
-      [model.primogems === undefined ? "—" : `${(model.primogems / 160).toFixed(0)}抽`, "总抽数"],
-      [month(model.bestPrimogems), "原石最多"],
-      [String(model.bestPrimogems?.snapshot.primogems ?? "—"), model.bestPrimogems ? `${month(model.bestPrimogems)}原石` : "最多原石"],
-      [model.mora === undefined ? "—" : `${(model.mora / 10000).toFixed(0)}w`, "总摩拉"],
-      [month(model.bestMora), "摩拉最多"],
+      [model.primogems === undefined ? "—" : `${(model.primogems / 10000).toFixed(2)}w`, $t("monthly-statistics-card.text_5bd2fa6b1c")],
+      [model.primogems === undefined ? "—" : $t("monthly-statistics-card.text_b026bfc20b", { "value1": (model.primogems / 160).toFixed(0) }), $t("monthly-statistics-card.text_530453ec9b")],
+      [month(model.bestPrimogems), $t("monthly-statistics-card.text_3ca704f544")],
+      [String(model.bestPrimogems?.snapshot.primogems ?? "—"), model.bestPrimogems ? $t("monthly-statistics-card.text_8b779f9545", { "value1": month(model.bestPrimogems) }) : $t("monthly-statistics-card.text_d55c630b14")],
+      [model.mora === undefined ? "—" : `${(model.mora / 10000).toFixed(0)}w`, $t("monthly-statistics-card.text_28ea0e45db")],
+      [month(model.bestMora), $t("monthly-statistics-card.text_254838dead")],
       ...model.sources.slice(0, 2).map(({ name, total }) => [String(total), name]),
     ];
     rows.forEach(([amount, name], index) => {
@@ -99,10 +102,10 @@ export async function renderGenshinStatistics(model: GenshinMonthlyStatistics, {
     });
 
     panel(285, 325);
-    badge("月份统计", 285);
+    badge($t("monthly-statistics-card.text_b7de033bc5"), 285);
     context.fillStyle = "#6495f9";
     context.fillRect(30, 316, 8, 8);
-    text("原石", 45, 320, 14, 68, muted);
+    text($t("monthly-statistics-card.text_761ab59423"), 45, 320, 14, 68, muted);
     const bottom = 575, range = 230;
     for (let value = 0; value <= upper; value += step) {
       const y = bottom - value / upper * range;
@@ -118,11 +121,11 @@ export async function renderGenshinStatistics(model: GenshinMonthlyStatistics, {
       context.fillStyle = "#6495f9";
       if (bar > 0) context.fillRect(x - slot * 0.3, bottom - bar, slot * 0.6, bar);
       text(String(value ?? "—"), x, bottom - bar - 12, 13, slot - 1, body, "center");
-      text(`${snapshot.month}月${finalized ? "" : "*"}`, x, bottom + 15, 14, slot - 1, muted, "center");
+      text($t("monthly-statistics-card.text_feec374c26", { "month": snapshot.month, "value2": finalized ? "" : "*" }), x, bottom + 15, 14, slot - 1, muted, "center");
     });
 
     panel(630, 325);
-    badge("详细统计", 630);
+    badge($t("monthly-statistics-card.text_56e3db2f46"), 630);
     const pieX = 198, pieY = 800, pieRadius = 140;
     let start = -Math.PI / 2;
     const rowHeight = Math.min(26, 270 / Math.max(1, model.sources.length));
@@ -151,9 +154,9 @@ export async function renderGenshinStatistics(model: GenshinMonthlyStatistics, {
       text(name, 375, y, 16, 68, body);
       text(String(quantity), 448, y, 16, 52, muted);
     });
-    text("总计", pieX, pieY - 17, 18, 90, body, "center");
+    text($t("monthly-statistics-card.text_e8dc871a7f"), pieX, pieY - 17, 18, 90, body, "center");
     text(model.sources.length ? String(total) : "—", pieX, pieY + 17, 34, 135, body, "center", true);
     if (coverage) text(coverage, 18, 967, 12, 487, muted);
-    text("Created By Lotus-Yunzai", 265, 984, 14, 390, "#000", "center");
+    text($t("monthly-statistics-card.text_d41c915582"), 265, 984, 14, 390, "#000", "center");
   }, "gpu", { displayWidth: 689, inlineImageByteLimit, signal });
 }

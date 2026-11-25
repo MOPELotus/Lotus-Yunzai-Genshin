@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { renderGenshinCardForChat } from "../card-render.ts";
 import type { AbyssTeamMember, AbyssTeamPair } from "./abyss-team-model.ts";
 import { contain, fill, profileFonts, round, typeset } from "./original-profile-skia.ts";
@@ -28,14 +31,14 @@ export async function renderAbyssTeams(pairs: readonly AbyssTeamPair[], updated:
     const { write } = typeset(ctx, fonts);
     fill(ctx, "#2a3860", [0, 0, width, height]);
     if (background) ctx.drawImage(background, 0, 0, width, width * background.height / background.width);
-    write("深渊配队建议", 30, 54, 33, { color: "#fff", title: true });
+    write($t("panel.abyss-team-card.text_c06509640a"), 30, 54, 33, { color: "#fff", title: true });
     contain(ctx, logo, [469, 17, 103, 47]);
     fill(ctx, "#ede6da", [15, 73, 570, 67], 9);
-    write("深渊配队说明", 28, 94, 15, { color: dark });
-    write("按本人角色、武器等级和基础天赋，并结合提瓦特小助手上下半统计推荐。", 28, 113, 12, { color: dark });
-    write("持有角色的组优先。少于四组时补入未持有方案，适合参考。", 28, 130, 12, { color: dark });
+    write($t("panel.abyss-team-card.text_a977e3b2f3"), 28, 94, 15, { color: dark });
+    write($t("panel.abyss-team-card.text_f4fe12d6e4"), 28, 113, 12, { color: dark });
+    write($t("panel.abyss-team-card.text_c1b562b0ad"), 28, 130, 12, { color: dark });
     fill(ctx, "#e8e1d3", [15, 150, 570, rowHeight * pairs.length + 28], 9);
-    for (const [label, x] of [["12 层", 53], ["上半", 210], ["下半", 459]] as const) {
+    for (const [label, x] of [[$t("panel.abyss-team-card.text_4fc27578d2"), 53], [$t("panel.abyss-team-card.text_3401df6359"), 210], [$t("panel.abyss-team-card.text_38866b106e"), 459]] as const) {
       write(label, x, 170, 15, { color: dark, align: "center" });
     }
 
@@ -58,19 +61,19 @@ export async function renderAbyssTeams(pairs: readonly AbyssTeamPair[], updated:
         fill(ctx, badge[member.cons] ?? badge[0]!, [x + 36, y, 14, 14], 3);
         write(member.cons, x + 43, y + 11, 10, { align: "center", color: "#fff" });
       }
-      write(owned ? `Lv.${member.level}` : "暂无", x + 25, y + 61, 11, { align: "center", color: dark });
+      write(owned ? `Lv.${member.level}` : $t("panel.abyss-team-card.text_b336a174cd"), x + 25, y + 61, 11, { align: "center", color: dark });
       ctx.restore();
     }
 
     pairs.forEach(({ up, down, count }, index) => {
       const y = rowsTop + index * rowHeight;
       fill(ctx, index % 2 ? "#e9e2d7" : "#f5eee3", [18, y, 564, rowHeight]);
-      write(`配队 ${index + 1}`, 55, y + 34, 13, { color: dark, align: "center" });
-      write(`${count} 次记录`, 55, y + 51, 10, { color: "#555", align: "center" });
+      write($t("panel.abyss-team-card.text_b04765ab37", { "value1": index + 1 }), 55, y + 34, 13, { color: dark, align: "center" });
+      write($t("panel.abyss-team-card.text_7b45cc7f2c", { "count": count }), 55, y + 51, 10, { color: "#555", align: "center" });
       up.forEach((member, i) => role(member, 92 + i * 57, y + 8));
       down.forEach((member, i) => role(member, 340 + i * 57, y + 8));
     });
-    if (updated) write(`统计更新时间 ${updated}`, width - 18, height - 24, 11, { align: "right", color: "#e7e3e6" });
-    write("Lotus-Yunzai", width / 2, height - 9, 12, { align: "center", color: "#fff" });
+    if (updated) write($t("panel.abyss-team-card.text_210bd7f52e", { "updated": updated }), width - 18, height - 24, 11, { align: "right", color: "#e7e3e6" });
+    write($t("panel.abyss-team-card.text_3867834e77"), width / 2, height - 9, 12, { align: "center", color: "#fff" });
   }, mode, { inlineImageByteLimit, signal });
 }

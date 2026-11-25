@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { createHash } from "node:crypto";
 import { constants, lstatSync, mkdirSync, realpathSync, renameSync, type BigIntStats } from "node:fs";
 import { lstat, mkdir, open, readdir, realpath } from "node:fs/promises";
@@ -22,7 +25,7 @@ export async function panelImageDirectory(directory: string, create = false) {
   if (create) await mkdir(directory, { mode: 0o700, recursive: true });
   try {
     if (await realpath(directory) !== directory || !(await lstat(directory)).isDirectory()) {
-      throw new Error("面板图管理目录须为实际目录。");
+      throw new Error($t("panel.image-library.text_b04836d72c"));
     }
     return true;
   } catch (error) {
@@ -83,12 +86,12 @@ export function savedPanelImages(document: unknown, name: string): PanelImageEnt
   if (document === null) return;
   const value = document as { version?: unknown; name?: unknown; entries?: unknown };
   if (!value || value.version !== 1 || value.name !== name || !Array.isArray(value.entries) || value.entries.length > 1_000) {
-    throw new TypeError("面板图序号记录无效，请重新查看列表。");
+    throw new TypeError($t("panel.image-library.text_1d8bcd357b"));
   }
   for (const entry of value.entries) {
     if (!entry || typeof entry.path !== "string" || !belongs(name, entry.path) ||
         typeof entry.stamp !== "string" || !/^(?:[0-9-]{1,40}:){4}[0-9-]{1,40}$/u.test(entry.stamp)) {
-      throw new TypeError("面板图序号记录无效，请重新查看列表。");
+      throw new TypeError($t("panel.image-library.text_1d8bcd357b"));
     }
   }
   return value.entries;
@@ -116,7 +119,7 @@ export async function readPanelImage(root: string, entry: PanelImageEntry): Prom
 }
 
 export async function retirePanelImage(root: string, name: string, entry: PanelImageEntry, verify: () => Promise<void>) {
-  if (!safePanelImagePart(name) || !belongs(name, entry.path)) throw new Error("面板图不属于指定角色。");
+  if (!safePanelImagePart(name) || !belongs(name, entry.path)) throw new Error($t("panel.image-library.text_5ccbb5c798"));
   const source = join(root, entry.path);
   const token = createHash("sha256").update(JSON.stringify(entry)).digest("hex");
   const target = join(root, ".removed", token, entry.path);

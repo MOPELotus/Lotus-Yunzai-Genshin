@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { readPanelTrialDisplay, trialDamageTitleLines } from "../../../lib/panel-trial-display.ts";
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
@@ -59,7 +62,7 @@ function panelDiscardedAt(input: unknown): number {
 }
 
 async function oldPanel(root: string, uid: string, catalog: PanelCatalog, includeMysRoster = false) {
-  if (!/^[1-9]\d{8,9}$/u.test(uid)) throw new TypeError("原神 UID 格式无效。");
+  if (!/^[1-9]\d{8,9}$/u.test(uid)) throw new TypeError($t("panel.panel.text_f50473395d"));
   return readOldPanelFile(join(root, `${uid}.json`), uid, catalog, includeMysRoster);
 }
 
@@ -74,16 +77,16 @@ async function readOldPanelFile(path: string, uid: string, catalog: PanelCatalog
 
   try {
     const snapshot = await file.stat();
-    if (!snapshot.isFile() || snapshot.size > limit) throw new TypeError("旧面板不是有效的 JSON 文件。");
+    if (!snapshot.isFile() || snapshot.size > limit) throw new TypeError($t("panel.panel.text_3699c31777"));
     const bytes = Buffer.alloc(snapshot.size);
     for (let offset = 0; offset < bytes.length;) {
       const { bytesRead } = await file.read(bytes, offset, bytes.length - offset, offset);
-      if (!bytesRead) throw new Error("旧面板文件已变更。");
+      if (!bytesRead) throw new Error($t("panel.panel.text_1f7b2b8e50"));
       offset += bytesRead;
     }
     const latest = await file.stat();
     if (latest.mtimeMs !== snapshot.mtimeMs || latest.ctimeMs !== snapshot.ctimeMs || latest.size !== snapshot.size) {
-      throw new Error("旧面板文件已变更。");
+      throw new Error($t("panel.panel.text_1f7b2b8e50"));
     }
     return readPanel(uid, JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)), catalog, true, includeMysRoster);
   } finally {
@@ -95,7 +98,7 @@ export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
   archiveDirectory = Bun.env.LOTUS_GENSHIN_PANEL_DIR?.trim() || mainDirectory,
   legacyDirectory = Bun.env.LOTUS_GENSHIN_LEGACY_PANEL_DIR?.trim() || previousDirectory,
 }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string } = {}) {
-  const store = createRoleJsonArchive(archiveDirectory, lockFile, { subject: "原神面板", lockSuffix: "panel", maxBytes: limit, rejectNull: true });
+  const store = createRoleJsonArchive(archiveDirectory, lockFile, { subject: $t("panel.panel.text_0b3ee04b94"), lockSuffix: "panel", maxBytes: limit, rejectNull: true });
   const talents = createRefreshedTalentArchive(archiveDirectory, lockFile);
   return {
     talents,
@@ -111,7 +114,7 @@ export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
       const existsLocally = () => oldPanel(legacyDirectory, uid, catalog);
       return store.update<number | undefined>({ qq, uid }, async () => {
         await verify();
-        if (await existsLocally()) throw new ProfileError("changed", "本机已有原神面板。");
+        if (await existsLocally()) throw new ProfileError("changed", $t("panel.panel.text_21ed827eb5"));
       }, current => current === null ? { document: { uid, avatars }, result: count } : { result: undefined });
     },
     async discardedAt(qq: string, uid: string) {
@@ -252,7 +255,7 @@ export function createGenshinPanelQuery(
     verifyAuthority();
     const { source, accountId } = await ownedGenshinRole(profiles, qq, profileId);
     const { role } = source;
-    if (role.uid !== uid) throw new ProfileError("changed", "原神面板档案已变化。");
+    if (role.uid !== uid) throw new ProfileError("changed", $t("panel.panel.text_47d931becc"));
     let expected = source.revision;
     const result = await refreshPanel(source, await theme(), async (revision) => {
       if (revision !== undefined) expected = revision;
@@ -261,12 +264,12 @@ export function createGenshinPanelQuery(
       const latest = await ownedGenshinRole(profiles, qq, profileId);
       if (latest.accountId !== accountId || latest.source.revision !== expected || latest.source.role.uid !== uid ||
           latest.source.role.region !== role.region || latest.source.role.gameBiz !== role.gameBiz) {
-        throw new ProfileError("changed", "原神面板档案已变化。");
+        throw new ProfileError("changed", $t("panel.panel.text_47d931becc"));
       }
       active.throwIfAborted();
       verifyAuthority();
     }, active);
-    if (result.status === "empty") throw new Error("米游社没有返回原神角色面板。");
+    if (result.status === "empty") throw new Error($t("panel.panel.text_80a9d4bb6a"));
     return result.status === "ready" && result.updated;
   };
 
@@ -282,18 +285,18 @@ export function createGenshinPanelQuery(
         const assets = await theme();
         let snapshot = await store.readLegacy(legacyExtremePanelUid, assets);
         let avatar = snapshot && selectPresetAvatar(snapshot, extreme, assets);
-        let label = "极限示例";
+        let label = $t("panel.panel.text_e460b79a74");
         if (!avatar) {
           const bundled = await readOldPanelFile(extremePanelFile, legacyExtremePanelUid, assets);
           if (bundled) {
             snapshot = bundled;
             avatar = selectPresetAvatar(bundled, extreme, assets);
-            label = "公开极限示例";
+            label = $t("panel.panel.text_d1805abebd");
           }
         }
         signal.throwIfAborted();
-        if (!snapshot) return "尚未准备原神极限示例数据。";
-        if (!avatar) return `暂无「${extreme}」的原神极限示例。`;
+        if (!snapshot) return $t("panel.panel.text_2937d80c9b");
+        if (!avatar) return $t("panel.panel.text_d61ea14b74", { "extreme": extreme });
         const damage = await estimatePanelDamage(avatar, assets, undefined, undefined, { includeComparison: false });
         signal.throwIfAborted();
         const description = `${label} · ${avatar.name} · Lv.${avatar.level}`;
@@ -311,52 +314,52 @@ export function createGenshinPanelQuery(
         } catch {}
         if (!signal.aborted) return description;
       } catch {
-        if (!signal.aborted) return "原神极限示例暂时无法读取。";
+        if (!signal.aborted) return $t("panel.panel.text_0101966a48");
       }
       return;
     }
     const discard = matchGenshinPanelDiscard(message);
     if (discard) {
-      if (discard.profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
-      if (context.isDelegated) return "请在本人 QQ 会话删除原神面板。";
+      if (discard.profileId > MAX_PROFILE_ID) return $t("panel.panel.text_3dd62228d2");
+      if (context.isDelegated) return $t("panel.panel.text_4421674479");
       const user = context.user_id;
       if (!user || !Number.isSafeInteger(user) || user < 1 ||
           (context.message_type !== "private" && context.message_type !== "group")) {
-        return "请在本人 QQ 私聊或群聊中删除原神面板。";
+        return $t("panel.panel.text_e1c2234a76");
       }
       const qq = String(user);
       const { uid: target, profileId } = discard;
       try {
         if (!target) {
           const { source } = await ownedGenshinRole(profiles, qq, profileId);
-          return `你确认要删除面板数据吗？请回复 #删除面板${source.role.uid} 档案${profileId} 以删除面板数据。`;
+          return $t("panel.panel.text_58d9a1a126", { "uid": source.role.uid, "profileId": profileId });
         }
         const source = await profiles.requestContext(qq, profileId, "gs", target);
         const { role } = source;
         if (role.uid !== target || !role.region || !role.gameBiz) {
-          throw new ProfileError("role-missing", "此 UID 未同步至当前档案。");
+          throw new ProfileError("role-missing", $t("panel.panel.text_e74533b136"));
         }
         const accountId = genshinLoginAccount(source);
-        if (!accountId) throw new ProfileError("invalid", "档案的登录凭据与账号不一致。");
+        if (!accountId) throw new ProfileError("invalid", $t("panel.panel.text_4ff57173cc"));
         await store.discard(qq, target, now, async () => {
           signal.throwIfAborted();
           const latest = await profiles.requestContext(qq, profileId, "gs", target).catch(() => undefined);
           if (!latest || latest.revision !== source.revision || genshinLoginAccount(latest) !== accountId ||
               latest.role.uid !== target || latest.role.region !== role.region || latest.role.gameBiz !== role.gameBiz) {
-            throw new ProfileError("changed", "原神面板档案已变化。");
+            throw new ProfileError("changed", $t("panel.panel.text_47d931becc"));
           }
           signal.throwIfAborted();
         });
-        return `UID ${target} 的本地面板已删除，旧群面板排名已清除。`;
+        return $t("panel.panel.text_16e60712d6", { "target": target });
       } catch (error) {
         if (signal.aborted) return;
         if (error instanceof ProfileError) {
-          if (error.code === "missing" || error.code === "login-required") return `请先登录档案 ${profileId}。`;
-          if (error.code === "role-missing") return "仅允许删除当前登录档案已同步的原神 UID。";
-          if (error.code === "changed") return "原神面板档案已变化，请重新确认。";
-          if (error.code === "invalid") return "原神档案的账号或登录凭据无法核验，请重新登录。";
+          if (error.code === "missing" || error.code === "login-required") return $t("panel.panel.text_76720712c8", { "profileId": profileId });
+          if (error.code === "role-missing") return $t("panel.panel.text_78846e6864");
+          if (error.code === "changed") return $t("panel.panel.text_5f95b74c03");
+          if (error.code === "invalid") return $t("panel.panel.text_13fce91c39");
         }
-        return "原神面板暂时无法删除，请稍后重试。";
+        return $t("panel.panel.text_fbe2996597");
       }
     }
     const preset = matchPanelPreset(message);
@@ -396,7 +399,7 @@ export function createGenshinPanelQuery(
           return { type: "image", file: png };
         }
         const original = command.name && selectPresetAvatar(snapshot, command.name, assets);
-        if (!original) return `${label}暂无「${command.name}」的预设。`;
+        if (!original) return $t("panel.panel.text_de3c71af3d", { "label": label, "name": command.name });
         const equipment = await selectedEquipment(command, snapshot, original, assets);
         const changed = equipment && await buildEquipmentChange(snapshot, original, equipment, assets,
           { presetDonor: presetDonor(assets) });
@@ -415,7 +418,7 @@ export function createGenshinPanelQuery(
         signal.throwIfAborted();
         let png: Uint8Array;
         if (mode === "damage") {
-          if (!model || "message" in model) return model?.message ?? "当前公开预设缺少伤害数据。";
+          if (!model || "message" in model) return model?.message ?? $t("panel.panel.text_43069ebbb6");
           ({ png } = await (render.damage ?? renderDamageCard)(snapshot, avatar, assets, model, { change }));
         } else {
           ({ png } = await render.detail(snapshot, avatar, assets, {
@@ -425,7 +428,7 @@ export function createGenshinPanelQuery(
         signal.throwIfAborted();
         return { type: "image", file: png };
       } catch {
-        if (!signal.aborted) return `${label}暂时无法生成，请稍后再试。`;
+        if (!signal.aborted) return $t("panel.panel.text_1b89b4168a", { "label": label });
       }
       return;
     }
@@ -450,7 +453,7 @@ export function createGenshinPanelQuery(
           else {
             try {
               preflight = await theme();
-              const weapon = change.weaponName === "专武" ? `${target.name}专武` : change.weaponName;
+              const weapon = change.weaponName === "专武" ? $t("panel.panel.text_b0c62baa6a", { "name": target.name }) : change.weaponName;
               const type = text(object(preflight.characters[target.id])?.weapon);
               const known = await resolvePanelWeapon(weapon, type, preflight);
               if (known) command = { ...candidate, name: target.name, equipmentChange: { ...change, weaponName: known.canonical } };
@@ -465,7 +468,7 @@ export function createGenshinPanelQuery(
     const selection = command ?? enemy;
     if (!selection || signal.aborted) return;
     const materialDay = command?.type === "daily-materials" ? talentStatisticsDay({ day: command.materialDay }, now()) : undefined;
-    if (materialDay?.selected === 7) return "周日全部天赋与武器突破素材均开放。";
+    if (materialDay?.selected === 7) return $t("panel.panel.text_20142c98ef");
     const { profileId } = selection;
     const reload = command?.type === "reload";
     const canReadRoster = command?.type === "statistics" &&
@@ -474,15 +477,15 @@ export function createGenshinPanelQuery(
     const training = canReadRoster && !talentRoster;
     const ownConversation = !context.isDelegated && (context.message_type === "group" || context.message_type === "private");
     const readRoster = training || talentRoster && ownConversation;
-    if (reload && profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (reload && profileId > MAX_PROFILE_ID) return $t("panel.panel.text_3dd62228d2");
     if ((materialDay || readRoster) && context.privateCredentialSignal?.aborted) return;
     if (training && !ownConversation) {
-      return "请在本人 QQ 会话查看原神练度。";
+      return $t("panel.panel.text_581913dbf1");
     }
-    if (materialDay && context.isDelegated) return "请在本人 QQ 会话查看原神素材。";
+    if (materialDay && context.isDelegated) return $t("panel.panel.text_657b676110");
     const user = context.user_id;
-    if (reload && context.isDelegated) return "请在本人 QQ 会话重新加载原神面板。";
-    if (!user || !Number.isSafeInteger(user) || user < 1) return "请在有原神档案的 QQ 会话使用面板。";
+    if (reload && context.isDelegated) return $t("panel.panel.text_f476dbc9db");
+    if (!user || !Number.isSafeInteger(user) || user < 1) return $t("panel.panel.text_ce398b54ec");
     const qq = String(user);
     const offer = command?.type === "update" && context.message_type === "private" && !context.isDelegated
       ? context.offerLegacyPanelRecovery : undefined;
@@ -499,7 +502,7 @@ export function createGenshinPanelQuery(
             signal.throwIfAborted();
             await verify();
             signal.throwIfAborted();
-            if (refreshes.has(key)) throw new ProfileError("changed", "原神面板正在官方更新。");
+            if (refreshes.has(key)) throw new ProfileError("changed", $t("panel.panel.text_841a880f5d"));
           }) });
       } catch {
         // Keep the ordinary refresh reply when archive absence cannot be confirmed.
@@ -539,7 +542,7 @@ export function createGenshinPanelQuery(
         source?.role ?? await profiles.savedRole(qq, profileId, "gs");
       const { uid } = role;
       const talentAccount = !context.isDelegated && source ? genshinLoginAccount(source) : undefined;
-      if (command?.uid && command.uid !== uid) return "此 UID 与当前档案绑定的原神角色不一致。";
+      if (command?.uid && command.uid !== uid) return $t("panel.panel.text_be2f3f1646");
       let expected = source?.revision;
       let archiveDiscardedAt: number | undefined;
       async function check(revision?: string) {
@@ -547,12 +550,12 @@ export function createGenshinPanelQuery(
         signal.throwIfAborted();
         if (offer || materialDay || publicRead || readRoster || reload) context.privateCredentialSignal?.throwIfAborted();
         if (archiveDiscardedAt !== undefined && await store.discardedAt(qq, uid) !== archiveDiscardedAt) {
-          throw new ProfileError("changed", "原神面板已删除。");
+          throw new ProfileError("changed", $t("panel.panel.text_93950d2460"));
         }
         if (publicGeneration) {
           const current = await showcase.baseline(qq, uid);
           if (current.generation !== publicGeneration.generation || current.discarded !== publicGeneration.discarded) {
-            throw new ProfileError("changed", "原神公开展板已变化。");
+            throw new ProfileError("changed", $t("panel.panel.text_4472a38a9a"));
           }
           signal.throwIfAborted();
         }
@@ -562,7 +565,7 @@ export function createGenshinPanelQuery(
           if (latest?.accountId !== owned.accountId || latest.source.revision !== expected ||
               latest.source.role.uid !== uid || latest.source.role.region !== role.region ||
               latest.source.role.gameBiz !== role.gameBiz) {
-            throw new ProfileError("changed", "原神面板档案已变化。");
+            throw new ProfileError("changed", $t("panel.panel.text_47d931becc"));
           }
           signal.throwIfAborted();
           return latest.source;
@@ -571,7 +574,7 @@ export function createGenshinPanelQuery(
           ? profiles.savedRole(qq, profileId, "gs").then(role => ({ role, revision: undefined }))
           : profiles.requestContext(qq, profileId, "gs")).catch(() => undefined);
         if (latest?.revision !== expected || latest?.role.uid !== uid || latest.role.region !== role.region) {
-          throw new ProfileError("changed", "原神面板档案已变化。");
+          throw new ProfileError("changed", $t("panel.panel.text_47d931becc"));
         }
       }
 
@@ -579,7 +582,7 @@ export function createGenshinPanelQuery(
 
       if (enemy) {
         const level = await preferences.setLevel(qq, enemy.enemyLevel, verify);
-        return `敌人等级已经设置为${level}`;
+        return $t("panel.panel.text_5df71e1389", { "level": level });
       }
       if (!command) return;
       const { name, type, mode } = command;
@@ -606,15 +609,15 @@ export function createGenshinPanelQuery(
             const target = genshinShowcaseTarget(role, await readShowcaseServer());
             await verify();
             let delivered = false;
-            const reply = `本地暂无所查原神面板，正在向 ${showcaseNames[target.provider]} 查询公开展板，仅发送游戏 UID。`;
+            const reply = $t("panel.panel.text_e992575344", { "value1": showcaseNames[target.provider] });
             if (await context.reply(reply, false, { onDelivered() { delivered = true; } }) === true && delivered) {
               await verify();
-              if ((await panelDeletionBoundary(qq, uid) ?? 0) !== baseline.discarded) throw new ProfileError("changed", "原神面板已删除。");
+              if ((await panelDeletionBoundary(qq, uid) ?? 0) !== baseline.discarded) throw new ProfileError("changed", $t("panel.panel.text_93950d2460"));
               const next = await decodeGenshinShowcaseResponse(target, await fetchShowcase(target, active), assets);
               await verify();
               if (next) {
                 const written = await showcase.replace(qq, next, baseline, verify);
-                if (!written) throw new ProfileError("changed", "原神公开展板已变化。");
+                if (!written) throw new ProfileError("changed", $t("panel.panel.text_4472a38a9a"));
                 disclosed = next;
                 publicGeneration = Object.keys(disclosed.avatars).some(id => !local?.avatars[id]) ? written : undefined;
               }
@@ -635,7 +638,7 @@ export function createGenshinPanelQuery(
       }
       if (type === "update" || (type === "reload" && (!snapshot || !Object.keys(snapshot.avatars).length) &&
           !archiveDiscardedAt)) {
-        if (!source) throw new ProfileError("login-required", "原神面板更新需要登录。");
+        if (!source) throw new ProfileError("login-required", $t("panel.panel.text_efb571c53a"));
         const active = offer && context.privateCredentialSignal ? AbortSignal.any([signal, context.privateCredentialSignal]) : signal;
         const result = await refreshPanel(source, assets, verify, active).catch(async (error: unknown) => {
           if (offer && error instanceof HoyoRequestError && error.code !== "profile-changed" && error.code !== "invalid-input" &&
@@ -647,9 +650,9 @@ export function createGenshinPanelQuery(
           throw error;
         });
         if ("type" in result) return result;
-        if (result.status === "busy") return "此原神面板正在更新。";
-        if (result.status === "empty") return await offerRecovery(uid, assets) ?? "米游社没有返回原神角色面板，原档案已保留。";
-        if (result.status === "discarded") return "此原神面板已删除，请重新发起更新。";
+        if (result.status === "busy") return $t("panel.panel.text_8dcf1a4308");
+        if (result.status === "empty") return await offerRecovery(uid, assets) ?? $t("panel.panel.text_e67d28866a");
+        if (result.status === "discarded") return $t("panel.panel.text_e83a9c5ade");
         snapshot = result.snapshot;
         updated = result.updated;
       } else if (type !== "reload") {
@@ -662,7 +665,7 @@ export function createGenshinPanelQuery(
           snapshot = await trainingRoster(owned.source, owned.accountId, assets, snapshot, archiveDiscardedAt,
             credentialSignal, async revision => {
               const current = await check(revision);
-              if (!current) throw new ProfileError("changed", "原神练度档案已变化。");
+              if (!current) throw new ProfileError("changed", $t("panel.panel.text_08200612d9"));
               return current;
             });
         }
@@ -674,17 +677,17 @@ export function createGenshinPanelQuery(
 
       const suffix = profileId === 1 ? "" : String(profileId);
       if (!snapshot || !Object.keys(snapshot.avatars).length) {
-        if (type === "daily-materials") return "当前档案暂无可用的原神角色和武器资料。";
-        if (type === "artifact-list") return "请先获取角色面板数据后再查看圣遗物列表。";
-        if (publicUid) return `UID ${uid} 本地暂无公开展板，请先使用 #展板更新面板${uid}。`;
-        return `UID ${uid} 本地暂无原神角色面板，请先使用 #更新面板${suffix}。`;
+        if (type === "daily-materials") return $t("panel.panel.text_b041461275");
+        if (type === "artifact-list") return $t("panel.panel.text_47a9c6daa5");
+        if (publicUid) return $t("panel.panel.text_affc1cd5da", { "uid": uid, "value2": uid });
+        return $t("panel.panel.text_6d0f473f91", { "uid": uid, "suffix": suffix });
       }
       await verify();
       if (type === "daily-materials" && materialDay?.selected) {
         const result = await buildDailyMaterials(snapshot, assets, materialDay.selected, signal);
         await verify();
-        if (!result) return "本地暂无可核对的原神素材目录。";
-        if (!result.length) return `本档案暂无${materialDay.label}可列出的角色和武器素材。`;
+        if (!result) return $t("panel.panel.text_687ffd7087");
+        if (!result.length) return $t("panel.panel.text_c2674edcc9", { "label": materialDay.label });
         const pages: (string | Image)[] = [];
         const materialPages = paginateDailyMaterials(result);
         const imageLimit = context.inlineImageByteLimit === undefined ? undefined
@@ -702,7 +705,7 @@ export function createGenshinPanelQuery(
           }
         }
         await verify();
-        const title = `UID ${uid} · ${materialDay.label}素材`;
+        const title = $t("panel.panel.text_076e395801", { "uid": uid, "label": materialDay.label });
         if (pages.length === 1) return typeof pages[0] === "string" ? `${title}\n${pages[0]}` : pages[0];
         return { type: "forward", nodes: [title, ...pages] };
       }
@@ -711,30 +714,30 @@ export function createGenshinPanelQuery(
         let theaterSelection;
         let monthTitle;
         if (command.theaterMonth) {
-          monthTitle = `${command.theaterMonth.slice(0, 4)}-${command.theaterMonth.slice(4)} 幻想真境剧诗 · 角色练度统计`;
+          monthTitle = $t("panel.panel.text_881ce82f31", { "value1": command.theaterMonth.slice(0, 4), "value2": command.theaterMonth.slice(4) });
           const theater = await readTheaterStatisticsMonth(command.theaterMonth, signal);
           await verify();
-          if (!theater) return `${monthTitle}\n本地暂无可核对的轮换资料。`;
+          if (!theater) return $t("panel.panel.text_b41763950f", { "monthTitle": monthTitle });
           theaterSelection = selectTheaterStatistics(snapshot, assets, theater);
-          if (!theaterSelection) return `${monthTitle}\n本地资料缺少已核实的限制元素、开幕或特邀角色。`;
-          if (!theaterSelection.avatars.length) return `${monthTitle}\n${theaterSelection.text}\n本档案暂无符合入门条件的角色。`;
+          if (!theaterSelection) return $t("panel.panel.text_813406fa21", { "monthTitle": monthTitle });
+          if (!theaterSelection.avatars.length) return $t("panel.panel.text_51d23ba661", { "monthTitle": monthTitle, "text": theaterSelection.text });
         }
         const statistics = await buildPanelStatistics(snapshot, assets, signal, !talent, theaterSelection, command.statisticsFilter);
         const schedule = talent && await buildTalentStatistics(statistics, assets, talent, now(), signal);
         const rows: readonly PanelStatisticRow[] = schedule?.rows ?? statistics;
         await verify();
-        if (schedule && !rows.length) return "本档案暂无符合条件的天赋资料。可用 #天赋统计 查看全部。";
-        if (command.statisticsFilter && !rows.length) return "本档案暂无符合所选元素或星级的角色。可用 #练度统计 查看全部。";
-        if (!rows.length) return `UID ${uid} 本地暂无原神角色练度资料，请先使用 #更新面板${suffix}。`;
-        const talentTitle = schedule && ["天赋统计", schedule.day.label, talent?.star === 5 ? "五星" : talent?.star === 4 ? "四星" : ""]
+        if (schedule && !rows.length) return $t("panel.panel.text_4b035c3290");
+        if (command.statisticsFilter && !rows.length) return $t("panel.panel.text_c332e52891");
+        if (!rows.length) return $t("panel.panel.text_f4cad98e8d", { "uid": uid, "suffix": suffix });
+        const talentTitle = schedule && [$t("panel.panel.text_5f49c48407"), schedule.day.label, talent?.star === 5 ? $t("panel.panel.text_789a6953ec") : talent?.star === 4 ? $t("panel.panel.text_1077b809a5") : ""]
           .filter(Boolean).join(" · ");
-        const title = `UID ${uid} · ${talentTitle ?? "面板练度统计"} · 共 ${rows.length} 名角色`;
+        const title = $t("panel.panel.text_23a69e7dd7", { "uid": uid, "value2": talentTitle ?? $t("panel.panel.text_bffbef245c"), "length": rows.length });
         const statisticsText = (page: readonly PanelStatisticRow[]) => page.map(({ avatar, talents, weapon, rating, fetter, materials }) => {
           const entries = schedule ?
-            [`周本 ${materials?.weekly?.name ?? "—"}`, `天赋书 ${materials?.talent?.name ?? "—"}`, materials?.talent?.days ?? ""] :
-            [`武器 ${weapon?.name ?? "—"}`, rating ? `圣遗物 ${rating.rank} ${rating.score.toFixed(1)}` : "圣遗物 暂无评分"];
-          return [avatar.name, `Lv.${avatar.level}`, `命座 ${avatar.cons ?? "—"}`, `好感 ${fetter ?? "—"}`,
-            `天赋 ${talents.map(talent => talent?.level ?? "—").join("/")}`, ...entries].filter(Boolean).join(" · ");
+            [$t("panel.panel.text_d06082d9a1", { "value1": materials?.weekly?.name ?? "—" }), $t("panel.panel.text_aec662f0ef", { "value1": materials?.talent?.name ?? "—" }), materials?.talent?.days ?? ""] :
+            [$t("panel.panel.text_7a55796abf", { "value1": weapon?.name ?? "—" }), rating ? $t("panel.panel.text_6d9506b8c4", { "rank": rating.rank, "value2": rating.score.toFixed(1) }) : $t("panel.panel.text_8f86f08586")];
+          return [avatar.name, `Lv.${avatar.level}`, $t("panel.panel.text_871d79b322", { "value1": avatar.cons ?? "—" }), $t("panel.panel.text_ee746b1680", { "value1": fetter ?? "—" }),
+            $t("panel.panel.text_1db44bde7d", { "value1": talents.map(talent => talent?.level ?? "—").join("/") }), ...entries].filter(Boolean).join(" · ");
         }).join("\n");
         if (theaterSelection) {
           const explanation = `${monthTitle}\n${theaterSelection.text}`;
@@ -802,18 +805,18 @@ export function createGenshinPanelQuery(
       if (type === "artifact-list") {
         const items = await buildArtifactList(snapshot, assets, signal);
         await verify();
-        if (!items.eligible) return "请先获取角色面板数据后再查看圣遗物列表。";
-        if (!items.entries.length) return "本档案没有符合旧版列表筛选规则的圣遗物。";
+        if (!items.eligible) return $t("panel.panel.text_47a9c6daa5");
+        if (!items.entries.length) return $t("panel.panel.text_9f0762ef25");
         let png: Uint8Array | undefined;
         try { ({ png } = await (render.artifactList ?? renderArtifactList)(snapshot, items.entries, assets)); } catch {}
         await verify();
         if (png) return { type: "image", file: png };
-        return [`UID ${uid} · 圣遗物列表`, ...items.entries.map(({ avatar, item, rated }, index) =>
-          `${index + 1}. ${item.name} · ${avatar.name} · ${rated.score.toFixed(1)} 分`)].join("\n");
+        return [$t("panel.panel.text_aeb184066b", { "uid": uid }), ...items.entries.map(({ avatar, item, rated }, index) =>
+          $t("panel.panel.text_7b41f33a93", { "value1": index + 1, "name": item.name, "value3": avatar.name, "value4": rated.score.toFixed(1) }))].join("\n");
       }
       if (type === "change") {
         const original = selectAvatar(snapshot, name!, assets);
-        if (!original) return `此原神面板没有「${name}」，请使用 #面板${suffix} 查看列表。`;
+        if (!original) return $t("panel.panel.text_5b0aa25305", { "name": name, "suffix": suffix });
         const constellation = command.constellationChange;
         const displayedTalent = command.talentChange;
         const characterLevel = command.characterLevelChange;
@@ -833,8 +836,8 @@ export function createGenshinPanelQuery(
         const change = { command: text(message), equipped: replacement.equipped, constellation: constellation !== undefined,
           displayedTalent, characterLevel: characterLevel !== undefined,
           ...("message" in estimate && { reason: estimate.message }) };
-        const title = `${change.characterLevel ? "临时等级试算" : displayedTalent ? "临时天赋试算" :
-          change.constellation ? "临时命座试算" : "临时换装"} · ${avatar.name} · ${replacement.equipped}`;
+        const title = `${change.characterLevel ? $t("panel.panel.text_51222b308a") : displayedTalent ? $t("panel.panel.text_6b05b6349e") :
+          change.constellation ? $t("panel.panel.text_2ac287fec4") : $t("panel.panel.text_29d3780830")} · ${avatar.name} · ${replacement.equipped}`;
         await verify();
         let png: Uint8Array | undefined;
         if (mode === "damage" && "rows" in estimate) {
@@ -844,12 +847,12 @@ export function createGenshinPanelQuery(
           await verify();
           if (png) return { type: "image", file: png };
           return [title, ...estimate.rows.map(row => {
-            const values = ([['average', '期望'], ['crit', '暴击']] as const).flatMap(([key, label]) => {
+            const values = ([['average', $t("panel.panel.text_ed1f74c64a")], ['crit', $t("panel.panel.text_59d499d937")]] as const).flatMap(([key, label]) => {
               if (row[key] === undefined) return [];
               const delta = damageTrialLabel(row.trial?.[key]);
               return [`${label} ${displayNumber(row[key])}${row.unit ?? ""}${delta ? `（${delta}）` : ""}`];
             });
-            return `${trialDamageTitleLines(row.title, estimate.trialTitleMode).join("\n")} · ${row.unavailable ? "数据不全" : values.join(" / ")}`;
+            return `${trialDamageTitleLines(row.title, estimate.trialTitleMode).join("\n")} · ${row.unavailable ? $t("panel.panel.text_4fd7325d79") : values.join(" / ")}`;
           })].join("\n");
         }
         const properties = await readChangedPanelProperties(avatar, assets);
@@ -861,14 +864,14 @@ export function createGenshinPanelQuery(
         await verify();
         if (png) return { type: "image", file: png };
         return [title, change.reason, ...properties.map(row =>
-          `${propertyLabels[row.key]} ${row.value ? displayNumber(row.value) : `基础 ${displayNumber(row.base)}`}`)].filter(Boolean).join("\n");
+          `${propertyLabels[row.key]} ${row.value ? displayNumber(row.value) : $t("panel.panel.text_182c3bd910", { "value1": displayNumber(row.base) })}`)].filter(Boolean).join("\n");
       }
       if (type === "detail") {
         const avatar = selectAvatar(snapshot, name!, assets);
-        if (!avatar) return `此原神面板没有「${name}」，请使用 #面板${suffix} 查看列表。`;
+        if (!avatar) return $t("panel.panel.text_5b0aa25305", { "name": name, "suffix": suffix });
         const recorded = !["change", "customize", "share"].includes(avatar._source);
         if (mode === "damage") {
-          if (!recorded) return `伤害估算需要本档案的实际角色面板，请先使用 #更新面板${suffix}。`;
+          if (!recorded) return $t("panel.panel.text_5f080227e9", { "suffix": suffix });
           const estimate = await estimatePanelDamage(avatar, assets, command.damageRow, await preferences.level(qq));
           await verify();
           if ("message" in estimate) return estimate.message;
@@ -879,15 +882,15 @@ export function createGenshinPanelQuery(
           } catch (error) {
             if (error instanceof ProfileError) throw error;
             await verify();
-            return [`UID ${uid} · ${avatar.name} · 目标 ${estimate.enemyLevel} 级`, ...estimate.rows.map((entry, index) => {
-              const numbers = [entry.average !== undefined ? `期望 ${displayNumber(entry.average)}` : "",
-                entry.crit !== undefined ? `暴击 ${displayNumber(entry.crit)}` : ""];
-              return `${index + 1}. ${entry.title} · ${entry.unavailable ? "数据不全" : numbers.filter(Boolean).join(" / ")}`;
+            return [$t("panel.panel.text_6005965f6b", { "uid": uid, "name": avatar.name, "enemyLevel": estimate.enemyLevel }), ...estimate.rows.map((entry, index) => {
+              const numbers = [entry.average !== undefined ? $t("panel.panel.text_bd189da79b", { "value1": displayNumber(entry.average) }) : "",
+                entry.crit !== undefined ? $t("panel.panel.text_0e9ca6b213", { "value1": displayNumber(entry.crit) }) : ""];
+              return `${index + 1}. ${entry.title} · ${entry.unavailable ? $t("panel.panel.text_4fd7325d79") : numbers.filter(Boolean).join(" / ")}`;
             })].join("\n");
           }
         }
         if (mode === "artifacts" && !Object.keys(avatar.artis).length) {
-          return "未能获得圣遗物详情，请重新获取面板信息后查看。";
+          return $t("panel.panel.text_7de3e57edb");
         }
         const summary = mode === "profile" && recorded ? await preferences.level(qq)
           .then(level => estimatePanelDamage(avatar, assets, undefined, level, { includeComparison: false }))
@@ -908,7 +911,7 @@ export function createGenshinPanelQuery(
           return { type: "image", file: png };
         }
         return [`UID ${uid} · ${avatar.name} · Lv.${avatar.level}`,
-          avatar.weapon?.name && `武器 ${avatar.weapon.name}`,
+          avatar.weapon?.name && $t("panel.panel.text_26bf3fcbd3", { "name": avatar.weapon.name }),
           ...Object.values(avatar.artis).map(part => `${part.name} +${part.level}`)].filter(Boolean).join("\n");
       }
 
@@ -949,7 +952,7 @@ export function createGenshinPanelQuery(
           }
           return images;
         }
-        throw new RangeError("原神面板单行仍超过当前协议发送上限。");
+        throw new RangeError($t("panel.panel.text_052880ced8"));
       };
       let images: Image[];
       let marks = ranking;
@@ -962,9 +965,8 @@ export function createGenshinPanelQuery(
         }
       } catch {
         await verify();
-        const prefix = updated ? "原神面板已更新" : "原神面板";
-        return `UID ${uid} · ${prefix} · ${avatars.length} 位角色
-${avatars.map(avatar => avatar.name).join("、")}`;
+        const prefix = updated ? $t("panel.panel.text_1aee65611a") : $t("panel.panel.text_0b3ee04b94");
+        return $t("panel.panel.text_6d8c1905bb", { "uid": uid, "prefix": prefix, "length": avatars.length, "value4": avatars.map(avatar => avatar.name).join("、") });
       }
       await verify();
       if (images.length === 1) return images[0]!;
@@ -984,19 +986,19 @@ ${avatars.map(avatar => avatar.name).join("、")}`;
       if (signal.aborted || (offer || materialDay || readRoster || reload || command?.type === "list" || command?.type === "detail") &&
           context.privateCredentialSignal?.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "changed") return "原神面板档案已变化，请重新查询。";
-        if (error.code === "missing" || error.code === "login-required") return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 没有同步原神 UID。`;
-        if ((reload || materialDay || training) && error.code === "invalid") return "原神档案的账号或登录凭据无法核验，请重新登录。";
+        if (error.code === "changed") return $t("panel.panel.text_f7d0cfe837");
+        if (error.code === "missing" || error.code === "login-required") return $t("panel.panel.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("panel.panel.text_6658649baf", { "profileId": profileId });
+        if ((reload || materialDay || training) && error.code === "invalid") return $t("panel.panel.text_13fce91c39");
       }
       if (error instanceof GameRecordRequestError) return error.message;
       if (error instanceof DamagePreferencesError) return error.message;
       if (error instanceof HoyoRequestError) {
-        if (error.code === "profile-changed") return "原神面板档案已变化，请重新查询。";
-        if (error.code === "refresh") return "原神面板 Cookie 未能续期，请确认当前档案登录状态。";
-        if (error.code === "invalid-input") return "原神面板更新需使用档案已同步的国服角色。";
+        if (error.code === "profile-changed") return $t("panel.panel.text_f7d0cfe837");
+        if (error.code === "refresh") return $t("panel.panel.text_5e9e954eef");
+        if (error.code === "invalid-input") return $t("panel.panel.text_defa51361b");
       }
-      return "原神面板暂时无法读取或更新，请稍后重试。";
+      return $t("panel.panel.text_ec10c00a42");
     }
   };
   return Object.assign(query, { rebuild, trainingRoster });

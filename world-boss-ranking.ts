@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { createHash } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -30,7 +33,7 @@ type Observation = ObservationBase & (
 );
 type ImportResult = "ready" | "imported" | "unchanged" | "conflict" | "protected";
 
-const subject = "原神世界 BOSS 排行摘要";
+const subject = $t("world-boss-ranking.text_14cf4e7c08");
 const qqPattern = /^[1-9]\d{0,18}$/u;
 const uidPattern = /^[1-5]\d{8}$/u;
 const maxBosses = 2048;
@@ -48,7 +51,7 @@ function object(value: unknown): Record<string, unknown> | undefined {
 }
 
 function invalid(): never {
-  throw new Error(`${subject}格式无效。`);
+  throw new Error($t("world-boss-ranking.text_f73265b4b5", { "subject": subject }));
 }
 
 function verifyIdentity({ qq, uid, region }: Identity) {

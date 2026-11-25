@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { characterLevelBreakpoints, object, selectAvatar, talentKeys, text, whole,
   type DisplayedTalentLevels, type EquipmentChangeSelection, type Json, type PanelArtifact, type PanelAvatar, type PanelSnapshot } from "./model.ts";
 import { panelTalentLevels } from "./talent-levels.ts";
@@ -41,7 +44,7 @@ export async function resolvePanelWeapon(name: string, type: string, theme: Pane
 async function namedWeapon(avatar: PanelAvatar, type: string, input: Extract<EquipmentChangeSelection, { weaponName: string }>,
   theme: PanelTheme): Promise<PanelAvatar["weapon"] | { readonly message: string }> {
   const current = avatar.weapon;
-  const name = input.weaponName === "武器" ? current?.name : input.weaponName === "专武" ? `${avatar.name}专武` : input.weaponName;
+  const name = input.weaponName === "武器" ? current?.name : input.weaponName === "专武" ? $t("panel.equipment-change.text_b0c62baa6a", { "name": avatar.name }) : input.weaponName;
   const selected = name && await resolvePanelWeapon(name, type, theme);
   if (!selected) return;
   const { canonical, star, entries } = selected;
@@ -53,7 +56,7 @@ async function namedWeapon(avatar: PanelAvatar, type: string, input: Extract<Equ
   const maxAffix = Array.isArray(levels) && levels[4] ? 5 : 1;
   const currentStar = whole(entries.find(row => text(row?.name) === current?.name)?.star, 5);
   if (input.bare && (!current?.level || !current.affix || current.promote === undefined || !currentStar)) {
-    return { message: "请先更新当前档案的已装备武器等级、突破和精炼，或在命令中明确指定试算参数。" };
+    return { message: $t("panel.equipment-change.text_3b1742ad31") };
   }
   const level = Math.min(star <= 2 ? 70 : 90, input.level ?? (current?.level || 90));
   const promote = current?.level === level && current.promote !== undefined && current.promote <= (star <= 2 ? 4 : 6)
@@ -67,7 +70,7 @@ export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: Pane
     constellation?: number; displayedTalent?: DisplayedTalentLevels; characterLevel?: number;
     presetDonor?: (uid: string) => Promise<PanelSnapshot | undefined>;
   } = {}): Promise<TemporaryChange> {
-  if (transient.has(avatar._source)) return { message: "临时换装需要本人已保存的原神角色面板。" };
+  if (transient.has(avatar._source)) return { message: $t("panel.equipment-change.text_35b0c5327d") };
   const meta = object(theme.characters[avatar.id]);
   const characterChange = characterLevel !== undefined ? buildCharacterLevelChange(avatar, characterLevel, theme, { constellation, displayedTalent }) :
     displayedTalent ? buildTalentChange(avatar, displayedTalent, theme, constellation) :
@@ -80,10 +83,10 @@ export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: Pane
   let donors: readonly Extract<EquipmentChangeSelection, { donor: string }>[];
   if ("weaponName" in change) {
     const selected = await namedWeapon(avatar, text(meta?.weapon), change, theme);
-    if (!selected) return { message: "本地资料无法确认这件原神武器、别名或适配种类。" };
+    if (!selected) return { message: $t("panel.equipment-change.text_df5bf9b165") };
     if ("message" in selected) return selected;
     weapon = selected;
-    weaponLabel = characterChange || change.artifactSource ? `${weapon.name} Lv.${weapon.level} 精${weapon.affix}` : weapon.name;
+    weaponLabel = characterChange || change.artifactSource ? $t("panel.equipment-change.text_d661f0af64", { "name": weapon.name, "level": weapon.level, "affix": weapon.affix }) : weapon.name;
     donors = change.artifactSource ? [change.artifactSource] : [];
   } else {
     donors = [change, ...(change.moreDonors ?? [])];
@@ -91,26 +94,26 @@ export async function buildEquipmentChange(snapshot: PanelSnapshot, avatar: Pane
   for (const change of donors) {
     const preset = change.donorUid === undefined ? undefined : await presetDonor?.(change.donorUid);
     if (change.donorUid !== undefined && change.donorUid !== snapshot.uid && !preset) {
-      return { message: "装备来源必须属于本次所选档案绑定的原神 UID。" };
+      return { message: $t("panel.equipment-change.text_6b58391a15") };
     }
     const donor = selectAvatar(preset ?? snapshot, change.donor, theme);
     if (!donor || transient.has(donor._source)) {
-      return { message: `此档案没有「${change.donor}」可用于换装的原神角色面板。` };
+      return { message: $t("panel.equipment-change.text_a1be7bb808", { "donor": change.donor }) };
     }
     const slots = [change.slot, ...(change.extraSlots ?? [])];
     for (const slot of slots) {
       if (slot === "weapon") continue;
       const piece = donor.artis[slot];
-      if (!piece) return { message: `此档案中「${donor.name}」没有指定位置的圣遗物。` };
+      if (!piece) return { message: $t("panel.equipment-change.text_97d5b4120e", { "name": donor.name }) };
       parts.push([slot, piece]);
     }
     if (slots.includes("weapon")) {
-      if (!donor.weapon) return { message: `此档案中「${donor.name}」的武器资料缺失。` };
+      if (!donor.weapon) return { message: $t("panel.equipment-change.text_aa38aa92a0", { "name": donor.name }) };
       const type = text(meta?.weapon);
       const donorType = text(object(theme.characters[donor.id])?.weapon);
-      if (type && donorType && donorType !== type) return { message: "装备来源的武器种类与目标角色不符。" };
+      if (type && donorType && donorType !== type) return { message: $t("panel.equipment-change.text_03529bed63") };
       const metadata = await theme.metadata?.("meta-gs", "weapon", type, donor.weapon.name, "data.json");
-      if (!type || metadata?.name !== donor.weapon.name) return { message: "本地资料无法确认该武器与目标角色兼容。" };
+      if (!type || metadata?.name !== donor.weapon.name) return { message: $t("panel.equipment-change.text_0ea224d367") };
       weapon = { ...donor.weapon };
       weaponLabel = weapon.name;
     }
@@ -131,28 +134,28 @@ function temporaryAvatar(avatar: PanelAvatar, meta: Json | undefined): PanelAvat
 
 export function buildConstellationChange(avatar: PanelAvatar, constellations: number, theme: PanelTheme): TemporaryChange {
   if (transient.has(avatar._source) || avatar.cons === undefined) {
-    return { message: "命座试算需要本档案已保存的实际角色面板及命座。" };
+    return { message: $t("panel.equipment-change.text_f31704afb9") };
   }
   return { avatar: { ...temporaryAvatar(avatar, object(theme.characters[avatar.id])), cons: constellations },
-    equipped: `${avatar.cons} 命 → ${constellations} 命` };
+    equipped: $t("panel.equipment-change.text_826790d480", { "cons": avatar.cons, "constellations": constellations }) };
 }
 
 export function buildTalentChange(avatar: PanelAvatar, levels: DisplayedTalentLevels, theme: PanelTheme, constellation?: number): TemporaryChange {
   if (transient.has(avatar._source) || avatar.cons === undefined) {
-    return { message: "天赋试算需要本档案已保存的实际角色面板及命座。" };
+    return { message: $t("panel.equipment-change.text_26b88f7fca") };
   }
   const projected = temporaryAvatar(avatar, object(theme.characters[avatar.id]));
-  const talent = `显示等级 ${levels.join(" / ")}`;
+  const talent = $t("panel.equipment-change.text_13d859c073", { "value1": levels.join(" / ") });
   return constellation === undefined ? { avatar: projected, equipped: talent } :
-    { avatar: { ...projected, cons: constellation }, equipped: `${avatar.cons} 命 → ${constellation} 命、${talent}` };
+    { avatar: { ...projected, cons: constellation }, equipped: $t("panel.equipment-change.text_48f049a68d", { "cons": avatar.cons, "constellation": constellation, "talent": talent }) };
 }
 
 export function buildCharacterLevelChange(avatar: PanelAvatar, level: number, theme: PanelTheme,
   { constellation, displayedTalent }: { constellation?: number; displayedTalent?: DisplayedTalentLevels } = {}): TemporaryChange {
-  if (transient.has(avatar._source)) return { message: "等级试算需要本档案已保存的实际角色面板。" };
+  if (transient.has(avatar._source)) return { message: $t("panel.equipment-change.text_9bd8792a5e") };
   // The old Avatar retains a recorded ascension only when the target level matches the archive.
   const minimum = characterLevelBreakpoints.slice(1).findIndex(cap => level <= cap);
-  if (!Number.isSafeInteger(level) || level < 1 || minimum < 0) return { message: "本地资料无法确认指定的角色等级。" };
+  if (!Number.isSafeInteger(level) || level < 1 || minimum < 0) return { message: $t("panel.equipment-change.text_c41a3d86c1") };
   const promote = level === avatar.level ? Math.max(avatar.promote ?? 0, minimum) : minimum;
   const change = displayedTalent ? buildTalentChange(avatar, displayedTalent, theme, constellation) :
     constellation === undefined ? undefined : buildConstellationChange(avatar, constellation, theme);

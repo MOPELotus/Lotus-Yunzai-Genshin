@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { randomUUID } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -17,14 +20,14 @@ const version = (raw: unknown) => {
 export function createGenshinShowcaseStorage(privateDirectory: string, lock: AcquireRoleArchiveLock,
   directory = Bun.env.LOTUS_GENSHIN_SHOWCASE_DIR?.trim() || join(privateDirectory, "showcases"),
   discardedAt: ReadPanelDeletionBoundary = async () => undefined) {
-  const store = createRoleJsonArchive(directory, lock, { subject: "原神公开展板", lockSuffix: "showcase", maxBytes: maximumBytes, rejectNull: true });
+  const store = createRoleJsonArchive(directory, lock, { subject: $t("panel.showcase-storage.text_e6541cd68b"), lockSuffix: "showcase", maxBytes: maximumBytes, rejectNull: true });
   async function separate() {
     const [privateRoot, publicRoot] = await Promise.all([privateDirectory, directory].map(path =>
       realpath(path).catch((error: NodeJS.ErrnoException) => {
         if (error.code !== "ENOENT") throw error;
         return resolve(path);
       })));
-    if (privateRoot === publicRoot) throw new Error("原神公开展板和本人面板必须存放在不同目录。");
+    if (privateRoot === publicRoot) throw new Error($t("panel.showcase-storage.text_2ffc2d971a"));
   }
   function guarded(verify: () => Promise<void>) {
     return async () => { await separate(); await verify(); };

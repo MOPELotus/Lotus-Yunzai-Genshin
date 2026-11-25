@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { lockFile } from "../../../lib/file-lock.ts";
 import { importLegacyWishes } from "./legacy-import.ts";
 import { wishLegacyDirectory } from "./pools.ts";
@@ -11,8 +14,8 @@ const sourceUrl = (trss ? Bun.env.LOTUS_GENSHIN_TRSS_WISH_SNAPSHOT_URL : Bun.env
 
 if (!authorizationFile || !destinationDirectory || extra.length || !sourceUrl ||
   authorizationFile.startsWith("--") || destinationDirectory.startsWith("--")) {
-  console.error("用法：bun plugins/genshin/wish-sim/import-legacy-cli.ts [--trss-daily] [--apply] 授权JSON 模拟存档目录");
-  console.error("Flower 使用 LOTUS_GENSHIN_WISH_LEGACY_REDIS_URL；TRSS 使用 LOTUS_GENSHIN_TRSS_WISH_SNAPSHOT_URL。");
+  console.error($t("wish-sim.import-legacy-cli.text_5bd6be5599"));
+  console.error($t("wish-sim.import-legacy-cli.text_a637e2f9f0"));
   process.exitCode = 2;
 } else {
   try {
@@ -28,8 +31,8 @@ if (!authorizationFile || !destinationDirectory || extra.length || !sourceUrl ||
       console.log(JSON.stringify({ mode: apply ? "apply" : "preview", ...result }, null, 2));
     }
   } catch (error) {
-    console.error(trss ? "旧 TRSS 限抽迁移失败，请核对隔离副本、授权格式与目标设置。"
-      : error instanceof Error ? error.message : "旧模拟祈愿数据迁移失败。");
+    console.error(trss ? $t("wish-sim.import-legacy-cli.text_d5bb21757d")
+      : error instanceof Error ? error.message : $t("wish-sim.import-legacy-cli.text_122f6df02c"));
     process.exitCode = 1;
   }
 }

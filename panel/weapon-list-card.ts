@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { genshinTemplateFont } from "../../../lib/game-template-fonts.ts";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { nativeGenshinResourcesDirectory, originalFonts } from "./personal-record-card.ts";
@@ -64,7 +67,7 @@ export async function renderWeaponList(model: WeaponList, theme: PanelTheme, { s
     type(`ID: ${model.uid}`, 37, 35, 16, family);
     if (!small) {
       let x = 20, y = 51;
-      const labels = ["五星", "四星", "三星", ...model.kinds.map(kind => kind.icon === "枪" ? "枪" : kind.name)];
+      const labels = [$t("panel.weapon-list-card.text_789a6953ec"), $t("panel.weapon-list-card.text_1077b809a5"), $t("panel.weapon-list-card.text_5fdd673ed1"), ...model.kinds.map(kind => kind.icon === "枪" ? $t("panel.weapon-list-card.text_ffd989e75a") : kind.name)];
       const counts = [...model.numbers, ...model.kinds.map(kind => kind.count)];
       labels.forEach((label, index) => {
         const value = `${label}：${counts[index]}`;
@@ -133,6 +136,6 @@ export async function renderWeaponList(model: WeaponList, theme: PanelTheme, { s
       else type(item.role.slice(0, 1), x + 53, y + 12, 12, han, "#fff");
       ctx.restore();
     });
-    type("*仅显现已装备的武器", 22, height - 25, 12, han, "#7f858a");
+    type($t("panel.weapon-list-card.text_6e316b5d07"), 22, height - 25, 12, han, "#7f858a");
   }, mode, { displayWidth: width * 1.5, inlineImageByteLimit, signal });
 }

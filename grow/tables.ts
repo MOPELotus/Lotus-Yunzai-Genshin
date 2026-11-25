@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 // Original growth tables from ProfileGrow.js at miao-plugin 2860761836069af80bacee5cb85b6dd2e91ea0b0.
 // These tables are distributed under the MIT notice in ../panel/miao/LICENSE.
 // 升至下一级所需经验（索引0为1级升2级）
@@ -112,13 +115,13 @@ export const talentCost = {
   10: { talent: [4, 16], normal: [3, 12], weekly: 2, crown: 1, mora: 700000 }
 } as const
 
-export const talentKeys = { a: '普攻', e: '战技', q: '爆发' }
+export const talentKeys = { a: $t("grow.tables.text_8b79df27ba"), e: $t("grow.tables.text_6d8c868f52"), q: $t("grow.tables.text_2f2c7421e9") }
 export const charMaxLv = 90
 
 // 非材料图鉴物品
 export const items = {
-  mora: { label: '摩拉', star: 3, icon: 'wiki/imgs/grow/mora.webp' },
-  charExp: { label: '大英雄的经验', star: 4, icon: 'wiki/imgs/grow/exp-char.webp', exp: 20000, mora: 5 },
-  weaponExp: { label: '精锻用魔矿', star: 3, icon: 'wiki/imgs/grow/exp-weapon.webp', exp: 10000, mora: 10 },
-  crown: { label: '智识之冕', star: 5, icon: 'wiki/imgs/grow/crown.webp' }
+  mora: { label: $t("grow.tables.text_68ad93d794"), star: 3, icon: 'wiki/imgs/grow/mora.webp' },
+  charExp: { label: $t("grow.tables.text_8df3853c21"), star: 4, icon: 'wiki/imgs/grow/exp-char.webp', exp: 20000, mora: 5 },
+  weaponExp: { label: $t("grow.tables.text_a74031beab"), star: 3, icon: 'wiki/imgs/grow/exp-weapon.webp', exp: 10000, mora: 10 },
+  crown: { label: $t("grow.tables.text_36c9680813"), star: 5, icon: 'wiki/imgs/grow/crown.webp' }
 } as const

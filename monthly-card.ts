@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { constants } from "node:fs";
 import { open, realpath } from "node:fs/promises";
 import { join } from "node:path";
@@ -15,12 +18,12 @@ const height = 650;
 async function originalTextures(directory: string) {
   const root = await realpath(directory);
   const file = join(root, "html", "ledger", "ledger-gs.css");
-  if (await realpath(file) !== file) throw new Error("原石札记主题文件不在资源目录。");
+  if (await realpath(file) !== file) throw new Error($t("monthly-card.text_a175bff2d2"));
   const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   let css: string;
   try {
     const info = await handle.stat();
-    if (!info.isFile() || info.size > 64 * 1024) throw new Error("原石札记主题 CSS 无效。");
+    if (!info.isFile() || info.size > 64 * 1024) throw new Error($t("monthly-card.text_72c160535a"));
     const { buffer, bytesRead } = await handle.read({ buffer: Buffer.alloc(info.size), length: info.size });
     css = buffer.toString("utf8", 0, bytesRead);
   } finally {
@@ -31,7 +34,7 @@ async function originalTextures(directory: string) {
   ].map(selector => {
     const body = css.split(selector + " {", 2)[1]?.split("}", 1)[0];
     const data = body?.match(/url\(data:image\/png;base64,([A-Za-z0-9+/]+={0,2})\)/u)?.[1];
-    if (!data) throw new Error("原石札记主题图缺失。");
+    if (!data) throw new Error($t("monthly-card.text_0791a983cf"));
     return loadImage(Buffer.from(data, "base64"));
   }));
 }
@@ -44,7 +47,7 @@ export async function renderGenshinMonthly(snapshot: GenshinMonthlySnapshot, uid
     assets.picture("img", "other", "bg.webp"), assets.picture("img", "other", "chart.png"), assets.picture("img", "other", "原神.png"),
     originalFonts(directory, "font", "HYWenHei-55W.ttf"), originalTextures(directory),
   ]);
-  if (!background || !chart || !logo || !line || !current || !previous || !gem || !mora) throw new Error("原石札记原主题不完整。");
+  if (!background || !chart || !logo || !line || !current || !previous || !gem || !mora) throw new Error($t("monthly-card.text_d854ca4262"));
   signal.throwIfAborted();
   const compact = (number: number | undefined, places: number) => number === undefined ? "—" :
     number > 10_000 ? `${(number / 10_000).toFixed(places)} w` : String(number);
@@ -67,13 +70,13 @@ export async function renderGenshinMonthly(snapshot: GenshinMonthlySnapshot, uid
     context.drawImage(logo, 433, 22, 97, 97 * logo.height / logo.width);
     context.drawImage(line, 50, 104, 470, 2);
     for (const [x, nameX, name, amount, money, image, w] of [
-      [40, 50, "当月获取：", snapshot.primogems, snapshot.mora, current, 265],
-      [300, 315, "上月获取：", snapshot.priorPrimogems, snapshot.priorMora, previous, 260],
+      [40, 50, $t("monthly-card.text_61311b2ea3"), snapshot.primogems, snapshot.mora, current, 265],
+      [300, 315, $t("monthly-card.text_290a549df2"), snapshot.priorPrimogems, snapshot.priorMora, previous, 260],
     ] as const) {
       text(name, nameX, 139.5, 24, 207, ink, "left", 700);
       for (const [index, icon, value] of [
-        [0, gem, `原石：${compact(amount, 2)} | ${amount === undefined ? "—" : (amount / 160).toFixed(0)} 抽`],
-        [1, mora, `摩拉：${compact(money, 1)}`],
+        [0, gem, $t("monthly-card.text_3650e860ba", { "value1": compact(amount, 2), "value2": amount === undefined ? "—" : (amount / 160).toFixed(0) })],
+        [1, mora, $t("monthly-card.text_6fad5fefb5", { "value1": compact(money, 1) })],
       ] as const) {
         const y = 161 + index * 60;
         context.drawImage(image, x, y, Math.min(w, 60 * image.width / image.height), 60);
@@ -81,7 +84,7 @@ export async function renderGenshinMonthly(snapshot: GenshinMonthlySnapshot, uid
         text(value, x + 68, y + 30, 20, 180);
       }
     }
-    text("原石收入组成：", 50, 306.5, 24, 360, ink, "left", 700);
+    text($t("monthly-card.text_2c8ceaf392"), 50, 306.5, 24, 360, ink, "left", 700);
     context.drawImage(chart, 45, 342, 240, 240);
     const chartX = 165, chartY = 462;
     let start = -Math.PI / 2;
@@ -115,7 +118,7 @@ export async function renderGenshinMonthly(snapshot: GenshinMonthlySnapshot, uid
       text(percent === undefined ? "—" : `${percent}%`, 425, y + rowHeight / 2, size, 45);
       text(String(count), 475, y + rowHeight / 2, size, 53);
     });
-    text("总计", chartX, chartY - 26, 18, 98, ink, "center");
+    text($t("monthly-card.text_e8dc871a7f"), chartX, chartY - 26, 18, 98, ink, "center");
     text(snapshot.sources.length ? String(total) : "—", chartX, chartY + 7, 31, 128, ink, "center", 600);
   }, "gpu", { scale });
 }

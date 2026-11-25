@@ -1,9 +1,12 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { normalizeProfileRoleArtworkUrl } from "@lotus-yunzai/account";
 import type { Json } from "./model.ts";
 
-export const combatLabels = ["战斗次数", "最多击破", "承受伤害", "元素战技", "最强一击", "元素爆发"] as const;
+export const combatLabels = [$t("panel.personal-challenge-model.text_643c087b2c"), $t("panel.personal-challenge-model.text_10bd821829"), $t("panel.personal-challenge-model.text_905c2634e5"), $t("panel.personal-challenge-model.text_1203ac5a78"), $t("panel.personal-challenge-model.text_0618aa7e11"), $t("panel.personal-challenge-model.text_62203a6fd1")] as const;
 const ranks = ["defeat_rank", "take_damage_rank", "normal_skill_rank", "damage_rank", "energy_skill_rank"] as const;
-const difficulties = ["", "简单", "普通", "困难", "卓越", "月谕"] as const;
+const difficulties = ["", $t("panel.personal-challenge-model.text_0180572731"), $t("panel.personal-challenge-model.text_de907d10df"), $t("panel.personal-challenge-model.text_4ea02714a1"), $t("panel.personal-challenge-model.text_5102bbdbe1"), $t("panel.personal-challenge-model.text_680ea5e43a")] as const;
 const chineseTime = "Asia/Shanghai";
 const dateFormat = new Intl.DateTimeFormat("en-CA", { timeZone: chineseTime, year: "numeric", month: "2-digit", day: "2-digit" });
 const timeFormat = new Intl.DateTimeFormat("en-GB", { timeZone: chineseTime, hourCycle: "h23", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -60,12 +63,12 @@ function avatar(row: Json, owned?: ReadonlyMap<number, Json>) {
 
 export function buildPersonalChallenge(uid: string, selection: ChallengeSelection, overview: Json, data: Json) {
   const { scheduleType } = selection;
-  const period = scheduleType === 2 ? "上期" : "本期";
+  const period = scheduleType === 2 ? $t("panel.personal-challenge-model.text_2823616a99") : $t("panel.personal-challenge-model.text_474da3018a");
   if (selection.mode === "theater") {
     const season = object(Array.isArray(data.data) ? data.data[scheduleType - 1] : undefined);
     const stat = object(season?.stat);
     if ((scheduleType === 1 && falsity(data.has_detail_data)) || falsity(season.has_detail_data) || !Object.keys(stat).length) {
-      return { message: `UID ${uid}，暂无${period}幻想真境剧诗挑战数据。` } as const;
+      return { message: $t("panel.personal-challenge-model.text_8ccdbc34e3", { "uid": uid, "period": period }) } as const;
     }
     const difficulty = difficulties[number(stat.difficulty_id) ?? 0];
     const role = object(overview.role);
@@ -89,7 +92,7 @@ export function buildPersonalChallenge(uid: string, selection: ChallengeSelectio
         const blessing = object(round.splendour_buff);
         const choices = rows(round.choice_cards, 24);
         return {
-          title: tarot ? `圣牌挑战 ${roman(serial)}` : `第 ${roundId ?? "—"} 幕`,
+          title: tarot ? $t("panel.personal-challenge-model.text_bc5b7e3a21", { "value1": roman(serial) }) : $t("panel.personal-challenge-model.text_b27f7f97f7", { "value1": roundId ?? "—" }),
           medal: truth(round.is_get_medal), avatars: rows(round.avatars, 8).map(row => avatar(row)),
           finish: finished ? `${roundDateFormat.format(finished)} ${timeFormat.format(finished)}` : label(round.finish),
           blessingLevel: number(object(blessing.summary).total_level),
@@ -105,7 +108,7 @@ export function buildPersonalChallenge(uid: string, selection: ChallengeSelectio
   const floors = rows(data.floors, 16);
   if (selection.floor !== undefined) {
     const floor = floors.find(row => number(row.index) === selection.floor);
-    if (!floor) return { message: `UID ${uid}，暂无第${selection.floor}层数据。` } as const;
+    if (!floor) return { message: $t("panel.personal-challenge-model.text_39662ac928", { "uid": uid, "floor": selection.floor }) } as const;
     const owned = new Map(rows(overview.avatars, 256).flatMap(row => {
       const id = number(row.id);
       return id === undefined ? [] : [[id, row] as const];
@@ -123,8 +126,8 @@ export function buildPersonalChallenge(uid: string, selection: ChallengeSelectio
     } as const;
   }
   const count = number(data.total_battle_times);
-  if (count === undefined || count === 0) return { message: `UID ${uid}，暂无挑战数据。` } as const;
-  if (!rows(data.damage_rank, 1).length) return { message: `UID ${uid}，数据还没更新，请稍后再试。` } as const;
+  if (count === undefined || count === 0) return { message: $t("panel.personal-challenge-model.text_d5e9ab2843", { "uid": uid }) } as const;
+  if (!rows(data.damage_rank, 1).length) return { message: $t("panel.personal-challenge-model.text_6487edab4b", { "uid": uid }) } as const;
   const start = time(data.start_time);
   const stars = floors.filter(row => (number(row.index) ?? 0) >= 9).map(row => number(row.star) ?? 0);
   const metrics = ranks.map(key => avatar(rows(data[key], 1)[0] ?? { avatar_id: 10000007, value: 0 }));

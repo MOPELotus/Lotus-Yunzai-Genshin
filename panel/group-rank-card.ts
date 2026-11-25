@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { groupPanelNumber } from "../../../lib/group-panel-rank-settings.ts";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { displayedRankScore, rankModeNames, type RankAvatar, type RankMode } from "./group-rank-model.ts";
@@ -23,11 +26,11 @@ const grades: Readonly<Record<string, string>> = { ACE: "#ff5722", MAX: "#ff5722
 const number = new Intl.NumberFormat("zh-CN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 const explanations = [
-  ["综合练度排名", "以期望伤害（计入暴击率的平均伤害）为序，统一按 103 级目标计算，仅作比较。"],
-  ["圣遗物评分排名", "按角色的圣遗物规则计分，线性评分无法体现词条平衡，仅作参考。"],
-  ["双爆排名", "按圣遗物双爆词条排序，计入双爆头部主词条。"],
-  ["加权有效词条排名", "按角色的词条权重计算圣遗物有效副词条。"],
-  ["排名范围", "本群当前成员在群内主动查看过的本人角色详情。"],
+  [$t("panel.group-rank-card.text_5e574e16da"), $t("panel.group-rank-card.text_8684890f07")],
+  [$t("panel.group-rank-card.text_7fcda2632f"), $t("panel.group-rank-card.text_d596e433b2")],
+  [$t("panel.group-rank-card.text_7580edf240"), $t("panel.group-rank-card.text_91ee33c182")],
+  [$t("panel.group-rank-card.text_94c51e5cd1"), $t("panel.group-rank-card.text_e0f765853b")],
+  [$t("panel.group-rank-card.text_cc5a9ebd9d"), $t("panel.group-rank-card.text_05dc2ad81a")],
 ] as const;
 
 function cover(ctx: Context, image: Picture | undefined, [x, y, w, h]: Box) {
@@ -74,7 +77,7 @@ async function assetsForRow(avatar: RankAvatar, theme: PanelTheme) {
   const traveler = travelerIds.has(avatar.id);
   const weaponType = traveler ? "sword" : text(character?.weapon);
   const weaponPath = avatar.weapon && weaponType ? ["meta-gs", "weapon", weaponType, avatar.weapon.name, "data.json"] : undefined;
-  const talentPath = traveler ? ["meta-gs", "character", "旅行者", avatar.elem, "icons"]
+  const talentPath = traveler ? ["meta-gs", "character", $t("panel.group-rank-card.text_4bf6868aa0"), avatar.elem, "icons"]
     : ["meta-gs", "character", avatar.name, "icons"];
   const thresholds = panelTalentThresholds(avatar, character);
   const [face, weapon, weaponMeta, sets, talents] = await Promise.all([
@@ -146,18 +149,18 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
     ctx.shadowColor = "#000";
     ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 4;
-    write(aggregateTitle ?? `#${publicRanking ? "自定义" : ""}${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`, 20, 74, 36, { title: true, maxWidth: 780 });
+    write(aggregateTitle ?? `#${publicRanking ? $t("panel.group-rank-card.text_4eafa9e925") : ""}${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`, 20, 74, 36, { title: true, maxWidth: 780 });
     ctx.restore();
     panel(ctx, texture, [10, 97, 795, 166 + extra], () => {
       fill(ctx, "#0006", [10, 97, 795, 40]);
       fill(ctx, "#ffffff46", [10, 137, 795, 1]);
-      write(publicRanking ? "全服自定义排行说明" : "群排名说明", 30, 124, 16, { color: gold });
+      write(publicRanking ? $t("panel.group-rank-card.text_f48d2b932c") : $t("panel.group-rank-card.text_2a2a030720"), 30, 124, 16, { color: gold });
       fill(ctx, "#0006", [10, 138, 795, 124 + extra]);
       const notes = publicRanking ? [
-        ["排序", (rankMode === "damage" ? "伤害均值" : "圣遗物评分") + "降序"],
-        ["筛选", publicRanking.filters], ["数量", `最多 ${publicRanking.count} 名，本次 ${rows.length} 名`],
-        ["面板", "引用本消息发送 #排行面板1 查看前 20 名中的指定一名。"],
-        ["范围", "排名服务的公开展板。"],
+        [$t("panel.group-rank-card.text_a96c9a8541"), (rankMode === "damage" ? $t("panel.group-rank-card.text_fe2142d7c9") : $t("panel.group-rank-card.text_0e1133fcd3")) + $t("panel.group-rank-card.text_4b77c35468")],
+        [$t("panel.group-rank-card.text_b5f15473fd"), publicRanking.filters], [$t("panel.group-rank-card.text_5e29d121dd"), $t("panel.group-rank-card.text_67ce28e000", { "count": publicRanking.count, "length": rows.length })],
+        [$t("panel.group-rank-card.text_3c8c5939d6"), $t("panel.group-rank-card.text_16b6c01695")],
+        [$t("panel.group-rank-card.text_ae72b532f4"), $t("panel.group-rank-card.text_cf61de2083")],
       ] : explanations;
       notes.forEach(([title, body], index) => {
         const y = 161 + index * 20;
@@ -168,7 +171,7 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
         write(heading, x, y, 13, { color: gold });
         font(13);
         const bodyX = x + ctx.measureText(heading).width + 3;
-        write(refreshSummary && index === 4 ? "本群当前登记成员的公开展板。" : body,
+        write(refreshSummary && index === 4 ? $t("panel.group-rank-card.text_9e04b4d97d") : body,
           bodyX, y, 13, { maxWidth: 781 - bodyX });
       });
       if (refreshSummary) write(refreshSummary, 54, 261, 13, { color: gold, maxWidth: 725 });
@@ -222,7 +225,7 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
           contain(ctx, current.weapon, [355, y + 2, 46, 56]);
           const label = weapon.name.length > 4 ? aliases?.[1]?.[weapon.name] || weapon.name : weapon.name;
           write(label, 404, y + 24, 13, { color: gold, maxWidth: 48 });
-          if (weapon.affix !== undefined) badge(ctx, writer, `精${weapon.affix}`, consColors[weapon.affix + 1] ?? "#666",
+          if (weapon.affix !== undefined) badge(ctx, writer, $t("panel.group-rank-card.text_8f16cda3b9", { "affix": weapon.affix }), consColors[weapon.affix + 1] ?? "#666",
             [404, y + 31, 26, 14]);
           if (weapon.level !== undefined) write(`Lv.${weapon.level}`, 404, y + (weapon.affix === undefined ? 43 : 56), 12);
         }
@@ -248,7 +251,7 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
     ctx.shadowColor = "#000";
     ctx.shadowBlur = 4;
     ctx.shadowOffsetY = 3;
-    write("Lotus-Yunzai", width / 2, height - 10, 14, { align: "center" });
+    write($t("panel.group-rank-card.text_3867834e77"), width / 2, height - 10, 14, { align: "center" });
     ctx.restore();
   }, mode, { displayWidth, inlineImageByteLimit, signal });
 }

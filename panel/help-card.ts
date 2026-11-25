@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { miaoTemplateFont } from "../../../lib/game-template-fonts.ts";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { readPanelTheme } from "./theme.ts";
@@ -8,18 +11,18 @@ const font = miaoTemplateFont();
 
 const sections = [
   { y: 160, title: "#更新面板、#展板更新面板",
-    lines: ["使用米游社刷新当前档案的面板。", "公开展板使用游戏内展柜。", "在游戏中开启「显示角色详情」。"], size: 22, available: 434 },
+    lines: [$t("panel.help-card.text_30a9213943"), $t("panel.help-card.text_763489e5d9"), $t("panel.help-card.text_d88611068d")], size: 22, available: 434 },
   { y: 312, title: "#面板",
-    lines: ["查看当前档案已保存的角色面板。"], size: 24 },
+    lines: [$t("panel.help-card.text_f4d8f84e9f")], size: 24 },
   { y: 430, title: "#胡桃面板、#胡桃伤害、#圣遗物列表",
-    lines: ["查看指定角色的面板和伤害计算。", "圣遗物列表按评分展示已保存的圣遗物。"], size: 24 },
+    lines: [$t("panel.help-card.text_d187980200"), $t("panel.help-card.text_d5cd64ed31")], size: 24 },
   { y: 599, title: "#心海排行、#心海圣遗物排行",
-    lines: ["在已启用排名的群聊中查询当前群排行。", "在本群查看自己的角色面板后可参与排行。"], size: 24 },
-  { y: 770, title: "面板计算命令示例",
+    lines: [$t("panel.help-card.text_07417558b1"), $t("panel.help-card.text_5e393587d6")], size: 24 },
+  { y: 770, title: $t("panel.help-card.text_9f3b92d629"),
     lines: ["#胡桃面板换钟离武器", "#胡桃换90级精1灭辰", "#胡桃换95级换天赋91312",
       "#胡桃伤害2换90级精1灭辰", "#胡桃换精1灭辰换神里绫华杯+头"], size: 19 },
 ] as const;
-const note = "换装用于临时试算，使用当前档案装备或可用的公开预设。";
+const note = $t("panel.help-card.text_483df68a10");
 
 export function matchGenshinPanelHelp(message: string) {
   return help.test(message.trim().replace(/^＃/u, "#"));
@@ -63,5 +66,5 @@ export async function renderGenshinPanelHelp({
       if (signal?.aborted) return;
     }
   }
-  return ["角色面板帮助", ...sections.flatMap(({ title, lines }) => [title, ...lines]), note].join("\n");
+  return [$t("panel.help-card.text_43f0939090"), ...sections.flatMap(({ title, lines }) => [title, ...lines]), note].join("\n");
 }

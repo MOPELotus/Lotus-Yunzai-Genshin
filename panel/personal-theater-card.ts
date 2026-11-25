@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { loadOfficialArtwork } from "@lotus-yunzai/account";
 import { loadImage } from "skia-canvas";
 import { renderGenshinCardForChat } from "../card-render.ts";
@@ -22,10 +25,10 @@ const consColors = ["", "#5cbac2", "#339d61", "#3e95b9", "#3955b7", "#531ba9cf",
 export class PersonalTheaterThemeError extends Error {}
 
 const notes = [
-  ["", "明星挑战星章", "不仅作为展示用，", "也会", "影响挑战的奖励领取~"],
-  ["各关卡按照", "挑战时间顺序", "展示"],
-  ["仅展示", "已挑战成功", "的", "圣牌挑战", "，未挑战成功的", "圣牌挑战", "不会被展示"],
-  ["自有角色装备与圣遗物为当前最新状态，试用与助演角色仅显示占位图标"],
+  ["", $t("panel.personal-theater-card.text_b5607e991d"), $t("panel.personal-theater-card.text_0781dc7a94"), $t("panel.personal-theater-card.text_8830b2ad0e"), $t("panel.personal-theater-card.text_37e85c2550")],
+  [$t("panel.personal-theater-card.text_a5ecfd7d3e"), $t("panel.personal-theater-card.text_42a6d0361c"), $t("panel.personal-theater-card.text_c742537502")],
+  [$t("panel.personal-theater-card.text_84e1fa3bb3"), $t("panel.personal-theater-card.text_6dedddf24d"), $t("panel.personal-theater-card.text_8af2350cfd"), $t("panel.personal-theater-card.text_49b5f6c5a6"), $t("panel.personal-theater-card.text_e8f0543b16"), $t("panel.personal-theater-card.text_49b5f6c5a6"), $t("panel.personal-theater-card.text_99301dc371")],
+  [$t("panel.personal-theater-card.text_3a55bc5825")],
 ];
 
 function clip(ctx: Drawing, x: number, y: number, w: number, h: number, radius: number) {
@@ -55,7 +58,7 @@ export async function prepareChallengeAvatar(theme: PanelTheme,
   }
   const type = text(meta?.weapon).toLowerCase();
   const rarity = (owned?.star ?? avatar.rarity ?? meta?.star) === 4 ? 4 : 5;
-  const tag = avatar.type === 2 ? "试用" : avatar.type === 3 ? "助演" : recordStats
+  const tag = avatar.type === 2 ? $t("panel.personal-theater-card.text_768708dd34") : avatar.type === 3 ? $t("panel.personal-theater-card.text_5ef025016a") : recordStats
     ? (avatar.constellation ?? owned?.cons) : (owned?.cons ?? avatar.constellation);
   const sets = new Map<string, { count: number; star: number }>();
   for (const item of Object.values(owned?.artis ?? {})) {
@@ -140,7 +143,7 @@ export function paintChallengeAvatar(ctx: Drawing, write: Write, whom: Awaited<R
       write(level, slotX + 15, talentY + 17, 16, { align: "center", color: level > original ? "#0284b9" : dark });
     });
   } else {
-    write("暂无天赋数据", infoX + 49, talentY + 18, 13.5, { align: "center", color: "#64646480", maxWidth: 100 });
+    write($t("panel.personal-theater-card.text_8110e9898a"), infoX + 49, talentY + 18, 13.5, { align: "center", color: "#64646480", maxWidth: 100 });
   }
   const equipmentY = y + 140;
   [whom.equipmentKnown ? whom.weapon : whom.weaponType, whom.artifact].forEach((icon, index) => {
@@ -161,7 +164,7 @@ export function paintChallengeAvatar(ctx: Drawing, write: Write, whom: Awaited<R
     }
     if (!whom.equipmentKnown) {
       fill(ctx, "#0004", [slotX, equipmentY + 32.5, 46.5, 14]);
-      write("未提供", slotX + 23, equipmentY + 43, 9, { align: "center", color: light });
+      write($t("panel.personal-theater-card.text_756762e293"), slotX + 23, equipmentY + 43, 9, { align: "center", color: light });
     } else if (index === 0 && whom.refinement !== undefined) {
       fill(ctx, consColors[whom.refinement] || "#0009", [slotX + 25, equipmentY + 29, 22, 18], 4);
       write(whom.refinement, slotX + 36, equipmentY + 42, 13, { align: "center", color: light });
@@ -203,7 +206,7 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
       await prepareChallengeAvatar(theme, avatar, model.uid, rows.get(String(avatar.id)))] as const)),
   ]);
   if (!bg || !footer || !texture || !medal || !missingMedal || !trophy || !crown) {
-    throw new PersonalTheaterThemeError("原神剧诗原版资源不完整，请检查原神面板资源目录。");
+    throw new PersonalTheaterThemeError($t("panel.personal-theater-card.text_04b89e1cee"));
   }
   const avatars = new Map(people);
   const layouts = model.rounds.map(round => {
@@ -249,7 +252,7 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
     ctx.save(); ctx.shadowColor = "#000d"; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
     print("#幻想真境剧诗", 25, 81, 40, { title: true });
     const monthX = 37 + ctx.measureText("#幻想真境剧诗").width;
-    print(`${model.month ? `${model.month}月` : model.period} · ${model.difficulty || "未知"}模式`, monthX, 81, 23, { title: true, color: gold });
+    print($t("panel.personal-theater-card.text_21ed861727", { "value1": model.month ? $t("panel.personal-theater-card.text_3947001dc1", { "month": model.month }) : model.period, "value2": model.difficulty || $t("panel.personal-theater-card.text_4d8c1c5b42") }), monthX, 81, 23, { title: true, color: gold });
     ctx.restore();
     const player = picture(model.playerIcon);
     if (player) trimPortrait(ctx, player, 720, 68, 26);
@@ -258,13 +261,13 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
     print(`UID:${model.uid}`, 950, 82, 23, { align: "right" });
     surface(left, 117, panelWidth, 71);
     contain(ctx, trophy, [27, 135, 34, 34]);
-    print("最佳记录", 69, 148, 13, { title: true, color: gold });
-    print("第", 69, 171, 13, { color: gold });
+    print($t("panel.personal-theater-card.text_5aa548a6c2"), 69, 148, 13, { title: true, color: gold });
+    print($t("panel.personal-theater-card.text_af50a0fe2a"), 69, 171, 13, { color: gold });
     print(model.best ?? "—", 86, 171, 24);
     const bestWidth = ctx.measureText(String(model.best ?? "—")).width;
-    print("幕", 91 + bestWidth, 171, 13, { color: gold });
+    print($t("panel.personal-theater-card.text_3d0768967f"), 91 + bestWidth, 171, 13, { color: gold });
     const tarot = model.difficulty === "月谕";
-    if (tarot) print(`圣牌 ${model.tarot ?? "—"}`, 145, 170, 13, { color: gold });
+    if (tarot) print($t("panel.personal-theater-card.text_05ad36daab", { "value1": model.tarot ?? "—" }), 145, 170, 13, { color: gold });
     const ribbonX = tarot ? 202 : 154, ribbonRight = 882, ribbonWidth = ribbonRight - ribbonX;
     fill(ctx, "#d3bc8e40", [ribbonX - 12, 130, 1, 44]);
     fill(ctx, "#d3bc8e21", [ribbonX, 130, ribbonWidth, 44], 23);
@@ -278,14 +281,14 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
         ctx.globalAlpha = 1;
       });
     } else {
-      print("暂无星章数据", ribbonX + 10, 157, 13, { color: muted });
+      print($t("panel.personal-theater-card.text_ee1590f908"), ribbonX + 10, 157, 13, { color: muted });
     }
     print(`${model.medals.filter(Boolean).length}`, 912, 161, 24, { align: "right" });
     print(`/${model.medals.length}`, 915, 161, 15, { color: muted });
 
     const metrics = [
-      ["总耗时", model.totalTime, "秒"], ["消耗幻剧之花", model.flowers, ""],
-      ["场外观众声援", model.audience, "次"], ["支援其他玩家", model.rent, "次"],
+      [$t("panel.personal-theater-card.text_42aa8e01e9"), model.totalTime, $t("panel.personal-theater-card.text_9dcdc2b289")], [$t("panel.personal-theater-card.text_5787a3a6ba"), model.flowers, ""],
+      [$t("panel.personal-theater-card.text_55b722d4fa"), model.audience, $t("panel.personal-theater-card.text_172fb7e67b")], [$t("panel.personal-theater-card.text_0ccdd8c2b5"), model.rent, $t("panel.personal-theater-card.text_172fb7e67b")],
     ] as const;
     metrics.forEach(([label, value, unit], at) => {
       const x = left + at * 237.5;
@@ -304,7 +307,7 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
       contain(ctx, round.medal ? medal : missingMedal, [roundX, y + 15, 22, 22]);
       print(round.title, roundX + 29, y + 35, 20, { color: gold, title: true });
       print(round.finish, 940, y + 33, 13, { color: muted, align: "right" });
-      if (!round.avatars.length) print("暂无队伍数据", roundX + teamWidth / 2, rowY + 98, 16, { color: muted, align: "center" });
+      if (!round.avatars.length) print($t("panel.personal-theater-card.text_82b8ea560a"), roundX + teamWidth / 2, rowY + 98, 16, { color: muted, align: "center" });
       for (let offset = 0; offset < round.avatars.length; offset += 4) {
         const members = round.avatars.slice(offset, offset + 4);
         let x = roundX;
@@ -318,7 +321,7 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
 
       const detailX = roundX + teamWidth + 16, detailWidth = left + panelWidth - 15 - detailX;
       subpanel(detailX, rowY, detailWidth, layout.blessingHeight);
-      print("辉彩祝福", detailX + 13, rowY + 24, 13, { color: gold });
+      print($t("panel.personal-theater-card.text_8053b5785a"), detailX + 13, rowY + 24, 13, { color: gold });
       const blessings = [{ level: round.blessingLevel, image: crown },
         ...round.blessings.map(buff => ({ level: buff.level, image: picture(buff.icon) }))];
       const blessingWidth = (detailWidth - 26) / layout.blessingColumns;
@@ -340,13 +343,13 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
       const supportY = rowY + layout.blessingHeight + 8;
       subpanel(detailX, supportY, detailWidth, layout.supportHeight);
       fill(ctx, "#fff1", [detailX + 70, supportY + 9, 1, layout.supportHeight - 18]);
-      print("敌人", detailX + 36, supportY + 24, 13, { align: "center", color: gold });
+      print($t("panel.personal-theater-card.text_40a2cbbcce"), detailX + 36, supportY + 24, 13, { align: "center", color: gold });
       const enemy = picture(round.enemy);
       if (enemy) contain(ctx, enemy, [detailX + 19, supportY + 29, 36, 36]);
       else print("—", detailX + 36, supportY + 54, 20, { align: "center", color: "#89909b" });
-      print("神秘收获", detailX + 82, supportY + 24, 13, { color: gold });
+      print($t("panel.personal-theater-card.text_5f56a7e317"), detailX + 82, supportY + 24, 13, { color: gold });
       print(`×${round.choiceCount}`, detailX + 139, supportY + 24, 13, { color: muted });
-      if (!round.choiceCount) print("暂无收获", detailX + 82, supportY + 54, 13, { color: "#89909b" });
+      if (!round.choiceCount) print($t("panel.personal-theater-card.text_6b3c0c598b"), detailX + 82, supportY + 54, 13, { color: "#89909b" });
       round.choices.forEach((url, at) => contain(ctx, picture(url),
         [detailX + 82 + at % 9 * 39, supportY + 29 + Math.floor(at / 9) * 39, 34, 34]));
       y += layout.height + 5;
@@ -363,7 +366,7 @@ export async function renderPersonalTheater(model: PersonalTheater, signal: Abor
       });
     });
     ctx.save(); ctx.shadowColor = "#000"; ctx.shadowBlur = 1; ctx.shadowOffsetY = 1;
-    print("Lotus-Yunzai", width / 2 + 5, height - 22, 16, { align: "center" });
+    print($t("panel.personal-theater-card.text_3867834e77"), width / 2 + 5, height - 22, 16, { align: "center" });
     ctx.restore();
   }, mode, { inlineImageByteLimit, signal });
 }

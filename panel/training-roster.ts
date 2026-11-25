@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import type { ProfileRequestContext } from "@lotus-yunzai/account";
 import { GameRecordRequestError, HoyoRequestError } from "@lotus-yunzai/hoyo-client";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -49,7 +52,7 @@ function mergeRoster(local: PanelSnapshot | undefined, roster: PanelSnapshot | u
 
 export function createTrainingRoster(directory: string, lock: AcquireRoleArchiveLock, client: TrainingClient, now: () => number) {
   const archive = createRoleJsonArchive(join(directory, "statistics-roster"), lock,
-    { subject: "原神练度角色名册", lockSuffix: "statistics-roster", maxBytes: 4 * 1024 * 1024, rejectNull: true });
+    { subject: $t("panel.training-roster.text_82ac0a69fd"), lockSuffix: "statistics-roster", maxBytes: 4 * 1024 * 1024, rejectNull: true });
   const pending = new Map<string, Promise<{ roster?: PanelSnapshot; revision: string }>>();
 
   return async (source: ProfileRequestContext, accountId: string, assets: PanelTheme, local: PanelSnapshot | undefined,

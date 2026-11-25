@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { loadOfficialArtwork } from "@lotus-yunzai/account";
 import { Canvas, loadImage } from "skia-canvas";
 import { renderGenshinCardForChat } from "../card-render.ts";
@@ -14,7 +17,7 @@ type Mode = Parameters<typeof renderGenshinCardForChat>[3];
 type Span = { text: string; color?: string };
 const width = 970, left = 15, panelWidth = 940, teamX = 134, teamWidth = 447;
 const gold = "#d3bc8e", white = "#fff", muted = "#aaa";
-const recordTitles = ["最强一击", "最高总伤害"];
+const recordTitles = [$t("panel.personal-hard-challenge-card.text_0618aa7e11"), $t("panel.personal-hard-challenge-card.text_6a69917847")];
 const descriptionWidth = 817, lineHeight = 22;
 
 export class PersonalHardChallengeThemeError extends Error {}
@@ -66,7 +69,7 @@ export async function renderPersonalHardChallenge(model: PersonalHardChallenge, 
     model.version || !model.starts ? undefined : readGenshinWishCalendar(theme.resourceRoot).catch(() => undefined),
   ]);
   if (!background || !footer || !texture) {
-    throw new PersonalHardChallengeThemeError("原神幽境危战原版资源不完整，请检查原神面板资源目录。");
+    throw new PersonalHardChallengeThemeError($t("panel.personal-hard-challenge-card.text_8643842772"));
   }
   const seasonStart = (model.starts ?? 0) * 1000;
   const matchingPool = calendar?.regular.map(object).find(item =>
@@ -115,11 +118,11 @@ export async function renderPersonalHardChallenge(model: PersonalHardChallenge, 
     ctx.drawImage(background, 0, 0, width, scaleToWidth(background));
     ctx.drawImage(footer, 0, height - scaleToWidth(footer), width, scaleToWidth(footer));
     print("#幽境危战", 25, 81, 45, { title: true });
-    print(version ? `${version}版本` : "版本未知", 38 + ctx.measureText("#幽境危战").width, 81, 23, { color: gold });
+    print(version ? $t("panel.personal-hard-challenge-card.text_46b013221d", { "version": version }) : $t("panel.personal-hard-challenge-card.text_dc73097905"), 38 + ctx.measureText("#幽境危战").width, 81, 23, { color: gold });
     print(`UID:${model.uid}`, 940, 78, 25, { align: "right" });
-    print(`${model.period} · ${model.modeLabel}${model.selection === "best" ? "（最佳）" : ""}`, 25, 107, 15, { color: gold });
+    print(`${model.period} · ${model.modeLabel}${model.selection === "best" ? $t("panel.personal-hard-challenge-card.text_b2a06f3700") : ""}`, 25, 107, 15, { color: gold });
     print(model.date, 940, 107, 15, { align: "right", color: gold });
-    const badges = [["挑战难度", `N${model.difficulty}`, ""], ["总用时", model.time, "秒"]] as const;
+    const badges = [[$t("panel.personal-hard-challenge-card.text_65572b4e16"), `N${model.difficulty}`, ""], [$t("panel.personal-hard-challenge-card.text_3e4d06cde4"), model.time, $t("panel.personal-hard-challenge-card.text_9dcdc2b289")]] as const;
     badges.forEach(([label, value, suffix], index) => {
       const x = left + index * 476;
       surface(x, 120, 464, 59);
@@ -128,21 +131,21 @@ export async function renderPersonalHardChallenge(model: PersonalHardChallenge, 
       print(suffix, x + 446, 158, 16, { align: "right", color: gold });
     });
     let topY = top;
-    if (!rows.length) print("暂无分场挑战数据", 485, topY + 33, 16, { color: muted, align: "center" });
+    if (!rows.length) print($t("panel.personal-hard-challenge-card.text_3983fb19c9"), 485, topY + 33, 16, { color: muted, align: "center" });
     rows.forEach(({ round, team, descriptions, teamHeight, height: rowHeight }) => {
       const contentY = topY + 57;
       surface(left, topY, panelWidth, rowHeight, true);
       fill(ctx, gold, [30, topY + 20, 4, 19]);
       print(round.name, 42, topY + 36, 20, { color: gold, title: true, maxWidth: 725 });
-      print("用时", 940, topY + 18, 13, { color: muted, align: "right" });
+      print($t("panel.personal-hard-challenge-card.text_8d6d315ea3"), 940, topY + 18, 13, { color: muted, align: "right" });
       print(round.time ?? "—", 916, topY + 45, 30, { align: "right" });
-      print("秒", 940, topY + 45, 16, { color: gold, align: "right" });
+      print($t("panel.personal-hard-challenge-card.text_9dcdc2b289"), 940, topY + 45, 16, { color: gold, align: "right" });
       fill(ctx, "#ffffff09", [30, contentY, 92, teamHeight], 8);
       const enemy = round.enemy.icon ? pictures.get(round.enemy.icon) : undefined;
       if (enemy) contain(ctx, enemy, [30, contentY + (teamHeight - 100) / 2 - 10, 92, 100]);
-      else print("暂无图像", 76, contentY + teamHeight / 2, 13, { color: muted, align: "center" });
+      else print($t("panel.personal-hard-challenge-card.text_2e0a3266b0"), 76, contentY + teamHeight / 2, 13, { color: muted, align: "center" });
       if (round.enemy.level) print(`Lv.${round.enemy.level}`, 76, contentY + teamHeight / 2 + 64, 16, { color: gold, align: "center" });
-      if (!team.length) print("暂无队伍数据", teamX + teamWidth / 2, contentY + 98, 16, { color: muted, align: "center" });
+      if (!team.length) print($t("panel.personal-hard-challenge-card.text_82b8ea560a"), teamX + teamWidth / 2, contentY + 98, 16, { color: muted, align: "center" });
       for (let offset = 0; offset < team.length; offset += 4) {
         const members = team.slice(offset, offset + 4);
         const rowY = contentY + Math.floor(offset / 4) * (challengeAvatarCardHeight + 8);
@@ -172,7 +175,7 @@ export async function renderPersonalHardChallenge(model: PersonalHardChallenge, 
         fill(ctx, "#0008", [x, contentY, w, 70]);
         print(recordTitles[index], x + 10, contentY + 25, 20, { title: true });
         const value = record.value;
-        if (value === undefined) print("暂无统计", x + 10, contentY + 55, 20, { color: muted });
+        if (value === undefined) print($t("panel.personal-hard-challenge-card.text_44e3ba1834"), x + 10, contentY + 55, 20, { color: muted });
         else {
           const formatted = value < 10000 ? String(value) : (value / 10000).toFixed(1);
           print(formatted, x + 10, contentY + 57, 30, { maxWidth: w - 40 });
@@ -183,7 +186,7 @@ export async function renderPersonalHardChallenge(model: PersonalHardChallenge, 
       let lineY = contentY + teamHeight + 34;
       if (descriptions.length) {
         fill(ctx, "#ffffff26", [30, lineY - 20, 910, 1]);
-        print("敌方特性", 30, lineY, 14, { color: gold });
+        print($t("panel.personal-hard-challenge-card.text_6fff2b53b7"), 30, lineY, 14, { color: gold });
       }
       descriptions.forEach(lines => {
         print("•", 102, lineY, 14);
@@ -199,9 +202,9 @@ export async function renderPersonalHardChallenge(model: PersonalHardChallenge, 
       });
       topY += rowHeight + 10;
     });
-    const notes = ["金色光晕表示本期赋光之人", "单人角色装备与圣遗物为当前状态", "组队模式显示官方记录中的等级和命座"];
+    const notes = [$t("panel.personal-hard-challenge-card.text_a94b0e32f7"), $t("panel.personal-hard-challenge-card.text_0990a241a3"), $t("panel.personal-hard-challenge-card.text_55c17cfafc")];
     surface(left, notesTop, panelWidth, 94, true);
     notes.forEach((note, index) => print(`• ${note}`, 33, notesTop + 26 + index * 23, 14));
-    print("Lotus-Yunzai", width / 2, height - 22, 16, { align: "center" });
+    print($t("panel.personal-hard-challenge-card.text_3867834e77"), width / 2, height - 22, 16, { align: "center" });
   }, mode, { signal, inlineImageByteLimit });
 }

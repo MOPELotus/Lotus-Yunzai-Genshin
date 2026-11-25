@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { fileURLToPath } from "node:url";
 import { gameCommandProfileId, MAX_PROFILE_ID, ProfileError } from "@lotus-yunzai/account";
 import { createAtlasRuntimeCatalog, defaultAtlasLocale, parseAtlasLocale } from "@lotus-yunzai/atlas/catalog";
@@ -18,7 +21,7 @@ const publicCategory = /^#成就(?:图鉴|分类)/u;
 const reserved = /队伍伤害|队伤|体力|树脂|便笺|便签|面板|更新|抽卡|签到|登录|图鉴|帮助|菜单|远程|上传|下载|B站|BBDown|深渊|深境|幻想|幻境|剧诗|真境|幽境|危战|星铁|崩铁|星穹铁道|绝区|攻略|配队|材料|素材|伤害|排名|排行|练度|兑换|计数器|[！!？?]/iu;
 const waitMs = 300_000;
 const categoryPageSize = 25;
-const atlasUnavailable = "原神成就图鉴数据不可用，请执行 #全量更新图鉴 或检查当前图鉴目录。";
+const atlasUnavailable = $t("achievement-command.text_d097a00252");
 
 type Image = { readonly type: "image"; readonly file: Uint8Array };
 type Reply = string | Image | { readonly type: "forward"; readonly nodes: readonly (string | Image)[]; readonly batchSize: number };
@@ -66,7 +69,7 @@ function parseCategory(message: string, bareOnly: boolean) {
   if (!body) return;
   const explicit = body.startsWith("成就");
   if (!explicit && (!bareOnly || reserved.test(body))) return;
-  const query = explicit ? body.slice("成就".length).trim() : body;
+  const query = explicit ? body.slice($t("achievement-command.text_52b0e1703d").length).trim() : body;
   if (!query || /^(?:分类|目录|索引|列表|查漏|导入|录入)$/u.test(query)) return;
   return { explicit, query };
 }
@@ -95,19 +98,19 @@ function selectCategory({ query, explicit }: NonNullable<ReturnType<typeof parse
 
 function decode(value: string | Uint8Array) {
   const size = typeof value === "string" ? Buffer.byteLength(value) : value.byteLength;
-  if (size > maxAchievementBytes) throw new AchievementInputError("成就 JSON 文件最多 4 MiB。");
+  if (size > maxAchievementBytes) throw new AchievementInputError($t("achievement-command.text_9816af6d35"));
   try {
     return JSON.parse(typeof value === "string" ? value : new TextDecoder("utf-8", { fatal: true }).decode(value));
   } catch {
-    throw new AchievementInputError("成就文件不是有效的 UTF-8 JSON。");
+    throw new AchievementInputError($t("achievement-command.text_c362d46090"));
   }
 }
 
 const progressLabel = (stats: ReturnType<typeof achievementStats>) =>
-  `已完成 ${stats.completed}/${stats.total}，原石 ${stats.pointsDone}/${stats.pointsTotal}，完成率 ${stats.percent}%。`;
+  $t("achievement-command.text_d59bd480a3", { "completed": stats.completed, "total": stats.total, "pointsDone": stats.pointsDone, "pointsTotal": stats.pointsTotal, "percent": stats.percent });
 const summary = (stats: Pick<ReturnType<typeof achievementStats>, "completed" | "total" | "pointsDone" | "pointsTotal" | "percent">,
-  end: string, label: "分类" | "分组" = "分类") => ({
-  headers: ["成就", "原石", "完成率", label], widths: [183.75, 183.75, 183.75, 183.75],
+  end: string, label: string = $t("achievement-command.text_515559957f")) => ({
+  headers: [$t("achievement-command.text_52b0e1703d"), $t("achievement-command.text_761ab59423"), $t("achievement-command.text_43ca7616b8"), label], widths: [183.75, 183.75, 183.75, 183.75],
   rows: [[`${stats.completed}/${stats.total}`, `${stats.pointsDone}/${stats.pointsTotal}`, `${stats.percent}%`, end]],
 });
 
@@ -186,10 +189,10 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
       `${row.completed}/${row.total}`, `${row.pointsDone}/${row.pointsTotal}`, `${row.percent}%`,
     ]));
     return asImage({
-      title: "原神成就目录", subtitle: `UID ${uid}`, badge: report?.title ?? `${stats.completed}/${stats.total}`,
+      title: $t("achievement-command.text_19a7ef1a74"), subtitle: `UID ${uid}`, badge: report?.title ?? `${stats.completed}/${stats.total}`,
       tables: [report?.summary ?? summary(stats, `${stats.categories.filter(row => row.completed === row.total).length}/${stats.categories.length}`),
-        { headers: ["分类", "已完成", "原石", "完成率"], widths: [270, 100, 105, 260], rows }],
-      notes: report?.notes ?? [`已完成 ${stats.completed}/${stats.total} 个成就，原石 ${stats.pointsDone}/${stats.pointsTotal}。目录状态来自椰羊 JSON 导入进度与本地图鉴。`],
+        { headers: [$t("achievement-command.text_515559957f"), $t("achievement-command.text_f28461bb49"), $t("achievement-command.text_761ab59423"), $t("achievement-command.text_43ca7616b8")], widths: [270, 100, 105, 260], rows }],
+      notes: report?.notes ?? [$t("achievement-command.text_66e1af2396", { "completed": stats.completed, "total": stats.total, "pointsDone": stats.pointsDone, "pointsTotal": stats.pointsTotal })],
     }, inlineImageByteLimit);
   }
 
@@ -214,66 +217,66 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
       category = selection.category;
       if (!category) {
         if (!categoryAction.explicit) return;
-        return data?.categories.length ? `未找到原神成就分类「${categoryAction.query}」。` : atlasUnavailable;
+        return data?.categories.length ? $t("achievement-command.text_52f62c6af3", { "query": categoryAction.query }) : atlasUnavailable;
       }
       profileId = selection.profileId;
     }
 
-    if (!key) return "请从本人 QQ 会话使用原神成就。";
-    if (profileId < 1 || profileId > MAX_PROFILE_ID) return "档案编号须在 1 到 255 之间。";
+    if (!key) return $t("achievement-command.text_2c9423cddd");
+    if (profileId < 1 || profileId > MAX_PROFILE_ID) return $t("achievement-command.text_3dd62228d2");
     if (request && request.expires <= now()) {
       clear(key, request);
-      return "成就导入等待已超时，请重新发送 #成就导入。";
+      return $t("achievement-command.text_f52899659d");
     }
-    if (request?.busy) return "当前正在读取该档案的成就文件。";
+    if (request?.busy) return $t("achievement-command.text_844ba32c18");
     if (request) request.busy = true;
     try {
       const session = request?.session ?? await identity(qq, profileId);
       const { uid } = session;
       const verify = async () => {
         signal.throwIfAborted();
-        if (!await sameIdentity(qq, profileId, session)) throw new ProfileError("changed", "档案变化。");
+        if (!await sameIdentity(qq, profileId, session)) throw new ProfileError("changed", $t("achievement-command.text_79872712a9"));
         if (request && (request.expires <= now() || pending.get(key) !== request)) {
-          throw new AchievementInputError("成就导入等待已结束，请重新发送 #成就导入。");
+          throw new AchievementInputError($t("achievement-command.text_d480b605d9"));
         }
         signal.throwIfAborted();
       };
 
       if (importing || request) {
         const input = importing?.[2]?.trim() ?? "";
-        if (Buffer.byteLength(input) > maxAchievementBytes) throw new AchievementInputError("成就 JSON 文件最多 4 MiB。");
+        if (Buffer.byteLength(input) > maxAchievementBytes) throw new AchievementInputError($t("achievement-command.text_9816af6d35"));
         const start = input.indexOf("{"), end = input.lastIndexOf("}");
         const prefix = start === -1 ? input : input.slice(0, start);
         for (const [hint] of prefix.matchAll(/(?<!\d)[1-9]\d{7,9}(?!\d)/gu)) {
-          if (hint !== uid) return "指定的原神 UID 与当前档案不一致。";
+          if (hint !== uid) return $t("achievement-command.text_48cf5d7dc5");
         }
         const inline = start >= 0 && end > start ? input.slice(start, end + 1) : undefined;
-        if (!inline && context.attachment && !file) return "请发送 .json 格式的成就文件。";
+        if (!inline && context.attachment && !file) return $t("achievement-command.text_5f239cc400");
         if (!inline && !file) {
-          if (/[{}]/u.test(input)) throw new AchievementInputError("成就文件不是有效的 UTF-8 JSON。");
-          if (context.canReadAttachments !== true) return "当前会话暂不支持接收文件，可在 #成就导入 后粘贴 JSON。";
-          if (!pending.has(key) && pending.size >= 2048) return "成就导入等待人数过多，请稍后再试。";
+          if (/[{}]/u.test(input)) throw new AchievementInputError($t("achievement-command.text_c362d46090"));
+          if (context.canReadAttachments !== true) return $t("achievement-command.text_1db21494f8");
+          if (!pending.has(key) && pending.size >= 2048) return $t("achievement-command.text_a6b54b6dd5");
           clear(key);
           const timeout = setTimeout(() => clear(key), waitMs).unref();
           pending.set(key, { profileId, session, timeout, expires: now() + waitMs, busy: false });
-          return `请在 5 分钟内发送椰羊导出的 JSON 文件（档案 ${profileId}）。`;
+          return $t("achievement-command.text_5321e72dec", { "profileId": profileId });
         }
-        if (!inline && context.canReadAttachments !== true) return "当前会话暂不支持读取成就文件。";
+        if (!inline && context.canReadAttachments !== true) return $t("achievement-command.text_db71ae5b37");
         await verify();
         const bytes = inline ?? await file?.read(signal);
-        if (!bytes) throw new AchievementInputError("无法读取成就 JSON 文件，请重新发送。");
+        if (!bytes) throw new AchievementInputError($t("achievement-command.text_d19c911545"));
         const parsed = parseAchievementExport(decode(bytes), uid);
         data ??= await catalog().catch(() => undefined);
-        if (!data?.categories.length) return `${atlasUnavailable} 进度未修改。`;
+        if (!data?.categories.length) return $t("achievement-command.text_14262ad324", { "atlasUnavailable": atlasUnavailable });
         const result = await store.merge({ qq, uid }, parsed, data.categories, verify);
         if (earlier) clear(key, earlier);
-        const info = `椰羊 JSON 扫描 ${result.scanned} 条，完成项 ${result.completedInput} 条；新增 ${result.added} 条，重复 ${result.duplicate} 条，未知 ${result.unknown} 条，系列补全 ${result.inferred} 条。`;
-        const updates = result.touched.length ? `更新分类：${result.touched.slice(0, 8).join(" / ")}${result.touched.length > 8 ? " 等" : ""}` : "";
+        const info = $t("achievement-command.text_58eb3ba41e", { "scanned": result.scanned, "completedInput": result.completedInput, "added": result.added, "duplicate": result.duplicate, "unknown": result.unknown, "inferred": result.inferred });
+        const updates = result.touched.length ? $t("achievement-command.text_5c4c68d3ec", { "value1": result.touched.slice(0, 8).join(" / "), "value2": result.touched.length > 8 ? $t("achievement-command.text_8ab274ae26") : "" }) : "";
         const notes = [info, updates].filter(Boolean);
         const progress = await store.read(qq, uid).catch(() => undefined);
         const reply = progress ? await directoryCard(data, uid, achievementStats(data.categories, progress), context.inlineImageByteLimit, {
           title: `+${result.added}`, notes: [notes.join(" ")],
-          summary: { headers: ["新增", "重复", "未知", "补全"], widths: [183.75, 183.75, 183.75, 183.75],
+          summary: { headers: [$t("achievement-command.text_0006d696d8"), $t("achievement-command.text_609cf2fdf6"), $t("achievement-command.text_4d8c1c5b42"), $t("achievement-command.text_40b1d8dd09")], widths: [183.75, 183.75, 183.75, 183.75],
             rows: [[result.added, result.duplicate, result.unknown, result.inferred].map(String)] },
         }).catch(() => notes.join("\n")) : notes.join("\n");
         if (!await sameIdentity(qq, profileId, session) || signal.aborted) return;
@@ -285,7 +288,7 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
       const progress = await store.read(qq, uid);
       const stats = achievementStats(category ? [category] : data.categories, progress);
       if (!category) {
-        const reply = await directoryCard(data, uid, stats, context.inlineImageByteLimit).catch(() => ["原神成就目录", progressLabel(stats),
+        const reply = await directoryCard(data, uid, stats, context.inlineImageByteLimit).catch(() => [$t("achievement-command.text_19a7ef1a74"), progressLabel(stats),
           ...stats.categories.map(row => `${row.category.name} · ${row.completed}/${row.total}`)].join("\n"));
         await verify();
         return reply;
@@ -294,50 +297,50 @@ export function createAchievementCommand(profiles: GenshinRoleProfiles, lockFile
       const groups = achievementGroups(category, progress);
       const totalPages = Math.ceil(groups.length / categoryPageSize);
       const forward = totalPages > 2 ? context.forward : undefined;
-      if (totalPages > 2 && !forward) return "当前会话不支持确认分页转发。";
+      if (totalPages > 2 && !forward) return $t("achievement-command.text_c233d8eee0");
       await verify();
-      if (totalPages > 1) await context.reply(`正在生成「${category.name}」成就，共 ${totalPages} 张，将按顺序合并转发。`);
+      if (totalPages > 1) await context.reply($t("achievement-command.text_93bf6dad6b", { "name": category.name, "totalPages": totalPages }));
       let pages: (Image | string)[] = [];
       for (let offset = 0; offset < groups.length; offset += categoryPageSize) {
         await verify();
         const visible = groups.slice(offset, offset + categoryPageSize);
         const page = offset / categoryPageSize + 1;
-        const pageLabel = `第 ${page}/${totalPages} 张`;
-        const groupLabel = `${offset + 1}-${offset + visible.length}/${groups.length} 组`;
+        const pageLabel = $t("achievement-command.text_bd4ce0beba", { "page": page, "totalPages": totalPages });
+        const groupLabel = $t("achievement-command.text_e6946edb20", { "value1": offset + 1, "value2": offset + visible.length, "length": groups.length });
         const label = `${pageLabel} · ${groupLabel}`;
         const card = { title: category.name, subtitle: `UID ${uid}`, badge: `${stats.completed}/${stats.total}`,
-          tables: [summary(stats, totalPages === 1 ? String(groups.length) : `${offset + 1}-${offset + visible.length}/${groups.length}`, "分组"), ...visible.map(group => ({
-            title: `${group.name} · ${group.completed}/${group.total} · 原石 ${group.pointsDone}/${group.pointsTotal}`,
+          tables: [summary(stats, totalPages === 1 ? String(groups.length) : `${offset + 1}-${offset + visible.length}/${groups.length}`, $t("achievement-command.text_399ee69347")), ...visible.map(group => ({
+            title: $t("achievement-command.text_176ddce843", { "name": group.name, "completed": group.completed, "total": group.total, "pointsDone": group.pointsDone, "pointsTotal": group.pointsTotal }),
             description: group.stages[0]?.description,
-            headers: ["阶段 / 状态", "成就说明", "原石 / 进度"], widths: [120, 520, 95],
+            headers: [$t("achievement-command.text_7a72c017fb"), $t("achievement-command.text_fd00110702"), $t("achievement-command.text_4d2c37e80f")], widths: [120, 520, 95],
             rows: group.stages.map(stage => [
-              `${group.total > 1 ? `${stage.stage}/${group.total}` : "单项"} · ${stage.done ? "已完成" : "未完成"}${stage.date ? `\n${stage.date}` : ""}`,
-              stage.description || stage.name, `${stage.points ?? 0} 原石\n${stage.progress}`,
+              `${group.total > 1 ? `${stage.stage}/${group.total}` : $t("achievement-command.text_dd37325469")} · ${stage.done ? $t("achievement-command.text_f28461bb49") : $t("achievement-command.text_6707de42c2")}${stage.date ? `\n${stage.date}` : ""}`,
+              stage.description || stage.name, $t("achievement-command.text_6f45efd7b7", { "value1": stage.points ?? 0, "progress": stage.progress }),
             ]),
-          }))], notes: [`未完成条目优先显示；同名多阶段成就会作为一个条目一起排序。原石 ${stats.pointsDone}/${stats.pointsTotal}。${totalPages > 1 ? ` ${label}` : ""}`] };
+          }))], notes: [$t("achievement-command.text_057beaf799", { "pointsDone": stats.pointsDone, "pointsTotal": stats.pointsTotal, "value3": totalPages > 1 ? ` ${label}` : "" })] };
         pages.push(await asImage(card, context.inlineImageByteLimit).catch(() => [category.name, progressLabel(stats), label,
           ...visible.map(group => `${group.name} · ${group.completed}/${group.total}`)].join("\n")));
         if (forward && (pages.length === 2 || page === totalPages)) {
           await verify();
           const delivered = await forward(pages, "Lotus-Yunzai").catch(() => undefined);
           pages = [];
-          if (delivered === undefined) return "成就合并转发结果未确认，已停止后续分页。";
-          if (!delivered) return "成就分页未送达，已停止后续分页。";
+          if (delivered === undefined) return $t("achievement-command.text_31a6757cd8");
+          if (!delivered) return $t("achievement-command.text_329d5797d2");
         }
       }
       if (forward) return { type: "forward", nodes: [], batchSize: 2 };
       await verify();
-      return pages.length > 1 ? { type: "forward", nodes: pages, batchSize: 2 } : pages[0] ?? "该成就分类暂无条目。";
+      return pages.length > 1 ? { type: "forward", nodes: pages, batchSize: 2 } : pages[0] ?? $t("achievement-command.text_2a249bc71f");
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing" || error.code === "login-required") return `请先登录档案 ${profileId}。`;
-        if (error.code === "role-missing") return `档案 ${profileId} 尚未同步当前原神角色，请同步后重试。`;
-        if (error.code === "invalid") return "档案的账号或登录凭据无法核验，请重新登录。";
-        if (error.code === "changed") return "原神档案角色已变化，请重新操作。";
+        if (error.code === "missing" || error.code === "login-required") return $t("achievement-command.text_76720712c8", { "profileId": profileId });
+        if (error.code === "role-missing") return $t("achievement-command.text_728082fbd9", { "profileId": profileId });
+        if (error.code === "invalid") return $t("achievement-command.text_b00482b677");
+        if (error.code === "changed") return $t("achievement-command.text_45af24754e");
       }
       if (error instanceof AchievementInputError) return error.message;
-      return "暂时无法读取或保存原神成就，请检查本地进度和图鉴。";
+      return $t("achievement-command.text_731b45072e");
     } finally {
       if (request) request.busy = false;
     }

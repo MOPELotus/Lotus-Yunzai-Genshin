@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { setTimeout } from "node:timers/promises";
 import { ProfileError, type createProfileStore, type GameRole } from "@lotus-yunzai/account";
 import { GameRecordRequestError, type createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
@@ -61,20 +64,20 @@ export function createGenshinMonthlyTask(profiles: Profiles,
     const authorized = () => !context.isDelegated && (scene === "private" || scene === "group") && !!user &&
       Number.isSafeInteger(user) && user > 0 && user !== self &&
       (context.isBotMaster ? context.isBotMaster(user) : context.isMaster === true);
-    if (!authorized()) return "仅当前机器人的主人可执行原石任务。";
-    if (running) return "原石任务正在执行，请稍后重试。";
+    if (!authorized()) return $t("monthly-task.text_19bad7a703");
+    if (running) return $t("monthly-task.text_39f05bf293");
     const started = now();
     const periods = genshinRecentMonthlyPeriods(started);
     const current = periods.at(-1)!;
     let roles = 0, completed = 0, failed = 0, written = 0, preserved = 0, empty = 0;
-    const summary = () => `已处理 ${completed + failed}/${roles} 个角色，${failed} 个未完成。保存 ${written} 个月，保留已有 ${preserved} 个月，官方未返回数据 ${empty} 个月。`;
+    const summary = () => $t("monthly-task.text_269195c8ea", { "value1": completed + failed, "roles": roles, "failed": failed, "written": written, "preserved": preserved, "empty": empty });
 
     function guard() {
       signal.throwIfAborted();
-      if (!authorized()) throw new TaskStopped("主人权限已变化，原石任务已停止。");
+      if (!authorized()) throw new TaskStopped($t("monthly-task.text_12c5686a5b"));
       const latest = genshinMonthlyPeriod(undefined, now())!;
       if (latest.year !== current.year || latest.month !== current.month) {
-        throw new TaskStopped("北京时间已跨月，原石任务已停止。请重新执行以查询新月份。");
+        throw new TaskStopped($t("monthly-task.text_d8ba93fd81"));
       }
     }
 
@@ -82,8 +85,8 @@ export function createGenshinMonthlyTask(profiles: Profiles,
     try {
       const targets = await taskTargets(profiles, guard);
       roles = targets.length;
-      if (!roles) return "没有可归档的已登录国服原神角色。";
-      await context.reply(`开始保存 ${roles} 个国服原神角色的札记数据。每个角色最多查询最近三个月。`);
+      if (!roles) return $t("monthly-task.text_a530edcba1");
+      await context.reply($t("monthly-task.text_eb10f93411", { "roles": roles }));
       for (const [index, target] of targets.entries()) {
         guard();
         try {
@@ -95,7 +98,7 @@ export function createGenshinMonthlyTask(profiles: Profiles,
             const source = await profiles.requestContext(qq, profileId, "gs", uid);
             if (source.role.uid !== uid || source.role.region !== region || source.role.gameBiz !== gameBiz ||
                 genshinLoginAccount(source) !== accountId || (revision !== undefined && source.revision !== revision)) {
-              throw new ProfileError("changed", "原神档案已变化。");
+              throw new ProfileError("changed", $t("monthly-task.text_f5ed9a42ca"));
             }
             guard();
             return source;
@@ -135,7 +138,8 @@ export function createGenshinMonthlyTask(profiles: Profiles,
       return summary();
     } catch (error) {
       if (signal.aborted || !authorized()) return;
-      return `${error instanceof TaskStopped ? error.message : "原石任务未完成。"}\n${summary()}`;
+      return `${error instanceof TaskStopped ? error.message : $t("monthly-task.text_0c7850131b")}
+${summary()}`;
     } finally {
       running = false;
     }

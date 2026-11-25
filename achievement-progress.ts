@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { join, resolve } from "node:path";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import type { createAtlasRuntimeCatalog } from "@lotus-yunzai/atlas/catalog";
@@ -10,9 +13,9 @@ type Done = { readonly id: number; readonly date: string; readonly status: true 
 type Progress = Record<string, Done>;
 export const maxAchievementBytes = 4 * 1024 * 1024;
 const maxEntries = 20_000;
-const subject = "原神成就进度";
-const cnChapter = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
-  "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"];
+const subject = $t("achievement-progress.text_d8a82e87bf");
+const cnChapter = [$t("achievement-progress.text_9489a4a6f3"), $t("achievement-progress.text_51a75f4634"), $t("achievement-progress.text_084b42f6e9"), $t("achievement-progress.text_a4c3313deb"), $t("achievement-progress.text_754a9d5828"), $t("achievement-progress.text_c9b87f516a"), $t("achievement-progress.text_de07b53838"), $t("achievement-progress.text_1b0542878c"), $t("achievement-progress.text_2c467d3673"), $t("achievement-progress.text_df897da6e0"), $t("achievement-progress.text_fc7edd399a"),
+  $t("achievement-progress.text_41cbc3e287"), $t("achievement-progress.text_80b044f1af"), $t("achievement-progress.text_a91b9ac3ed"), $t("achievement-progress.text_29473899ef"), $t("achievement-progress.text_2f740e1769"), $t("achievement-progress.text_adff0166a2"), $t("achievement-progress.text_9e27d43472"), $t("achievement-progress.text_078c458514"), $t("achievement-progress.text_9340996fc6"), $t("achievement-progress.text_e5ec573b39")];
 
 export type AchievementCategory = Category;
 export type AchievementProgress = Readonly<Progress>;
@@ -50,17 +53,17 @@ function readProgress(value: unknown, uid: string): Progress {
   const data = record(value);
   if (!data || (data.version !== undefined && data.version !== 1) ||
       (data.uid !== undefined && String(data.uid) !== uid)) {
-    throw new AchievementInputError("原神成就存档与当前 UID 或格式不符。");
+    throw new AchievementInputError($t("achievement-progress.text_0f4e0d991c"));
   }
   const rows = data.done ?? data.records ?? data.achievements;
-  if (!Array.isArray(rows) && !record(rows)) throw new AchievementInputError("原神成就存档缺少完成记录。");
+  if (!Array.isArray(rows) && !record(rows)) throw new AchievementInputError($t("achievement-progress.text_f0532d4041"));
   const pairs = Array.isArray(rows) ? rows.map(item => [record(item)?.id, item] as const) : Object.entries(rows as object);
-  if (pairs.length > maxEntries) throw new AchievementInputError("原神成就存档条数过多。");
+  if (pairs.length > maxEntries) throw new AchievementInputError($t("achievement-progress.text_5948834696"));
   for (const [key, value] of pairs) {
     const id = positiveId(key);
     const item = record(value);
     if (!id || item?.id !== undefined && positiveId(item.id) !== id) {
-      throw new AchievementInputError("原神成就存档的记录编号不匹配。");
+      throw new AchievementInputError($t("achievement-progress.text_1eee01f21a"));
     }
     done[id] = doneRecord(id, value, typeof item?.source === "string" && /^[a-z-]{1,30}$/u.test(item.source) ? item.source : "legacy");
   }
@@ -72,12 +75,12 @@ async function readLegacy(directories: readonly string[], uid: string): Promise<
     const root = resolve(directory);
     const file = await readMigrationSourceFile(root, join(root, `${uid}.json`), maxAchievementBytes).catch(error => {
       if (!(error instanceof MigrationSourceFileError)) throw error;
-      throw new AchievementInputError(error.reason === "changed" ? "旧原神成就存档已变化。"
-        : "旧原神成就存档须为大小有效且无链接的普通文件。");
+      throw new AchievementInputError(error.reason === "changed" ? $t("achievement-progress.text_eac6b699ae")
+        : $t("achievement-progress.text_293fc24cf6"));
     });
     if (!file) continue;
     const value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(file.bytes));
-    if (value === null) throw new AchievementInputError("旧原神成就存档格式无效。");
+    if (value === null) throw new AchievementInputError($t("achievement-progress.text_9e9280d55d"));
     return readProgress(value, uid);
   }
   return readProgress(null, uid);
@@ -120,7 +123,7 @@ export function achievementGroups(category: Category, done: AchievementProgress)
 
 export function achievementCategoryKey(value: string) {
   return value.normalize("NFKC").trim().replace(/第(\d{1,2})辑/gu, (whole, number: string) =>
-    cnChapter[Number(number)] === undefined ? whole : `第${cnChapter[Number(number)]}辑`)
+    cnChapter[Number(number)] === undefined ? whole : $t("achievement-progress.text_096678f8de", { "value1": cnChapter[Number(number)] }))
     .toLowerCase().replace(/[\p{P}\s]/gu, "");
 }
 
@@ -132,13 +135,13 @@ export function parseAchievementExport(input: unknown, uid: string) {
   const uiaf = Array.isArray(data?.list) &&
     (typeof info?.export_app === "string" && info.export_app.toLowerCase() === "cocogoat" ||
       info?.cocogoat_ext !== undefined && info.cocogoat_ext !== null && Boolean(info.cocogoat_ext));
-  if (!cocogoat && !uiaf) throw new AchievementInputError("只支持椰羊导出的成就 JSON。");
+  if (!cocogoat && !uiaf) throw new AchievementInputError($t("achievement-progress.text_9dff4fae15"));
   for (const embedded of [data?.uid, legacy?.uid, record(legacy?.account)?.uid, info?.uid]) {
     if (embedded === undefined || embedded === "") continue;
-    if (String(embedded) !== uid) throw new AchievementInputError("成就 JSON 的 UID 与当前档案不一致。");
+    if (String(embedded) !== uid) throw new AchievementInputError($t("achievement-progress.text_913036fe6d"));
   }
   const entries = (cocogoat ? legacy?.achievements : data?.list) as readonly unknown[];
-  if (entries.length > maxEntries) throw new AchievementInputError("成就 JSON 条数过多。");
+  if (entries.length > maxEntries) throw new AchievementInputError($t("achievement-progress.text_25b0d3a236"));
   return { scanned: entries.length, entries: entries.flatMap(value => {
     const item = record(value);
     const id = positiveId(item?.id);
@@ -154,7 +157,7 @@ export function parseAchievementExport(input: unknown, uid: string) {
 export function createAchievementProgressStore(directory: string, legacyDirectories: readonly string[], lockFile: AcquireRoleArchiveLock) {
   const archive = createRoleJsonArchive(directory, lockFile, { subject, lockSuffix: "achievements", maxBytes: maxAchievementBytes, rejectNull: true });
   function validate(uid: string) {
-    if (!safeUid(uid)) throw new AchievementInputError("当前档案的原神 UID 格式无效。");
+    if (!safeUid(uid)) throw new AchievementInputError($t("achievement-progress.text_c9dde77109"));
   }
   async function load(value: unknown, uid: string) {
     return value === null ? readLegacy(legacyDirectories, uid) : readProgress(value, uid);

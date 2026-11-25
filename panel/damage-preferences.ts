@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gameCommandProfileId, MAX_PROFILE_ID } from "@lotus-yunzai/account";
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { genshinDamageEnemyLevel } from "./damage.ts";
@@ -19,13 +22,13 @@ function validLevel(value: unknown): value is number {
 function savedLevel(input: unknown) {
   if (input === null) return;
   const data = object(input);
-  if (data?.version !== 1 || !validLevel(data.enemyLevel)) throw new DamagePreferencesError("本地敌人等级存档格式无效。");
+  if (data?.version !== 1 || !validLevel(data.enemyLevel)) throw new DamagePreferencesError($t("panel.damage-preferences.text_f587907502"));
   return data.enemyLevel;
 }
 
 async function legacyLevel(source: string, qq: string, signal: AbortSignal) {
   const protocol = URL.parse(source)?.protocol;
-  if (protocol !== "redis:" && protocol !== "rediss:") throw new DamagePreferencesError("旧面板偏好来源地址无效。");
+  if (protocol !== "redis:" && protocol !== "rediss:") throw new DamagePreferencesError($t("panel.damage-preferences.text_fb9b0b5a1d"));
   const redis = new Bun.RedisClient(source, { autoReconnect: false, enableOfflineQueue: false, connectionTimeout: 1500, idleTimeout: 1500 });
   const deadline = AbortSignal.any([signal, AbortSignal.timeout(2500)]);
   const close = () => redis.close();
@@ -46,7 +49,7 @@ async function legacyLevel(source: string, qq: string, signal: AbortSignal) {
     if (!validLevel(value)) throw new TypeError();
     return value;
   } catch {
-    throw new DamagePreferencesError("无法读取旧敌人等级，可使用 #敌人等级103 设置本地偏好。");
+    throw new DamagePreferencesError($t("panel.damage-preferences.text_9ac94629fe"));
   } finally {
     deadline.removeEventListener("abort", close);
     close();
@@ -55,7 +58,7 @@ async function legacyLevel(source: string, qq: string, signal: AbortSignal) {
 
 export function createDamagePreferences(directory: string, lockFile: AcquireRoleArchiveLock, signal: AbortSignal, legacySource?: string) {
   const archive = createRoleJsonArchive(directory, lockFile, {
-    subject: "原神伤害偏好", lockSuffix: "damage-preferences", maxBytes: 4096, rejectNull: true,
+    subject: $t("panel.damage-preferences.text_52948f95bb"), lockSuffix: "damage-preferences", maxBytes: 4096, rejectNull: true,
   });
   const key = "1";
   return {
@@ -67,7 +70,7 @@ export function createDamagePreferences(directory: string, lockFile: AcquireRole
       return typeof inherited === "number" ? inherited : genshinDamageEnemyLevel;
     },
     async setLevel(qq: string, enemyLevel: number, verify: () => Promise<void>) {
-      if (!validLevel(enemyLevel)) throw new DamagePreferencesError("敌人等级须为 0 到 999 的整数。");
+      if (!validLevel(enemyLevel)) throw new DamagePreferencesError($t("panel.damage-preferences.text_7df444de3e"));
       return archive.update({ qq, uid: key }, verify, current => savedLevel(current) === enemyLevel
         ? { result: enemyLevel } : { document: { version: 1, enemyLevel }, result: enemyLevel });
     },

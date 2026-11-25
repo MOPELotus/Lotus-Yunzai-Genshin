@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { renderExactPng, ImageSizeLimitError } from "@lotus-yunzai/skia";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { object, talentKeys, text, whole, type PanelAvatar } from "./model.ts";
@@ -5,8 +8,8 @@ import { contain, profileFonts, typeset } from "./original-profile-skia.ts";
 import { panelTalentLevels, panelTalentThresholds, travelerIds } from "./talent-levels.ts";
 import { panelPortraitAsset, panelWeaponPicture, type PanelPhoto, type PanelTheme, type Picture } from "./theme.ts";
 
-const sources: Readonly<Record<string, string>> = { miao: "角色面板 API", enka: "Enka.Network", mgg: "MiniGG API", mys: "米游社",
-  mysPanel: "米游社", hutao: "Hutao-Enka", homo: "Mihomo" };
+const sources: Readonly<Record<string, string>> = { miao: $t("panel.avatar-card-render.text_b5c479b1b0"), enka: "Enka.Network", mgg: "MiniGG API", mys: $t("panel.avatar-card-render.text_6ca05b2485"),
+  mysPanel: $t("panel.avatar-card-render.text_6ca05b2485"), hutao: "Hutao-Enka", homo: "Mihomo" };
 const timestamp = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export async function renderAvatarCard(name: string, id: number, uid: string, avatar: PanelAvatar | undefined, theme: PanelTheme, {
@@ -27,7 +30,7 @@ export async function renderAvatarCard(name: string, id: number, uid: string, av
       const { png } = await renderExactPng(width, height, ctx => ctx.drawImage(picture, 0, 0, width, height), mode);
       if (inlineImageByteLimit === undefined || png.byteLength <= inlineImageByteLimit) return { type: "image" as const, file: png };
     }
-    throw new ImageSizeLimitError("角色照片超过当前会话的图片大小上限。");
+    throw new ImageSizeLimitError($t("panel.avatar-card-render.text_5560594502"));
   }
   const meta = object(theme.characters[id]);
   const weapon = avatar && await panelWeaponPicture(theme, avatar);
@@ -36,7 +39,7 @@ export async function renderAvatarCard(name: string, id: number, uid: string, av
   const traveler = travelerIds.has(id);
   const weaponType = traveler ? "sword" : text(meta?.weapon);
   const thresholds = avatar ? panelTalentThresholds(avatar, meta) : undefined;
-  const talentPath = traveler ? ["meta-gs", "character", "旅行者", element, "icons"] : ["meta-gs", "character", name, "icons"];
+  const talentPath = traveler ? ["meta-gs", "character", $t("panel.avatar-card-render.text_4bf6868aa0"), element, "icons"] : ["meta-gs", "character", name, "icons"];
   const talentIcons = await Promise.all(talentKeys.map(async key => {
     if (key === "a" && weaponType) {
       const attack = await theme.picture("common", "item", `atk-${weaponType}.webp`);
@@ -73,13 +76,13 @@ export async function renderAvatarCard(name: string, id: number, uid: string, av
     ctx.fillStyle = fade;
     ctx.fillRect(0, 0, width, height);
     write(text(meta?.abbr) || name, 20, 66, 60, { bold: true, title: true, maxWidth: 320 });
-    write(avatar?.cons === undefined ? "" : `${avatar.cons} 命`, 108 + Math.min(320, name.length * 54), 63, 21, { align: "right", bold: true });
+    write(avatar?.cons === undefined ? "" : $t("panel.avatar-card-render.text_8ab34d12ba", { "cons": avatar.cons }), 108 + Math.min(320, name.length * 54), 63, 21, { align: "right", bold: true });
     const rule = ctx.createLinearGradient(0, 0, 370, 0);
     rule.addColorStop(0, "#ffffff99");
     rule.addColorStop(1, "#ffffff00");
     ctx.fillStyle = rule;
     ctx.fillRect(0, 73, 370, 1);
-    write([`UID ${uid}`, avatar && `Lv.${avatar.level}`, avatar?.fetter && `好感 ${avatar.fetter}`].filter(Boolean).join("  ·  "),
+    write([`UID ${uid}`, avatar && `Lv.${avatar.level}`, avatar?.fetter && $t("panel.avatar-card-render.text_5188d6296f", { "fetter": avatar.fetter })].filter(Boolean).join("  ·  "),
       23, 99, 19);
     if (avatar) {
       const bottom = height - (leftMode ? 282 : 122);
@@ -91,30 +94,30 @@ export async function renderAvatarCard(name: string, id: number, uid: string, av
         ctx.fill();
       });
       contain(ctx, weapon, [21, bottom + 13, 60, 60]);
-      write(avatar.weapon?.name ?? "暂无武器", 82, bottom + 34, 17, { maxWidth: 118 });
-      write(avatar.weapon ? `Lv.${avatar.weapon.level} · 精${avatar.weapon.affix || 1}` : "", 82, bottom + 60, 14);
+      write(avatar.weapon?.name ?? $t("panel.avatar-card-render.text_e0f82d81d8"), 82, bottom + 34, 17, { maxWidth: 118 });
+      write(avatar.weapon ? $t("panel.avatar-card-render.text_926959d954", { "level": avatar.weapon.level, "value2": avatar.weapon.affix || 1 }) : "", 82, bottom + 60, 14);
       if (talents.some(Boolean)) talents.forEach((talent, i) => {
         const left = fields[1]! + (leftMode ? 24 : 0) + i * (leftMode ? 66 : 49);
         contain(ctx, talentIcons[i], [left, posts[1]! + 8, 44, 45]);
         write(talent?.level ?? "—", left + 22, posts[1]! + 68, 16, { align: "center", color: talent && talent.level > talent.original ? "#90d8ff" : "#fff" });
       });
-      else write("请同步档案以获取天赋信息", fields[1]! + 10, posts[1]! + 49, 14, { maxWidth: 146 });
+      else write($t("panel.avatar-card-render.text_264553f347"), fields[1]! + 10, posts[1]! + 49, 14, { maxWidth: 146 });
       slots.forEach((icon, i) => {
         const left = fields[2]! + i * 44;
         contain(ctx, icon ?? emptyArtifact, [left, posts[2]! + 8, 41, 45]);
         const item = artifacts[String(i + 1)];
         write(item ? `+${item.level}` : "—", left + 20, posts[2]! + 65, 14, { align: "center" });
       });
-    } else write("当前档案没有该角色的详细信息", width - 20, height - 41, 16, { align: "right" });
+    } else write($t("panel.avatar-card-render.text_280fe69407"), width - 20, height - 41, 16, { align: "right" });
     ctx.fillStyle = "#ffffff50";
     ctx.fillRect(0, height - 25, width, 1);
     ctx.fillStyle = "#050919aa";
     ctx.fillRect(0, height - 24, width, 24);
     if (avatar?.level) {
       const updated = avatar._time ? timestamp.format(avatar._time) : "";
-      write(`数据源 ${sources[avatar._source] ?? "档案"} ${updated}`, 10, height - 8, 13);
+      write($t("panel.avatar-card-render.text_42b93498cd", { "value1": sources[avatar._source] ?? $t("panel.avatar-card-render.text_b03d2fbde9"), "updated": updated }), 10, height - 8, 13);
     }
-    write("Lotus-Yunzai", width - 10, height - 8, 13, { align: "right", color: "#fff" });
+    write($t("panel.avatar-card-render.text_3867834e77"), width - 10, height - 8, 13, { align: "right", color: "#fff" });
   }, mode, { inlineImageByteLimit, signal });
   return { type: "image" as const, file: png, original: asset?.photo };
 }

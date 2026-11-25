@@ -1,12 +1,15 @@
+import { createTranslator as createTextTranslator } from "../../../../packages/i18n/index.ts";
+import messageCatalog from "../../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 // miao-plugin 2860761, resources/meta-gs/material/{daily,index}.js. MIT, see LICENSE.
-export const talentRegions = ["蒙德", "璃月", "稻妻", "须弥", "枫丹", "纳塔", "挪德卡莱", "至冬"] as const;
+export const talentRegions = [$t("panel.miao.talent-schedule.text_6b557bf926"), $t("panel.miao.talent-schedule.text_8c78af3e64"), $t("panel.miao.talent-schedule.text_0b93dbd19e"), $t("panel.miao.talent-schedule.text_68335fcf17"), $t("panel.miao.talent-schedule.text_e8ac469478"), $t("panel.miao.talent-schedule.text_979954d006"), $t("panel.miao.talent-schedule.text_3e929dfa54"), $t("panel.miao.talent-schedule.text_488a37f68b")] as const;
 export const talentSchedule = [
-  ["自由", "繁荣", "浮世", "诤言", "公平", "角逐", "月光", "慈爱"],
-  ["抗争", "勤劳", "风雅", "巧思", "正义", "焚燔", "乐园", "坚忍"],
-  ["诗文", "黄金", "天光", "笃行", "秩序", "纷争", "浪迹", "荣光"],
+  [$t("panel.miao.talent-schedule.text_d1047eed5d"), $t("panel.miao.talent-schedule.text_b28c4dbf42"), $t("panel.miao.talent-schedule.text_36ea39c9aa"), $t("panel.miao.talent-schedule.text_26e4c50e4b"), $t("panel.miao.talent-schedule.text_bcefdeff3f"), $t("panel.miao.talent-schedule.text_9786bee8c7"), $t("panel.miao.talent-schedule.text_33c4b04477"), $t("panel.miao.talent-schedule.text_5cc3c16a14")],
+  [$t("panel.miao.talent-schedule.text_b0016d937e"), $t("panel.miao.talent-schedule.text_81dcb34d9e"), $t("panel.miao.talent-schedule.text_0b829e82db"), $t("panel.miao.talent-schedule.text_2fbb66d6ed"), $t("panel.miao.talent-schedule.text_1ddaa4cb37"), $t("panel.miao.talent-schedule.text_79f4146091"), $t("panel.miao.talent-schedule.text_34ba55ee06"), $t("panel.miao.talent-schedule.text_87bb71140b")],
+  [$t("panel.miao.talent-schedule.text_d4d2194cd7"), $t("panel.miao.talent-schedule.text_bbb72f61f1"), $t("panel.miao.talent-schedule.text_0008bef9ff"), $t("panel.miao.talent-schedule.text_336ccda3a4"), $t("panel.miao.talent-schedule.text_c2c1845c3b"), $t("panel.miao.talent-schedule.text_988ca3fd4e"), $t("panel.miao.talent-schedule.text_adbda297b3"), $t("panel.miao.talent-schedule.text_5af16a87ad")],
 ] as const;
 export const weaponSchedule = [
-  ["高塔孤王", "孤云寒林", "远海夷地", "谧林涓露", "悠古弦音", "贡祭炽心", "奇巧秘器", "苍星军势"],
-  ["凛风奔狼", "雾海云间", "鸣神御灵", "绿洲花园", "纯圣露滴", "谵妄圣主", "长夜燧火", "藏窖灵浆"],
-  ["狮牙斗士", "漆黑陨铁", "今昔剧画", "烈日威权", "无垢之海", "神合秘烟", "终北遗嗣", "凛雪帝皇"],
+  [$t("panel.miao.talent-schedule.text_828d74d932"), $t("panel.miao.talent-schedule.text_31150d466e"), $t("panel.miao.talent-schedule.text_e6a9598ce3"), $t("panel.miao.talent-schedule.text_a3c05f4e26"), $t("panel.miao.talent-schedule.text_078a21e6a4"), $t("panel.miao.talent-schedule.text_1589fde18d"), $t("panel.miao.talent-schedule.text_572a0531b3"), $t("panel.miao.talent-schedule.text_0fdd1f3451")],
+  [$t("panel.miao.talent-schedule.text_b4bf15c35b"), $t("panel.miao.talent-schedule.text_fe0d4ec619"), $t("panel.miao.talent-schedule.text_02efd9770a"), $t("panel.miao.talent-schedule.text_d66f810d8e"), $t("panel.miao.talent-schedule.text_dd12b51ee9"), $t("panel.miao.talent-schedule.text_b76178420c"), $t("panel.miao.talent-schedule.text_27d8c2e1e8"), $t("panel.miao.talent-schedule.text_d798ab3d27")],
+  [$t("panel.miao.talent-schedule.text_3b2d9442c9"), $t("panel.miao.talent-schedule.text_39902f3379"), $t("panel.miao.talent-schedule.text_ff160b94de"), $t("panel.miao.talent-schedule.text_59f5bbd43f"), $t("panel.miao.talent-schedule.text_a884bc856b"), $t("panel.miao.talent-schedule.text_94a7637204"), $t("panel.miao.talent-schedule.text_bd269e5342"), $t("panel.miao.talent-schedule.text_6492a4ea65")],
 ] as const;

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { createRoleJsonArchive, type AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
 import { emptySession, type Pity, type WishSession } from "./draw.ts";
 import { record } from "./pools.ts";
@@ -98,7 +101,7 @@ function readData(value: unknown): SimulationData {
   const conversations = record(root?.conversations);
   if (!balance || !conversations || !nonnegative(balance.day, Number.MAX_SAFE_INTEGER) ||
     !nonnegative(balance.pink, Number.MAX_SAFE_INTEGER) || !nonnegative(balance.blue, Number.MAX_SAFE_INTEGER)) {
-    throw new TypeError("模拟祈愿存档无效。");
+    throw new TypeError($t("wish-sim.store.text_192265e5f5"));
   }
   for (const [key, raw] of Object.entries(conversations)) {
     const entry = record(raw);
@@ -113,16 +116,16 @@ function readData(value: unknown): SimulationData {
       !nonnegative(weapon.lifeNum, 1) || (weapon.target !== undefined && typeof weapon.target !== "string") ||
       (weapon.rotation !== undefined && typeof weapon.rotation !== "string") || !week ||
       !nonnegative(week.key, Number.MAX_SAFE_INTEGER) || !nonnegative(week.five, Number.MAX_SAFE_INTEGER)) {
-      throw new TypeError("模拟祈愿保底数据无效。");
+      throw new TypeError($t("wish-sim.store.text_a4e3fb60b7"));
     }
   }
   if (root?.flowerImported !== undefined && root.flowerImported !== true) {
-    throw new TypeError("模拟祈愿迁移记录无效。");
+    throw new TypeError($t("wish-sim.store.text_e55c9c4021"));
   }
   const trssLimits = record(root?.trssLimits);
   if (root?.trssLimits !== undefined && (!trssLimits || Object.entries(trssLimits).some(([key, carry]) =>
     !/^(?:private|[1-9]\d*)$/u.test(key) || !validLimitCarry(carry)))) {
-    throw new TypeError("旧模拟祈愿次数存档无效。");
+    throw new TypeError($t("wish-sim.store.text_8fb179f607"));
   }
   return { balance, conversations, flowerImported: root?.flowerImported, trssLimits } as unknown as SimulationData;
 }
@@ -133,7 +136,7 @@ export const wishWeeklyKey = (daily: number) => Math.floor((daily + 3) / 7);
 
 function wishArchive(directory: string, lock: AcquireRoleArchiveLock) {
   return createRoleJsonArchive(directory, lock, {
-    subject: "原神模拟祈愿", lockSuffix: "wish-lock", maxBytes: fileLimit, rejectNull: true,
+    subject: $t("wish-sim.store.text_93123d3162"), lockSuffix: "wish-lock", maxBytes: fileLimit, rejectNull: true,
   });
 }
 

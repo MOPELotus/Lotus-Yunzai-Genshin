@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../../packages/i18n/index.ts";
+import messageCatalog from "../../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { isDeepStrictEqual } from "node:util";
 import { isMap, parseDocument } from "yaml";
 import { GlobalConfigWriteError, updateLocalConfiguration } from "../../../../lib/lotus-global-config-write.ts";
@@ -6,9 +9,9 @@ import { damageConfigOverride, damageSettings, resolveDamageSettings } from "./c
 const features = {
   "伤害规则": "lolomicalc", "计算": "lolomicalc", "标配计算": "templateteam", "命座对比": "conscompare",
 } as const;
-const labels = { lolomicalc: "原神伤害规则", templateteam: "原神标配计算", conscompare: "原神命座对比" } as const;
+const labels = { lolomicalc: $t("panel.lolomi.settings-command.text_c19a2f1f04"), templateteam: $t("panel.lolomi.settings-command.text_739527eb47"), conscompare: $t("panel.lolomi.settings-command.text_3a737f79e6") } as const;
 const command = /^#\s*(?:(原神)\s*)?(伤害规则|计算|标配计算|命座对比)\s*(开启|启用|关闭|停用)\s*$/u;
-const ownerOnly = "只有当前机器人主人可以修改原神伤害设置。";
+const ownerOnly = $t("panel.lolomi.settings-command.text_4ba6c5fa6f");
 
 type Change = { key: typeof features[keyof typeof features]; enabled: boolean };
 interface Context {
@@ -49,15 +52,15 @@ export function createDamageSettingsCommand(signal: AbortSignal,
       });
       if (signal.aborted) return;
       const title = labels[key];
-      const state = enabled ? "开启" : "关闭";
+      const state = enabled ? $t("panel.lolomi.settings-command.text_8da97ddda9") : $t("panel.lolomi.settings-command.text_3fd47edce4");
       return damageSettings[key] === enabled
-        ? (changed ? `已保存${title}为${state}。` : `${title}已${state}。`)
-        : `${title}已保存为${state}，重启后生效。`;
+        ? (changed ? $t("panel.lolomi.settings-command.text_5cf27eac17", { "title": title, "state": state }) : $t("panel.lolomi.settings-command.text_4302da593b", { "title": title, "state": state }))
+        : $t("panel.lolomi.settings-command.text_440e94c45f", { "title": title, "state": state });
     } catch (error) {
       if (signal.aborted) return;
       if (!canWrite() || (error instanceof GlobalConfigWriteError && error.reason === "permission")) return ownerOnly;
-      if (error instanceof GlobalConfigWriteError && error.reason === "conflict") return "原神伤害设置正在更新，请稍后重试。";
-      return "无法保存原神伤害设置，请检查配置文件后重试。";
+      if (error instanceof GlobalConfigWriteError && error.reason === "conflict") return $t("panel.lolomi.settings-command.text_1c6a9cb5d0");
+      return $t("panel.lolomi.settings-command.text_694623e7f1");
     }
   };
 }

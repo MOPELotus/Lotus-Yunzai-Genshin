@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import { join } from "node:path";
@@ -18,11 +21,11 @@ export interface GenshinArchivedMonth {
   readonly snapshot: GenshinMonthlySnapshot;
 }
 
-const subject = "原石札记存档";
+const subject = $t("monthly-archive.text_96b21eef6c");
 const maxBytes = 4 * 1024 * 1024;
 
 function invalid(): never {
-  throw new Error(`${subject}内容或归属无效。`);
+  throw new Error($t("monthly-archive.text_648de7ec85", { "subject": subject }));
 }
 
 function object(value: unknown): Record<string, unknown> {

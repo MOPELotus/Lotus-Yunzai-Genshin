@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../../packages/i18n/index.ts";
+import messageCatalog from "../../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 // From resources/meta-gs/artifact/artis-mark.js and character/*/artis.js.
 /**
  * 角色的默认评分规则
@@ -147,7 +150,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['七七'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
@@ -162,7 +165,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['丽莎'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -179,7 +182,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['久岐忍'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -194,7 +197,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['云堇'] }
     if (artis.is('cpct,cdmg,def', 5) && (attr.cpct * 2 + attr.cdmg >= 240)) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.def = 100
       particularAttr.cpct = 100
@@ -211,11 +214,11 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['五郎'] }
     if (cons >= 4 && artis.is('heal', 5)) {
-      title.push('治疗')
+      title.push($t("panel.miao.character-artifact-rules.text_c81995fafd"))
       particularAttr.heal = 100
     }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.def = 100
       particularAttr.cpct = 100
@@ -232,7 +235,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['伊安珊'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
@@ -246,7 +249,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['伊法'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('直伤')
+      title.push($t("panel.miao.character-artifact-rules.text_bbf4ad35d9"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
@@ -259,8 +262,8 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
   "八重神子": function ({ artis, def }) {
     let title = []
     let particularAttr = { ...usefulAttr['八重神子'] }
-    if (artis.is('影中沉凝的幻灭4')) {
-      title.push('星超导')
+    if (artis.is($t("panel.miao.character-artifact-rules.text_d3d8ddc99a"))) {
+      title.push($t("panel.miao.character-artifact-rules.text_6144f0511d"))
       particularAttr.atk = 100
       particularAttr.mastery = 100
       particularAttr.dmg = 0
@@ -274,7 +277,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['兹白'] }
     if (weapon.name === '息燧之笛') {
-      title.push('息燧')
+      title.push($t("panel.miao.character-artifact-rules.text_c11f3065ce"))
       particularAttr.def = 75
     }
     if (title.length > 0) {
@@ -286,7 +289,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['凯亚'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -303,7 +306,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['刻晴'] }
     if (attr.mastery >= 80) {
-      title.push('精通')
+      title.push($t("panel.miao.character-artifact-rules.text_591f60433f"))
       particularAttr.mastery = 75
     }
     if (title.length > 0) {
@@ -315,7 +318,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['北斗'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.hp = 0
       particularAttr.atk = 75
       particularAttr.cpct = 100
@@ -332,7 +335,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['可莉'] }
     if (attr.mastery < 50) {
-      title.push('纯火')
+      title.push($t("panel.miao.character-artifact-rules.text_cd3f3c8b68"))
       particularAttr.atk = 85
       particularAttr.mastery = 0
     }
@@ -346,11 +349,11 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let particularAttr = { ...usefulAttr['哥伦比娅'] }
     let recharge = particularAttr.recharge
     if (weapon.name === '帷间夜曲') {
-      title.push('专武')
+      title.push($t("panel.miao.character-artifact-rules.text_2ab17bb8e1"))
       recharge -= 15
     }
     if (cons >= 4) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       recharge -= 15
     }
     if (title.length > 0) {
@@ -363,7 +366,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['坎蒂丝'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -380,7 +383,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['基尼奇'] }
     if (cons >= 1) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       particularAttr.atk = 100
       if (cons >= 4) {
         particularAttr.recharge = 35
@@ -395,7 +398,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['塔利雅'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -410,7 +413,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['夏沃蕾'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -425,7 +428,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['夏洛蒂'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 85
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -440,7 +443,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['多莉'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -456,16 +459,16 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
   "夜兰": function ({artis, cons, attr, weapon, def }) {
     let title = []
     let particularAttr = { ...usefulAttr['夜兰'] }
-    if (cons >= 1 && !artis.is('绝缘4')) {
-      title.push('高命')
+    if (cons >= 1 && !artis.is($t("panel.miao.character-artifact-rules.text_8f5c8dab18"))) {
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       particularAttr.recharge = 55
     }
     if (attr.mastery > 80) {
-      title.push('精通')
+      title.push($t("panel.miao.character-artifact-rules.text_591f60433f"))
       particularAttr.mastery = 75
     }
     if (weapon.name === '若水') {
-      title.push('若水')
+      title.push($t("panel.miao.character-artifact-rules.text_c491a3aa16"))
       particularAttr.hp = 100
     }
     if (title.length > 0) {
@@ -477,7 +480,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['奥黛塔'] }
     if (cons >= 4) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       particularAttr.recharge = 50
     }
     if (title.length > 0) {
@@ -489,7 +492,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['妮露'] }
     if (cons === 6) {
-      title.push('满命')
+      title.push($t("panel.miao.character-artifact-rules.text_dbf219e743"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
@@ -504,7 +507,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let particularAttr = { ...usefulAttr['娜维娅'] }
     let recharge = particularAttr.recharge
     if (cons >= 1) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       recharge -= 10
       if (cons == 6) {
         particularAttr.atk = 100
@@ -520,7 +523,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['宵宫'] }
     if (attr.mastery < 50) {
-      title.push('纯火')
+      title.push($t("panel.miao.character-artifact-rules.text_cd3f3c8b68"))
       particularAttr.atk = 85
       particularAttr.mastery = 0
     }
@@ -533,7 +536,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['布伦妮'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
@@ -547,7 +550,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['希格雯'] }
     if (cons === 6) {
-      title.push('满命')
+      title.push($t("panel.miao.character-artifact-rules.text_dbf219e743"))
       particularAttr.dmg = 100
       particularAttr.recharge = 100
       particularAttr.heal = 90
@@ -561,7 +564,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['希诺宁'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('战斗')
+      title.push($t("panel.miao.character-artifact-rules.text_a642a31e11"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
@@ -577,7 +580,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['托马'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -593,28 +596,28 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
   "旅行者": function ({ elem, attr, weapon, rule, def }) {
     switch (elem) {
       case 'anemo':
-        return rule('风主', { hp: 0, atk: 75, def: 0, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, phy: 0, recharge: 55, heal: 0 })
+        return rule($t("panel.miao.character-artifact-rules.text_cab4b215b0"), { hp: 0, atk: 75, def: 0, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, phy: 0, recharge: 55, heal: 0 })
       case 'geo':
-        return rule('岩主', { hp: 0, atk: 75, def: 0, cpct: 100, cdmg: 100, mastery: 0, dmg: 100, phy: 0, recharge: 55, heal: 0 })
+        return rule($t("panel.miao.character-artifact-rules.text_757578cfb0"), { hp: 0, atk: 75, def: 0, cpct: 100, cdmg: 100, mastery: 0, dmg: 100, phy: 0, recharge: 55, heal: 0 })
       case 'electro':
-        return rule('雷主', { hp: 0, atk: 75, def: 0, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, phy: 0, recharge: 75, heal: 0 })
+        return rule($t("panel.miao.character-artifact-rules.text_ba17e49fa9"), { hp: 0, atk: 75, def: 0, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, phy: 0, recharge: 75, heal: 0 })
       case 'dendro':
-        return rule('草主', { hp: 0, atk: 75, def: 0, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, phy: 0, recharge: 55, heal: 0 })
+        return rule($t("panel.miao.character-artifact-rules.text_f8e89aab20"), { hp: 0, atk: 75, def: 0, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, phy: 0, recharge: 55, heal: 0 })
       case 'hydro':
-        return rule('水主', { hp: 75, atk: 75, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, recharge: 55 })
+        return rule($t("panel.miao.character-artifact-rules.text_3ca9f8f408"), { hp: 75, atk: 75, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, recharge: 55 })
       case 'pyro':
-        return rule('火主', { hp: 0, atk: 75, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, recharge: 55 })
+        return rule($t("panel.miao.character-artifact-rules.text_6a4b997356"), { hp: 0, atk: 75, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, recharge: 55 })
       case 'cryo':
-        return rule('冰主', { hp: 0, atk: 75, cpct: 100, cdmg: 100, mastery: 75, dmg: 0, recharge: 55 })
+        return rule($t("panel.miao.character-artifact-rules.text_3ad7f3ae2c"), { hp: 0, atk: 75, cpct: 100, cdmg: 100, mastery: 75, dmg: 0, recharge: 55 })
       default:
-        return rule('旅行者', { hp: 0, atk: 75, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, recharge: 55 })
+        return rule($t("panel.miao.character-artifact-rules.text_4bf6868aa0"), { hp: 0, atk: 75, cpct: 100, cdmg: 100, mastery: 75, dmg: 100, recharge: 55 })
     }
   },
   "早柚": function ({ attr, def }) {
     let title = []
     let particularAttr = { ...usefulAttr['早柚'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -631,7 +634,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['杜林'] }
     if (cons > 0 && artis.is('atk', 4)) {
-      title.push('辅助')
+      title.push($t("panel.miao.character-artifact-rules.text_40d33aa115"))
       particularAttr.atk = 100
       particularAttr.mastery = 30
       particularAttr.dmg = 80
@@ -645,7 +648,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['枫原万叶'] }
     if (cons === 6) {
-      title.push('满命')
+      title.push($t("panel.miao.character-artifact-rules.text_dbf219e743"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -661,7 +664,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['柯莱'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -678,7 +681,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['桑多涅'] }
     if (cons >= 2) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       particularAttr.atk = 100
     }
     if (title.length > 0) {
@@ -689,14 +692,14 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
   "梦见月瑞希": function ({ artis, attr, cons, def }) {
     let title = []
     let particularAttr = { ...usefulAttr['梦见月瑞希'] }
-    if (attr.cpct * 2 + attr.cdmg >= 200 || artis.is('血红之证4')) {
-      title.push('星扩散')
+    if (attr.cpct * 2 + attr.cdmg >= 200 || artis.is($t("panel.miao.character-artifact-rules.text_98d78fed4c"))) {
+      title.push($t("panel.miao.character-artifact-rules.text_9c5554c0a5"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.recharge = 50
     }
     if (cons >= 4) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       particularAttr.recharge = 30
     }
     if (title.length > 0) {
@@ -708,14 +711,14 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['爱可菲'] }
     if ((weapon.bonusKey !== 'recharge' && attr.recharge >= 200) || (weapon.bonusKey === 'recharge' && attr.recharge >= 220)) {
-      title.push('纯辅')
+      title.push($t("panel.miao.character-artifact-rules.text_3a6800221e"))
       particularAttr.atk = 75
       particularAttr.cpct = 0
       particularAttr.cdmg = 0
       particularAttr.dmg = 0
       particularAttr.recharge = 100
       if (cons > 1) {
-        title.push('高命')
+        title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
         particularAttr.atk = 100
       }
     }
@@ -728,7 +731,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['爱诺'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -745,7 +748,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['玛拉妮'] }
     if (cons >= 4) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       particularAttr.recharge = 30
     }
     if (title.length > 0) {
@@ -757,7 +760,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['玛薇卡'] }
     if (attr.mastery < 50) {
-      title.push('纯火/超载')
+      title.push($t("panel.miao.character-artifact-rules.text_8ba7a5da57"))
       particularAttr.atk = 85
       particularAttr.mastery = 0
     }
@@ -770,11 +773,11 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['珊瑚宫心海'] }
     if (attr.mastery < 50) {
-      title.push('治疗/纯水输出')
+      title.push($t("panel.miao.character-artifact-rules.text_b97abfa953"))
       particularAttr.mastery = 0
     }
     if (artis.is('mastery', 3) || artis.is('mastery', 4) || artis.is('mastery', 5)) {
-      title.push('(月)绽放')
+      title.push($t("panel.miao.character-artifact-rules.text_46f0692a12"))
       particularAttr.mastery = 100
     }
     if (title.length > 0) {
@@ -786,7 +789,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['班尼特'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 100
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -802,7 +805,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['琳妮特'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -818,7 +821,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['琴'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
@@ -833,7 +836,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['瑶瑶'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -849,7 +852,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['瓦雷莎'] }
     if (cons == 6) {
-      title.push('满命')
+      title.push($t("panel.miao.character-artifact-rules.text_dbf219e743"))
       particularAttr.recharge = 0
     }
     if (title.length > 0) {
@@ -860,8 +863,8 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
   "甘雨": function ({ artis, def }) {
     let title = []
     let particularAttr = { ...usefulAttr['甘雨'] }
-    if (artis.is('冰套4')) {
-      title.push('永冻')
+    if (artis.is($t("panel.miao.character-artifact-rules.text_c770bd51c5"))) {
+      title.push($t("panel.miao.character-artifact-rules.text_12ae4f87cb"))
       particularAttr.mastery = 0
       particularAttr.recharge = 55
     }
@@ -874,13 +877,13 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['申鹤'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
     }
     if (cons > 0) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       particularAttr.recharge = 75
     }
     if (title.length > 0) {
@@ -892,7 +895,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['白术'] }
     if (cons === 6) {
-      title.push('满命')
+      title.push($t("panel.miao.character-artifact-rules.text_dbf219e743"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -908,7 +911,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['砂糖'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -923,7 +926,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
   "神里绫人": function ({ attr, rule, def }) {
     // 蒸发绫人，具体数值待定
     if (attr.mastery > 120) {
-      return rule('绫人-精通', { hp: 45, atk: 60, cpct: 100, cdmg: 100, mastery: 60, dmg: 100, recharge: 30 })
+      return rule($t("panel.miao.character-artifact-rules.text_d6fb71405a"), { hp: 45, atk: 60, cpct: 100, cdmg: 100, mastery: 60, dmg: 100, recharge: 30 })
     }
     return def({ hp: 50, atk: 75, cpct: 100, cdmg: 100, dmg: 100, recharge: 30 })
   },
@@ -931,7 +934,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['神里绫华'] }
     if (attr.mastery > 120) {
-      title.push('精通')
+      title.push($t("panel.miao.character-artifact-rules.text_591f60433f"))
       particularAttr.mastery = 75
       return def(particularAttr, title)
     }
@@ -941,7 +944,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['米卡'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -958,7 +961,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['米提亚'] }
     if (cons >= 1) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       particularAttr.recharge = 40
     }
     if (title.length > 0) {
@@ -970,7 +973,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['绮良良'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('战斗')
+      title.push($t("panel.miao.character-artifact-rules.text_a642a31e11"))
       particularAttr.hp = 50
       particularAttr.atk = 75
       particularAttr.cpct = 100
@@ -987,7 +990,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['罗莎莉亚'] }
     if (attr.cpct * 2 + attr.cdmg >= 255) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
@@ -1003,7 +1006,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['芙宁娜'] }
     if (cons >= 4) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       particularAttr.recharge = 75
       if (cons == 6) {
         particularAttr.mastery = 45
@@ -1011,7 +1014,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     }
     if (weapon.name === '西风剑' && attr.recharge >= 250) {
       title = []
-      title.push('西风纯辅')
+      title.push($t("panel.miao.character-artifact-rules.text_ad6df483cd"))
       particularAttr.hp = 0
       particularAttr.mastery = 0
       particularAttr.cpct = 100
@@ -1021,7 +1024,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     }
     if (weapon.name === '苍古自由之誓' && attr.recharge >= 220) {
       title = []
-      title.push('苍古纯辅')
+      title.push($t("panel.miao.character-artifact-rules.text_fa8371b388"))
       particularAttr.hp = 0
       particularAttr.mastery = 0
       particularAttr.cpct = 0
@@ -1031,7 +1034,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     }
     if (weapon.name === '圣显之钥' && attr.recharge >= 220) {
       title = []
-      title.push('板砖纯辅')
+      title.push($t("panel.miao.character-artifact-rules.text_fc3e55aba4"))
       particularAttr.hp = 100
       particularAttr.mastery = 0
       particularAttr.cpct = 0
@@ -1041,7 +1044,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     }
     if (weapon.name === '岩峰巡歌' && attr.recharge >= 220) {
       title = []
-      title.push('岩峰纯辅')
+      title.push($t("panel.miao.character-artifact-rules.text_c3753978cb"))
       particularAttr.hp = 0
       particularAttr.def = 100
       particularAttr.mastery = 0
@@ -1059,7 +1062,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['芭芭拉'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('暴力')
+      title.push($t("panel.miao.character-artifact-rules.text_67aa918d76"))
       particularAttr.hp = 50
       particularAttr.atk = 75
       particularAttr.cpct = 100
@@ -1070,7 +1073,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
       particularAttr.heal = 50
     }
     if (title.length > 0) {
-      return rule(`芭芭拉-${title.join('')}`, particularAttr)
+      return rule($t("panel.miao.character-artifact-rules.text_6fc1cb567d", { "value1": title.join('') }), particularAttr)
     }
     return def(usefulAttr['芭芭拉'])
   },
@@ -1078,11 +1081,11 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['茜特菈莉'] }
     if (cons >= 4) {
-      title.push('高命')
+      title.push($t("panel.miao.character-artifact-rules.text_2708328f1e"))
       particularAttr.recharge = 75
     }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('战斗')
+      title.push($t("panel.miao.character-artifact-rules.text_a642a31e11"))
       particularAttr.atk = 80
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -1097,7 +1100,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['莫娜'] }
     if (weapon.name === '西风秘典') {
-      title.push('西风')
+      title.push($t("panel.miao.character-artifact-rules.text_ece6f15b1e"))
       particularAttr.atk = 0
       particularAttr.mastery = 0
       particularAttr.cpct = 100
@@ -1106,7 +1109,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
       particularAttr.dmg = 0
     }
     if (weapon.name === '讨龙英杰谭') {
-      title.push('讨龙')
+      title.push($t("panel.miao.character-artifact-rules.text_82c7047815"))
       particularAttr.atk = 0
       particularAttr.mastery = 0
       particularAttr.cpct = 0
@@ -1123,7 +1126,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['莱依拉'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -1138,8 +1141,8 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
   "莱欧斯利": function ({ artis, def }) {
     let title = []
     let particularAttr = { ...usefulAttr['莱欧斯利'] }
-    if (artis.is('影中沉凝的幻灭4')) {
-      title.push('星超导')
+    if (artis.is($t("panel.miao.character-artifact-rules.text_d3d8ddc99a"))) {
+      title.push($t("panel.miao.character-artifact-rules.text_6144f0511d"))
       particularAttr.atk = 100
       particularAttr.mastery = 100
       particularAttr.dmg = 0
@@ -1153,7 +1156,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['菈乌玛'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('战斗')
+      title.push($t("panel.miao.character-artifact-rules.text_a642a31e11"))
       particularAttr.atk = 50
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -1168,7 +1171,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let particularAttr = { ...usefulAttr['菲林斯'] }
     let recharge = particularAttr.recharge
     if (weapon.name === '血染荒城') {
-      title.push('专武')
+      title.push($t("panel.miao.character-artifact-rules.text_2ab17bb8e1"))
       recharge -= 5
     }
     if (title.length > 0) {
@@ -1181,7 +1184,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['蓝砚'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.mastery = 80
@@ -1196,7 +1199,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['行秋'] }
     if (attr.mastery > 120) {
-      title.push('蒸发')
+      title.push($t("panel.miao.character-artifact-rules.text_d8c812aa9f"))
       particularAttr.mastery = 75
     }
     if (title.length > 0) {
@@ -1208,7 +1211,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['诺艾尔'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 50
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -1216,7 +1219,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
       particularAttr.recharge = 70
       if (!artis.is('dmg', 4) && attr.mastery > 80) {
         title = []
-        title.push('月结晶')
+        title.push($t("panel.miao.character-artifact-rules.text_1d1982c72c"))
         particularAttr.atk = 30
         particularAttr.dmg = 0
         particularAttr.mastery = 100
@@ -1230,13 +1233,13 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
   "赛诺": function ({ artis, weapon, def }) {
     let title = []
     let particularAttr = { ...usefulAttr['赛诺'] }
-    if (artis.is('影中沉凝的幻灭4')) {
-      title.push('星超导')
+    if (artis.is($t("panel.miao.character-artifact-rules.text_d3d8ddc99a"))) {
+      title.push($t("panel.miao.character-artifact-rules.text_6144f0511d"))
       particularAttr.mastery = 100
       particularAttr.dmg = 0
       particularAttr.recharge = 40
       if (weapon.name === '赤沙之杖') {
-        title.push('专武')
+        title.push($t("panel.miao.character-artifact-rules.text_2ab17bb8e1"))
         particularAttr.atk = 50
       }
     }
@@ -1249,7 +1252,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['迪奥娜'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.atk = 75
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
@@ -1265,7 +1268,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
   "迪希雅": function ({ attr, artis, rule, def }) {
     if (artis.is('hp', '3,4,5') && attr.hp > 40000 && attr.cpct * 2 + attr.cdmg < 100) {
       // 血牛迪希雅，其余词缀权重不高于41.84，确保小生命命中副词缀最高权重
-      return rule('迪希雅-血牛', { hp: 100, atk: 30, cpct: 41, cdmg: 41, recharge: 30 })
+      return rule($t("panel.miao.character-artifact-rules.text_e0f056b86a"), { hp: 100, atk: 30, cpct: 41, cdmg: 41, recharge: 30 })
     }
     return def({ hp: 75, atk: 75, cpct: 100, cdmg: 100, dmg: 100, phy: 0, recharge: 75 })
   },
@@ -1273,7 +1276,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['那维莱特'] }
     if (weapon.name === '万世流涌大典') {
-      title.push('专武')
+      title.push($t("panel.miao.character-artifact-rules.text_2ab17bb8e1"))
       particularAttr.recharge = 40
     }
     if (title.length > 0) {
@@ -1285,7 +1288,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['钟离'] }
     if (weapon.name === '西风长枪') {
-      title.push('西风')
+      title.push($t("panel.miao.character-artifact-rules.text_ece6f15b1e"))
       particularAttr.cpct = 100
     }
     if (attr.cpct * 2 + attr.cdmg > 240) {
@@ -1296,13 +1299,13 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
       particularAttr.dmg = 100
       particularAttr.recharge = 30
       if (attr.mastery > 100) {
-        title.push('月共鸣')
+        title.push($t("panel.miao.character-artifact-rules.text_f807b68425"))
         particularAttr.mastery = 100
       }
-      title.push('武神')
+      title.push($t("panel.miao.character-artifact-rules.text_7bb8908e14"))
     }
     if (title.length > 0) {
-      return rule(`钟离-${title.join('')}`, particularAttr)
+      return rule($t("panel.miao.character-artifact-rules.text_e3507685e2", { "value1": title.join('') }), particularAttr)
     }
     return def(usefulAttr['钟离'])
   },
@@ -1317,11 +1320,11 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
       recharge -= 30
     }
     if (recharge != particularAttr.recharge) {
-      title.push('高配')
+      title.push($t("panel.miao.character-artifact-rules.text_c63c900816"))
       particularAttr.recharge = recharge
     }
     if (cons === 6) {
-      title.push('战斗')
+      title.push($t("panel.miao.character-artifact-rules.text_a642a31e11"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
@@ -1336,7 +1339,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['阿罗夏'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.dmg = 100
@@ -1350,7 +1353,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['阿蕾奇诺'] }
     if (attr.mastery < 50) {
-      title.push('纯火')
+      title.push($t("panel.miao.character-artifact-rules.text_cd3f3c8b68"))
       particularAttr.atk = 85
       particularAttr.mastery = 0
     }
@@ -1363,7 +1366,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['雅珂达'] }
     if (attr.cpct * 2 + attr.cdmg >= 240) {
-      title.push('输出')
+      title.push($t("panel.miao.character-artifact-rules.text_fb04addb4c"))
       particularAttr.cpct = 100
       particularAttr.cdmg = 100
       particularAttr.mastery = 75
@@ -1378,7 +1381,7 @@ export const characterRules: Readonly<Record<string, (inputs: ArtifactRuleInputs
     let title = []
     let particularAttr = { ...usefulAttr['雷电将军'] }
     if (attr.mastery > 500) {
-      title.push('精通')
+      title.push($t("panel.miao.character-artifact-rules.text_591f60433f"))
       particularAttr.atk = 50
       particularAttr.cpct = 50
       particularAttr.cdmg = 50

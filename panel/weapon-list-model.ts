@@ -1,11 +1,14 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { avatarId, object, text, whole, type Json } from "./model.ts";
 
 export const weaponKinds = [
-  { key: "sword", name: "单手剑", icon: "单手剑" },
-  { key: "claymore", name: "双手剑", icon: "大剑" },
-  { key: "bow", name: "弓", icon: "弓" },
-  { key: "polearm", name: "长柄武器", icon: "枪" },
-  { key: "catalyst", name: "法器", icon: "法器" },
+  { key: "sword", name: $t("panel.weapon-list-model.text_672bf41f03"), icon: $t("panel.weapon-list-model.text_672bf41f03") },
+  { key: "claymore", name: $t("panel.weapon-list-model.text_3db03533c2"), icon: $t("panel.weapon-list-model.text_accf680837") },
+  { key: "bow", name: $t("panel.weapon-list-model.text_d97da89d3d"), icon: $t("panel.weapon-list-model.text_d97da89d3d") },
+  { key: "polearm", name: $t("panel.weapon-list-model.text_b4cc81a2da"), icon: $t("panel.weapon-list-model.text_ffd989e75a") },
+  { key: "catalyst", name: $t("panel.weapon-list-model.text_8f83d07fae"), icon: $t("panel.weapon-list-model.text_8f83d07fae") },
 ] as const;
 
 type WeaponKind = (typeof weaponKinds)[number]["key"];
@@ -40,7 +43,7 @@ export function buildWeaponList(uid: string, avatars: readonly Json[], character
     const refinement = whole(weapon?.affix_level, 5);
     if (!id || !role || !roleLevel || !roleRarity || !name || !level || refinement === undefined ||
         (rarity !== 2 && rarity !== 3 && rarity !== 4 && rarity !== 5)) {
-      throw new TypeError("米游社未返回完整的原神已装备武器数据。");
+      throw new TypeError($t("panel.weapon-list-model.text_358b0e7ac1"));
     }
     if (selection && selection !== rarity) return [];
     const kind = weaponKinds.find(type => type.name === weapon?.type_name)?.key;

@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { ProfileError, type createProfileStore } from "@lotus-yunzai/account";
 import type { createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -15,19 +18,19 @@ import { growthInventoryPlan, growthShortfall, type GrowthShortfall } from "./in
 import { calculateCharacterGrowth, calculateWeaponGrowth, characterTarget, currentCharacter, equippedWeaponTarget, exceedsTarget,
   growthHelp, matchGrowthCommand, publicCharacterGrowth, weaponTarget, type GrowthResult } from "./model.ts";
 
-const changed = "原神档案角色已变化，请重新计算。";
+const changed = $t("grow.command.text_fbeda0be29");
 const id = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 
 function fallback(model: GrowthCard, commaGroup?: number) {
   const fmt = (num: number) => groupPanelNumber(num.toLocaleString("zh-CN"), commaGroup);
   const shortage = model.shortfall && (model.shortfall.rows.length
-    ? `还需材料 · ${model.shortfall.rows.map(row => `${row.label} × ${fmt(row.num)}`).join("、")}`
-    : model.shortfall.complete ? "背包材料已足够" : "官方缺口资料不完整");
-  return [`${model.title} · 养成计算`, ...model.rows.map(row => `${row.title} ${row.from} → ${row.to}`),
-    `摩拉合计${model.inventoryMora === undefined ? "" : "（已扣除背包）"} ${fmt(model.inventoryMora ?? model.moraTotal)}`,
+    ? $t("grow.command.text_19b88d27f4", { "value1": model.shortfall.rows.map(row => `${row.label} × ${fmt(row.num)}`).join("、") })
+    : model.shortfall.complete ? $t("grow.command.text_5bd089c524") : $t("grow.command.text_32a23bc026"));
+  return [$t("grow.command.text_c4f46ef4f1", { "title": model.title }), ...model.rows.map(row => `${row.title} ${row.from} → ${row.to}`),
+    $t("grow.command.text_6a4835b968", { "value1": model.inventoryMora === undefined ? "" : $t("grow.command.text_5435d84d56"), "value2": fmt(model.inventoryMora ?? model.moraTotal) }),
     ...(shortage ? [shortage] : []),
     ...model.groups.flatMap(group => [`${group.title} · ${group.desc}`, group.items.length
-      ? group.items.map(row => `${row.label} × ${fmt(row.num)}`).join("、") : "已达成目标，无需额外材料"]), ...model.notice].join("\n");
+      ? group.items.map(row => `${row.label} × ${fmt(row.num)}`).join("、") : $t("grow.command.text_7954050e9b")]), ...model.notice].join("\n");
 }
 
 type Render = (...args: Parameters<typeof renderGrowthCard>) => Promise<{ readonly png: Uint8Array }>;
@@ -54,13 +57,13 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
       const directory = genshinGachaThemeDirectory();
       const [catalogue, theme] = await Promise.all([loadCatalogue(directory), loadTheme(directory)]);
       const match = resolveGenshinCatalogTarget(request.name, request.legacy ? { ...catalogue, weapons: new Map() } : catalogue);
-      if (match === "ambiguous") return "有多个原神角色或武器匹配，请使用完整名称计算。";
+      if (match === "ambiguous") return $t("grow.command.text_c70bbdc78f");
       matchedGrowth = matchedGrowth || !!match;
-      if (match && (["空", "荧", "旅行者"].includes(match.name))) return "旅行者暂不支持养成计算。";
+      if (match && ([$t("grow.command.text_2f8267a89a"), $t("grow.command.text_7182722358"), $t("grow.command.text_4bf6868aa0")].includes(match.name))) return $t("grow.command.text_eb9d692a07");
       if (request.legacy && !match) return;
-      if (!match) return `未找到「${request.name}」对应的原神角色或武器。`;
+      if (!match) return $t("grow.command.text_eb865d75f1", { "name": request.name });
       const target = await loadGrowthTarget(match.type, match.name, catalogue, theme);
-      if (!target) return `暂无${match.name}的养成材料数据。`;
+      if (!target) return $t("grow.command.text_759f8da0fe", { "name": match.name });
       const material = resolveGrowthMaterials(await theme.metadata?.("meta-gs", "material", "data.json"));
       const notice: string[] = [];
       let result, uid: string | undefined;
@@ -69,24 +72,24 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
       const qq = id(user_id) ? String(user_id) : undefined;
       if (target.type === "weapon") {
         const plan = weaponTarget(request, target.star);
-        if (!plan) return `${growthHelp}\n${target.name}的等级或突破超出该武器范围。`;
+        if (!plan) return $t("grow.command.text_64eb0e9f84", { "growthHelp": growthHelp, "name": target.name });
         result = calculateWeaponGrowth(target.materials, target.star, plan.from, plan.to, material, theme.commaGroup);
-        if (!request.from) notice.push("默认从1级开始计算，可指定起始等级。");
-        notice.push("80 表示升至80级未突破，80+ 表示80级已突破。");
+        if (!request.from) notice.push($t("grow.command.text_fd2d14b3a3"));
+        notice.push($t("grow.command.text_53753816f7"));
       } else {
         const plan = characterTarget(request);
-        if (!plan || request.legacy?.weaponLevel === 0) return `${growthHelp}\n角色等级最高90，天赋最高10。`;
+        if (!plan || request.legacy?.weaponLevel === 0) return $t("grow.command.text_fbc9e1a86b", { "growthHelp": growthHelp });
         let start = publicCharacterGrowth;
         let weaponGrowth: GrowthResult | undefined;
         if (plan.from) {
           start = { ...start, ...plan.from };
-          notice.push("已指定起始等级，天赋按1/1/1计算。");
+          notice.push($t("grow.command.text_f6ceb6917b"));
         } else {
           const role = qq && !(request.legacy && isDelegated) && await profiles.savedRole(qq, request.profileId, "gs").catch(error => {
             if (!(error instanceof ProfileError) || !["missing", "role-missing", "login-required"].includes(error.code)) throw error;
           });
-          if (request.uid && (!role || role.uid !== request.uid)) return "此 UID 与当前档案绑定的原神角色不一致。";
-          if (request.explicitProfile && !role) return `profile ${request.profileId} 没有同步原神 UID。`;
+          if (request.uid && (!role || role.uid !== request.uid)) return $t("grow.command.text_be2f3f1646");
+          if (request.explicitProfile && !role) return $t("grow.command.text_028a00ae63", { "profileId": request.profileId });
           const localSource = qq && role && !isDelegated && await profiles.requestContext?.(qq, request.profileId, "gs").catch(() => undefined);
           const source = localSource && role && localSource.qq === qq && localSource.profileId === request.profileId &&
             localSource.role.uid === role.uid && localSource.role.region === role.region && localSource.role.gameBiz === role.gameBiz
@@ -104,10 +107,10 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
           if (current && (request.legacy || !exceedsTarget(current, plan))) {
             start = current;
           } else if (current && exceedsTarget(current, plan)) {
-            notice.push("本地角色练度已超过目标，按公开基线等级1、天赋1/1/1计算。");
+            notice.push($t("grow.command.text_d512d4df41"));
           } else {
-            notice.push(saved ? "本地等级、突破或天赋资料不完整，按公开基线等级1、天赋1/1/1计算。"
-              : "暂无本地角色面板，按公开基线等级1、天赋1/1/1计算。");
+            notice.push(saved ? $t("grow.command.text_c0ced839de")
+              : $t("grow.command.text_b94f3edb6c"));
           }
           if (request.legacy) {
             legacy = { characterId: target.id, cons: saved?.cons };
@@ -119,11 +122,11 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
               weaponGrowth = calculateWeaponGrowth(weapon.materials, weapon.star, weaponPlan.from, weaponPlan.to, material, theme.commaGroup);
               if (weaponGrowth) {
                 legacy = { ...legacy, weapon: { name: weapon.name, icon: weapon.icon, star: weapon.star, result: weaponGrowth } };
-                notice.push(`武器按当前装备「${weapon.name}」计算。`);
+                notice.push($t("grow.command.text_3f19f2491b", { "name": weapon.name }));
               }
             }
-            if (!weaponGrowth) notice.push(equipped ? "当前武器的养成资料不完整，未计入武器材料。"
-              : "未取得该角色的现用武器，未计入武器材料。");
+            if (!weaponGrowth) notice.push(equipped ? $t("grow.command.text_073176b59e")
+              : $t("grow.command.text_6fea7994dd"));
           }
           if (qq && role && (start !== publicCharacterGrowth || live || weaponGrowth)) {
             if (start !== publicCharacterGrowth || weaponGrowth || live) uid = role.uid;
@@ -140,30 +143,30 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
         }
         result = calculateCharacterGrowth(target.materials, start, plan, material, theme.commaGroup);
         if (result && weaponGrowth) result = { ...result, moraTotal: result.moraTotal + weaponGrowth.moraTotal,
-          rows: [...result.rows, ...weaponGrowth.rows.map(row => ({ ...row, title: `武器${row.title}` }))],
-          groups: [...result.groups, ...weaponGrowth.groups.map(group => ({ ...group, title: `武器${group.title}` }))] };
-        notice.push("天赋按不含命座加成的等级计算，经验未扣除当前等级内已有经验。",
-          `可指定方向：#养成计算 ${target.name} 等级89 天赋 10 9 10（80+ 表示80级已突破）`);
+          rows: [...result.rows, ...weaponGrowth.rows.map(row => ({ ...row, title: $t("grow.command.text_ce70167d0c", { "title": row.title }) }))],
+          groups: [...result.groups, ...weaponGrowth.groups.map(group => ({ ...group, title: $t("grow.command.text_ce70167d0c", { "title": group.title }) }))] };
+        notice.push($t("grow.command.text_24998d8dd4"),
+          $t("grow.command.text_b8888c25fb", { "name": target.name }));
       }
       if (signal.aborted) return;
-      if (!result) return `暂无${target.name}的养成材料数据。`;
+      if (!result) return $t("grow.command.text_759f8da0fe", { "name": target.name });
       let shortfall: GrowthShortfall | undefined;
       let inventoryMora: number | undefined;
       const allowInventory = !request.legacy && !isDelegated && (message_type === "private" || (message_type === "group" && request.deductInventory));
       if (allowInventory && client && profiles.requestContext && result.groups.some(group => group.items.length)) {
         const source = qq ? await profiles.requestContext(qq, request.profileId, "gs").catch(() => undefined) : undefined;
         if (!source) {
-          if (request.deductInventory) notice.push("请先登录当前档案并同步原神角色，已保留本地总需求。");
+          if (request.deductInventory) notice.push($t("grow.command.text_b5f8843d3c"));
         } else if (source.qq !== qq || source.profileId !== request.profileId ||
           (request.uid && request.uid !== source.role.uid) || (uid && uid !== source.role.uid)) {
-          notice.push("当前账号与计算角色不一致，已保留本地总需求。");
+          notice.push($t("grow.command.text_c53c819d47"));
         } else if (source.role.gameBiz === "hk4e_global" || source.role.region.startsWith("os_")) {
-          notice.push("国际服暂不支持扣除背包材料，已保留本地总需求。");
+          notice.push($t("grow.command.text_94f5a91bbe"));
         } else if (!source.account.cookie || !source.device.id || !source.device.fp) {
-          notice.push("当前档案缺少 Cookie 或设备资料，已保留本地总需求。");
+          notice.push($t("grow.command.text_df001bfd1e"));
         } else {
           const item = growthInventoryPlan(target, result);
-          if (!item) notice.push("暂无可核对的官方天赋编号，已保留本地总需求。");
+          if (!item) notice.push($t("grow.command.text_ebad6af35b"));
           else {
             const balance = await client.fetchGenshinGrowth(source, { item, signal }).catch(() => undefined);
             if (balance && balance.uid === source.role.uid && (!source.role.region || source.role.region === balance.region) && balance.items.length) {
@@ -176,10 +179,10 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
               };
               shortfall = growthShortfall(balance, result, material);
               if (shortfall.complete && uid === balance.uid) inventoryMora = shortfall.mora;
-              notice.unshift(`米游社已核对 UID ${balance.uid} 的背包（含可合成材料），数据可能有延迟。`);
-              if (!shortfall.complete) notice.push("官方未覆盖全部本地需求，缺项的库存无法判断。");
+              notice.unshift($t("grow.command.text_803a80c8f9", { "uid": balance.uid }));
+              if (!shortfall.complete) notice.push($t("grow.command.text_bfff4805bc"));
             } else {
-              notice.push("米游社未能核验背包，已保留本地总需求。");
+              notice.push($t("grow.command.text_b3aa0f5a01"));
             }
           }
         }
@@ -192,7 +195,7 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
       if (!await verify()) return signal.aborted ? undefined : changed;
       return png ? { type: "image" as const, file: png } : fallback(model, theme.commaGroup);
     } catch {
-      if (matchedGrowth && !signal.aborted) return "暂时无法读取原神养成资料，请检查本地主题和面板。";
+      if (matchedGrowth && !signal.aborted) return $t("grow.command.text_82aa898cdc");
     }
   };
 }

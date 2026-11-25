@@ -1,6 +1,9 @@
+import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
+import messageCatalog from "../i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 const catalogUrl = "https://api-static.mihoyo.com/common/blackboard/ys_obc/v1/home/content/list?app_sn=ys_obc&channel_id=189";
 const pageUrl = "https://api-takumi-static.mihoyo.com/hoyowiki/genshin/wapi/entry_page?app_sn=ys_obc&lang=zh-cn&entry_page_id=";
-export const voiceLanguages = ["汉语", "日语", "韩语", "英语"] as const;
+export const voiceLanguages = [$t("voice.source.text_65312c5c6c"), $t("voice.source.text_3a944ddb38"), $t("voice.source.text_259cdcf751"), $t("voice.source.text_d1648bacbc")] as const;
 export type VoiceLanguage = typeof voiceLanguages[number];
 export interface VoiceClip { readonly audio: string; readonly text: string }
 export interface VoiceLine {
@@ -140,7 +143,7 @@ export function createVoiceSource(request: typeof fetch = fetch, now = Date.now)
       const traveler = travelers.get(name);
       const id = traveler ?? (await source.catalog(signal))?.get(name);
       if (!id) return;
-      const pageName = traveler ? `旅行者语音展示（${name}）` : name;
+      const pageName = traveler ? $t("voice.source.text_1d582ab339", { "name": name }) : name;
       return parseCharacterVoices(await readJson(pageUrl + id, request, signal, 2 * 1024 * 1024), id, name, pageName);
     },
     async audio(clip: VoiceClip, signal: AbortSignal) {

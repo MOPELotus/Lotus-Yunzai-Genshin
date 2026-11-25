@@ -1,3 +1,6 @@
+import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
+import messageCatalog from "./i18n/zh-CN.json";
+const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { renderGenshinCardForChat } from "./card-render.ts";
 import type { GenshinPayLog } from "./pay-log-model.ts";
 import { nativeGenshinResourcesDirectory, originalFonts } from "./panel/personal-record-card.ts";
@@ -83,7 +86,7 @@ function monthly(ctx: Drawing, model: GenshinPayLog, top: number, font: string) 
   line(ctx, [[end, bottom], [end, bottom + 5]], "#6e7079");
   ctx.fillStyle = barGradient(ctx, top + 19, top + 5);
   ctx.beginPath(); ctx.roundRect(35, top + 5, 25, 14, 3); ctx.fill();
-  text(ctx, "金额", 65, top + 12, 12, { font: sans, color: "#333" });
+  text(ctx, $t("pay-log-card.text_ffc624300d"), 65, top + 12, 12, { font: sans, color: "#333" });
 }
 
 function detail(ctx: Drawing, model: GenshinPayLog, top: number, font: string) {
@@ -115,7 +118,7 @@ function detail(ctx: Drawing, model: GenshinPayLog, top: number, font: string) {
     }
   }
   text(ctx, `￥${model.paid}`, 495, top + 14, 18, { font: sans, color: "#464646", align: "right", bold: true });
-  text(ctx, "总充值", 495, top + 39, 12, { font: sans, color: "#6e7079", align: "right" });
+  text(ctx, $t("pay-log-card.text_79177e08c0"), 495, top + 39, 12, { font: sans, color: "#6e7079", align: "right" });
   let x = 50, y = top + 257;
   for (const [i, slice] of slices.entries()) {
     ctx.font = `12px ${sans}`;
@@ -134,27 +137,27 @@ export async function renderGenshinPayLog(model: GenshinPayLog, { mode = "auto",
   const [font, resource] = await Promise.all([originalFonts(root, "font", undefined, serif), readPanelTheme(root, "")]);
   const logo = await resource.picture("img", "other", "原神.png");
   const summary: readonly (readonly [string, string | number])[] = [
-    ["总消费", `￥${model.paid}`], ["总结晶", model.crystal], ["消费最多", model.highest?.name ?? "—"],
-    [model.highest ? `${model.highest.name}消费` : "单月最高", `￥${model.highest?.amount ?? 0}`],
+    [$t("pay-log-card.text_1eba71d830"), `￥${model.paid}`], [$t("pay-log-card.text_ac4f035ae9"), model.crystal], [$t("pay-log-card.text_bbb1adb4ca"), model.highest?.name ?? "—"],
+    [model.highest ? $t("pay-log-card.text_e1fc0876cb", { "name": model.highest.name }) : $t("pay-log-card.text_be0753e9cc"), `￥${model.highest?.amount ?? 0}`],
     ...model.purchases.map(row => [row.name, row.count] as const),
   ];
   return renderGenshinCardForChat(width, 1059, ctx => {
     ctx.fillStyle = "#f5f6fb"; ctx.fillRect(0, 0, width, 1059);
     panel(ctx, 20, 76, undefined, "#f5f6fb");
     text(ctx, `ID: ${model.uid}`, 35, 44, 24, { font });
-    text(ctx, "充值统计", 35, 73, 20, { font, bold: true });
+    text(ctx, $t("pay-log-card.text_7384e3f2c9"), 35, 73, 20, { font, bold: true });
     if (logo) ctx.drawImage(logo, 403, 21, 97, 97 * logo.height / logo.width);
-    panel(ctx, 116, 205, "数据总览");
+    panel(ctx, 116, 205, $t("pay-log-card.text_3c5118f194"));
     summary.forEach(([label, value], i) => {
       const y = [136, 198, 257][Math.floor(i / 4)]!;
       const x = 88.75 + i % 4 * 117.5;
       text(ctx, value, x, y + (/月$/u.test(String(value)) ? 16 : 14), 24, { font, align: "center", maxWidth: 101 });
       text(ctx, label, x, y + (/月$/u.test(String(value)) ? 41 : 38), 14, { color: "#7f858a", align: "center", maxWidth: 103 });
     });
-    panel(ctx, 341, 325, "月份统计");
+    panel(ctx, 341, 325, $t("pay-log-card.text_b7de033bc5"));
     monthly(ctx, model, 361, font);
-    panel(ctx, 686, 325, "详细统计");
+    panel(ctx, 686, 325, $t("pay-log-card.text_56e3db2f46"));
     detail(ctx, model, 706, font);
-    text(ctx, "Created By Lotus-Yunzai", width / 2, 1040, 14, { font, color: "#000", align: "center" });
+    text(ctx, $t("pay-log-card.text_d41c915582"), width / 2, 1040, 14, { font, color: "#000", align: "center" });
   }, mode, { displayWidth: 689, inlineImageByteLimit, signal });
 }
