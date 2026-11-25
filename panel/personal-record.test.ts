@@ -414,3 +414,80 @@ test("尘歌壶透传当前会话上限，2× 仍超限时只提示", async () =
     await rm(root, { recursive: true, force: true });
   }
 });
+
+const displayGroupingFixture = {
+  ...data,
+  world_explorations: [
+    { id: 1, name: "蒙德", exploration_percentage: 900, level: 4 },
+    { id: 2, name: "璃月", exploration_percentage: 300, level: 2 },
+    { id: 3, name: "龙脊雪山", exploration_percentage: 1000, offerings: [{ name: "忍冬之树", level: 12 }] },
+    { id: 6, name: "层岩巨渊", exploration_percentage: 200, offerings: [{ name: "流明石触媒", level: 4 }] },
+    { id: 7, name: "层岩巨渊·地下矿区", exploration_percentage: 500 },
+    { id: 10, name: "沉玉谷", exploration_percentage: 0, offerings: [{ name: "祀珑典仪", level: 6 }] },
+    { id: 13, name: "沉玉谷·上谷", exploration_percentage: 400 },
+  ],
+};
+const officialGrouping = [
+  { exploration_id: 1, group: { items: [{ area_ids: [3], exploration_percentage: 1000 }] } },
+  { exploration_id: 2, group: { items: [
+    { area_ids: [6, 7], exploration_percentage: 471 },
+    { area_ids: [10, 13], exploration_percentage: 624 },
+  ] } },
+];
+
+test("官方探索组合百分比优先，声望与被并入区域的供奉资料仍保留且不挤入父卡", () => {
+  const result = buildPersonalExploration(role.uid, role.region,
+    { ...displayGroupingFixture, world_exploration_display: officialGrouping })!;
+  expect(result.regions.find(row => row.id === 2)?.details).toEqual([
+    { label: "璃月", value: "30%" }, { label: "声望", value: "2级" },
+    { label: "层岩巨渊", value: "47.1%" }, { label: "沉玉谷", value: "62.4%" },
+  ]);
+  expect(result.regions.find(row => row.id === 1)?.details).toContainEqual({ label: "龙脊雪山", value: "100%" });
+  expect(result.regions.find(row => row.id === 3)).toEqual({ id: 3, name: "雪山", details: [{ label: "忍冬之树", value: "12级" }] });
+  expect(result.regions.find(row => row.id === 6)?.details).toEqual([{ label: "流明石", value: "4级" }]);
+  expect(result.regions.find(row => row.id === 10)?.details).toEqual([{ label: "祀珑典仪", value: "6级" }]);
+  expect(result.regions.some(row => row.id === 7 || row.id === 13)).toBe(false);
+  expect(result.regions.every(row => row.details.length <= 4)).toBe(true);
+});
+
+test("探索缺组、坏格式、未知区域、重复父组及循环均回退旧资料，不丢整卡", () => {
+  const legacy = buildPersonalExploration(role.uid, role.region, displayGroupingFixture)!;
+  for (const display of [undefined, null, {}, [], [{ exploration_id: 2 }],
+    [{ exploration_id: 10, group: { items: [] } }],
+    [{ exploration_id: 2, group: { items: "bad" } }],
+    [{ exploration_id: 2, group: { items: [{ area_ids: [999], exploration_percentage: 300 }] } }],
+    [{ exploration_id: 2, group: { items: [{ area_ids: [6, 7], exploration_percentage: 1001 }] } }],
+    [officialGrouping[1], officialGrouping[1]],
+    [{ exploration_id: 1, group: { items: [{ area_ids: [2], exploration_percentage: 300 }] } },
+      { exploration_id: 2, group: { items: [{ area_ids: [1], exploration_percentage: 300 }] } }],
+  ]) {
+    expect(buildPersonalExploration(role.uid, role.region,
+      { ...displayGroupingFixture, world_exploration_display: display })?.regions).toEqual(legacy.regions);
+  }
+});
+
+test("探索部分新组保留未映射区域，错误子项不覆盖有效聚合与零值", () => {
+  const result = buildPersonalExploration(role.uid, role.region, { ...displayGroupingFixture,
+    world_exploration_display: [{ exploration_id: 2, group: { items: [
+      { area_ids: [6, 7], exploration_percentage: 0 },
+      { area_ids: [10, 999], exploration_percentage: 300 },
+      { area_ids: [6, 7], exploration_percentage: 900 },
+    ] } }],
+  })!;
+  expect(result.regions.find(row => row.id === 2)?.details).toContainEqual({ label: "层岩巨渊", value: "0%" });
+  expect(result.regions.find(row => row.id === 2)?.details.filter(row => row.label === "层岩巨渊")).toHaveLength(1);
+  expect(result.regions.find(row => row.id === 10)?.details).toContainEqual({ label: "沉玉谷·上谷", value: "40%" });
+  expect(result.regions.find(row => row.id === 3)?.details).toContainEqual({ label: "忍冬之树", value: "12级" });
+  const nested = buildPersonalExploration(role.uid, role.region, { ...displayGroupingFixture,
+    world_explorations: [...displayGroupingFixture.world_explorations,
+      { id: 12, name: "沉玉谷·南陵", exploration_percentage: 210 }, { id: 11, name: "来歆山", exploration_percentage: 0 }],
+    world_exploration_display: [{ exploration_id: 10, group: { items: [
+      { area_ids: [13], exploration_percentage: 650 },
+      { area_ids: [12, 999], exploration_percentage: 800 },
+    ] } }],
+  })!;
+  expect(nested.regions.find(row => row.id === 10)?.details).toEqual(expect.arrayContaining([
+    { label: "沉玉谷·上谷", value: "65%" }, { label: "沉玉谷·南陵", value: "21%" },
+    { label: "来歆山", value: "0%" }, { label: "祀珑典仪", value: "6级" },
+  ]));
+});

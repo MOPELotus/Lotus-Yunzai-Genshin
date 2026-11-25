@@ -96,16 +96,19 @@ export function buildPersonalExploration(uid: string, region: string, data: Json
     const amount = whole(area?.exploration_percentage, 1000);
     return amount === undefined ? undefined : `${amount / 10}%`;
   };
-  const regions: Area[] = [];
+  const legacyRegions: Area[] = [];
+  const extraDetails = new Map<number, ExplorationMetric[]>();
   for (const [id, row] of [...areas].sort(([a], [b]) => b - a)) {
     if (hiddenAreas.has(id)) continue;
     const title = areaNames[id] || name(row.name, 18);
     if (!title) continue;
     const details = id === 10 ? [] : [metric(title, percent(row))];
+    const extras: ExplorationMetric[] = [];
     if (reputationAreas.has(id)) {
       const level = whole(row.level, 100);
-      if (level !== undefined) details.push(metric("声望", `${level}级`));
+      if (level !== undefined) extras.push(metric("声望", `${level}级`));
     }
+    details.push(...extras);
     for (const child of nestedAreas[id] ?? []) {
       const value = percent(areas.get(child));
       if (value !== undefined) details.push(metric(areaNames[child]!, value));
@@ -114,10 +117,63 @@ export function buildPersonalExploration(uid: string, region: string, data: Json
       const offering = object(row.offerings[0]);
       const label = name(offering?.name, 22).replace(/^.*流明石.*$/u, "流明石").replace(/^.*摹忆中枢.*$/u, "摹忆中枢");
       const level = whole(offering?.level, 100);
-      if (label && level !== undefined) details.push(metric(label, `${level}级`));
+      if (label && level !== undefined) {
+        const offering = metric(label, `${level}级`);
+        details.push(offering);
+        extras.push(offering);
+      }
     }
-    regions.push({ id, name: title, details });
+    extraDetails.set(id, extras);
+    legacyRegions.push({ id, name: title, details });
   }
+  // Official display percentages can cover several raw areas. They are not
+  // interchangeable with any one area's percentage (e.g. Chasm surface).
+  const displays = new Map<number, unknown[]>();
+  const duplicateDisplays = new Set<number>();
+  for (const value of Array.isArray(data.world_exploration_display) ? data.world_exploration_display.slice(0, 100) : []) {
+    const row = object(value), id = whole(row?.exploration_id, 10_000), group = object(row?.group);
+    if (!id || !areas.has(id) || !Array.isArray(group?.items) || group.items.length > 100) continue;
+    if (displays.has(id)) { duplicateDisplays.add(id); continue; }
+    displays.set(id, group.items);
+  }
+  for (const id of duplicateDisplays) displays.delete(id);
+  const officialDetails = new Map<number, ExplorationMetric[]>();
+  const consumed = new Set<number>();
+  const areaTitle = (id: number) => name(areas.get(id)?.name, 18) || areaNames[id] || "";
+  for (const [parent, items] of displays) {
+    const grouped: ExplorationMetric[] = [];
+    for (const value of items) {
+      const item = object(value), ids = item?.area_ids;
+      const amount = whole(item?.exploration_percentage, 1000);
+      if (!Array.isArray(ids) || !ids.length || ids.length > 100 || amount === undefined ||
+          ids.some(id => typeof id !== "number" || !Number.isSafeInteger(id) || !areas.has(id) ||
+            id === parent || displays.has(id) || consumed.has(id)) || new Set(ids).size !== ids.length) continue;
+      const id = ids.find(id => id === 6 || id === 10) ?? ids[0];
+      const title = areaTitle(id);
+      if (!title) continue;
+      grouped.push(metric(title, `${amount / 10}%`));
+      for (const id of ids) consumed.add(id);
+    }
+    // Empty or corrupt groups must not suppress the legacy presentation.
+    if (grouped.length) officialDetails.set(parent, grouped);
+  }
+  const regions = legacyRegions.flatMap(area => {
+    const official = officialDetails.get(area.id);
+    if (official) {
+      const title = areaTitle(area.id) || area.name;
+      const unmapped = (nestedAreas[area.id] ?? []).flatMap(id => {
+        const value = percent(areas.get(id));
+        return !consumed.has(id) && value !== undefined ? [metric(areaNames[id] || areaTitle(id), value)] : [];
+      });
+      return [{ ...area, name: title, details: [metric(title, percent(areas.get(area.id))),
+        ...(extraDetails.get(area.id) ?? []), ...official, ...unmapped] }];
+    }
+    if (!consumed.has(area.id)) return [area];
+    // Retain old offerings/reputation in their own compact card, rather than
+    // discarding them or overflowing the fixed-height official parent card.
+    const extras = extraDetails.get(area.id) ?? [];
+    return extras.length ? [{ ...area, details: extras }] : [];
+  });
   const displayRegion = gameRegionDisplayName("gs", region, name(role?.region_name), name(regionName), name(role?.region));
   return { uid, region: displayRegion, name: name(role?.nickname) || `#${uid}`, level: whole(role?.level, 100),
     avatar: normalizeProfileRoleArtworkUrl(role?.game_head_icon), rows, regions,
