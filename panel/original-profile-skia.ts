@@ -1,3 +1,4 @@
+import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { layoutTrialDamageTitles, trialDamageTitleLineHeight } from "../../../lib/panel-trial-display.ts";
 import { createHash } from "node:crypto";
 import { access } from "node:fs/promises";
@@ -101,6 +102,7 @@ export function typeset(ctx: Drawing, faces: Faces) {
     ctx.fillStyle = color;
     ctx.textAlign = align;
     ctx.textBaseline = "alphabetic";
+    if (value === "Lotus-Yunzai") ctx.fillStyle = brandTextColor(ctx, value, x, y, maxWidth);
     if (maxWidth !== undefined) ctx.fillText(String(value), x, y, maxWidth);
     else ctx.fillText(String(value), x, y);
   }

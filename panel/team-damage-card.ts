@@ -1,3 +1,4 @@
+import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { Canvas } from "skia-canvas";
 import { renderGenshinCardForChat } from "../card-render.ts";
 import { genshinGachaThemeDirectory } from "../gacha-detail-source.ts";
@@ -93,6 +94,7 @@ export async function renderTeamDamage(card: TeamDamageCard, theme: PanelTheme, 
     ctx.fillStyle = color;
     ctx.textBaseline = "top";
     ctx.textAlign = align;
+    if (value === "Lotus-Yunzai") ctx.fillStyle = brandTextColor(ctx, value, x, y);
     ctx.fillText(value, x, y);
   }
   function table({ header, rows, widths = header.map(() => tableWidth / header.length), faces }: Table) {

@@ -1,3 +1,4 @@
+import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { loadOfficialArtwork, loadPublicQqAvatar } from "@lotus-yunzai/account";
 import { loadImage } from "skia-canvas";
 import { nativeImageRasterScale } from "@lotus-yunzai/skia";
@@ -40,6 +41,7 @@ function drawText(ctx: Drawing, value: string | number, x: number, baseline: num
 }: { readonly family?: string; readonly color?: string; readonly align?: CanvasTextAlign; readonly width?: number } = {}) {
   useFont(ctx, family, size);
   ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
+  if (value === "Created By Lotus-Yunzai") ctx.fillStyle = brandTextColor(ctx, value, x, baseline, limit);
   ctx.fillText(String(value), x, baseline, limit);
 }
 

@@ -1,3 +1,4 @@
+import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { miaoTemplateFont } from "../../../lib/game-template-fonts.ts";
 import { layoutTrialDamageTitles, trialDamageTitleLineHeight } from "../../../lib/panel-trial-display.ts";
 import { Canvas } from "skia-canvas";
@@ -42,6 +43,7 @@ function label(ctx: Context, value: string, x: number, y: number, size: number, 
   ctx.font = `600 ${size}px ${fontFor(ctx, size)}`;
   const width = ctx.measureText(value).width;
   if (width > maxWidth) ctx.font = `600 ${Math.max(5, Math.floor(size * maxWidth / width))}px ${fontFor(ctx, size)}`;
+  if (value === "Lotus-Yunzai") ctx.fillStyle = brandTextColor(ctx, value, x, y);
   ctx.fillText(value, x, y);
 }
 

@@ -1,3 +1,4 @@
+import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { flowerTemplateFont } from "../../../lib/game-template-fonts.ts";
 import { builtinResourceDirectory } from "../../../lib/builtin-resources.ts";
 import { readFile } from "node:fs/promises";
@@ -44,6 +45,7 @@ function text(ctx: Context, value: string, x: number, y: number, size: number, c
   ctx.fillStyle = color;
   const width = ctx.measureText(value).width;
   if (width > maxWidth) ctx.font = `600 ${Math.floor(size * maxWidth / width)}px ${font}`;
+  if (value === "Lotus-Yunzai") ctx.fillStyle = brandTextColor(ctx, value, x, y);
   ctx.fillText(value, x, y);
 }
 

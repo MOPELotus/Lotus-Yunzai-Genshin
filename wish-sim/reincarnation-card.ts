@@ -1,3 +1,4 @@
+import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { realpath, stat } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { loadPublicQqAvatar } from "@lotus-yunzai/account";
@@ -45,6 +46,7 @@ function text(ctx: DrawingContext, value: string, x: number, baseline: number, s
     ctx.strokeText(value, x, baseline, maxWidth);
   }
   ctx.fillStyle = color;
+  if (value === "Lotus-Yunzai · Genshin") ctx.fillStyle = brandTextColor(ctx, value, x, baseline, maxWidth);
   ctx.fillText(value, x, baseline, maxWidth);
 }
 

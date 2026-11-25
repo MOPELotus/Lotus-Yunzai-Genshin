@@ -1,3 +1,4 @@
+import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { builtinResourceDirectory } from "../../../lib/builtin-resources.ts";
 import { createHash, randomInt } from "node:crypto";
 import { resolve } from "node:path";
@@ -63,6 +64,7 @@ function typeset(ctx: Drawing, family: string) {
     ctx.textAlign = align;
     const measured = ctx.measureText(text).width;
     if (measured > width) ctx.font = `600 ${Math.max(5, Math.floor(size * width / measured))}px ${family}`;
+    if (text === "Lotus-Yunzai") ctx.fillStyle = brandTextColor(ctx, text, x, y);
     ctx.fillText(text, x, y);
   };
 }

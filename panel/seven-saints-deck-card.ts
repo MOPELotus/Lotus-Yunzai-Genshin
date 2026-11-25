@@ -1,3 +1,4 @@
+import { brandTextColor } from "@lotus-yunzai/skia/brand-color";
 import { loadOfficialArtwork } from "@lotus-yunzai/account";
 import type { GenshinDeck, GenshinDeckCard, GenshinDeckList, GenshinGcgCollection, GenshinGcgCollectionCard } from "@lotus-yunzai/hoyo-client";
 import { renderGenshinCard } from "../card-render.ts";
@@ -111,7 +112,9 @@ export async function renderSevenSaintsDeck(record: Pick<GenshinDeckList, "uid" 
       ctx.font = `${size}px ${font}`;
       const measuredWidth = ctx.measureText(normalized).width;
       if (measuredWidth > maxWidth) ctx.font = `${Math.max(7, Math.floor(size * maxWidth / measuredWidth))}px ${font}`;
-      ctx.fillStyle = ink; ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.fillText(normalized, x, y);
+      ctx.fillStyle = ink; ctx.textAlign = align; ctx.textBaseline = "middle";
+      if (normalized.includes("Lotus-Yunzai")) ctx.fillStyle = brandTextColor(ctx, normalized, x, y);
+      ctx.fillText(normalized, x, y);
     }
     function panel(x: number, y: number, w: number, h: number) {
       ctx.save(); ctx.shadowColor = "#0002"; ctx.shadowBlur = 9; ctx.shadowOffsetY = 5;
