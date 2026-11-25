@@ -5,543 +5,543 @@
   "description": "原神",
   "sections": {
     "achievement-card": {
-      "description": "原神：图片卡片",
+      "description": "原神成就图片卡片渲染",
       "source": "plugins/genshin/achievement-card.ts"
     },
     "achievement-command": {
-      "description": "原神：命令",
+      "description": "原神成就查询与导入命令处理",
       "source": "plugins/genshin/achievement-command.ts"
     },
     "achievement-progress": {
-      "description": "原神",
+      "description": "原神成就导出数据解析、合辑名称规范化及进度存档读写模块",
       "source": "plugins/genshin/achievement-progress.ts"
     },
     "backpack": {
-      "description": "原神：背包",
+      "description": "原神养成计算器背包材料查询与分页回复",
       "source": "plugins/genshin/backpack.ts"
     },
     "backpack-materials": {
-      "description": "原神：背包",
+      "description": "原神背包材料分类归组处理",
       "source": "plugins/genshin/backpack-materials.ts"
     },
     "birthday-photo": {
-      "description": "原神",
+      "description": "原神留影叙佳期生日画片获取与领取交互",
       "source": "plugins/genshin/birthday-photo.ts"
     },
     "card-render": {
-      "description": "原神：图片卡片 · 图片渲染",
+      "description": "原神卡片图片渲染与单图体积超限降级处理",
       "source": "plugins/genshin/card-render.ts"
     },
     "commission-command": {
-      "description": "原神：命令",
+      "description": "原神每日委托攻略及成就查询指令处理",
       "source": "plugins/genshin/commission-command.ts"
     },
     "gacha-detail": {
-      "description": "原神：抽卡记录",
+      "description": "解析与校验原神逐抽历史记录及分页参数，构建抽卡详情统计模型",
       "source": "plugins/genshin/gacha-detail.ts"
     },
     "gacha-detail-source": {
-      "description": "原神：抽卡记录",
+      "description": "原神祈愿卡池历史排期数据修正与匹配",
       "source": "plugins/genshin/gacha-detail-source.ts"
     },
     "gacha-history": {
-      "description": "原神：抽卡记录",
+      "description": "校验与合并原神抽卡记录快照及旧版导出文件数据",
       "source": "plugins/genshin/gacha-history.ts"
     },
     "gacha-import": {
-      "description": "原神：抽卡记录",
+      "description": "处理原神抽卡记录文件导入、档案校验异常映射与导入结果摘要输出",
       "source": "plugins/genshin/gacha-import.ts"
     },
     "gacha-pool": {
-      "description": "原神：抽卡记录",
+      "description": "解析原神历史卡池资料，匹配角色/武器与版本并计算复刻间隔与状态",
       "source": "plugins/genshin/gacha-pool.ts"
     },
     "gacha-pool-command": {
-      "description": "原神：抽卡记录 · 命令",
+      "description": "处理历史卡池与复刻查询命令，输出帮助说明、卡池图片卡片或文本回退列表",
       "source": "plugins/genshin/gacha-pool-command.ts"
     },
     "gacha-repair": {
-      "description": "原神：抽卡记录",
+      "description": "原神：抽卡记录全量修复",
       "source": "plugins/genshin/gacha-repair.ts"
     },
     "gacha-result-card": {
-      "description": "原神：抽卡记录 · 图片卡片",
+      "description": "原神：抽卡同步结果卡片",
       "source": "plugins/genshin/gacha-result-card.ts"
     },
     "gacha-special": {
-      "description": "原神：抽卡记录",
+      "description": "构建原神常规卡池与新手池的抽卡统计展示数据。",
       "source": "plugins/genshin/gacha-special.ts"
     },
     "gacha-store": {
-      "description": "原神：抽卡记录",
+      "description": "提供原神抽卡历史文件的加锁读写、校验与故障恢复。",
       "source": "plugins/genshin/gacha-store.ts"
     },
     "gacha-sync": {
-      "description": "原神：抽卡记录",
+      "description": "协调并控制原神抽卡记录同步任务的并发与档案一致性校验。",
       "source": "plugins/genshin/gacha-sync.ts"
     },
     "gacha-uigf": {
-      "description": "原神：抽卡记录",
+      "description": "解析、校验并完成原神抽卡记录与 UIGF 格式的导入导出转换。",
       "source": "plugins/genshin/gacha-uigf.ts"
     },
     "gacha-version": {
-      "description": "原神：抽卡记录",
+      "description": "按版本卡池分组统计与分页构建原神抽卡记录",
       "source": "plugins/genshin/gacha-version.ts"
     },
     "grow.blueprint": {
-      "description": "原神",
+      "description": "处理尘歌壶模数查询命令、档案校验及异常提示",
       "source": "plugins/genshin/grow/blueprint.ts"
     },
     "grow.blueprint-card": {
-      "description": "原神：图片卡片",
+      "description": "渲染尘歌壶模数摆设与所需材料图片卡片",
       "source": "plugins/genshin/grow/blueprint-card.ts"
     },
     "grow.card": {
-      "description": "原神：图片卡片",
+      "description": "渲染原神角色与武器养成材料计算结果图片卡片",
       "source": "plugins/genshin/grow/card.ts"
     },
     "grow.command": {
-      "description": "原神：命令",
+      "description": "原神养成计算指令处理、背包核验与文本结果格式化",
       "source": "plugins/genshin/grow/command.ts"
     },
     "grow.legacy-card": {
-      "description": "原神：图片卡片",
+      "description": "原神养成计算旧版图片卡片渲染",
       "source": "plugins/genshin/grow/legacy-card.ts"
     },
     "grow.model": {
-      "description": "原神",
+      "description": "原神角色与武器养成材料计算模型及指令帮助",
       "source": "plugins/genshin/grow/model.ts"
     },
     "grow.tables": {
-      "description": "原神",
+      "description": "原神角色天赋键位与基础养成非材料图鉴物品（摩拉、经验书、魔矿、智识之冕）配置表",
       "source": "plugins/genshin/grow/tables.ts"
     },
     "index": {
-      "description": "原神",
+      "description": "原神插件主入口与抽卡记录、面板、挑战等指令分发",
       "source": "plugins/genshin/index.ts"
     },
     "monthly-archive": {
-      "description": "原神：月历",
+      "description": "原石札记存档读取与校验",
       "source": "plugins/genshin/monthly-archive.ts"
     },
     "monthly-card": {
-      "description": "原神：月历 · 图片卡片",
+      "description": "原神原石札记月度详情图片卡片渲染及主题资源校验模块",
       "source": "plugins/genshin/monthly-card.ts"
     },
     "monthly-command": {
-      "description": "原神：月历 · 命令",
+      "description": "原神原石札记查询指令解析、月份匹配、数据拉取与异常回复模块",
       "source": "plugins/genshin/monthly-command.ts"
     },
     "monthly-statistics-card": {
-      "description": "原神：月历 · 图片卡片",
+      "description": "原神原石月度汇总统计图片卡片与可视化图表渲染模块",
       "source": "plugins/genshin/monthly-statistics-card.ts"
     },
     "monthly-statistics-command": {
-      "description": "原神：月历 · 命令",
+      "description": "原神原石统计查询命令处理",
       "source": "plugins/genshin/monthly-statistics-command.ts"
     },
     "monthly-task": {
-      "description": "原神：月历",
+      "description": "原神原石札记定时归档任务",
       "source": "plugins/genshin/monthly-task.ts"
     },
     "owned-role": {
-      "description": "原神",
+      "description": "原神已绑定角色校验与读取",
       "source": "plugins/genshin/owned-role.ts"
     },
     "panel.abyss-team-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "原神深渊配队推荐卡片渲染",
       "source": "plugins/genshin/panel/abyss-team-card.ts"
     },
     "panel.abyss-team-command": {
-      "description": "原神：面板 · 命令",
+      "description": "处理 #深渊配队 命令：校验档案与角色练度并生成深渊 12 层配队建议",
       "source": "plugins/genshin/panel/abyss-team-command.ts"
     },
     "panel.abyss-team-model": {
-      "description": "原神：面板",
+      "description": "获取、校验并缓存深渊配队公开统计数据",
       "source": "plugins/genshin/panel/abyss-team-model.ts"
     },
     "panel.artifact-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "圣遗物详情、评分明细及评分规则表格卡片渲染",
       "source": "plugins/genshin/panel/artifact-card.ts"
     },
     "panel.artifact-score": {
-      "description": "原神：面板",
+      "description": "圣遗物评分规则筛选、词条权重计算与得分评级",
       "source": "plugins/genshin/panel/artifact-score.ts"
     },
     "panel.avatar-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "原神角色卡片的关系称呼映射与适用角色列表定义模块",
       "source": "plugins/genshin/panel/avatar-card.ts"
     },
     "panel.avatar-card-render": {
-      "description": "原神：面板 · 图片卡片 · 图片渲染",
+      "description": "角色展示卡片图片绘制与武器、天赋、圣遗物摘要渲染",
       "source": "plugins/genshin/panel/avatar-card-render.ts"
     },
     "panel.card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "原神角色面板与伤害汇总图片卡片渲染模块",
       "source": "plugins/genshin/panel/card.ts"
     },
     "panel.daily-material-refresh": {
-      "description": "原神：面板 · 每日便笺",
+      "description": "原神每日素材角色数据的拉取与本地存档刷新模块",
       "source": "plugins/genshin/panel/daily-material-refresh.ts"
     },
     "panel.daily-materials": {
-      "description": "原神：面板 · 每日便笺",
+      "description": "原神每日天赋与武器突破素材角色归类模块",
       "source": "plugins/genshin/panel/daily-materials.ts"
     },
     "panel.damage": {
-      "description": "原神：面板",
+      "description": "原神角色伤害计算、面板属性校验与Buff/武器/命座规则解析",
       "source": "plugins/genshin/panel/damage.ts"
     },
     "panel.damage-detail-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "原神伤害详情卡片绘制，含伤害表、词条收益矩阵、Buff列表及临时试算提示",
       "source": "plugins/genshin/panel/damage-detail-card.ts"
     },
     "panel.damage-preferences": {
-      "description": "原神：面板",
+      "description": "原神伤害计算敌人等级偏好的本地存档读写与旧版偏好迁移",
       "source": "plugins/genshin/panel/damage-preferences.ts"
     },
     "panel.equipment-change": {
-      "description": "原神：面板",
+      "description": "构建角色面板的临时换装与属性试算方案，支持跨角色借用武器/圣遗物及武器、等级、命座与天赋的临时调整。",
       "source": "plugins/genshin/panel/equipment-change.ts"
     },
     "panel.group-rank": {
-      "description": "原神：面板 · 群管理",
+      "description": "原神群面板排行的成员登记校验、数据拉取与排行查询",
       "source": "plugins/genshin/panel/group-rank.ts"
     },
     "panel.group-rank-card": {
-      "description": "原神：面板 · 群管理 · 图片卡片",
+      "description": "原神群面板排行结果的图片卡片渲染",
       "source": "plugins/genshin/panel/group-rank-card.ts"
     },
     "panel.group-rank-model": {
-      "description": "原神：面板 · 群管理",
+      "description": "原神群面板排行的排名模式定义与指令解析",
       "source": "plugins/genshin/panel/group-rank-model.ts"
     },
     "panel.help-card": {
-      "description": "原神：面板 · 帮助 · 图片卡片",
+      "description": "原神角色面板与群排行指令的帮助卡片生成",
       "source": "plugins/genshin/panel/help-card.ts"
     },
     "panel.image-commands": {
-      "description": "原神：面板 · 命令",
+      "description": "角色面板图列表查询与删除命令处理",
       "source": "plugins/genshin/panel/image-commands.ts"
     },
     "panel.image-library": {
-      "description": "原神：面板",
+      "description": "角色面板图的目录校验、序号记录解析与移除操作",
       "source": "plugins/genshin/panel/image-library.ts"
     },
     "panel.lolomi.artifact-rules": {
-      "description": "原神：面板",
+      "description": "部分角色的圣遗物评分流派规则定义",
       "source": "plugins/genshin/panel/lolomi/artifact-rules.ts"
     },
     "panel.lolomi.config": {
-      "description": "原神：面板 · 配置",
+      "description": "伤害计算引擎与圣遗物评分等配置项的校验",
       "source": "plugins/genshin/panel/lolomi/config.ts"
     },
     "panel.lolomi.engine.DmgAttr": {
-      "description": "原神：面板",
+      "description": "伤害计算引擎中元素精通反应加成属性映射",
       "source": "plugins/genshin/panel/lolomi/engine/DmgAttr.ts"
     },
     "panel.lolomi.engine.DmgCalcMeta": {
-      "description": "原神：面板",
+      "description": "面板伤害计算引擎的元素反应与击破伤害元数据定义",
       "source": "plugins/genshin/panel/lolomi/engine/DmgCalcMeta.ts"
     },
     "panel.lolomi.native": {
-      "description": "原神：面板",
+      "description": "原神武器与圣遗物原生特效计算规则构建",
       "source": "plugins/genshin/panel/lolomi/native.ts"
     },
     "panel.lolomi.presets": {
-      "description": "原神：面板",
+      "description": "原神公共预设面板加载与换装指令解析",
       "source": "plugins/genshin/panel/lolomi/presets.ts"
     },
     "panel.lolomi.settings-command": {
-      "description": "原神：面板 · 设置 · 命令",
+      "description": "原神面板伤害计算、标配计算与命座对比开关命令处理",
       "source": "plugins/genshin/panel/lolomi/settings-command.ts"
     },
     "panel.miao.character-artifact-rules": {
-      "description": "原神：面板",
+      "description": "原神角色圣遗物有效词条权重与配装规则定义",
       "source": "plugins/genshin/panel/miao/character-artifact-rules.ts"
     },
     "panel.miao.talent-schedule": {
-      "description": "原神：面板 · 排期",
+      "description": "定义各地区名称以及角色天赋与武器突破素材的每日秘境轮换排期表",
       "source": "plugins/genshin/panel/miao/talent-schedule.ts"
     },
     "panel.model": {
-      "description": "原神：面板",
+      "description": "原神角色面板数据解析、属性标签映射与指令匹配模型",
       "source": "plugins/genshin/panel/model.ts"
     },
     "panel.original-profile": {
-      "description": "原神：面板 · 档案",
+      "description": "整理角色属性、数据源及圣遗物词条标签等原版面板数据并调用渲染",
       "source": "plugins/genshin/panel/original-profile.ts"
     },
     "panel.original-profile-skia": {
-      "description": "原神：面板 · 档案",
+      "description": "使用 Skia 绘制原版样式的角色属性、圣遗物评级与伤害明细面板图",
       "source": "plugins/genshin/panel/original-profile-skia.ts"
     },
     "panel.panel": {
-      "description": "原神：面板",
+      "description": "原神角色面板查询、更新、删除及练度统计命令处理",
       "source": "plugins/genshin/panel/panel.ts"
     },
     "panel.panel-file": {
-      "description": "原神：面板",
+      "description": "在私聊会话中校验身份与档案状态并导出发送原神面板文件",
       "source": "plugins/genshin/panel/panel-file.ts"
     },
     "panel.panel-list-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "原神角色面板列表图片卡片绘制与渲染模块",
       "source": "plugins/genshin/panel/panel-list-card.ts"
     },
     "panel.panel-transfer": {
-      "description": "原神：面板",
+      "description": "原神面板数据迁移与合并写入校验模块",
       "source": "plugins/genshin/panel/panel-transfer.ts"
     },
     "panel.personal-challenge": {
-      "description": "原神：面板",
+      "description": "个人深境螺旋与幻想真境剧诗战绩查询命令处理",
       "source": "plugins/genshin/panel/personal-challenge.ts"
     },
     "panel.personal-challenge-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "原神深境螺旋与幻想真境剧诗个人挑战数据图片卡片渲染",
       "source": "plugins/genshin/panel/personal-challenge-card.ts"
     },
     "panel.personal-challenge-model": {
-      "description": "原神：面板",
+      "description": "原神深境螺旋与幻想真境剧诗个人挑战数据模型构建",
       "source": "plugins/genshin/panel/personal-challenge-model.ts"
     },
     "panel.personal-exploration-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "个人探索度与七圣召唤数据总览图片卡片渲染",
       "source": "plugins/genshin/panel/personal-exploration-card.ts"
     },
     "panel.personal-exploration-model": {
-      "description": "原神：面板",
+      "description": "构建个人探索统计、宝箱神瞳及区域探索度数据模型",
       "source": "plugins/genshin/panel/personal-exploration-model.ts"
     },
     "panel.personal-hard-challenge": {
-      "description": "原神：面板",
+      "description": "原神幽境危战查询与图片渲染入口",
       "source": "plugins/genshin/panel/personal-hard-challenge.ts"
     },
     "panel.personal-hard-challenge-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "绘制幽境危战战绩信息图片卡片",
       "source": "plugins/genshin/panel/personal-hard-challenge-card.ts"
     },
     "panel.personal-hard-challenge-model": {
-      "description": "原神：面板",
+      "description": "原神幽境危战数据模型构建",
       "source": "plugins/genshin/panel/personal-hard-challenge-model.ts"
     },
     "panel.personal-record": {
-      "description": "原神：面板",
+      "description": "个人角色名单与探索度查询指令处理及状态错误提示",
       "source": "plugins/genshin/panel/personal-record.ts"
     },
     "panel.personal-record-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "原神个人战绩与角色名单卡片渲染",
       "source": "plugins/genshin/panel/personal-record-card.ts"
     },
     "panel.personal-record-model": {
-      "description": "原神：面板",
+      "description": "原神个人战绩与探索度数据模型构建",
       "source": "plugins/genshin/panel/personal-record-model.ts"
     },
     "panel.personal-theater-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "绘制幻想真境剧诗个人战绩总览与各幕挑战详情图片卡片",
       "source": "plugins/genshin/panel/personal-theater-card.ts"
     },
     "panel.refreshed-talents": {
-      "description": "原神：面板",
+      "description": "本地角色天赋 JSON 存档校验及面板快照天赋数据合入",
       "source": "plugins/genshin/panel/refreshed-talents.ts"
     },
     "panel.seven-saints-deck-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "分页排版并绘制七圣召唤卡组列表、卡组详情及卡牌收集图鉴卡片",
       "source": "plugins/genshin/panel/seven-saints-deck-card.ts"
     },
     "panel.seven-saints-decks": {
-      "description": "原神：面板",
+      "description": "七圣召唤牌组与卡牌收藏查询",
       "source": "plugins/genshin/panel/seven-saints-decks.ts"
     },
     "panel.showcase-client": {
-      "description": "原神：面板 · 角色展柜",
+      "description": "请求、限流冷却及解析原神公开展板角色与圣遗物数据",
       "source": "plugins/genshin/panel/showcase-client.ts"
     },
     "panel.showcase-command": {
-      "description": "原神：面板 · 角色展柜 · 命令",
+      "description": "处理公开展板更新查询指令、档案校验及面板图片渲染",
       "source": "plugins/genshin/panel/showcase-command.ts"
     },
     "panel.showcase-config": {
-      "description": "原神：面板 · 角色展柜 · 配置",
+      "description": "读取并校验原神公开展板数据源配置项",
       "source": "plugins/genshin/panel/showcase-config.ts"
     },
     "panel.showcase-storage": {
-      "description": "原神：面板 · 角色展柜",
+      "description": "以独立目录存储并隔离校验原神公开展板 JSON 数据",
       "source": "plugins/genshin/panel/showcase-storage.ts"
     },
     "panel.statistics": {
-      "description": "原神：面板",
+      "description": "汇总角色天赋培养材料、周本材料及开放周期统计",
       "source": "plugins/genshin/panel/statistics.ts"
     },
     "panel.stygian-consent": {
-      "description": "原神：面板",
+      "description": "幽境群榜群成员数据授权确认与撤回管理",
       "source": "plugins/genshin/panel/stygian-consent.ts"
     },
     "panel.stygian-group-rank": {
-      "description": "原神：面板 · 群管理",
+      "description": "幽境危战群内排名查询与多数据源汇总",
       "source": "plugins/genshin/panel/stygian-group-rank.ts"
     },
     "panel.stygian-personal-score": {
-      "description": "原神：面板",
+      "description": "幽境群榜个人本地战绩存档与同步",
       "source": "plugins/genshin/panel/stygian-personal-score.ts"
     },
     "panel.stygian-rank-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "幽境危战群榜排名图片卡片渲染",
       "source": "plugins/genshin/panel/stygian-rank-card.ts"
     },
     "panel.talent-refresh": {
-      "description": "原神：面板",
+      "description": "从米游社拉取原神角色天赋等级并同步更新本地天赋档案",
       "source": "plugins/genshin/panel/talent-refresh.ts"
     },
     "panel.tarot-cards": {
-      "description": "原神：面板",
+      "description": "月谕圣牌收藏查询、群聊交换记录存档与可互换群友匹配",
       "source": "plugins/genshin/panel/tarot-cards.ts"
     },
     "panel.tarot-cards-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "月谕圣牌收藏与群交换匹配结果的图片卡片渲染",
       "source": "plugins/genshin/panel/tarot-cards-card.ts"
     },
     "panel.team-damage": {
-      "description": "原神：面板",
+      "description": "处理原神队伍伤害查询命令、发送授权提示并输出文本或图片结果",
       "source": "plugins/genshin/panel/team-damage.ts"
     },
     "panel.team-damage-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "队伍伤害模拟结果（总览、成员属性、输出手法、时间轴与增益）的图片卡片渲染",
       "source": "plugins/genshin/panel/team-damage-card.ts"
     },
     "panel.team-damage-command": {
-      "description": "原神：面板 · 命令",
+      "description": "解析原神队伍伤害查询指令参数、预设配队别名映射并校验角色面板",
       "source": "plugins/genshin/panel/team-damage-command.ts"
     },
     "panel.team-damage-model": {
-      "description": "原神：面板",
+      "description": "构建原神队伍伤害请求负载及解析提瓦特小助手返回结果",
       "source": "plugins/genshin/panel/team-damage-model.ts"
     },
     "panel.theater-statistics": {
-      "description": "原神：面板",
+      "description": "统计幻想真境剧诗的限制元素、可参战角色与首领关卡信息",
       "source": "plugins/genshin/panel/theater-statistics.ts"
     },
     "panel.training-roster": {
-      "description": "原神：面板",
+      "description": "管理与读取原神练度统计角色名册档案",
       "source": "plugins/genshin/panel/training-roster.ts"
     },
     "panel.training-statistics-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "绘制原神角色面板练度统计与剧诗分片图片卡片",
       "source": "plugins/genshin/panel/training-statistics-card.ts"
     },
     "panel.weapon-list": {
-      "description": "原神：面板",
+      "description": "处理原神已装备武器查询指令及错误提示",
       "source": "plugins/genshin/panel/weapon-list.ts"
     },
     "panel.weapon-list-card": {
-      "description": "原神：面板 · 图片卡片",
+      "description": "绘制原神已装备武器列表图片卡片",
       "source": "plugins/genshin/panel/weapon-list-card.ts"
     },
     "panel.weapon-list-model": {
-      "description": "原神：面板",
+      "description": "构建并校验原神已装备武器列表数据模型",
       "source": "plugins/genshin/panel/weapon-list-model.ts"
     },
     "pay-log-card": {
-      "description": "原神：图片卡片",
+      "description": "绘制原神充值统计图片卡片",
       "source": "plugins/genshin/pay-log-card.ts"
     },
     "pay-log-command": {
-      "description": "原神：命令",
+      "description": "原神充值记录查询、私聊授权更新及旧账本读取命令处理",
       "source": "plugins/genshin/pay-log-command.ts"
     },
     "pay-log-model": {
-      "description": "原神",
+      "description": "原神充值账本商品档位定义与旧版账本数据解析校验",
       "source": "plugins/genshin/pay-log-model.ts"
     },
     "public-statistics": {
-      "description": "原神",
+      "description": "原神公共角色持有率、命座分布及深渊/幽境危战使用率数据组装与命令处理",
       "source": "plugins/genshin/public-statistics.ts"
     },
     "public-statistics-card": {
-      "description": "原神：图片卡片",
+      "description": "原神公共角色持有率与使用率统计图片卡片绘制",
       "source": "plugins/genshin/public-statistics-card.ts"
     },
     "rank-statistics.custom-rank": {
-      "description": "原神",
+      "description": "原神全服排行公开面板渲染",
       "source": "plugins/genshin/rank-statistics/custom-rank.ts"
     },
     "rank-statistics.stats": {
-      "description": "原神",
+      "description": "原神角色排名趋势统计查询",
       "source": "plugins/genshin/rank-statistics/stats.ts"
     },
     "voice.card": {
-      "description": "原神：图片卡片",
+      "description": "原神角色语音列表图片生成",
       "source": "plugins/genshin/voice/card.ts"
     },
     "voice.command": {
-      "description": "原神：命令",
+      "description": "原神角色语音查询与播放命令",
       "source": "plugins/genshin/voice/command.ts"
     },
     "voice.source": {
-      "description": "原神",
+      "description": "原神角色语音数据源接口及语种常量定义模块",
       "source": "plugins/genshin/voice/source.ts"
     },
     "wish-calendar": {
-      "description": "原神：模拟祈愿 · 日历",
+      "description": "原神模拟祈愿卡池日历缓存检查、下载与本地保存模块",
       "source": "plugins/genshin/wish-calendar.ts"
     },
     "wish-sim.admin": {
-      "description": "原神：模拟祈愿",
+      "description": "原神模拟祈愿管理员设置命令解析与配置摘要模块",
       "source": "plugins/genshin/wish-sim/admin.ts"
     },
     "wish-sim.admin-pools": {
-      "description": "原神：模拟祈愿",
+      "description": "原神模拟祈愿自定义卡池物品校验与随机生成模块",
       "source": "plugins/genshin/wish-sim/admin-pools.ts"
     },
     "wish-sim.card": {
-      "description": "原神：模拟祈愿 · 图片卡片",
+      "description": "原神模拟祈愿单抽与多连结果卡片图片渲染模块",
       "source": "plugins/genshin/wish-sim/card.ts"
     },
     "wish-sim.commands": {
-      "description": "原神：模拟祈愿 · 命令",
+      "description": "处理模拟祈愿指令、武器定轨、余额查询、设置管理及每日限抽汇总",
       "source": "plugins/genshin/wish-sim/commands.ts"
     },
     "wish-sim.draw": {
-      "description": "原神：模拟祈愿",
+      "description": "实现模拟祈愿的抽卡概率计算、保底与武器定轨判定",
       "source": "plugins/genshin/wish-sim/draw.ts"
     },
     "wish-sim.import-legacy-cli": {
-      "description": "原神：模拟祈愿",
+      "description": "提供旧版模拟祈愿及 TRSS 限抽数据迁移的命令行工具入口",
       "source": "plugins/genshin/wish-sim/import-legacy-cli.ts"
     },
     "wish-sim.legacy-import": {
-      "description": "原神：模拟祈愿",
+      "description": "从旧版 Redis/Valkey 读取、校验并导入授权账号的模拟祈愿记录",
       "source": "plugins/genshin/wish-sim/legacy-import.ts"
     },
     "wish-sim.pools": {
-      "description": "原神：模拟祈愿",
+      "description": "读取并校验模拟祈愿卡池与设置的 YAML 配置文件",
       "source": "plugins/genshin/wish-sim/pools.ts"
     },
     "wish-sim.reincarnation": {
-      "description": "原神：模拟祈愿",
+      "description": "原神角色转生功能与冷却管理",
       "source": "plugins/genshin/wish-sim/reincarnation.ts"
     },
     "wish-sim.reincarnation-card": {
-      "description": "原神：模拟祈愿 · 图片卡片",
+      "description": "原神转生结果图片卡片渲染",
       "source": "plugins/genshin/wish-sim/reincarnation-card.ts"
     },
     "wish-sim.store": {
-      "description": "原神：模拟祈愿",
+      "description": "模拟祈愿存档校验与数据迁移存储",
       "source": "plugins/genshin/wish-sim/store.ts"
     },
     "wish-sim.trss-daily-import": {
-      "description": "原神：模拟祈愿 · 每日便笺",
+      "description": "旧版 TRSS 每日限抽次数从隔离副本导入",
       "source": "plugins/genshin/wish-sim/trss-daily-import.ts"
     },
     "world-boss": {
-      "description": "原神",
+      "description": "世界 BOSS 击杀数查询与排行展示",
       "source": "plugins/genshin/world-boss.ts"
     },
     "world-boss-ranking": {
-      "description": "原神",
+      "description": "世界 BOSS 排行摘要存储与管理",
       "source": "plugins/genshin/world-boss-ranking.ts"
     },
     "world-boss-ranking-import": {
-      "description": "原神",
+      "description": "旧版世界 BOSS 榜单数据校验与导入",
       "source": "plugins/genshin/world-boss-ranking-import.ts"
     }
   },
@@ -646,8 +646,8 @@
     "backpack-materials.text_d9f0750f4e": "角色突破素材",
     "backpack-materials.text_e9c429b8b5": "武器突破素材",
     "backpack-materials.text_ec39f97823": "基础材料",
-    "backpack.text_028a00ae63": "profile {profileId} 没有同步原神 UID。",
-    "backpack.text_3caf242584": "请先登录 profile {profileId}。",
+    "backpack.text_028a00ae63": "档案 {profileId} 没有同步原神 UID。",
+    "backpack.text_3caf242584": "请先登录档案 {profileId}。",
     "backpack.text_3dd62228d2": "档案编号须在 1 到 255 之间。",
     "backpack.text_4322814fe9": "原神背包 · {name}",
     "backpack.text_5982fc0b5b": "原神档案角色已变化，请重新查询。",
@@ -657,14 +657,14 @@
     "backpack.text_bab001359f": "原神背包暂时无法查询。",
     "birthday-photo.text_010ae2cd75": "原神档案已变化，请重新发起领取。",
     "birthday-photo.text_0d21f66a4c": "暂时无法获取{name}的生日原图，尚未提交领取。",
-    "birthday-photo.text_11380b20c6": "正在获取{name}的图片，请稍等～",
+    "birthday-photo.text_11380b20c6": "正在获取{name}的图片，请稍候。",
     "birthday-photo.text_147d603571": "档案 {profileId} 没有已同步的原神角色。",
     "birthday-photo.text_1b67136c52": "留影叙佳期当前仅支持已绑定的原神国服角色。",
     "birthday-photo.text_2415381388": "请在本人 QQ 私聊中领取原神生日画片。",
     "birthday-photo.text_3b19fa5c2f": "{name}的生日画片已经领取。",
     "birthday-photo.text_3dd62228d2": "档案编号须在 1 到 255 之间。",
     "birthday-photo.text_4009c5ea64": "米游社登录已失效，请重新登录后领取。",
-    "birthday-photo.text_48e990f438": "获取{name}的图片成功～",
+    "birthday-photo.text_48e990f438": "获取{name}的图片成功。",
     "birthday-photo.text_57ce7d1dec": "官方拒绝了{name}的生日画片领取，请在米游社活动页查看。",
     "birthday-photo.text_6538f39a84": "暂时无法建立米游社生日活动会话，请稍后重试。",
     "birthday-photo.text_659fa1f783": "原神档案或选用角色已变化。",
@@ -674,7 +674,7 @@
     "birthday-photo.text_94e16159ff": "无法使用档案 Cookie。",
     "birthday-photo.text_9a19824379": "领取结果未确认，请先在米游社活动页查看画片是否到账。",
     "birthday-photo.text_c1e2f8fe43": "暂时无法获取生日角色，请稍后重试。",
-    "birthday-photo.text_d51cb1ad41": "今天没有生日角色哦～",
+    "birthday-photo.text_d51cb1ad41": "今天没有生日角色。",
     "birthday-photo.text_dbd093cee6": "档案的登录凭据与账号不一致，请重新登录。",
     "birthday-photo.text_e551b1dc50": "原神档案或选用角色已变化，请重新发起领取。",
     "card-render.text_8140b8068f": "图片超过当前会话的单图大小上限。",
@@ -705,7 +705,7 @@
     "gacha-detail.text_d6942c5cc9": "原神抽卡历史记录格式无效。",
     "gacha-history.text_68af4b9f66": "原神抽卡记录的 UID 与档案不一致。",
     "gacha-history.text_6ec10f36db": "原神抽卡快照须完整包含四个卡池。",
-    "gacha-history.text_707d768ff0": "旧原神抽卡文件须为 JSON 数组。",
+    "gacha-history.text_707d768ff0": "旧原神抽卡文件中的卡池记录须为 JSON 数组。",
     "gacha-history.text_7871a3c30e": "原神抽卡快照的 UID 或区服与档案不一致。",
     "gacha-history.text_85f3078e00": "原神抽卡记录编号无效或精度不足。",
     "gacha-history.text_ab7e06fbc5": "原神抽卡记录须为对象。",
@@ -855,7 +855,7 @@
     "gacha-version.text_9d406fd4c1": "原神抽卡统计分页参数无效。",
     "gacha-version.text_c47b54e84e": "角色",
     "gacha-version.text_d0cf5ec4c8": "常驻池",
-    "grow.blueprint-card.text_12c7038a08": "所需模具",
+    "grow.blueprint-card.text_12c7038a08": "所需摆设",
     "grow.blueprint-card.text_b60e1f8c17": "模数ID : {code}",
     "grow.blueprint-card.text_c22a606143": "所需消耗",
     "grow.blueprint-card.text_e7251498b0": "尘歌壶模数养成计算",
@@ -882,7 +882,7 @@
     "grow.card.text_c1371cb85e": "养成目标",
     "grow.card.text_c4ab4bf9b3": "已扣除背包内材料（含可合成材料）",
     "grow.card.text_cbf8fadc56": "武器养成计算",
-    "grow.command.text_028a00ae63": "profile {profileId} 没有同步原神 UID。",
+    "grow.command.text_028a00ae63": "档案 {profileId} 没有同步原神 UID。",
     "grow.command.text_073176b59e": "当前武器的养成资料不完整，未计入武器材料。",
     "grow.command.text_19b88d27f4": "还需材料 · {value1}",
     "grow.command.text_24998d8dd4": "天赋按不含命座加成的等级计算，经验未扣除当前等级内已有经验。",
@@ -922,7 +922,7 @@
     "grow.command.text_fbc9e1a86b": "{growthHelp}\n角色等级最高90，天赋最高10。",
     "grow.command.text_fbeda0be29": "原神档案角色已变化，请重新计算。",
     "grow.command.text_fd2d14b3a3": "默认从1级开始计算，可指定起始等级。",
-    "grow.legacy-card.text_05bc64f43b": "毕业了，下一位 ！",
+    "grow.legacy-card.text_05bc64f43b": "毕业了，下一位！",
     "grow.legacy-card.text_23237371c2": "天赋消耗",
     "grow.legacy-card.text_3ef457527a": "{cons}命",
     "grow.legacy-card.text_4c727f443a": "角色养成计算",
@@ -1147,7 +1147,7 @@
     "panel.abyss-team-command.text_67f490823c": "当前原神档案已变化，请重新查询。",
     "panel.abyss-team-command.text_68901e8078": "档案编号须为 1–{MAX_PROFILE_ID}。",
     "panel.abyss-team-command.text_7fa418ab3e": "{name}（暂无）",
-    "panel.abyss-team-command.text_820e7bf5a9": "请在本人 QQ 会话使用 #深渊配队。",
+    "panel.abyss-team-command.text_820e7bf5a9": "请在本人 QQ 会话中使用 #深渊配队。",
     "panel.abyss-team-command.text_c46e68275d": "深渊 12 层配队建议",
     "panel.abyss-team-command.text_c82dc2a76f": "第 {value1} 组 · {count} 次记录\n上半 {value3}\n下半 {value4}",
     "panel.abyss-team-command.text_cad98ea684": "请先登录本人原神档案。",
@@ -1397,7 +1397,7 @@
     "panel.damage.text_907a406be1": "无套装",
     "panel.damage.text_91b246b5db": "草",
     "panel.damage.text_9278c673c4": "超激化",
-    "panel.damage.text_92a1af488e": "序号输入错误：{name}最多只支持{length}种伤害计算哦。",
+    "panel.damage.text_92a1af488e": "序号输入错误：{name}最多只支持{length}种伤害计算。",
     "panel.damage.text_9638a2a0f9": "岩",
     "panel.damage.text_a0d68c1291": "旧版武器精炼倍率缺失。",
     "panel.damage.text_b2a3d21dca": "旧版天赋倍率表不包含当前等级。",
@@ -2133,7 +2133,7 @@
     "panel.personal-theater-card.text_0ccdd8c2b5": "支援其他玩家",
     "panel.personal-theater-card.text_172fb7e67b": "次",
     "panel.personal-theater-card.text_21ed861727": "{value1} · {value2}模式",
-    "panel.personal-theater-card.text_37e85c2550": "影响挑战的奖励领取~",
+    "panel.personal-theater-card.text_37e85c2550": "影响挑战的奖励领取",
     "panel.personal-theater-card.text_3947001dc1": "{month}月",
     "panel.personal-theater-card.text_3a55bc5825": "自有角色装备与圣遗物为当前最新状态，试用与助演角色仅显示占位图标",
     "panel.personal-theater-card.text_3d0768967f": "幕",
@@ -2316,7 +2316,7 @@
     "panel.stygian-rank-card.text_cca88b433b": "当前版本暂无可显示的群成员成绩。",
     "panel.stygian-rank-card.text_d8eec08a34": "旧本地成绩",
     "panel.stygian-rank-card.text_dae36e7e66": "本期未查询",
-    "panel.stygian-rank-card.text_df81a799db": "回包未核实",
+    "panel.stygian-rank-card.text_df81a799db": "数据未核实",
     "panel.stygian-rank-card.text_f36cac9622": "暂不可用",
     "panel.stygian-rank-card.text_f4f09df9e1": "统计周期",
     "panel.stygian-rank-card.text_f95ea7f4c0": "未启用",
@@ -2540,7 +2540,7 @@
     "panel.training-statistics-card.text_fc2ee58f3d": "圣遗物",
     "panel.weapon-list-card.text_1077b809a5": "四星",
     "panel.weapon-list-card.text_5fdd673ed1": "三星",
-    "panel.weapon-list-card.text_6e316b5d07": "*仅显现已装备的武器",
+    "panel.weapon-list-card.text_6e316b5d07": "*仅显示已装备的武器",
     "panel.weapon-list-card.text_789a6953ec": "五星",
     "panel.weapon-list-card.text_ffd989e75a": "枪",
     "panel.weapon-list-model.text_358b0e7ac1": "米游社未返回完整的原神已装备武器数据。",
@@ -2589,7 +2589,7 @@
     "pay-log-command.text_7b85219298": "此链接对应的角色与当前档案不一致。",
     "pay-log-command.text_83534f9bf1": "所选国服档案没有已保存的充值账本。",
     "pay-log-command.text_94a52e792a": "未找到当前档案的有效授权，请在本人好友私聊发送米游社客服充值记录链接。",
-    "pay-log-command.text_9b80913f4f": "旧账本须为限长的 YAML 文件。",
+    "pay-log-command.text_9b80913f4f": "旧账本须为符合大小限制的 YAML 文件。",
     "pay-log-command.text_9d6af7045e": "无法保存本次充值账本，请稍后再试。",
     "pay-log-command.text_a2b1a1976e": "本角色正在读取充值记录，请稍后再试。",
     "pay-log-command.text_ab34d43437": "原神档案已变化，请重新查询充值记录。",
@@ -2620,7 +2620,7 @@
     "public-statistics-card.text_fed8eb0a68": "使用率统计",
     "public-statistics.text_06e8e467c6": "Lelaer 暂未提供角色命座数据，请稍后再试。",
     "public-statistics.text_09ca246e44": "第十二层",
-    "public-statistics.text_0c2319733e": "数据来自 {value1}。数据来自主动上传样本，供参考。",
+    "public-statistics.text_0c2319733e": "数据来自 {value1}，基于主动上传样本，仅供参考。",
     "public-statistics.text_0e13f6b0d2": "难度 5&6",
     "public-statistics.text_2c73012572": "深渊",
     "public-statistics.text_3845cfe9dd": "幽境危战来源只提供难度 5 和 6 的合并使用率。",
@@ -2724,7 +2724,7 @@
     "wish-sim.commands.text_4accd970c9": "原神模拟祈愿已关闭。",
     "wish-sim.commands.text_4bf6868aa0": "旅行者",
     "wish-sim.commands.text_4c59860702": "模拟祈愿",
-    "wish-sim.commands.text_5367f7d23c": "请在 QQ 会话使用原神模拟祈愿。",
+    "wish-sim.commands.text_5367f7d23c": "请在 QQ 会话中使用原神模拟祈愿。",
     "wish-sim.commands.text_55db614a8d": "，旧五星未能核验",
     "wish-sim.commands.text_572b1ece4b": "暂时无法抽卡。\n已累计",
     "wish-sim.commands.text_585a56e871": "当前卡池没有第二个角色活动祈愿。",
@@ -2824,11 +2824,11 @@
     "world-boss-ranking.text_14cf4e7c08": "原神世界 BOSS 排行摘要",
     "world-boss-ranking.text_f73265b4b5": "{subject}格式无效。",
     "world-boss.text_008e5a231a": "官方记录暂无世界 BOSS 击杀条目。",
-    "world-boss.text_028a00ae63": "profile {profileId} 没有同步原神 UID。",
+    "world-boss.text_028a00ae63": "档案 {profileId} 没有同步原神 UID。",
     "world-boss.text_0b93dbd19e": "稻妻",
     "world-boss.text_319615b78f": "世界 BOSS 排行暂未更新。",
     "world-boss.text_39e68359aa": "沉玉谷",
-    "world-boss.text_3caf242584": "请先登录 profile {profileId}。",
+    "world-boss.text_3caf242584": "请先登录档案 {profileId}。",
     "world-boss.text_3dd62228d2": "档案编号须在 1 到 255 之间。",
     "world-boss.text_477d039f5c": "BOSS击杀排行榜",
     "world-boss.text_5982fc0b5b": "原神档案角色已变化，请重新查询。",
@@ -2872,1538 +2872,1538 @@
   },
   "parameters": {
     "achievement-command.text_d59bd480a3": {
-      "completed": "stats.completed",
-      "total": "stats.total",
-      "pointsDone": "stats.pointsDone",
-      "pointsTotal": "stats.pointsTotal",
-      "percent": "stats.percent"
+      "completed": "已完成成就数量",
+      "total": "成就总数量",
+      "pointsDone": "已获得的原石数量",
+      "pointsTotal": "成就总原石数量",
+      "percent": "成就完成率百分比"
     },
     "achievement-command.text_66e1af2396": {
-      "completed": "stats.completed",
-      "total": "stats.total",
-      "pointsDone": "stats.pointsDone",
-      "pointsTotal": "stats.pointsTotal"
+      "completed": "已完成成就数",
+      "total": "成就总数",
+      "pointsDone": "已获得原石数",
+      "pointsTotal": "原石总数"
     },
     "achievement-command.text_52f62c6af3": {
-      "query": "categoryAction.query"
+      "query": "用户查询的分类名称"
     },
     "achievement-command.text_5321e72dec": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "achievement-command.text_14262ad324": {
-      "atlasUnavailable": "atlasUnavailable"
+      "atlasUnavailable": "图鉴不可用提示文本"
     },
     "achievement-command.text_58eb3ba41e": {
-      "scanned": "result.scanned",
-      "completedInput": "result.completedInput",
-      "added": "result.added",
-      "duplicate": "result.duplicate",
-      "unknown": "result.unknown",
-      "inferred": "result.inferred"
+      "scanned": "扫描条目总数",
+      "completedInput": "已完成条目数",
+      "added": "新增条目数",
+      "duplicate": "重复条目数",
+      "unknown": "未知条目数",
+      "inferred": "系列补全条目数"
     },
     "achievement-command.text_5c4c68d3ec": {
-      "value1": "result.touched.slice(0, 8).join(\" / \")",
-      "value2": "result.touched.length > 8 ? \" 等\" : \"\""
+      "value1": "更新的分类名称列表",
+      "value2": "分类过多时的省略后缀"
     },
     "achievement-command.text_93bf6dad6b": {
-      "name": "category.name",
-      "totalPages": "totalPages"
+      "name": "成就分类名称",
+      "totalPages": "总页数"
     },
     "achievement-command.text_bd4ce0beba": {
-      "page": "page",
-      "totalPages": "totalPages"
+      "page": "当前页码",
+      "totalPages": "总页数"
     },
     "achievement-command.text_e6946edb20": {
-      "value1": "offset + 1",
-      "value2": "offset + visible.length",
-      "length": "groups.length"
+      "value1": "当前页起始成就组序号",
+      "value2": "当前页结束成就组序号",
+      "length": "成就组总数量"
     },
     "achievement-command.text_176ddce843": {
-      "name": "group.name",
-      "completed": "group.completed",
-      "total": "group.total",
-      "pointsDone": "group.pointsDone",
-      "pointsTotal": "group.pointsTotal"
+      "name": "成就分组名称",
+      "completed": "已完成成就数",
+      "total": "成就总数",
+      "pointsDone": "已获得原石数",
+      "pointsTotal": "原石总数"
     },
     "achievement-command.text_6f45efd7b7": {
-      "value1": "stage.points ?? 0",
-      "progress": "stage.progress"
+      "value1": "原石数量",
+      "progress": "成就进度文本"
     },
     "achievement-command.text_057beaf799": {
-      "pointsDone": "stats.pointsDone",
-      "pointsTotal": "stats.pointsTotal",
-      "value3": "totalPages > 1 ? ` ${label}` : \"\""
+      "pointsDone": "已获得原石数",
+      "pointsTotal": "原石总数",
+      "value3": "分页标签（多页时附加）"
     },
     "achievement-command.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "achievement-command.text_728082fbd9": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "achievement-progress.text_096678f8de": {
-      "value1": "cnChapter[Number(number)]"
+      "value1": "合辑序号对应的中文数字"
     },
     "backpack.text_4322814fe9": {
-      "name": "name"
+      "name": "材料分类名称"
     },
     "backpack.text_3caf242584": {
-      "profileId": "profileId"
+      "profileId": "账号档案编号"
     },
     "backpack.text_028a00ae63": {
-      "profileId": "profileId"
+      "profileId": "账号档案编号"
     },
     "birthday-photo.text_11380b20c6": {
-      "name": "name"
+      "name": "生日角色名称"
     },
     "birthday-photo.text_0d21f66a4c": {
-      "name": "name"
+      "name": "生日角色名称"
     },
     "birthday-photo.text_930b87754d": {
-      "name": "name"
+      "name": "生日角色名称"
     },
     "birthday-photo.text_3b19fa5c2f": {
-      "name": "name"
+      "name": "生日角色名称"
     },
     "birthday-photo.text_57ce7d1dec": {
-      "name": "name"
+      "name": "生日角色名称"
     },
     "birthday-photo.text_48e990f438": {
-      "name": "name"
+      "name": "生日角色名称"
     },
     "birthday-photo.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "账号档案编号"
     },
     "birthday-photo.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "账号档案编号"
     },
     "commission-command.text_3cb24c1689": {
-      "name": "record.name",
-      "diqu": "record.diqu",
-      "cj": "record.cj"
+      "name": "委托名称",
+      "diqu": "委托所在地区",
+      "cj": "关联成就名称"
     },
     "commission-command.text_7985e74c7f": {
-      "miaosu": "record.miaosu"
+      "miaosu": "委托重点描述内容"
     },
     "commission-command.text_d8b0f450d5": {
-      "video": "video"
+      "video": "Bilibili 视频编号"
     },
     "gacha-import.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "用户档案编号"
     },
     "gacha-import.text_6658649baf": {
-      "profileId": "profileId"
+      "profileId": "用户档案编号"
     },
     "gacha-import.text_103104a7fb": {
-      "name": "name",
-      "count": "count",
-      "added": "added",
-      "total": "total"
+      "name": "卡池名称",
+      "count": "导入文件中该卡池的记录条数",
+      "added": "本次合并新增的记录条数",
+      "total": "合并后该卡池的累计总条数"
     },
     "gacha-import.text_c19e4aca91": {
-      "uid": "uid"
+      "uid": "游戏角色 UID"
     },
     "gacha-import.text_436e2f29b6": {
-      "value1": "profileId === 1 ? \"\" : profileId"
+      "value1": "档案编号后缀（档案 1 为空字符串，其余为档案序号）"
     },
     "gacha-pool-command.text_64d0333657": {
-      "version": "query.version",
-      "value2": "query.half ?? \"\""
+      "version": "查询的游戏版本号",
+      "value2": "半期标识（如“上半”“下半”，未指定时为空字符串）"
     },
     "gacha-pool-command.text_db508712d2": {
-      "name": "query.name"
+      "name": "查询的角色或武器名称"
     },
     "gacha-pool-command.text_40c482f3d0": {
-      "title": "title",
-      "length": "model.pools.length"
+      "title": "卡池查询结果标题",
+      "length": "匹配到的卡池总期数"
     },
     "gacha-pool-command.text_f3510de6e0": {
-      "version": "pool.version",
-      "half": "pool.half",
-      "value3": "pool.isMix ? \" · 集录\" : \"\"",
-      "from": "pool.from",
-      "to": "pool.to"
+      "version": "卡池所属版本号",
+      "half": "卡池半期标识",
+      "value3": "集录祈愿后缀（集录卡池为“ · 集录”，否则为空字符串）",
+      "from": "卡池开始日期",
+      "to": "卡池结束日期"
     },
     "gacha-pool.text_236a3fcfdf": {
-      "days": "days"
+      "days": "距离上次 UP 结束已过去的天数"
     },
     "gacha-pool.text_d7693df1b7": {
-      "value1": "-until"
+      "value1": "距离上次卡池结束的天数"
     },
     "gacha-pool.text_3a82d6e00c": {
-      "before": "before"
+      "before": "距离该期卡池开启的剩余天数"
     },
     "gacha-pool.text_10ee5798a5": {
-      "until": "until"
+      "until": "距离当前卡池结束的剩余天数"
     },
     "gacha-pool.text_cd98cf1512": {
-      "value1": "until ? `还有${until}天` : \"今天\""
+      "value1": "剩余时间描述（如“还有X天”或“今天”）"
     },
     "gacha-pool.text_358d1b8102": {
-      "name": "item.name"
+      "name": "查询的角色或武器名称"
     },
     "gacha-pool.text_f80372100b": {
-      "version": "version",
-      "value2": "half ? ` ${half}` : \"\"",
-      "value3": "isMix ? \" · 集录\" : \"\""
+      "version": "版本号",
+      "value2": "半期标识（含前导空格，可为空）",
+      "value3": "集录祈愿后缀（可为空）"
     },
     "gacha-pool.text_34723fb7a9": {
-      "value1": "name.replaceAll(\"|\", \"，\")"
+      "value1": "卡池名称（多池合并时以中文逗号分隔）"
     },
     "gacha-pool.text_144a4f2d5d": {
-      "five": "five"
+      "five": "该期卡池的五星 UP 角色或武器名称列表"
     },
     "gacha-pool.text_72179c9f0c": {
-      "four": "four"
+      "four": "该期卡池的四星 UP 角色或武器名称列表"
     },
     "gacha-pool.text_a0169e92ef": {
-      "from": "from"
+      "from": "卡池开始时间"
     },
     "gacha-pool.text_7ed2671010": {
-      "to": "to"
+      "to": "卡池结束时间"
     },
     "gacha-pool.text_df9624fa97": {
-      "name": "item.name"
+      "name": "角色或武器名称"
     },
     "gacha-pool.text_d9238959e5": {
-      "version": "query.version",
-      "value2": "query.half ?? \"\""
+      "version": "版本号",
+      "value2": "卡池半期标识（如上半/下半，可为空）"
     },
     "gacha-pool.text_4ccf72686b": {
-      "name": "name"
+      "name": "查询的版本或角色/武器名称"
     },
     "gacha-result-card.text_2e4e657af0": {
-      "value1": "pools.reduce((sum, pool) => sum + (pool.corrected ?? 0), 0)"
+      "value1": "修正的记录总数"
     },
     "gacha-result-card.text_6dbd121ee5": {
-      "qq": "qq",
-      "profileId": "profileId",
-      "uid": "uid",
-      "added": "added",
-      "corrected": "corrected"
+      "qq": "用户 QQ 号",
+      "profileId": "档案编号",
+      "uid": "游戏 UID",
+      "added": "新增记录总数",
+      "corrected": "修正记录数片段（可为空）"
     },
     "gacha-result-card.text_2c412ea583": {
-      "value1": "gameRegionDisplayName(\"gs\", region)"
+      "value1": "游戏区服显示名称"
     },
     "gacha-result-card.text_421c9a76a6": {
-      "name": "pool.name",
-      "added": "pool.added",
-      "total": "pool.total"
+      "name": "卡池名称",
+      "added": "新增记录数",
+      "total": "累计记录数"
     },
     "gacha-result-card.text_7a351db5c1": {
-      "qq": "qq",
-      "profileId": "profileId",
-      "value3": "failureMessages[reason]"
+      "qq": "用户 QQ 号",
+      "profileId": "档案编号",
+      "value3": "失败原因描述"
     },
     "gacha-store.text_41d1abfb9d": {
-      "subject": "subject"
+      "subject": "操作对象名称（此处为“原神抽卡历史”）"
     },
     "gacha-store.text_9762775415": {
-      "subject": "subject"
+      "subject": "操作对象名称（此处为“原神抽卡历史”）"
     },
     "gacha-store.text_8ee6845498": {
-      "subject": "subject"
+      "subject": "操作对象名称（此处为“原神抽卡历史”）"
     },
     "gacha-store.text_df0f38b4a9": {
-      "subject": "subject"
+      "subject": "操作对象名称（此处为“原神抽卡历史”）"
     },
     "gacha-store.text_a3e8fe453d": {
-      "subject": "subject"
+      "subject": "操作对象名称（此处为“原神抽卡历史”）"
     },
     "gacha-sync.text_62cd26943e": {
-      "action": "action"
+      "action": "正在执行的同步动作描述"
     },
     "gacha-version.text_3665f644a1": {
-      "half": "period.half"
+      "half": "卡池半期标识（如上半或下半）"
     },
     "grow.blueprint-card.text_b60e1f8c17": {
-      "code": "model.code"
+      "code": "尘歌壶模数编码"
     },
     "grow.blueprint.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "用户档案编号"
     },
     "grow.blueprint.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "用户档案编号"
     },
     "grow.command.text_19b88d27f4": {
-      "value1": "model.shortfall.rows.map(row => `${row.label} × ${fmt(row.num)}`).join(\"、\")"
+      "value1": "缺口材料及数量列表"
     },
     "grow.command.text_c4f46ef4f1": {
-      "title": "model.title"
+      "title": "角色或武器标题名称"
     },
     "grow.command.text_6a4835b968": {
-      "value1": "model.inventoryMora === undefined ? \"\" : \"（已扣除背包）\"",
-      "value2": "fmt(model.inventoryMora ?? model.moraTotal)"
+      "value1": "是否已扣除背包的标注文本",
+      "value2": "格式化后的摩拉总数或剩余需求量"
     },
     "grow.command.text_eb865d75f1": {
-      "name": "request.name"
+      "name": "用户输入的角色或武器名称"
     },
     "grow.command.text_759f8da0fe": {
-      "name": "target.name"
+      "name": "角色或武器名称"
     },
     "grow.command.text_64eb0e9f84": {
-      "growthHelp": "growthHelp",
-      "name": "target.name"
+      "growthHelp": "养成命令用法说明文本",
+      "name": "目标武器名称"
     },
     "grow.command.text_fbc9e1a86b": {
-      "growthHelp": "growthHelp"
+      "growthHelp": "养成计算指令帮助文本"
     },
     "grow.command.text_028a00ae63": {
-      "profileId": "request.profileId"
+      "profileId": "用户档案编号"
     },
     "grow.command.text_3f19f2491b": {
-      "name": "weapon.name"
+      "name": "当前装备的武器名称"
     },
     "grow.command.text_ce70167d0c": {
-      "title": "group.title"
+      "title": "武器养成条目或分组标题"
     },
     "grow.command.text_b8888c25fb": {
-      "name": "target.name"
+      "name": "目标角色名称"
     },
     "grow.command.text_803a80c8f9": {
-      "uid": "balance.uid"
+      "uid": "核对背包的原神角色 UID"
     },
     "grow.legacy-card.text_3ef457527a": {
-      "cons": "cons"
+      "cons": "角色命座层数"
     },
     "grow.model.text_d6c44ae043": {
-      "maxTalent": "maxTalent",
-      "promote": "to.promote"
+      "maxTalent": "目标最高天赋等级",
+      "promote": "所需突破阶数"
     },
     "grow.model.text_5229b8133f": {
-      "level": "current.level",
-      "value2": "to.level",
-      "value3": "fmt(exp, commaGroup)",
-      "value4": "talentAscension ? `，天赋${maxTalent}级需突破至${to.promote}阶` : \"\""
+      "level": "当前等级",
+      "value2": "目标等级",
+      "value3": "所需经验值（已格式化）",
+      "value4": "可选的天赋突破前置阶数说明"
     },
     "grow.model.text_81990c305c": {
-      "level": "current.level",
-      "value2": "to.level",
-      "value3": "fmt(exp, commaGroup)"
+      "level": "武器当前等级",
+      "value2": "武器目标等级",
+      "value3": "所需武器经验值（已格式化）"
     },
     "index.text_ac0af587d3": {
-      "device": "device"
+      "device": "设备类型名称"
     },
     "index.text_b9dc1d69de": {
-      "login": "login"
+      "login": "登录方式补充说明"
     },
     "index.text_27b2eb700c": {
-      "name": "file.name",
-      "count": "count"
+      "name": "导出的文件名",
+      "count": "导出的抽卡记录总条数"
     },
     "index.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "index.text_6658649baf": {
-      "profileId": "profileId"
+      "profileId": "用户登录档案编号"
     },
     "index.text_c894d23063": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "index.text_1397b2ffaf": {
-      "profileId": "profileId",
-      "uid": "result.uid"
+      "profileId": "用户登录档案编号",
+      "uid": "导入结果对应的原神 UID"
     },
     "index.text_a8f2783c04": {
-      "title": "title"
+      "title": "同步结果标题"
     },
     "index.text_f23b6c6db3": {
-      "name": "name",
-      "received": "received",
-      "added": "added",
-      "total": "total"
+      "name": "卡池名称",
+      "received": "接收到的记录数",
+      "added": "新增记录数",
+      "total": "累计总记录数"
     },
     "index.text_1182eeff45": {
-      "value1": "profileId === 1 ? \"\" : profileId"
+      "value1": "可选的档案编号后缀（档案 1 时为空）"
     },
     "index.text_b3244dcc6a": {
-      "message": "message"
+      "message": "失败原因详情"
     },
     "index.text_7404b79d59": {
-      "uid": "uid"
+      "uid": "玩家游戏 UID"
     },
     "index.text_052e0dea03": {
-      "uid": "uid",
-      "value2": "profileId === 1 ? \"\" : profileId"
+      "uid": "原神游戏角色 UID",
+      "value2": "可选的档案编号后缀（档案 1 时为空）"
     },
     "index.text_acbebaddd8": {
-      "poolName": "first.model.poolName",
-      "count": "first.model.pageInfo?.count"
+      "poolName": "卡池名称",
+      "count": "卡池期数"
     },
     "index.text_2eefd98a1a": {
-      "poolName": "first.model.poolName",
-      "fiveNum": "first.model.gacha.stat.fiveNum"
+      "poolName": "卡池名称",
+      "fiveNum": "该卡池抽取的五星数量"
     },
     "index.text_f87fdb63c4": {
-      "uid": "uid",
-      "title": "title",
-      "total": "total"
+      "uid": "玩家游戏 UID",
+      "title": "统计标题",
+      "total": "图片总页数"
     },
     "index.text_b8d9e3c25d": {
-      "suffix": "suffix"
+      "suffix": "导出命令后缀（含格式与档案号）"
     },
     "index.text_0e196425f5": {
-      "profileId": "profileId"
+      "profileId": "用户登录档案编号"
     },
     "monthly-archive.text_648de7ec85": {
-      "subject": "subject"
+      "subject": "存档对象名称"
     },
     "monthly-card.text_3650e860ba": {
-      "value1": "compact(amount, 2)",
-      "value2": "amount === undefined ? \"—\" : (amount / 160).toFixed(0)"
+      "value1": "格式化后的原石数量",
+      "value2": "折合抽数"
     },
     "monthly-card.text_6fad5fefb5": {
-      "value1": "compact(money, 1)"
+      "value1": "格式化后的摩拉数量"
     },
     "monthly-command.text_279a4da95f": {
-      "value1": "date.getUTCDate()"
+      "value1": "当月日期（日）"
     },
     "monthly-command.text_c2bb5a34f5": {
-      "selected": "selected",
-      "value2": "selected === current ? `${date.getUTCDate()}号` : \"\""
+      "selected": "目标月份数字",
+      "value2": "当月日期后缀或空字符串"
     },
     "monthly-command.text_843a67aafd": {
-      "value1": "numeric(snapshot.primogems)",
-      "value2": "numeric(snapshot.mora)"
+      "value1": "当月获取的原石数量",
+      "value2": "当月获取的摩拉数量"
     },
     "monthly-command.text_d31e9fc185": {
-      "value1": "numeric(snapshot.priorPrimogems)",
-      "value2": "numeric(snapshot.priorMora)"
+      "value1": "上月获取的原石数量",
+      "value2": "上月获取的摩拉数量"
     },
     "monthly-command.text_68901e8078": {
-      "MAX_PROFILE_ID": "MAX_PROFILE_ID"
+      "MAX_PROFILE_ID": "允许的最大档案编号"
     },
     "monthly-command.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "monthly-command.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "monthly-statistics-card.text_e2078b81e4": {
-      "year": "model.period.year"
+      "year": "统计年份"
     },
     "monthly-statistics-card.text_83972f33c3": {
-      "length": "model.months.length",
-      "expectedMonths": "model.period.expectedMonths",
-      "value3": "partial ? \"，标有 * 的月份可能未收录完整\" : \"\""
+      "length": "已归档的月份数量",
+      "expectedMonths": "统计周期内的预期总月数",
+      "value3": "未完整收录月份的补充提示或空字符串"
     },
     "monthly-statistics-card.text_3947001dc1": {
-      "month": "entry.snapshot.month"
+      "month": "月份数字"
     },
     "monthly-statistics-card.text_b026bfc20b": {
-      "value1": "(model.primogems / 160).toFixed(0)"
+      "value1": "按原石折算的抽数"
     },
     "monthly-statistics-card.text_8b779f9545": {
-      "value1": "month(model.bestPrimogems)"
+      "value1": "原石最多月份的显示文本"
     },
     "monthly-statistics-card.text_feec374c26": {
-      "month": "snapshot.month",
-      "value2": "finalized ? \"\" : \"*\""
+      "month": "月份",
+      "value2": "未汇总完整时的星号标记"
     },
     "monthly-statistics-command.text_c0bb9ad757": {
-      "year": "period.year"
+      "year": "统计年份"
     },
     "monthly-statistics-command.text_413958d223": {
-      "value1": "model.period.year ? `${model.period.year}年` : \"最近12个月\"",
-      "uid": "model.uid"
+      "value1": "统计周期名称",
+      "uid": "原神 UID"
     },
     "monthly-statistics-command.text_1f27e2d0bd": {
-      "length": "model.months.length",
-      "expectedMonths": "model.period.expectedMonths"
+      "length": "已归档月数",
+      "expectedMonths": "统计周期总月数"
     },
     "monthly-statistics-command.text_a08c7b4c45": {
-      "value1": "model.primogems ?? \"—\"",
-      "value2": "model.primogems === undefined ? \"—\" : (model.primogems / 160).toFixed(0)"
+      "value1": "原石总数或占位符",
+      "value2": "折合抽数或占位符"
     },
     "monthly-statistics-command.text_e467509620": {
-      "value1": "model.mora ?? \"—\""
+      "value1": "摩拉总数或占位符"
     },
     "monthly-statistics-command.text_de912287a9": {
-      "year": "year",
-      "month": "snapshot.month",
-      "value3": "snapshot.primogems ?? \"—\"",
-      "value4": "snapshot.mora ?? \"—\"",
-      "value5": "finalized ? \"\" : \"（未汇总完整）\""
+      "year": "年份",
+      "month": "月份",
+      "value3": "当月原石数或占位符",
+      "value4": "当月摩拉数或占位符",
+      "value5": "未汇总完整时的附加说明"
     },
     "monthly-statistics-command.text_68901e8078": {
-      "MAX_PROFILE_ID": "MAX_PROFILE_ID"
+      "MAX_PROFILE_ID": "最大档案编号"
     },
     "monthly-statistics-command.text_577d74b585": {
-      "value1": "period.year ? `${period.year}年` : \"最近12个月\""
+      "value1": "统计周期名称"
     },
     "monthly-statistics-command.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "monthly-statistics-command.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "monthly-task.text_269195c8ea": {
-      "value1": "completed + failed",
-      "roles": "roles",
-      "failed": "failed",
-      "written": "written",
-      "preserved": "preserved",
-      "empty": "empty"
+      "value1": "已处理角色数",
+      "roles": "总角色数",
+      "failed": "未完成角色数",
+      "written": "新保存的月数",
+      "preserved": "保留已有存档的月数",
+      "empty": "官方未返回数据的月数"
     },
     "monthly-task.text_eb10f93411": {
-      "roles": "roles"
+      "roles": "待处理角色数"
     },
     "panel.abyss-team-card.text_b04765ab37": {
-      "value1": "index + 1"
+      "value1": "配队序号"
     },
     "panel.abyss-team-card.text_7b45cc7f2c": {
-      "count": "count"
+      "count": "配队统计出现次数"
     },
     "panel.abyss-team-card.text_210bd7f52e": {
-      "updated": "updated"
+      "updated": "统计数据更新时间"
     },
     "panel.abyss-team-command.text_68901e8078": {
-      "MAX_PROFILE_ID": "MAX_PROFILE_ID"
+      "MAX_PROFILE_ID": "允许的最大档案编号"
     },
     "panel.abyss-team-command.text_7fa418ab3e": {
-      "name": "member.name"
+      "name": "队伍角色名称"
     },
     "panel.abyss-team-command.text_c82dc2a76f": {
-      "value1": "index + 1",
-      "count": "pair.count",
-      "value3": "names(pair.up)",
-      "value4": "names(pair.down)"
+      "value1": "配队方案序号",
+      "count": "该配队公开统计记录次数",
+      "value3": "上半间队伍角色列表",
+      "value4": "下半间队伍角色列表"
     },
     "panel.artifact-card.text_5b3f53741f": {
-      "score": "score",
-      "value2": "rank ? ` - ${rank}` : \"\""
+      "score": "圣遗物评分数值",
+      "value2": "可选评级后缀文本"
     },
     "panel.artifact-card.text_ca9143963d": {
-      "value1": "rated.score.toFixed(1)"
+      "value1": "圣遗物词条或最终评分数值"
     },
     "panel.artifact-card.text_dae0a65aca": {
-      "name": "name",
-      "title": "rating.title"
+      "name": "角色名称",
+      "title": "当前使用的评分规则标题"
     },
     "panel.artifact-card.text_b2384c7012": {
-      "name": "name"
+      "name": "角色名称"
     },
     "panel.artifact-card.text_1c0e23baf4": {
-      "name": "name"
+      "name": "角色名称"
     },
     "panel.artifact-card.text_3ef457527a": {
-      "cons": "avatar.cons"
+      "cons": "角色命座层数"
     },
     "panel.artifact-card.text_4d228107d2": {
-      "title": "rating.title"
+      "title": "圣遗物评分规则名称"
     },
     "panel.artifact-score.text_d2bde79b7a": {
-      "slot": "slot"
+      "slot": "圣遗物槽位编号"
     },
     "panel.artifact-score.text_bd3be8adf9": {
-      "slot": "slot"
+      "slot": "圣遗物槽位编号"
     },
     "panel.artifact-score.text_98f83bb0ca": {
-      "value1": "propertyLabels[String(key)] ?? String(key)"
+      "value1": "缺失的角色属性名称或键名"
     },
     "panel.avatar-card-render.text_8ab34d12ba": {
-      "cons": "avatar.cons"
+      "cons": "角色命之座层数"
     },
     "panel.avatar-card-render.text_5188d6296f": {
-      "fetter": "avatar.fetter"
+      "fetter": "角色好感度等级"
     },
     "panel.avatar-card-render.text_926959d954": {
-      "level": "avatar.weapon.level",
-      "value2": "avatar.weapon.affix || 1"
+      "level": "武器等级",
+      "value2": "武器精炼阶数"
     },
     "panel.avatar-card-render.text_42b93498cd": {
-      "value1": "sources[avatar._source] ?? \"档案\"",
-      "updated": "updated"
+      "value1": "面板数据来源名称",
+      "updated": "数据更新时间"
     },
     "panel.avatar-card.text_113207b1cc": {
-      "label": "label",
-      "value2": "chosen.join(\"，\")"
+      "label": "角色关系称呼或默认标签",
+      "value2": "已设置的角色名列表"
     },
     "panel.avatar-card.text_0d2eac89eb": {
-      "label": "label"
+      "label": "角色关系称呼或默认标签"
     },
     "panel.avatar-card.text_469a40514d": {
-      "label": "label"
+      "label": "角色关系称呼或默认标签"
     },
     "panel.avatar-card.text_0840439bd5": {
-      "label": "label"
+      "label": "角色关系称呼或默认标签"
     },
     "panel.avatar-card.text_3ac80b8b11": {
-      "label": "label",
-      "value2": "selected.join(\"，\")"
+      "label": "角色关系称呼或默认标签",
+      "value2": "已设置的角色名列表"
     },
     "panel.avatar-card.text_4840bb2c05": {
-      "name": "named.name"
+      "name": "原神角色名称"
     },
     "panel.avatar-card.text_34562f13ef": {
-      "profileId": "profileId"
+      "profileId": "原神档案编号"
     },
     "panel.card.text_3ef457527a": {
-      "cons": "avatar.cons"
+      "cons": "角色命之座层数"
     },
     "panel.card.text_fc00d6880d": {
-      "detailCommand": "detailCommand"
+      "detailCommand": "查看伤害详情的指令"
     },
     "panel.card.text_d4b57a96ed": {
-      "enemyLevel": "model.enemyLevel",
-      "enemyName": "model.enemyName",
-      "value3": "model.enemyLevel",
-      "profileSuffix": "profileSuffix"
+      "enemyLevel": "目标敌人等级",
+      "enemyName": "目标敌人名称",
+      "value3": "#敌人等级命令示例使用的敌人等级",
+      "profileSuffix": "档案编号后缀（档案1时为空）"
     },
     "panel.card.text_8c43e09bd6": {
-      "value1": "model.ruleAuthors.join(\"、\")"
+      "value1": "伤害计算规则作者列表"
     },
     "panel.card.text_77d3007d8e": {
-      "command": "change.command"
+      "command": "当前使用的临时替换指令"
     },
     "panel.card.text_1c1a1dd606": {
-      "cons": "avatar.cons"
+      "cons": "角色命之座层数"
     },
     "panel.card.text_481310a67b": {
-      "base": "property.base"
+      "base": "角色属性基础值"
     },
     "panel.card.text_fa7ec322f7": {
-      "value1": "sourceLabels[avatar._source] ?? \"本地\"",
-      "value2": "avatar._time && Number.isFinite(new Date(avatar._time).getTime()) ? ` · ${time.format(avatar._time)}` : \"\""
+      "value1": "面板数据来源名称",
+      "value2": "面板数据更新时间文本（含前导分隔符）"
     },
     "panel.card.text_89cfa03e42": {
-      "affix": "avatar.weapon.affix"
+      "affix": "武器精炼等阶"
     },
     "panel.card.text_d9ca024308": {
-      "value1": "avatar.weapon.level === undefined ? \"\" : ` · Lv.${avatar.weapon.level}`",
-      "value2": "avatar.weapon.affix === undefined ? \"\" : ` · 精${avatar.weapon.affix}`"
+      "value1": "武器等级文本（含前导分隔符）",
+      "value2": "武器精炼文本（含前导分隔符）"
     },
     "panel.card.text_31a2142f9f": {
-      "profileId": "profileId"
+      "profileId": "当前使用的面板档案编号"
     },
     "panel.damage-detail-card.text_a337eaf269": {
-      "profileId": "profileId"
+      "profileId": "角色面板档案编号"
     },
     "panel.damage-detail-card.text_0356651825": {
-      "enemyLevel": "model.enemyLevel",
-      "enemyName": "model.enemyName",
-      "value3": "model.enemyLevel",
-      "profile": "profile"
+      "enemyLevel": "目标敌人等级",
+      "enemyName": "目标敌人名称",
+      "value3": "#敌人等级命令示例使用的敌人等级",
+      "profile": "档案编号后缀（档案1时为空）"
     },
     "panel.damage-detail-card.text_37f3aa9c23": {
-      "abbr": "abbr"
+      "abbr": "角色简称（用于拼接指令）"
     },
     "panel.damage-detail-card.text_56cbcbc77e": {
-      "abbr": "abbr",
-      "value2": "index + 1",
-      "title": "selected.title"
+      "abbr": "角色简称",
+      "value2": "当前选中的伤害条目序号",
+      "title": "当前选中的伤害条目名称"
     },
     "panel.damage-detail-card.text_ba9b57ee66": {
-      "action": "action",
-      "equipped": "change.equipped"
+      "action": "临时面板调整类型说明",
+      "equipped": "当前替换后的装备或配置摘要"
     },
     "panel.damage-detail-card.text_77d3007d8e": {
-      "command": "change.command"
+      "command": "当前生效的面板替换命令文本"
     },
     "panel.damage.text_6a390a0ddd": {
-      "element": "element"
+      "element": "元素英文键名"
     },
     "panel.damage.text_13b0add08b": {
-      "key": "key"
+      "key": "被提升的属性或伤害类型名称"
     },
     "panel.damage.text_44ed7601fd": {
-      "value1": "masteryName[item]",
-      "item": "item",
-      "bonus": "bonus"
+      "value1": "元素反应中文名称",
+      "item": "元素反应英文键名（用于匹配数值占位符）",
+      "bonus": "激化反应附加固定伤害提升片段或空串"
     },
     "panel.damage.text_2693821b85": {
-      "elem": "avatar.elem"
+      "elem": "旅行者当前元素的英文标识"
     },
     "panel.damage.text_e267fc53d4": {
-      "value1": "index + 1"
+      "value1": "伤害计算条目序号（从 1 开始）"
     },
     "panel.damage.text_92a1af488e": {
-      "name": "avatar.name",
-      "length": "titles.length"
+      "name": "当前角色名称",
+      "length": "该角色支持的伤害计算条目总数"
     },
     "panel.damage.text_7ef44b473c": {
-      "value1": "cons - 1",
-      "value2": "Math.abs(change(here, previous)).toFixed(2)"
+      "value1": "上一级命座层数（当前命座减 1）",
+      "value2": "伤害提升百分比（绝对值，保留两位小数）"
     },
     "panel.damage.text_7e0f093936": {
-      "value1": "cons + 1",
-      "value2": "Math.abs(change(here, next)).toFixed(2)"
+      "value1": "下一级命座层数（当前命座加 1）",
+      "value2": "预计伤害提升百分比（绝对值，保留两位小数）"
     },
     "panel.damage.text_ca0cbbf12f": {
-      "value1": "change(zero, here).toFixed(2)"
+      "value1": "当前命座对比 0 命的总伤害提升百分比（保留两位小数）"
     },
     "panel.equipment-change.text_b0c62baa6a": {
-      "name": "avatar.name"
+      "name": "当前角色名称"
     },
     "panel.equipment-change.text_d661f0af64": {
-      "name": "weapon.name",
-      "level": "weapon.level",
-      "affix": "weapon.affix"
+      "name": "武器名称",
+      "level": "武器等级",
+      "affix": "武器精炼等阶"
     },
     "panel.equipment-change.text_a1be7bb808": {
-      "donor": "change.donor"
+      "donor": "请求作为装备来源的角色名"
     },
     "panel.equipment-change.text_97d5b4120e": {
-      "name": "donor.name"
+      "name": "装备来源角色名称"
     },
     "panel.equipment-change.text_aa38aa92a0": {
-      "name": "donor.name"
+      "name": "装备来源角色名称"
     },
     "panel.equipment-change.text_826790d480": {
-      "cons": "avatar.cons",
-      "constellations": "constellations"
+      "cons": "角色原有命座层数",
+      "constellations": "试算目标命座层数"
     },
     "panel.equipment-change.text_13d859c073": {
-      "value1": "levels.join(\" / \")"
+      "value1": "以斜杠分隔的天赋显示等级列表"
     },
     "panel.equipment-change.text_48f049a68d": {
-      "cons": "avatar.cons",
-      "constellation": "constellation",
-      "talent": "talent"
+      "cons": "角色原有命座层数",
+      "constellation": "试算目标命座层数",
+      "talent": "试算天赋等级描述文本"
     },
     "panel.group-rank-card.text_67ce28e000": {
-      "count": "publicRanking.count",
-      "length": "rows.length"
+      "count": "排名上限人数",
+      "length": "本次实际入榜人数"
     },
     "panel.group-rank-card.text_8f16cda3b9": {
-      "affix": "weapon.affix"
+      "affix": "武器精炼等级"
     },
     "panel.group-rank.text_197f87595a": {
-      "scored": "scored",
-      "size": "subjects.size",
-      "value3": "winners.size",
-      "fallback": "fallback"
+      "scored": "成功计分的 UID 数量",
+      "size": "已登记的 UID 总数",
+      "value3": "参与排名的角色数量",
+      "fallback": "回退至圣遗物评分的提示文本"
     },
     "panel.group-rank.text_78e05eb970": {
-      "size": "subjects.size",
-      "length": "candidates.length",
-      "missing": "missing",
-      "failed": "failed"
+      "size": "已登记的 UID 总数",
+      "length": "可参与排名的数量",
+      "missing": "未在展板展示的数量",
+      "failed": "刷新或计算失败的数量"
     },
     "panel.group-rank.text_9e7699b10f": {
-      "name": "character.name",
-      "value2": "rankModeNames[mode]"
+      "name": "角色名称",
+      "value2": "排行维度名称"
     },
     "panel.group-rank.text_03e59bbc8f": {
-      "name": "character.name",
-      "value2": "rankModeNames[mode]",
-      "uid": "lead.role.uid"
+      "name": "角色名称",
+      "value2": "排行维度名称",
+      "uid": "榜首玩家的原神 UID"
     },
     "panel.group-rank.text_affd1ad3b0": {
-      "name": "character.name",
-      "value2": "rankModeNames[mode]"
+      "name": "角色名称",
+      "value2": "排行维度名称"
     },
     "panel.image-commands.text_c2f12172f7": {
-      "name": "name",
-      "value2": "name"
+      "name": "角色名称",
+      "value2": "角色名称"
     },
     "panel.image-commands.text_486c246486": {
-      "name": "name"
+      "name": "角色名称"
     },
     "panel.image-commands.text_40a02de404": {
-      "pageCount": "pageCount"
+      "pageCount": "总页数"
     },
     "panel.image-commands.text_bcb99c4ab8": {
-      "name": "name",
-      "length": "entries.length",
-      "number": "number",
-      "pageCount": "pageCount",
-      "value5": "name"
+      "name": "角色名称",
+      "length": "面板图总数量",
+      "number": "当前页码",
+      "pageCount": "总页数",
+      "value5": "角色名称"
     },
     "panel.image-commands.text_2f3fa0adc4": {
-      "label": "label"
+      "label": "列表项序号标签"
     },
     "panel.image-commands.text_c213bf3ccd": {
-      "name": "name",
-      "number": "number"
+      "name": "角色名称",
+      "number": "面板图序号"
     },
     "panel.lolomi.native.text_13b0add08b": {
-      "key": "key"
+      "key": "精炼加成属性键名"
     },
     "panel.lolomi.settings-command.text_5cf27eac17": {
-      "title": "title",
-      "state": "state"
+      "title": "设置项名称",
+      "state": "开关状态（开启或关闭）"
     },
     "panel.lolomi.settings-command.text_4302da593b": {
-      "title": "title",
-      "state": "state"
+      "title": "设置项名称",
+      "state": "开关状态（开启或关闭）"
     },
     "panel.lolomi.settings-command.text_440e94c45f": {
-      "title": "title",
-      "state": "state"
+      "title": "设置项名称",
+      "state": "开关状态（开启或关闭）"
     },
     "panel.miao.character-artifact-rules.text_6fc1cb567d": {
-      "value1": "title.join('')"
+      "value1": "拼接后的流派或配置标签"
     },
     "panel.miao.character-artifact-rules.text_e3507685e2": {
-      "value1": "title.join('')"
+      "value1": "拼接后的流派或配置标签"
     },
     "panel.model.text_ee13bb1bcc": {
-      "target": "target",
-      "part": "part",
-      "suffix": "suffix"
+      "target": "目标角色名",
+      "part": "替换部分（如命座或装备）",
+      "suffix": "指令后缀"
     },
     "panel.model.text_cdca74dabb": {
-      "target": "target",
-      "donor": "donor",
-      "value3": "profile?.[0] ?? \"\""
+      "target": "目标角色名",
+      "donor": "提供装备的角色名",
+      "value3": "档案后缀"
     },
     "panel.model.text_c1064b5fd8": {
-      "target": "target",
-      "value2": "donors.join(\"换\")",
-      "suffix": "suffix"
+      "target": "目标角色名",
+      "value2": "替换来源角色列表",
+      "suffix": "指令后缀（如档案编号）"
     },
     "panel.original-profile-skia.text_3ef457527a": {
-      "cons": "data.cons"
+      "cons": "角色命之座层数"
     },
     "panel.original-profile-skia.text_28734ff8ea": {
-      "changeProfile": "model.changeProfile"
+      "changeProfile": "当前使用的面板替换命令"
     },
     "panel.original-profile-skia.text_69ab40be88": {
-      "abbr": "data.abbr"
+      "abbr": "角色名称缩写"
     },
     "panel.original-profile-skia.text_37b08c3e12": {
-      "mark": "piece.mark",
-      "markClass": "piece.markClass"
+      "mark": "圣遗物评分数值",
+      "markClass": "圣遗物评分等级"
     },
     "panel.original-profile-skia.text_ea07627e4e": {
-      "abbr": "data.abbr"
+      "abbr": "角色简称（用于拼接查询指令）"
     },
     "panel.original-profile-skia.text_91d6c72761": {
-      "value1": "damage.enemyLv ?? \"\"",
-      "value2": "damage.enemyName || \"小宝\"",
-      "value3": "damage.enemyLv ?? \"\""
+      "value1": "敌人等级",
+      "value2": "敌人名称",
+      "value3": "敌人等级"
     },
     "panel.panel-file.text_60c21c1bc5": {
-      "name": "file.name"
+      "name": "导出的面板文件名"
     },
     "panel.panel-file.text_68901e8078": {
-      "MAX_PROFILE_ID": "MAX_PROFILE_ID"
+      "MAX_PROFILE_ID": "允许的最大档案编号上限"
     },
     "panel.panel-file.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "用户选择的档案编号"
     },
     "panel.panel-list-card.text_6d88e2bb3f": {
-      "page": "page",
-      "pageCount": "pageCount"
+      "page": "当前页码",
+      "pageCount": "总页数"
     },
     "panel.panel-list-card.text_ef28088933": {
-      "time": "time"
+      "time": "面板最后更新时间"
     },
     "panel.panel.text_d61ea14b74": {
-      "extreme": "extreme"
+      "extreme": "角色名称或极限示例标识"
     },
     "panel.panel.text_58d9a1a126": {
-      "uid": "source.role.uid",
-      "profileId": "profileId"
+      "uid": "待删除面板的原神游戏 UID",
+      "profileId": "档案编号"
     },
     "panel.panel.text_16e60712d6": {
-      "target": "target"
+      "target": "被删除本地面板的目标UID"
     },
     "panel.panel.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.panel.text_de3c71af3d": {
-      "label": "label",
-      "name": "command.name"
+      "label": "预设来源标签",
+      "name": "角色名称"
     },
     "panel.panel.text_1b89b4168a": {
-      "label": "label"
+      "label": "面板或图片卡片名称"
     },
     "panel.panel.text_b0c62baa6a": {
-      "name": "target.name"
+      "name": "目标角色名称"
     },
     "panel.panel.text_5df71e1389": {
-      "level": "level"
+      "level": "已设置的敌人等级"
     },
     "panel.panel.text_e992575344": {
-      "value1": "showcaseNames[target.provider]"
+      "value1": "公开展板数据源名称"
     },
     "panel.panel.text_affc1cd5da": {
-      "uid": "uid",
-      "value2": "uid"
+      "uid": "公开展板的原神游戏 UID",
+      "value2": "用于展板更新命令的原神游戏 UID"
     },
     "panel.panel.text_6d0f473f91": {
-      "uid": "uid",
-      "suffix": "suffix"
+      "uid": "原神游戏 UID",
+      "suffix": "档案编号后缀"
     },
     "panel.panel.text_c2674edcc9": {
-      "label": "materialDay.label"
+      "label": "所选日期标签"
     },
     "panel.panel.text_076e395801": {
-      "uid": "uid",
-      "label": "materialDay.label"
+      "uid": "角色UID",
+      "label": "素材开放日标签"
     },
     "panel.panel.text_881ce82f31": {
-      "value1": "command.theaterMonth.slice(0, 4)",
-      "value2": "command.theaterMonth.slice(4)"
+      "value1": "四位年份",
+      "value2": "两位月份"
     },
     "panel.panel.text_b41763950f": {
-      "monthTitle": "monthTitle"
+      "monthTitle": "剧诗月份标题"
     },
     "panel.panel.text_813406fa21": {
-      "monthTitle": "monthTitle"
+      "monthTitle": "剧诗月份标题"
     },
     "panel.panel.text_51d23ba661": {
-      "monthTitle": "monthTitle",
-      "text": "theaterSelection.text"
+      "monthTitle": "剧诗月份标题",
+      "text": "剧诗筛选规则说明文本"
     },
     "panel.panel.text_f4cad98e8d": {
-      "uid": "uid",
-      "suffix": "suffix"
+      "uid": "游戏 UID",
+      "suffix": "命令后缀"
     },
     "panel.panel.text_23a69e7dd7": {
-      "uid": "uid",
-      "value2": "talentTitle ?? \"面板练度统计\"",
-      "length": "rows.length"
+      "uid": "角色UID",
+      "value2": "统计标题或天赋日程标题",
+      "length": "符合条件的角色数量"
     },
     "panel.panel.text_d06082d9a1": {
-      "value1": "materials?.weekly?.name ?? \"—\""
+      "value1": "周本素材名称或占位符"
     },
     "panel.panel.text_aec662f0ef": {
-      "value1": "materials?.talent?.name ?? \"—\""
+      "value1": "天赋培养材料名称或缺失占位符"
     },
     "panel.panel.text_7a55796abf": {
-      "value1": "weapon?.name ?? \"—\""
+      "value1": "武器名称或缺失占位符"
     },
     "panel.panel.text_6d9506b8c4": {
-      "rank": "rating.rank",
-      "value2": "rating.score.toFixed(1)"
+      "rank": "圣遗物评分评级",
+      "value2": "圣遗物评分数值"
     },
     "panel.panel.text_871d79b322": {
-      "value1": "avatar.cons ?? \"—\""
+      "value1": "角色命座数或缺失占位符"
     },
     "panel.panel.text_ee746b1680": {
-      "value1": "fetter ?? \"—\""
+      "value1": "角色好感度等级或占位符"
     },
     "panel.panel.text_1db44bde7d": {
-      "value1": "talents.map(talent => talent?.level ?? \"—\").join(\"/\")"
+      "value1": "以斜杠分隔的角色天赋等级文本"
     },
     "panel.panel.text_aeb184066b": {
-      "uid": "uid"
+      "uid": "原神游戏 UID"
     },
     "panel.panel.text_7b41f33a93": {
-      "value1": "index + 1",
-      "name": "item.name",
-      "value3": "avatar.name",
-      "value4": "rated.score.toFixed(1)"
+      "value1": "列表序号",
+      "name": "圣遗物名称",
+      "value3": "所属角色名称",
+      "value4": "圣遗物评分数值"
     },
     "panel.panel.text_5b0aa25305": {
-      "name": "name",
-      "suffix": "suffix"
+      "name": "查询的角色名称",
+      "suffix": "档案编号后缀"
     },
     "panel.panel.text_182c3bd910": {
-      "value1": "displayNumber(row.base)"
+      "value1": "格式化后的基础属性值"
     },
     "panel.panel.text_5f080227e9": {
-      "suffix": "suffix"
+      "suffix": "档案编号后缀"
     },
     "panel.panel.text_6005965f6b": {
-      "uid": "uid",
-      "name": "avatar.name",
-      "enemyLevel": "estimate.enemyLevel"
+      "uid": "原神游戏 UID",
+      "name": "角色名称",
+      "enemyLevel": "目标敌人等级"
     },
     "panel.panel.text_bd189da79b": {
-      "value1": "displayNumber(entry.average)"
+      "value1": "格式化后的期望伤害数值"
     },
     "panel.panel.text_0e9ca6b213": {
-      "value1": "displayNumber(entry.crit)"
+      "value1": "格式化后的暴击伤害数值"
     },
     "panel.panel.text_26bf3fcbd3": {
-      "name": "avatar.weapon.name"
+      "name": "角色当前装备的武器名称"
     },
     "panel.panel.text_6d8c1905bb": {
-      "uid": "uid",
-      "prefix": "prefix",
-      "length": "avatars.length",
-      "value4": "avatars.map(avatar => avatar.name).join(\"、\")"
+      "uid": "原神游戏 UID",
+      "prefix": "面板更新状态前缀",
+      "length": "角色数量",
+      "value4": "角色名称列表"
     },
     "panel.panel.text_6658649baf": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.personal-challenge-card.text_035195edad": {
-      "life": "life"
+      "life": "角色命之座层数"
     },
     "panel.personal-challenge-card.text_bfc7ca3615": {
-      "value1": "model.month ?? \"—\""
+      "value1": "挑战月份或时间占位符"
     },
     "panel.personal-challenge-card.text_7093f863c3": {
-      "value1": "model.floor ?? \"—\""
+      "value1": "最深抵达层数或占位符"
     },
     "panel.personal-challenge-card.text_4591016ad4": {
-      "stars": "model.stars"
+      "stars": "深境螺旋总星数"
     },
     "panel.personal-challenge-card.text_cb14d1f588": {
-      "value1": "avatar.value ?? \"—\""
+      "value1": "角色出战次数或占位符"
     },
     "panel.personal-challenge-card.text_c6cf658114": {
-      "count": "model.count"
+      "count": "战斗总次数"
     },
     "panel.personal-challenge-card.text_c6928dea1f": {
-      "floor": "model.floor"
+      "floor": "深境螺旋层数"
     },
     "panel.personal-challenge-card.text_b9d216228f": {
-      "value1": "room.index ?? \"—\""
+      "value1": "房间序号或占位符"
     },
     "panel.personal-challenge-model.text_8ccdbc34e3": {
-      "uid": "uid",
-      "period": "period"
+      "uid": "原神角色UID",
+      "period": "挑战期数描述"
     },
     "panel.personal-challenge-model.text_bc5b7e3a21": {
-      "value1": "roman(serial)"
+      "value1": "罗马数字序号"
     },
     "panel.personal-challenge-model.text_b27f7f97f7": {
-      "value1": "roundId ?? \"—\""
+      "value1": "幕数或占位符"
     },
     "panel.personal-challenge-model.text_39662ac928": {
-      "uid": "uid",
-      "floor": "selection.floor"
+      "uid": "游戏 UID",
+      "floor": "深境螺旋层数"
     },
     "panel.personal-challenge-model.text_d5e9ab2843": {
-      "uid": "uid"
+      "uid": "原神角色UID"
     },
     "panel.personal-challenge-model.text_6487edab4b": {
-      "uid": "uid"
+      "uid": "游戏 UID"
     },
     "panel.personal-challenge.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.personal-challenge.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.personal-exploration-model.text_db259684a6": {
-      "medals": "medals"
+      "medals": "已完成月谕圣牌数量"
     },
     "panel.personal-exploration-model.text_d9de113500": {
-      "turn": "turn",
-      "value2": "medals ? ` 圣牌${medals}` : \"\""
+      "turn": "幻想真境剧诗已通过幕数",
+      "value2": "圣牌数量补充文本（可为空）"
     },
     "panel.personal-exploration-model.text_53b1d12334": {
-      "level": "level"
+      "level": "等级数值"
     },
     "panel.personal-hard-challenge-card.text_46b013221d": {
-      "version": "version"
+      "version": "挑战所属游戏版本号"
     },
     "panel.personal-hard-challenge-model.text_1ea17407e2": {
-      "uid": "uid",
-      "period": "period",
-      "value3": "selection.mode === \"best\" ? \"\" : modeLabel"
+      "uid": "玩家游戏 UID",
+      "period": "挑战期别（如本期或上期）",
+      "value3": "挑战模式标签（最佳模式时为空）"
     },
     "panel.personal-hard-challenge-model.text_0bce5af7e1": {
-      "value1": "index + 1"
+      "value1": "分场挑战序号（从 1 开始）"
     },
     "panel.personal-hard-challenge.text_b4ba5fed47": {
-      "MAX_PROFILE_ID": "MAX_PROFILE_ID"
+      "MAX_PROFILE_ID": "最大档案编号上限"
     },
     "panel.personal-hard-challenge.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.personal-hard-challenge.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.personal-record-card.text_3ef457527a": {
-      "cons": "avatar.cons"
+      "cons": "命之座层数"
     },
     "panel.personal-record-card.text_6a7d8ebcda": {
-      "y": "y"
+      "y": "活跃年数"
     },
     "panel.personal-record-card.text_27f77a3866": {
-      "m": "m"
+      "m": "活跃月数"
     },
     "panel.personal-record-card.text_ddf93a56c6": {
-      "d": "d"
+      "d": "活跃天数"
     },
     "panel.personal-record-card.text_c515094d3c": {
-      "page": "page",
-      "pages": "pages"
+      "page": "当前页码",
+      "pages": "总页数"
     },
     "panel.personal-record-card.text_fb3d58c5b9": {
-      "profile": "profile"
+      "profile": "面板数据更新时间"
     },
     "panel.personal-record-card.text_498f979c81": {
-      "mys": "mys"
+      "mys": "米游社数据更新时间"
     },
     "panel.personal-record.text_a1f1cc56ea": {
-      "rarity": "rarity"
+      "rarity": "筛选的角色星级"
     },
     "panel.personal-record.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "待登录的档案编号"
     },
     "panel.personal-record.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "用户指定的档案编号"
     },
     "panel.personal-theater-card.text_3947001dc1": {
-      "month": "model.month"
+      "month": "剧诗所属月份"
     },
     "panel.personal-theater-card.text_21ed861727": {
-      "value1": "model.month ? `${model.month}月` : model.period",
-      "value2": "model.difficulty || \"未知\""
+      "value1": "期数或月份文本",
+      "value2": "剧诗挑战难度名称（缺省为“未知”）"
     },
     "panel.personal-theater-card.text_05ad36daab": {
-      "value1": "model.tarot ?? \"—\""
+      "value1": "月谕模式下的圣牌数量（缺省为“—”）"
     },
     "panel.seven-saints-deck-card.text_31a2142f9f": {
-      "profileId": "profileId"
+      "profileId": "账号档案编号"
     },
     "panel.seven-saints-deck-card.text_ad8df1f121": {
-      "id": "deck.id",
-      "value2": "deckHint(deck.id, profileId)"
+      "id": "卡组编号",
+      "value2": "查询该卡组详情的指令文本"
     },
     "panel.seven-saints-deck-card.text_a7c5f42512": {
-      "deckId": "deckId"
+      "deckId": "卡组编号"
     },
     "panel.seven-saints-decks.text_6b1df5533c": {
-      "subject": "subject"
+      "subject": "查询对象（牌组或收藏）"
     },
     "panel.seven-saints-decks.text_31a2142f9f": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.seven-saints-decks.text_a511728451": {
-      "indexCommand": "indexCommand",
-      "commandSuffix": "commandSuffix",
-      "value3": "commandSuffix"
+      "indexCommand": "牌组列表查询命令",
+      "commandSuffix": "角色牌命令档案后缀",
+      "value3": "行动牌命令档案后缀"
     },
     "panel.seven-saints-decks.text_b8881f6091": {
-      "subject": "subject"
+      "subject": "查询对象（牌组或收藏）"
     },
     "panel.seven-saints-decks.text_1a5c77ca85": {
-      "value1": "page + 1",
-      "length": "pages.length"
+      "value1": "当前页码",
+      "length": "总页数"
     },
     "panel.seven-saints-decks.text_a6b8939e9f": {
-      "level": "collection.level",
-      "value2": "collection.characterCount?.join(\"/\") ?? \"—\"",
-      "value3": "collection.actionCount?.join(\"/\") ?? \"—\""
+      "level": "牌手等级",
+      "value2": "角色牌收集进度",
+      "value3": "行动牌收集进度"
     },
     "panel.seven-saints-decks.text_ea16275122": {
-      "id": "id",
-      "indexCommand": "indexCommand"
+      "id": "牌组编号",
+      "indexCommand": "牌组列表查询命令"
     },
     "panel.seven-saints-decks.text_5dc65c3f84": {
-      "indexCommand": "indexCommand"
+      "indexCommand": "牌组列表查询命令"
     },
     "panel.seven-saints-decks.text_a4be9bb356": {
-      "value1": "deckHint(record.decks[0]!.id, profileId)"
+      "value1": "示例牌组查询命令"
     },
     "panel.seven-saints-decks.text_6e78c5eaba": {
-      "uid": "uid"
+      "uid": "游戏 UID"
     },
     "panel.seven-saints-decks.text_cfc9e0e31f": {
-      "id": "row.id",
-      "value2": "deckHint(row.id, profileId)"
+      "id": "牌组编号",
+      "value2": "牌组详情查询命令"
     },
     "panel.seven-saints-decks.text_dad0770d44": {
-      "id": "deck.id",
-      "uid": "uid"
+      "id": "牌组编号",
+      "uid": "游戏 UID"
     },
     "panel.seven-saints-decks.text_b04d04c972": {
-      "value1": "list(deck.characters)"
+      "value1": "角色牌列表文本"
     },
     "panel.seven-saints-decks.text_07a61a0d3b": {
-      "value1": "list(deck.actions)"
+      "value1": "行动牌列表文本"
     },
     "panel.seven-saints-decks.text_32e9a0db85": {
-      "subject": "subject"
+      "subject": "查询对象（牌组或收藏）"
     },
     "panel.seven-saints-decks.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.seven-saints-decks.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.seven-saints-decks.text_e008a4834f": {
-      "subject": "subject"
+      "subject": "查询对象（牌组或收藏）"
     },
     "panel.seven-saints-decks.text_71a910087c": {
-      "subject": "subject"
+      "subject": "查询对象（牌组或收藏）"
     },
     "panel.showcase-client.text_175368f9cb": {
-      "value1": "showcaseNames[provider]"
+      "value1": "公开展板服务名称"
     },
     "panel.showcase-client.text_edf23bcbf9": {
-      "value1": "showcaseNames[provider]"
+      "value1": "公开展板服务商名称"
     },
     "panel.showcase-command.text_f6eebec5ff": {
-      "value1": "showcaseNames[target.provider]"
+      "value1": "公开展板服务商名称"
     },
     "panel.showcase-command.text_81fb82f1fc": {
-      "uid": "target.uid",
-      "value2": "avatars.map(avatar => avatar.name).join(\"、\")"
+      "uid": "目标角色的原神 UID",
+      "value2": "以顿号分隔的已更新角色名称列表"
     },
     "panel.showcase-command.text_1609db87d6": {
-      "profileId": "profileId"
+      "profileId": "当前查询的档案编号"
     },
     "panel.stygian-consent.text_008b8b5716": {
-      "group": "scope.group",
-      "profileId": "command.profileId",
-      "uid": "uid",
-      "destinations": "destinations"
+      "group": "目标 QQ 群号",
+      "profileId": "授权使用的档案编号",
+      "uid": "授权绑定的原神 UID",
+      "destinations": "以顿号分隔的授权目标站点列表"
     },
     "panel.stygian-consent.text_cdb8cb4f0f": {
-      "group": "scope.group",
-      "code": "draft.code",
-      "value3": "scope.group"
+      "group": "目标群号",
+      "code": "授权确认码",
+      "value3": "目标群号"
     },
     "panel.stygian-consent.text_a959dcf7e3": {
-      "group": "scope.group",
-      "value2": "draft.sites.map(site => sites[site]).join(\"、\")"
+      "group": "目标 QQ 群号",
+      "value2": "以顿号分隔的已授权站点列表"
     },
     "panel.stygian-group-rank.text_6c7a5cb902": {
-      "status": "status"
+      "status": "无法核验的数据源名称列表"
     },
     "panel.stygian-group-rank.text_80fd654064": {
-      "version": "period.version",
-      "value2": "status ? ` ${status} 数据暂时无法核验。` : \"\""
+      "version": "游戏版本号",
+      "value2": "不可用数据源的补充说明"
     },
     "panel.stygian-rank-card.text_651573f06f": {
-      "seconds": "row.seconds"
+      "seconds": "通关用时（秒）"
     },
     "panel.stygian-rank-card.text_29fa06c8bc": {
-      "value1": "siteNames[site]"
+      "value1": "排名数据源名称（Ark 或 Akasha）"
     },
     "panel.talent-refresh.text_a4952dade6": {
-      "incomplete": "incomplete"
+      "incomplete": "未返回完整天赋数据的角色数量"
     },
     "panel.talent-refresh.text_4abfba2a18": {
-      "count": "count",
-      "value2": "incomplete ? ` ${incomplete} 个角色的部分或全部天赋未返回，已保留原值。` : \"\"",
-      "suffix": "suffix",
-      "value4": "suffix"
+      "count": "已更新天赋的角色数量",
+      "value2": "部分角色天赋未返回时的提示文本",
+      "suffix": "练度统计指令的档案编号后缀",
+      "value4": "天赋统计指令的档案编号后缀"
     },
     "panel.talent-refresh.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "用户档案编号"
     },
     "panel.talent-refresh.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "用户档案编号"
     },
     "panel.tarot-cards-card.text_6003828783": {
-      "collected": "collection.collected",
-      "total": "collection.total"
+      "collected": "已收集的圣牌数量",
+      "total": "圣牌总数量"
     },
     "panel.tarot-cards-card.text_267b66ab26": {
-      "length": "page.matches.length"
+      "length": "匹配到的可交换群友人数"
     },
     "panel.tarot-cards-card.text_a3bd4ebf84": {
-      "group": "page.group"
+      "group": "当前群聊的群号"
     },
     "panel.tarot-cards-card.text_43b1fb842a": {
-      "score": "row.score"
+      "score": "可互换的圣牌种类数"
     },
     "panel.tarot-cards.text_57948ee3ad": {
-      "name": "name",
-      "qq": "qq",
-      "uid": "uid",
-      "value4": "takes.map(({ name, number }) => `${name} × ${number}`).join(\"、\")",
-      "value5": "gives.map(({ name, number }) => `${name} × ${number}`).join(\"、\")"
+      "name": "可交换群友的昵称",
+      "qq": "可交换群友的 QQ 号",
+      "uid": "可交换群友的原神 UID",
+      "value4": "对方可提供给你的圣牌及数量列表",
+      "value5": "你可提供给对方的圣牌及数量列表"
     },
     "panel.tarot-cards.text_5098383475": {
-      "uid": "page.uid",
-      "collected": "album.collected",
-      "total": "album.total"
+      "uid": "原神角色 UID",
+      "collected": "已收集的圣牌数量",
+      "total": "圣牌总数量"
     },
     "panel.tarot-cards.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.tarot-cards.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "档案编号"
     },
     "panel.team-damage-card.text_b2e8dfa288": {
-      "value1": "Math.round(value / 1_000) / 10"
+      "value1": "换算为万单位后的伤害数值"
     },
     "panel.team-damage-card.text_9aed0b10e2": {
-      "level": "member.level",
-      "cons": "member.cons"
+      "level": "角色等级",
+      "cons": "角色命之座层数"
     },
     "panel.team-damage-card.text_bc476f09ea": {
-      "weapon": "member.weapon",
-      "weaponLevel": "member.weaponLevel",
-      "weaponAffix": "member.weaponAffix"
+      "weapon": "武器名称",
+      "weaponLevel": "武器等级",
+      "weaponAffix": "武器精炼等阶"
     },
     "panel.team-damage-card.text_823d985155": {
-      "uid": "card.uid",
-      "profileId": "card.profileId",
-      "value3": "totalPages > 1 ? ` · ${pageNumber}/${totalPages}` : \"\""
+      "uid": "角色 UID",
+      "profileId": "档案编号",
+      "value3": "多页输出时的页码后缀"
     },
     "panel.team-damage-command.text_d11ecf5f65": {
-      "name": "name"
+      "name": "无法识别的角色名称"
     },
     "panel.team-damage-command.text_8d26927ef0": {
-      "value1": "missing.join(\"、\")"
+      "value1": "缺少面板数据的角色名称列表（以顿号分隔）"
     },
     "panel.team-damage-model.text_e842a3b1fb": {
-      "name": "name"
+      "name": "缺失可核对数据的角色名称"
     },
     "panel.team-damage-model.text_6963fe7f05": {
-      "affix": "weapon.affix"
+      "affix": "武器精炼阶数"
     },
     "panel.team-damage.text_079bae878b": {
-      "profileId": "profileId",
-      "value2": "members.map(member => member.name).join(\"、\")"
+      "profileId": "当前查询的档案编号",
+      "value2": "以顿号分隔的队伍角色名称列表"
     },
     "panel.team-damage.text_bb74ce8772": {
-      "value1": "members.map(member => member.name).join(\" / \")"
+      "value1": "以斜杠分隔的队伍角色名称列表"
     },
     "panel.team-damage.text_622b117f29": {
-      "seconds": "result.seconds"
+      "seconds": "队伍伤害计算的输出时长（秒数）"
     },
     "panel.team-damage.text_d536bf79f8": {
-      "value1": "result.total ?? \"—\"",
-      "value2": "result.dps || \"—\"",
-      "value3": "result.seconds ? `${result.seconds} 秒` : \"—\"",
-      "value4": "result.rank || \"—\""
+      "value1": "队伍总伤害数值或占位符",
+      "value2": "每秒伤害（DPS）数值或占位符",
+      "value3": "格式化后的输出时间文本或占位符",
+      "value4": "队伍伤害评级或占位符"
     },
     "panel.team-damage.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "当前查询的档案编号"
     },
     "panel.team-damage.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "当前查询的档案编号"
     },
     "panel.theater-statistics.text_d3304fa5e7": {
-      "value1": "knownElements.map(({ name }) => name).join(\"、\")"
+      "value1": "以顿号分隔的本期限制元素名称列表"
     },
     "panel.theater-statistics.text_e644ea72ac": {
-      "value1": "opening.map(({ name }) => name).join(\"、\")"
+      "value1": "以顿号分隔的开幕角色名称列表"
     },
     "panel.theater-statistics.text_2623f91622": {
-      "value1": "invited.map(({ name }) => name).join(\"、\")"
+      "value1": "以顿号分隔的特邀角色名称列表"
     },
     "panel.training-statistics-card.text_30596ad7d4": {
-      "name": "name",
-      "value2": "days ?? \"—\""
+      "name": "地区与天赋书名称",
+      "value2": "天赋书开放的星期缩写（如 1/4）"
     },
     "panel.training-statistics-card.text_eebb4bced5": {
-      "uid": "snapshot.uid",
-      "total": "total"
+      "uid": "玩家游戏UID",
+      "total": "已统计角色总数"
     },
     "panel.training-statistics-card.text_bc82ee1f81": {
-      "profile": "profile"
+      "profile": "面板数据更新时间"
     },
     "panel.training-statistics-card.text_104b6a0249": {
-      "mys": "mys"
+      "mys": "米游社数据更新时间文本"
     },
     "panel.weapon-list.text_be0df1e78c": {
-      "rarity": "rarity"
+      "rarity": "筛选的武器星级"
     },
     "panel.weapon-list.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "用户档案编号"
     },
     "panel.weapon-list.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "用户档案编号"
     },
     "pay-log-card.text_e1fc0876cb": {
-      "name": "model.highest.name"
+      "name": "最高消费月份名称"
     },
     "pay-log-command.text_ab6841601d": {
-      "uid": "ledger.uid"
+      "uid": "原神角色 UID"
     },
     "pay-log-command.text_b779ef4dee": {
-      "paid": "ledger.paid",
-      "crystal": "ledger.crystal"
+      "paid": "累计实际支付金额（元）",
+      "crystal": "累计获得的创世结晶数量"
     },
     "pay-log-command.text_6d0d20c83c": {
-      "name": "ledger.highest.name",
-      "amount": "ledger.highest.amount"
+      "name": "消费金额最高的充值商品名称",
+      "amount": "该商品对应的累计消费金额（元）"
     },
     "pay-log-command.text_2a04cf4bf2": {
-      "name": "row.name",
-      "count": "row.count"
+      "name": "充值档位或商品名称",
+      "count": "该档位累计购买次数"
     },
     "pay-log-command.text_76720712c8": {
-      "profileId": "profileId"
+      "profileId": "用户选择的档案编号"
     },
     "pay-log-command.text_147d603571": {
-      "profileId": "profileId"
+      "profileId": "用户选择的档案编号"
     },
     "public-statistics-card.text_45a582f830": {
-      "column": "column"
+      "column": "角色命之座等级（0 至 6）"
     },
     "public-statistics.text_3d223cc27d": {
-      "value1": "roles.version || \"版本未知\"",
-      "value2": "roles.samples?.toLocaleString(\"zh-CN\") ?? \"未知\"",
-      "value3": "roles.updated || \"时间未知\""
+      "value1": "命座数据对应的游戏版本",
+      "value2": "命座统计的样本数量",
+      "value3": "命座数据的更新时间"
     },
     "public-statistics.text_4355b3dcb9": {
-      "value1": "abyss.version || \"版本未知\"",
-      "value2": "abyss.updated || \"时间未知\""
+      "value1": "数据版本号",
+      "value2": "数据更新时间"
     },
     "public-statistics.text_0c2319733e": {
-      "value1": "hard ? \"Lelaer\" : \"提瓦特小助手\""
+      "value1": "统计数据源名称（Lelaer 或提瓦特小助手）"
     },
     "public-statistics.text_6ee898171c": {
-      "value1": "data.version || \"版本未知\"",
-      "value2": "data.samples?.toLocaleString(\"zh-CN\") ?? \"未知\""
+      "value1": "数据版本号",
+      "value2": "样本数量"
     },
     "public-statistics.text_81198d540c": {
-      "value1": "data.updated || \"未知\""
+      "value1": "数据更新时间"
     },
     "public-statistics.text_ca33f651e8": {
-      "name": "row.name",
-      "value2": "row.holding === undefined ? \"未知\" : row.holding.toFixed(2) + \"%\"",
-      "value3": "row.percentages.map(value => value?.toFixed(2) ?? \"—\").join(\"/\")"
+      "name": "角色名称",
+      "value2": "角色持有率",
+      "value3": "各命座分布百分比列表"
     },
     "rank-statistics.stats.text_b25f3296f8": {
-      "name": "character.name",
-      "title": "result.stats.title",
-      "total": "result.stats.total"
+      "name": "角色名称",
+      "title": "榜单标题",
+      "total": "统计的 UID 总数"
     },
     "voice.card.text_3235af7555": {
-      "name": "name"
+      "name": "角色名称"
     },
     "voice.command.text_82ec9e0e93": {
-      "language": "language"
+      "language": "语音语言"
     },
     "voice.source.text_1d582ab339": {
-      "name": "name"
+      "name": "旅行者名称"
     },
     "wish-sim.admin-pools.text_067aeefd9e": {
-      "name": "name"
+      "name": "待解析的卡池物品名称"
     },
     "wish-sim.admin.text_b67887097a": {
-      "value1": "enabled ? \"开启\" : \"关闭\"",
-      "value2": "multiple ? \"开启\" : \"关闭\""
+      "value1": "模拟祈愿功能开关状态",
+      "value2": "多连抽功能开关状态"
     },
     "wish-sim.admin.text_a2ca3b80ca": {
-      "characterFive": "characterFive",
-      "characterFour": "characterFour"
+      "characterFive": "角色池五星基础概率（万分比）",
+      "characterFour": "角色池四星基础概率（万分比）"
     },
     "wish-sim.admin.text_ff34e9d9a6": {
-      "weaponFive": "weaponFive",
-      "weaponFour": "weaponFour"
+      "weaponFive": "武器池五星基础概率（万分比）",
+      "weaponFour": "武器池四星基础概率（万分比）"
     },
     "wish-sim.admin.text_451e8c98d0": {
-      "value1": "featuredFive === null ? \"角色 50% · 武器 75%\" : featuredFive + \"%\""
+      "value1": "默认小保底说明或自定义概率百分比"
     },
     "wish-sim.admin.text_0efc76d55c": {
-      "value1": "settings.automaticPools ? \"自动同步\" : \"手工\""
+      "value1": "卡池同步模式（自动同步或手工）"
     },
     "wish-sim.admin.text_fe411b8bb4": {
-      "label": "label",
-      "value2": "settings[field].join(\"、\") || \"沿用默认名单\""
+      "label": "卡池分类标签",
+      "value2": "已配置的物品名单或默认名单提示"
     },
     "wish-sim.card.text_f30758be1c": {
-      "pity": "pull.pity"
+      "pity": "对应出货的保底抽数"
     },
     "wish-sim.card.text_d05ff70d73": {
-      "name": "count.name",
-      "pity": "count.pity",
-      "value3": "count.guaranteed ?? \"\""
+      "name": "抽中的五星物品名称",
+      "pity": "出金时的保底抽数",
+      "value3": "歪或保底标记"
     },
     "wish-sim.card.text_6bc100786a": {
-      "pity": "pity"
+      "pity": "当前累计未出五星抽数"
     },
     "wish-sim.card.text_b33c90a455": {
-      "target": "target"
+      "target": "当前神铸定轨目标武器名称"
     },
     "wish-sim.card.text_adfb135cb9": {
-      "fate": "fate"
+      "fate": "当前神铸定轨命定值"
     },
     "wish-sim.card.text_acac3da6c6": {
-      "page": "page"
+      "page": "当前祈愿结果页码"
     },
     "wish-sim.commands.text_3fff51d6f6": {
-      "short": "short",
-      "reason": "reason",
-      "value3": "weapon ? today.weaponDraws : today.normalDraws",
-      "value4": "legacy?.starsUnknown ? \"，旧五星未能核验\" : \"无五星\""
+      "short": "截断后的用户昵称",
+      "reason": "统计范围提示前缀",
+      "value3": "累计抽数",
+      "value4": "未出五星或旧记录核验说明"
     },
     "wish-sim.commands.text_f7c5f43bf2": {
-      "five": "today.five"
+      "five": "今日已获得的五星数量"
     },
     "wish-sim.commands.text_f36013940a": {
-      "weeklyLabel": "weeklyLabel",
-      "week": "week"
+      "weeklyLabel": "本周统计标签",
+      "week": "本周累计获得的五星数量"
     },
     "wish-sim.commands.text_ffe47be768": {
-      "pity": "pull.pity",
-      "value2": "pull.guaranteed ?? \"\""
+      "pity": "本次出货时的保底抽数",
+      "value2": "保底或定轨标注文本"
     },
     "wish-sim.commands.text_e3a8b24e11": {
-      "issued": "issued",
-      "title": "card.title",
-      "pity": "card.pity",
-      "value4": "formatPulls(card.pulls)"
+      "issued": "今日领取祈愿道具的提示前缀",
+      "title": "祈愿卡池标题",
+      "pity": "当前五星保底已垫抽数",
+      "value4": "格式化后的抽卡结果列表"
     },
     "wish-sim.commands.text_1dd432e753": {
-      "issued": "issued",
-      "title": "card.title",
-      "length": "card.pulls.length"
+      "issued": "今日补发球数提示前缀",
+      "title": "卡池标题",
+      "length": "本次祈愿总抽数"
     },
     "wish-sim.commands.text_8824718571": {
-      "label": "label",
-      "pink": "pink",
-      "value3": "label",
-      "blue": "blue",
-      "value5": "label",
-      "recallSeconds": "recallSeconds"
+      "label": "配置作用域标签（默认或群聊）",
+      "pink": "每日发放的纠缠之缘数量",
+      "value3": "配置作用域标签（默认或群聊）",
+      "blue": "每日发放的相遇之缘数量",
+      "value5": "配置作用域标签（默认或群聊）",
+      "recallSeconds": "抽卡消息自动撤回时间（秒）"
     },
     "wish-sim.commands.text_a862305a0e": {
-      "pink": "balance.pink",
-      "blue": "balance.blue"
+      "pink": "当前剩余的纠缠之缘数量",
+      "blue": "当前剩余的相遇之缘数量"
     },
     "wish-sim.commands.text_a36a224879": {
-      "target": "target",
-      "lifeNum": "session.weapon.lifeNum"
+      "target": "当前定轨的五星武器名称",
+      "lifeNum": "当前积累的命定值"
     },
     "wish-sim.commands.text_2176c05c61": {
-      "value1": "pool.up5.map(({ name }) => `${name === target ? \"[√]\" : \"[ ]\"} ${name}`).join(\"\\n\")"
+      "value1": "当前UP五星武器列表及勾选标记"
     },
     "wish-sim.commands.text_7ae445c61f": {
-      "value1": "currency === \"blue\" ? \"相遇\" : \"纠缠\"",
-      "count": "draw.count",
-      "value3": "balance[currency]"
+      "value1": "祈愿道具类型名称（相遇或纠缠）",
+      "count": "本次抽卡所需道具数量",
+      "value3": "当前持有的对应道具数量"
     },
     "wish-sim.commands.text_b499e7b583": {
-      "summary": "summary",
-      "label": "label",
-      "maximum": "maximum",
-      "used": "used"
+      "summary": "今日及本周祈愿汇总文本",
+      "label": "受限的祈愿池类别标签",
+      "maximum": "每日允许的最大抽卡次数",
+      "used": "今日已累计使用的抽卡次数"
     },
     "wish-sim.commands.text_68ae115f3b": {
-      "pink": "issued.pink",
-      "blue": "issued.blue"
+      "pink": "本次领取的纠缠之缘数量",
+      "blue": "本次领取的相遇之缘数量"
     },
     "wish-sim.pools.text_6ac3781d77": {
-      "key": "key"
+      "key": "卡池配置字段名"
     },
     "wish-sim.pools.text_764a2a90ac": {
-      "character": "character"
+      "character": "UP 角色名称"
     },
     "wish-sim.reincarnation-card.text_b6259cc243": {
-      "label": "element.label"
+      "label": "元素名称"
     },
     "wish-sim.reincarnation-card.text_a2856275b0": {
-      "title": "title"
+      "title": "转生角色称号"
     },
     "wish-sim.reincarnation-card.text_3cdb8d6b5c": {
-      "identity": "identity"
+      "identity": "转生角色身份"
     },
     "wish-sim.reincarnation.text_9f26bb5953": {
-      "blocked": "blocked"
+      "blocked": "剩余冷却分钟数"
     },
     "wish-sim.reincarnation.text_8156a1298d": {
-      "nickname": "nickname",
-      "name": "role.name",
-      "title": "role.title",
-      "label": "wishReincarnationElement(role.elem).label",
-      "identity": "role.identity"
+      "nickname": "用户昵称",
+      "name": "转生角色名称",
+      "title": "转生角色称号",
+      "label": "元素名称",
+      "identity": "转生角色身份"
     },
     "world-boss-ranking-import.text_f73265b4b5": {
-      "subject": "subject"
+      "subject": "待校验的文件主题名称"
     },
     "world-boss-ranking-import.text_70d294d9a2": {
-      "subject": "subject"
+      "subject": "待读取的文件主题名称"
     },
     "world-boss-ranking.text_f73265b4b5": {
-      "subject": "subject"
+      "subject": "校验失败的对象名称"
     },
     "world-boss.text_3caf242584": {
-      "profileId": "profileId"
+      "profileId": "用户档案编号"
     },
     "world-boss.text_028a00ae63": {
-      "profileId": "profileId"
+      "profileId": "用户档案编号"
     },
     "panel.seven-saints-deck-card.text_24432b1be5": {
-      "deckLabel": "deckLabel",
-      "pageLabel": "pageLabel"
+      "deckLabel": "牌组标签",
+      "pageLabel": "页码标签"
     }
   }
 }

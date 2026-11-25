@@ -90,9 +90,9 @@ test("pre-claim expiry refreshes once and each distinct role photo sends the off
     }, loadArt: photo,
   });
   expect(await run(command, { ...privateChat, reply(message) { trace.push(message); return true; } })).toEqual([]);
-  expect(trace).toEqual(["badge-old", "index-old", "refresh", "badge-fresh", "index-fresh", "正在获取芙宁娜的图片，请稍等～",
-    { type: "image", file: original }, { role_id: 13 }, "获取芙宁娜的图片成功～", "正在获取刻晴的图片，请稍等～",
-    { type: "image", file: original }, { role_id: 14 }, "获取刻晴的图片成功～"]);
+  expect(trace).toEqual(["badge-old", "index-old", "refresh", "badge-fresh", "index-fresh", "正在获取芙宁娜的图片，请稍候。",
+    { type: "image", file: original }, { role_id: 13 }, "获取芙宁娜的图片成功。", "正在获取刻晴的图片，请稍候。",
+    { type: "image", file: original }, { role_id: 14 }, "获取刻晴的图片成功。"]);
 }));
 
 test("invalid views, unsafe art, failed sends, and concurrent role changes never submit a claim", () => fixture(async (root, file) => {
