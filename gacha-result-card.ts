@@ -25,7 +25,7 @@ export function renderGenshinGachaResult(
   const added = pools.reduce((sum, pool) => sum + pool.added, 0);
   const corrected = pools.some(pool => pool.corrected !== undefined)
     ? `，修正 ${pools.reduce((sum, pool) => sum + (pool.corrected ?? 0), 0)} 条` : "";
-  const lead = `QQ ${qq} · 档案 ${profileId} · UID ${uid}\n新增 ${added} 条记录${corrected}，已有记录已保留。`;
+  const lead = `QQ ${qq} · 档案 ${profileId} · UID ${uid}\n新增 ${added} 条记录${corrected}。`;
   return renderStatusCard(title, lead, [
     "游戏：原神", `区服：${gameRegionDisplayName("gs", region)}`,
     ...pools.map((pool) => `${pool.name}：新增 ${pool.added} 条 · 共 ${pool.total} 条`),

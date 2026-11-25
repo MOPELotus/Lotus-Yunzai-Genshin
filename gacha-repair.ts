@@ -44,7 +44,7 @@ export function createGenshinGachaRepair(path: string, sync: ReturnType<typeof c
         if (enabled) db.run("INSERT OR REPLACE INTO pending VALUES (?, ?, ?)", [qq, randomUUID(), time + duration]);
         else db.run("DELETE FROM pending WHERE qq = ?", [qq]);
       });
-      return enabled ? "已开启全量修复。十分钟内下一次官方抽卡更新成功后，会修补该档案在官方范围内的同编号记录，并自动关闭。"
+      return enabled ? "已开启抽卡修复：10 分钟内更新记录时校正同编号数据，完成后自动关闭。"
         : "已关闭全量修复。";
     },
     async update(qq: string, profileId: number, options: Parameters<typeof sync>[2]) {
