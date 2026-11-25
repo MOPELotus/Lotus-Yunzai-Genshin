@@ -1,4 +1,5 @@
 import type { GameRole } from "@lotus-yunzai/account";
+import { withReadRetries } from "@lotus-yunzai/http";
 import { avatarId, object, panelElement, readPanel, text, whole, type Json, type PanelCatalog, type PanelSnapshot } from "./model.ts";
 
 export type ShowcaseProvider = "mgg" | "enka" | "hutao";
@@ -63,6 +64,7 @@ async function responseJson(response: Response, signal: AbortSignal): Promise<un
 type Target = ReturnType<typeof genshinShowcaseTarget>;
 type Entry = { readonly raw: Json; readonly acquiredAt: number; readonly until: number };
 export function createGenshinShowcaseClient(transport: typeof fetch = fetch, now = Date.now) {
+  const request = withReadRetries(transport);
   const cache = new Map<string, Entry>();
   const cooldown = new Map<ShowcaseProvider, number>();
   const pending = new Set<string>();
@@ -80,7 +82,7 @@ export function createGenshinShowcaseClient(transport: typeof fetch = fetch, now
       const endpoint = new URL(uid, endpoints[provider]);
       // Match the official Enka endpoint; it otherwise redirects to the trailing-slash route.
       if (provider === "enka") endpoint.pathname += "/";
-      const response = await transport(endpoint, { method: "GET", credentials: "omit", redirect: "error", signal: deadline,
+      const response = await request(endpoint, { method: "GET", credentials: "omit", redirect: "error", signal: deadline,
         headers: { Accept: "application/json", "User-Agent": "Lotus-Yunzai/1 (Genshin public showcase)" } });
       if (response.redirected || (response.url && response.url !== endpoint.href)) {
         await response.body?.cancel().catch(() => undefined);

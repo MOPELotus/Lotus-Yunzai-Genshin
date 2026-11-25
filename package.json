@@ -14,6 +14,7 @@
     "@lotus-yunzai/skia": "workspace:*",
     "@lotus-yunzai/storage": "workspace:*",
     "skia-canvas": "4.0.1",
-    "yaml": "2.9.1"
+    "yaml": "2.9.1",
+    "@lotus-yunzai/http": "workspace:*"
   }
 }

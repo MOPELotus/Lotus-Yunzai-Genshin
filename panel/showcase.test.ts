@@ -535,3 +535,34 @@ test("旧面板冷读、缺少已知角色与重载只查询公开展板并尊�
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("公开展柜在单次查询内部最多尝试三次，成功后正常缓存，限频及取消不重试", async () => {
+  let calls = 0, discarded = 0;
+  const request = Object.assign(async () => {
+    calls++;
+    if (calls === 1) return new Response(new ReadableStream({ cancel() { discarded++; } }), { status: 502 });
+    if (calls === 2) throw Object.assign(new Error("fixture reset"), { code: "ECONNRESET" });
+    return Response.json(payload());
+  }, { preconnect: fetch.preconnect });
+  const client = createGenshinShowcaseClient(request);
+  expect((await client(target, new AbortController().signal)).raw.uid).toBe(uid);
+  expect(calls).toBe(3);
+  expect(discarded).toBe(1);
+  await client(target, new AbortController().signal);
+  expect(calls).toBe(3);
+  let refused = 0;
+  const limited = createGenshinShowcaseClient(Object.assign(async () => {
+    refused++;
+    return new Response(null, { status: 429, headers: { "Retry-After": "60" } });
+  }, { preconnect: fetch.preconnect }));
+  await expect(limited(target, new AbortController().signal)).rejects.toThrow("频繁");
+  expect(refused).toBe(1);
+  const controller = new AbortController();
+  let cancelled = 0;
+  const stopped = createGenshinShowcaseClient(Object.assign(async () => {
+    cancelled++; controller.abort();
+    throw Object.assign(new Error("fixture reset"), { code: "ECONNRESET" });
+  }, { preconnect: fetch.preconnect }));
+  await expect(stopped(target, controller.signal)).rejects.toThrow();
+  expect(cancelled).toBe(1);
+});
