@@ -136,3 +136,31 @@ test("离群、断线、换绑、超时和撤回均可取消待确认态，无�
     expect(await delayed).toBeUndefined();
   });
 });
+
+test("群内授权仅限当前群，确认码绑定原群和本人且断线不能补交", async () => {
+  await withStore(async ({ run, context, store }) => {
+    const controller = new AbortController();
+    const group = { ...context, message_type: "group", sub_type: "normal", group_id: 701,
+      privateCredentialSignal: undefined, groupActivitySignal: controller.signal };
+    const authorize = matchStygianConsentCommand("#幽境群榜授权 701 Ark 档案2")!;
+    if (authorize.kind !== "authorize") throw Error("授权测试命令解析失败");
+    expect(await run(authorize, { ...group, sub_type: "anonymous" })).toContain("好友私聊或目标群");
+    expect(await run({ ...authorize, group: 702 }, group)).toContain("请在目标群");
+    const { result, confirmation } = ack(await run(authorize, group));
+    expect(result.message).toContain("当前会话");
+    await result.onDelivered(67);
+    expect(await run(confirmation, { ...group, group_id: 702 })).toContain("请在目标群");
+    expect(await run(confirmation, context)).toContain("没有匹配");
+    expect(await run(confirmation, { ...group, user_id: 43 })).toContain("没有匹配");
+    expect(await store.list(scope)).toEqual([]);
+    expect(await run(confirmation, group)).toContain("已确认群 701");
+    expect(await store.list(scope)).toEqual([42]);
+    const pending = ack(await run(authorize, group));
+    await pending.result.onDelivered(68);
+    controller.abort();
+    expect(await run(pending.confirmation, group)).toContain("好友私聊或目标群");
+    const reconnected = { ...group, groupActivitySignal: new AbortController().signal };
+    expect(await run(pending.confirmation, reconnected)).toContain("没有匹配");
+    expect(await run(matchStygianConsentCommand("#幽境群榜撤回 701")!, reconnected)).toContain("已撤回");
+  });
+});

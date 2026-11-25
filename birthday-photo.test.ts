@@ -44,13 +44,42 @@ const photo = async (urls: readonly (string | undefined)[]) => {
   return new Map([[artwork, original]]);
 };
 
+test("真实群会话可以领取本人生日画片，群会话失效后不提交领取", () => fixture(async root => {
+  const profiles = createProfileStore(root);
+  const calls: string[] = [];
+  const run = createGenshinBirthdayPhotoCommand(profiles, { async refreshCredentials() { throw Error("unexpected refresh"); } },
+    new AbortController().signal, { async transport(url) {
+      calls.push(url.pathname);
+      if (url.pathname.endsWith("/account")) return badge();
+      if (url.pathname.endsWith("/index")) return list([card]);
+      expect(url.pathname).toEndWith("/post_my_draw");
+      return Response.json({ retcode: 0 });
+    }, loadArt: photo });
+  const controller = new AbortController();
+  const context = { user_id: 42, self_id: 88, group_id: 701, message_id: 3, message_type: "group",
+    groupActivitySignal: controller.signal, reply() { return true; } };
+  for (const denied of [{ ...context, groupActivitySignal: undefined }, { ...context, sub_type: "anonymous" },
+    { ...context, sender: { user_id: 43 } }, { ...context, isDelegated: true }]) {
+    expect(await run(command, denied)).toContain("本人好友私聊或群聊");
+  }
+  expect(calls).toEqual([]);
+  expect(await run(command, context)).toEqual([]);
+  expect(calls.filter(path => path.endsWith("/post_my_draw"))).toHaveLength(1);
+  calls.length = 0;
+  expect(await run(command, { ...context, reply(message) {
+    if (typeof message !== "string") controller.abort();
+    return true;
+  } })).toBeUndefined();
+  expect(calls.filter(path => path.endsWith("/post_my_draw"))).toHaveLength(0);
+}));
+
 test("old aliases reach the installed game module and do not catch other games", async () => {
   const module = createModule({ signal: new AbortController().signal, async lockFile() { throw new Error("unexpected lock"); } });
   for (const normalizedMessage of ["#留影叙佳期", "留影", "#生日", "＃角色生日卡", "#领角色生日卡 档案2", "#原神领生日"]) {
     expect(await module.fallbackFeatures({ normalizedMessage, reply() {} })).toEqual(["[genshin] 生日留影"]);
   }
   for (const input of ["#生日快乐", "#特工生日", "*生日", "%生日", "#星铁留影"]) expect(matchGenshinBirthdayPhoto(input)).toBeUndefined();
-  expect(await module.fallback("生日", { normalizedMessage: "#生日", message_type: "group", user_id: 42, reply() {} })).toContain("本人 QQ 私聊");
+  expect(await module.fallback("生日", { normalizedMessage: "#生日", message_type: "group", user_id: 42, reply() {} })).toContain("本人好友私聊或群聊");
 });
 
 test("pre-claim expiry refreshes once and each distinct role photo sends the official original before claim", () => fixture(async root => {
@@ -110,7 +139,7 @@ test("invalid views, unsafe art, failed sends, and concurrent role changes never
     });
   const chat = { ...privateChat, reply() { return true; } };
   for (const partial of [{ isDelegated: true }, { privateCredentialSignal: undefined }, { message_type: "group" },
-    { message: [{ type: "at", qq: 73 }] }]) expect(await run(command, { ...chat, ...partial })).toContain("本人 QQ 私聊");
+    { message: [{ type: "at", qq: 73 }] }]) expect(await run(command, { ...chat, ...partial })).toContain("本人好友私聊或群聊");
   expect(await run(command, { ...chat, user_id: 43 })).toContain("先登录档案 2");
   expect(calls).toBe(0);
   expect(await run(command, chat)).toContain("今天没有生日角色");

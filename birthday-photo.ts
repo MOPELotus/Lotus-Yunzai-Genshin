@@ -9,6 +9,7 @@ import {
   genshinCnRecordRegion, HoyoRequestError, readGameRecordPayload, type createProfileHoyoClient,
 } from "@lotus-yunzai/hoyo-client";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "./owned-role.ts";
+import { ownOperationSession, type OwnOperationContext } from "../../lib/own-operation-session.ts";
 
 const birthdayCommand = /^#?(?:原神)?(?:留影(?:叙佳期)?|领?(?:角色)?生日卡?)(?:\s+(?:档案|profile)\s*([1-9]\d{0,2}))?$/iu;
 const badgeEndpoint = "https://api-takumi.mihoyo.com/common/badge/v1/login/account";
@@ -21,7 +22,7 @@ export function matchGenshinBirthdayPhoto(message: string) {
   if (match) return { profileId: gameCommandProfileId("gs", match[1]) };
 }
 
-interface BirthdayContext {
+interface BirthdayContext extends OwnOperationContext {
   readonly user_id?: number;
   readonly self_id?: number;
   readonly message_type?: string;
@@ -127,9 +128,11 @@ export function createGenshinBirthdayPhotoCommand(profiles: GenshinRoleProfiles,
   }
 
   return async ({ profileId }: NonNullable<ReturnType<typeof matchGenshinBirthdayPhoto>>, context: BirthdayContext) => {
-    const { user_id: user, self_id: bot, privateCredentialSignal: session, message } = context;
+    const { user_id: user, self_id: bot, message } = context;
+    const groupSession = context.message_type === "group" ? ownOperationSession(context) : undefined;
+    const session = groupSession?.signal ?? (context.message_type === "private" ? context.privateCredentialSignal : undefined);
     if (lifecycle.aborted || session?.aborted) return;
-    if (context.message_type !== "private" || !session || context.isDelegated || !user || !Number.isSafeInteger(user) || user < 1 ||
+    if (!session || context.isDelegated || !user || !Number.isSafeInteger(user) || user < 1 ||
         user === bot || typeof message !== "string" && message?.some(part => part.type === "at" && String(part.qq) !== String(bot))) {
       return $t("birthday-photo.text_2415381388");
     }

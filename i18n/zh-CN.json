@@ -660,7 +660,7 @@
     "birthday-photo.text_11380b20c6": "正在获取{name}的图片，请稍候。",
     "birthday-photo.text_147d603571": "档案 {profileId} 没有已同步的原神角色。",
     "birthday-photo.text_1b67136c52": "留影叙佳期当前仅支持已绑定的原神国服角色。",
-    "birthday-photo.text_2415381388": "请在本人 QQ 私聊中领取原神生日画片。",
+    "birthday-photo.text_2415381388": "请在本人好友私聊或群聊中领取原神生日画片。",
     "birthday-photo.text_3b19fa5c2f": "{name}的生日画片已经领取。",
     "birthday-photo.text_3dd62228d2": "档案编号须在 1 到 255 之间。",
     "birthday-photo.text_4009c5ea64": "米游社登录已失效，请重新登录后领取。",
@@ -2282,11 +2282,11 @@
     "panel.stygian-consent.text_a7bbdd94a9": "请先登录所选档案。",
     "panel.stygian-consent.text_a959dcf7e3": "已确认群 {group} 的{value2}幽境群榜授权。",
     "panel.stygian-consent.text_c2fdfab402": "无法确认你和当前机器人都在目标群。",
-    "panel.stygian-consent.text_cdb8cb4f0f": "确认请在本私聊发送 #幽境群榜确认 {group} {code}，有效期两分钟。可随时用 #幽境群榜撤回 {value3} 撤回。",
+    "panel.stygian-consent.text_cdb8cb4f0f": "确认请在当前会话发送 #幽境群榜确认 {group} {code}，有效期两分钟。可随时用 #幽境群榜撤回 {value3} 撤回。",
     "panel.stygian-consent.text_cf76ea7612": "待确认授权过多，请稍后再试。",
     "panel.stygian-consent.text_d1cbb5c7fd": "幽境群榜授权目录无效。",
     "panel.stygian-consent.text_d45e57c928": "幽境群榜会话范围无效。",
-    "panel.stygian-consent.text_da37f858db": "请在当前机器人的好友私聊管理本人幽境群榜授权。",
+    "panel.stygian-consent.text_da37f858db": "请在机器人好友私聊或目标群管理本人幽境群榜授权。",
     "panel.stygian-consent.text_dc94acef55": "没有匹配的待确认授权，请先重新发送授权指令。",
     "panel.stygian-consent.text_e54be3664c": "幽境群榜授权站点无效。",
     "panel.stygian-consent.text_ee34e8f1f2": "群成员、授权会话或档案已变化，请重新发起授权。",
@@ -2868,7 +2868,8 @@
     "public-statistics-card.text_3867834e77": "Lotus-Yunzai",
     "voice.card.text_3867834e77": "Lotus-Yunzai",
     "wish-sim.card.text_3867834e77": "Lotus-Yunzai",
-    "wish-sim.reincarnation-card.text_155a1af781": "Lotus-Yunzai · Genshin"
+    "wish-sim.reincarnation-card.text_155a1af781": "Lotus-Yunzai · Genshin",
+    "panel.stygian-consent.group_target_required": "请在目标群管理该群的幽境群榜授权。"
   },
   "parameters": {
     "achievement-command.text_d59bd480a3": {

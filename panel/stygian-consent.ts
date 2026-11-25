@@ -11,6 +11,7 @@ import type { DeliveryCommandReply } from "../../../lib/commands.ts";
 import type { MessageEvent } from "../../../lib/messages.ts";
 import { ownedGenshinRole, type GenshinRoleProfiles } from "../owned-role.ts";
 import { object } from "./model.ts";
+import { ownOperationSession } from "../../../lib/own-operation-session.ts";
 
 export const stygianConsentDirectory = fileURLToPath(new URL("../../../data/genshin/stygian-consent/", import.meta.url));
 export const stygianConsentSites = ["ark", "akasha"] as const;
@@ -180,7 +181,7 @@ export function matchStygianConsentCommand(message: string): ConsentCommand | un
 }
 
 type ConsentContext = Partial<Pick<MessageEvent, "sub_type" | "message_id" | "self_id" | "user_id" |
-  "group_id" | "isDelegated" | "privateCredentialSignal" | "verifyOwnGroupMembership">> & {
+  "group_id" | "sender" | "isDelegated" | "privateCredentialSignal" | "groupActivitySignal" | "verifyOwnGroupMembership">> & {
   readonly adapter?: string; readonly message_type?: string;
 };
 type ConsentStore = Pick<ReturnType<typeof createStygianConsentStore>, "grant" | "revoke">;
@@ -198,9 +199,11 @@ export function createStygianConsentCommand(profiles: GenshinRoleProfiles, store
   now = Date.now) {
   const drafts = new WeakMap<AbortSignal, Map<string, Pending>>();
   return async (command: ConsentCommand, context: ConsentContext): Promise<string | DeliveryCommandReply | undefined> => {
-    const { privateCredentialSignal: connection, verifyOwnGroupMembership, self_id: bot, user_id: qq, adapter } = context;
+    const { verifyOwnGroupMembership, self_id: bot, user_id: qq, adapter } = context;
+    const groupSession = context.message_type === "group" ? ownOperationSession(context) : undefined;
+    const connection = groupSession?.signal ?? (context.message_type === "private" ? context.privateCredentialSignal : undefined);
     if (lifecycle.aborted || context.isDelegated) return;
-    if (context.message_type !== "private" || context.sub_type !== "friend" || context.group_id !== undefined ||
+    if ((!groupSession && (context.message_type !== "private" || context.sub_type !== "friend" || context.group_id !== undefined)) ||
         !connection || !verifyOwnGroupMembership || !isId(bot) || !isId(qq) || bot === qq || context.message_id === undefined ||
         (adapter !== undefined && adapter !== "onebot" && adapter !== "milky")) {
       return $t("panel.stygian-consent.text_da37f858db");
@@ -208,6 +211,7 @@ export function createStygianConsentCommand(profiles: GenshinRoleProfiles, store
     const signal = AbortSignal.any([lifecycle, connection]);
     if (signal.aborted) return;
     if (command.kind === "invalid") return $t("panel.stygian-consent.text_891c84994e");
+    if (groupSession && command.group !== groupSession.group) return $t("panel.stygian-consent.group_target_required");
     const scope: StygianConsentScope = { adapter: adapter ?? "onebot", bot, group: command.group };
     const key = `${scope.adapter}:${scope.bot}:${scope.group}:${qq}`;
     const current = drafts.get(connection) ?? new Map<string, Pending>();
