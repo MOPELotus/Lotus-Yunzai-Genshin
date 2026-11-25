@@ -87,7 +87,17 @@ export async function renderGenshinBlueprint(model: GenshinBlueprint, signal: Ab
         const art = icon && icons.get(icon);
         if (art) ctx.drawImage(art, x, top, 50, 50);
         ctx.fillStyle = "#91837a";
-        ctx.fillText(`${name} x ${count}`, x + 60, top + 32, 220);
+        const quantity = `x ${count}`;
+        const nameWidth = ctx.measureText(name).width;
+        const quantityWidth = ctx.measureText(quantity).width;
+        const available = Math.max(1, 220 - quantityWidth - 5);
+        const shownNameWidth = Math.min(nameWidth, available);
+        ctx.save();
+        ctx.translate(x + 60, top + 32);
+        ctx.scale(nameWidth > available ? available / nameWidth : 1, 1);
+        ctx.fillText(name, 0, 0);
+        ctx.restore();
+        ctx.fillText(quantity, x + 65 + shownNameWidth, top + 32);
       });
     }
     section("所需模具", 91, model.furniture);
