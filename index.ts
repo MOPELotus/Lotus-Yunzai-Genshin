@@ -69,7 +69,7 @@ import { createGenshinPublicStatistics } from "./public-statistics.ts";
 import { createGenshinPublicPoolQuery } from "./gacha-pool-command.ts";
 import { createGenshinGrowQuery } from "./grow/command.ts";
 import { createGenshinBlueprintQuery, matchGenshinBlueprint } from "./grow/blueprint.ts";
-import { renderGenshinGachaFailure, renderGenshinGachaResult } from "./gacha-result-card.ts";
+import { genshinGachaFailureText, renderGenshinGachaFailure, renderGenshinGachaResult } from "./gacha-result-card.ts";
 import { buildGenshinGachaSpecial } from "./gacha-special.ts";
 import { renderGenshinGachaSpecial } from "./gacha-special-card.ts";
 import { createGenshinGachaHistoryStore } from "./gacha-store.ts";
@@ -588,12 +588,15 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
         }
         const reason = error instanceof HoyoRequestError && error.status === 429 ? "rate-limited"
           : (error instanceof ProfileError && error.code === "changed") ||
-            (error instanceof HoyoRequestError && error.code === "profile-changed") ? "profile-changed" : "request-failed";
+            (error instanceof HoyoRequestError && error.code === "profile-changed") ? "profile-changed"
+          : error instanceof HoyoRequestError && error.code === "transport" ? "network-failed"
+          : error instanceof HoyoRequestError && error.status !== undefined && error.status >= 500 && error.status <= 599
+            ? "service-unavailable" : "request-failed";
         try {
           const { png } = await renderGenshinGachaFailure({ qq, profileId, reason });
           return { type: "image" as const, file: png };
         } catch {
-          return "抽卡记录更新失败，请检查档案登录状态与原神 UID。";
+          return genshinGachaFailureText(reason);
         }
       }
     },

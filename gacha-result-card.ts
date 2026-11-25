@@ -5,10 +5,16 @@ import type { createGenshinGachaSync } from "./gacha-sync.ts";
 type GachaResult = Awaited<ReturnType<ReturnType<typeof createGenshinGachaSync>["sync"]>>;
 const title = "抽卡记录";
 const failureMessages = {
-  "rate-limited": "访问过于频繁，请稍后再试。",
-  "profile-changed": "原神档案已变更，本次未更新抽卡记录，请重新发起请求。",
+  "rate-limited": "访问过于频繁。",
+  "network-failed": "网络连接失败。",
+  "service-unavailable": "官方服务暂时不可用。",
+  "profile-changed": "档案已变更，请重新更新抽卡记录。",
   "request-failed": "原神抽卡记录更新失败。",
 } as const;
+
+export function genshinGachaFailureText(reason: keyof typeof failureMessages) {
+  return failureMessages[reason];
+}
 
 export function renderGenshinGachaResult(
   qq: string,
@@ -35,8 +41,5 @@ export function renderGenshinGachaFailure(
   },
   options?: StatusCardOptions,
 ) {
-  return renderStatusCard(title, `QQ ${qq} · 档案 ${profileId}\n${failureMessages[reason]}`, [
-    "阶段：获取官方抽卡记录",
-    "建议：检查当前档案的登录状态和 UID。",
-  ], at, options);
+  return renderStatusCard(title, `QQ ${qq} · 档案 ${profileId}\n${failureMessages[reason]}`, [], at, options);
 }
