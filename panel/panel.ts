@@ -351,7 +351,7 @@ export function createGenshinPanelQuery(
       } catch (error) {
         if (signal.aborted) return;
         if (error instanceof ProfileError) {
-          if (error.code === "missing" || error.code === "login-required") return `请先登录 profile ${profileId}。`;
+          if (error.code === "missing" || error.code === "login-required") return `请先登录档案 ${profileId}。`;
           if (error.code === "role-missing") return "仅允许删除当前登录档案已同步的原神 UID。";
           if (error.code === "changed") return "原神面板档案已变化，请重新确认。";
           if (error.code === "invalid") return "原神档案的账号或登录凭据无法核验，请重新登录。";
@@ -647,7 +647,7 @@ export function createGenshinPanelQuery(
           throw error;
         });
         if ("type" in result) return result;
-        if (result.status === "busy") return "此原神面板正在更新，请稍后查询。";
+        if (result.status === "busy") return "此原神面板正在更新。";
         if (result.status === "empty") return await offerRecovery(uid, assets) ?? "米游社没有返回原神角色面板，原档案已保留。";
         if (result.status === "discarded") return "此原神面板已删除，请重新发起更新。";
         snapshot = result.snapshot;
@@ -985,8 +985,8 @@ ${avatars.map(avatar => avatar.name).join("、")}`;
           context.privateCredentialSignal?.aborted) return;
       if (error instanceof ProfileError) {
         if (error.code === "changed") return "原神面板档案已变化，请重新查询。";
-        if (error.code === "missing" || error.code === "login-required") return `请先登录 profile ${profileId}。`;
-        if (error.code === "role-missing") return `profile ${profileId} 没有同步原神 UID。`;
+        if (error.code === "missing" || error.code === "login-required") return `请先登录档案 ${profileId}。`;
+        if (error.code === "role-missing") return `档案 ${profileId} 没有同步原神 UID。`;
         if ((reload || materialDay || training) && error.code === "invalid") return "原神档案的账号或登录凭据无法核验，请重新登录。";
       }
       if (error instanceof GameRecordRequestError) return error.message;

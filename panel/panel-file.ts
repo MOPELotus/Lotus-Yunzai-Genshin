@@ -109,7 +109,7 @@ export function createGenshinPanelExport(profiles: GenshinRoleProfiles, archive:
     } catch (error) {
       if (active.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "login-required" || error.code === "missing") return `请先登录 profile ${profileId}。`;
+        if (error.code === "login-required" || error.code === "missing") return `请先登录档案 ${profileId}。`;
         if (error.code === "role-missing" || error.code === "invalid") return "仅可导出所选档案中已同步的本人原神面板。";
         if (error.code === "changed") return "档案或面板已变更，请重新导出。";
       }

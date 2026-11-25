@@ -103,7 +103,7 @@ const tarotCardsDirectory = fileURLToPath(new URL("../../data/genshin/tarot-card
 const help = [
   "原神抽卡记录",
   "#登录列表 可查看档案，#同步角色 可同步原神角色。",
-  "#更新抽卡记录 可补齐官方可查询范围内的记录。",
+  "#更新抽卡记录 同步官方记录。",
   "#同步外部抽卡记录 可从外部服务同步历史，开始时会说明服务及发送的信息。",
   "#抽卡记录、#武器记录、#常驻记录、#集录记录 可查看对应卡池。",
   "#新手记录 查看旧新手池记录，#全部记录 查看各池详情。",
@@ -270,8 +270,8 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing") return `请先登录 profile ${profileId}。`;
-        if (error.code === "role-missing") return `profile ${profileId} 没有同步原神 UID。`;
+        if (error.code === "missing") return `请先登录档案 ${profileId}。`;
+        if (error.code === "role-missing") return `档案 ${profileId} 没有同步原神 UID。`;
       }
       if (error instanceof TypeError && /^(?:UIGF|当前档案没有可导出的原神抽卡记录)/u.test(error.message)) return error.message;
       return "原神抽卡记录导出失败，请检查本地历史文件。";
@@ -283,8 +283,8 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       const result = await externalUpdate(qq, profileId, () =>
         context.reply(`正在同步档案 ${profileId} 的外部抽卡记录。将向提瓦特小助手（www.lelaer.com）发送原神 UID 和临时抽卡授权链接。`));
       if (signal.aborted) return;
-      if (!result) return "该档案的外部抽卡记录正在同步，请稍后再试。";
-      const title = `profile ${profileId} · UID ${result.uid}`;
+      if (!result) return "该档案的外部抽卡记录正在同步。";
+      const title = `档案 ${profileId} · UID ${result.uid}`;
       const imported = result.pools.filter(({ received }) => received > 0);
       if (!imported.length) return `${title}\n外部抽卡记录为空，本地记录已保留。`;
       const lines = imported.map(({ name, received, added, total }) => `${name}记录：收到 ${received} 条，新增 ${added} 条，共 ${total} 条`);
@@ -294,8 +294,8 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       if (error instanceof GenshinGachaBusyError) return error.message;
       let message = "请检查档案登录状态和原神 UID，稍后再试。";
       if (error instanceof ProfileError) {
-        if (error.code === "missing" || error.code === "login-required") message = `请先登录 profile ${profileId}。`;
-        if (error.code === "role-missing") message = `profile ${profileId} 没有同步原神 UID。`;
+        if (error.code === "missing" || error.code === "login-required") message = `请先登录档案 ${profileId}。`;
+        if (error.code === "role-missing") message = `档案 ${profileId} 没有同步原神 UID。`;
         if (error.code === "changed") message = "档案已变更，请重新发起请求。";
       } else if (error instanceof HoyoRequestError) {
         message = error.status === 429 ? "访问过于频繁，请稍后再试。" : error.message;
@@ -362,8 +362,8 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof ProfileError) {
-        if (error.code === "missing") return `请先登录 profile ${profileId}。`;
-        if (error.code === "role-missing") return `profile ${profileId} 没有同步原神 UID。`;
+        if (error.code === "missing") return `请先登录档案 ${profileId}。`;
+        if (error.code === "role-missing") return `档案 ${profileId} 没有同步原神 UID。`;
       }
       return "原神抽卡记录读取失败，请检查本地历史文件。";
     }
@@ -571,8 +571,8 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       if (query) return view(qq, profileId, query.view, query.all, context);
       try {
         const result = await gachaUpdate(qq, profileId, () =>
-          context.reply(`正在更新 Profile ${profileId} 的抽卡记录，会补齐官方范围内的缺档。`), { isDelegated: context.isDelegated });
-        if (!result) return "该档案的原神抽卡记录正在更新，请稍后再试。";
+          context.reply(`正在更新原神抽卡记录（档案 ${profileId}）。`), { isDelegated: context.isDelegated });
+        if (!result) return "该档案的原神抽卡记录正在更新。";
         try {
           const { png } = await renderGenshinGachaResult(qq, result);
           return { type: "image" as const, file: png };
@@ -583,8 +583,8 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
         if (signal.aborted) return;
         if (error instanceof GenshinGachaRepairCancelledError || error instanceof GenshinGachaBusyError) return error.message;
         if (error instanceof ProfileError) {
-          if (error.code === "missing" || error.code === "login-required") return `请先登录 profile ${profileId}。`;
-          if (error.code === "role-missing") return `profile ${profileId} 没有同步原神 UID。`;
+          if (error.code === "missing" || error.code === "login-required") return `请先登录档案 ${profileId}。`;
+          if (error.code === "role-missing") return `档案 ${profileId} 没有同步原神 UID。`;
         }
         const reason = error instanceof HoyoRequestError && error.status === 429 ? "rate-limited"
           : (error instanceof ProfileError && error.code === "changed") ||

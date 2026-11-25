@@ -62,7 +62,7 @@ test("原神导出限定绑定好友私聊及本人所选档案，PlayerData 能
     expect(await run(selection, { ...ctx, message_type: "group" })).toContain("好友私聊");
     expect(await run(selection, { ...ctx, isDelegated: true })).toContain("好友私聊");
     expect(await run(selection, { ...ctx, privateCredentialSignal: undefined })).toContain("好友私聊");
-    expect(await run(selection, { ...ctx, user_id: 43 })).toContain("登录 profile 2");
+    expect(await run(selection, { ...ctx, user_id: 43 })).toContain("登录档案 2");
     expect(await run({ profileId: 256 }, ctx)).toContain("1–255");
     expect(calls).toHaveLength(0);
     await archive.talents.update("42", uid, "900000002", {
