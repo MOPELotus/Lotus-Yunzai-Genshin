@@ -164,7 +164,7 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
     galleryRoot ? realpath(resolve(galleryRoot)).catch(() => undefined) : undefined,
     galleryDirectory === undefined ? readSyncedPanelGalleryRoot(installation) : undefined,
     galleryDirectory === "" ? undefined : retainedPanelGalleryDirectory("gs", installation),
-    readGameCharacterAliases("gs"),
+    readGameCharacterAliases("gs", undefined, { includePreset: true }),
     readPanelCommaGroup(installation ? pathToFileURL(resolve(installation) + sep) : undefined),
   ]);
   const managed = await usablePanelImageRoot(managedDirectory, [root, genshinGachaThemeDirectory(), galleryRoot,
