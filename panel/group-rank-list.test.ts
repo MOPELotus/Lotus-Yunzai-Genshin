@@ -176,14 +176,14 @@ test("原神实时群榜先刷新所有登记 UID，再按当前人数显示", a
       configured = count;
       fetched.length = 0;
       expect(await board.query("#群内排行最高分胡桃255", context(42), async () => theme))
-        .toEqual({ type: "image", file: new Uint8Array([1]) });
+        .toEqual({ type: "forward", nodes: [{ type: "image", file: new Uint8Array([1]) }] });
       expect(fetched.sort()).toEqual(members.map(qq => role(qq).uid));
     }
-    expect(rendered).toEqual([5, 7]);
+    expect(rendered).toEqual([7, 7]);
     await board.register(context(46), 2, role(46), 2000, async () => {});
     fetched.length = 0;
     configured = 5;
-    expect(await board.query("#原神最高分排行", context(42), async () => theme)).toMatchObject({ type: "image" });
+    expect(await board.query("#原神最高分排行", context(42), async () => theme)).toMatchObject({ type: "forward" });
     expect(fetched.sort()).toEqual(members.map(qq => role(qq).uid));
     expect(aggregate).toEqual([{ title: "#最高分排行", rows: [[role(46).uid, "魈"], [role(46).uid, "胡桃"]] }]);
     fetched.length = 0;
@@ -244,7 +244,7 @@ test("验证群成员通过米游社刷新面板排行及单人有效角色正�
   const context = { message_type: "group", self_id: 99, user_id: 43, group_id: 77,
     async listCurrentGroupMembers() { return [...members].map(id => ({ id })); } };
   try {
-    expect(await board.query("#胡桃排行", context, async () => theme)).toMatchObject({ type: "image" });
+    expect(await board.query("#胡桃排行", context, async () => theme)).toMatchObject({ type: "forward" });
     expect(fetched.sort()).toEqual([42, 43, 44]);
     expect(rendered).toEqual([1]);
     withdraw = true;

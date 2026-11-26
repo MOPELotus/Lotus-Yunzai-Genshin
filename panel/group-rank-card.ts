@@ -1,3 +1,4 @@
+import type { RankPagination } from "../../../lib/rank-pages.ts";
 import { loadImage } from "skia-canvas";
 import { loadGroupRankQqAvatars } from "../../../lib/group-rank-qq-avatars.ts";
 import { rankLabelLayout } from "../../../lib/rank-label-layout.ts";
@@ -109,8 +110,8 @@ async function assetsForRow(avatar: RankAvatar, theme: PanelTheme) {
 
 export async function renderGroupPanelRank(name: string, rankMode: RankMode,
   rows: readonly { readonly uid: string; readonly qq?: string; readonly avatar: RankAvatar }[], theme: PanelTheme, mode: RenderMode = "auto",
-  { signal, inlineImageByteLimit, refreshSummary, aggregateTitle, publicRanking }: { readonly signal?: AbortSignal; readonly inlineImageByteLimit?: number;
-    readonly refreshSummary?: string; readonly aggregateTitle?: string;
+  { signal, inlineImageByteLimit, refreshSummary, aggregateTitle, publicRanking, pagination }: { readonly signal?: AbortSignal; readonly inlineImageByteLimit?: number;
+    readonly refreshSummary?: string; readonly aggregateTitle?: string; readonly pagination?: RankPagination;
     readonly publicRanking?: { readonly filters: string; readonly count: number } } = {}) {
   const element = aggregateTitle ? "hydro" : rows[0]?.avatar.elem ?? "hydro";
   const qqFaces = await loadGroupRankQqAvatars(rows.map(row => row.qq), signal);
@@ -155,7 +156,7 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
     ctx.shadowColor = "#000";
     ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 4;
-    write(aggregateTitle ?? `#${publicRanking ? $t("panel.group-rank-card.text_4eafa9e925") : ""}${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`, 20, 74, 36, { title: true, maxWidth: width - 40 });
+    write((aggregateTitle ?? `#${publicRanking ? $t("panel.group-rank-card.text_4eafa9e925") : ""}${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`) + (pagination && pagination.total > 1 ? ` · ${pagination.page}/${pagination.total}` : ""), 20, 74, 36, { title: true, maxWidth: width - 40 });
     ctx.restore();
     panel(ctx, texture, [10, 97, width - 25, 166 + extra], () => {
       fill(ctx, "#0006", [10, 97, width - 25, 40]);
@@ -196,9 +197,9 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
           cover(ctx, current.face, owner);
           ctx.restore();
         } else {
-          const showFirst = index === 0 && (rankMode === "damage" || rankMode === "artifacts");
+          const showFirst = (pagination?.offset ?? 0) + index === 0 && (rankMode === "damage" || rankMode === "artifacts");
           medal(ctx, showFirst ? first : medals, scoreMode, [showFirst ? 18 : 30, y + 18, showFirst ? 48 : 24, 24]);
-          if (!showFirst || !first) write(index + 1, 42, y + 34, 12, { align: "center" });
+          if (!showFirst || !first) write((pagination?.offset ?? 0) + index + 1, 42, y + 34, 12, { align: "center" });
         }
 
         const portrait: Box = [66, y + 5, 50, 50];

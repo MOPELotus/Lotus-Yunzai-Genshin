@@ -1,3 +1,4 @@
+import { groupRankPageSize, renderRankPages } from "../../../lib/rank-pages.ts";
 import type { OfficialGroupPanels } from "../../../lib/group-panel-accounts.ts";
 import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
 import messageCatalog from "../i18n/zh-CN.json";
@@ -341,7 +342,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
             await isEnabled(scope) && !active.aborted;
         };
         if (!await unchanged()) return active.aborted ? undefined : changed;
-        const limit = await readLimit("gs", defaultLimit);
+        const limit = groupRankPageSize;
         const images = [];
         for (let index = 0; index < ranked.length; index += limit) {
           if (active.aborted) return;
@@ -354,7 +355,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
           images.push({ type: "image" as const, file: image.png });
         }
         if (!await unchanged()) return active.aborted ? undefined : changed;
-        if (images.length === Math.ceil(ranked.length / limit)) return images.length === 1 ? images[0] : images;
+        if (images.length === Math.ceil(ranked.length / limit)) return { type: "forward" as const, nodes: images };
         return [title, summary, ...ranked.map(({ avatar, metric, role }) => {
           const score = groupPanelNumber(displayedRankScore(avatar, metric)!.toFixed(1), theme.commaGroup);
           return `${avatar.name} · UID ${role.uid} · ${rankModeNames[metric]} ${score}${metric === "damage" && avatar.damage?.percent ? "%" : ""}`;
@@ -373,7 +374,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       });
       if (!results || active.aborted) return;
       const candidates = results.flatMap(result => result.status === "fresh" ? [{ ...result.entry, ...result.value }] : []);
-      const ranked = rankRows(candidates, mode, strongest ? 1 : await readLimit("gs", defaultLimit));
+      const ranked = rankRows(candidates, mode, strongest ? 1 : Infinity);
       const missing = results.filter(result => result.status === "not-listed").length;
       const failed = results.filter(result => result.status === "failed").length;
       const summary = $t("panel.group-rank.text_78e05eb970", { "size": subjects.size, "length": candidates.length, "missing": missing, "failed": failed }) +
@@ -394,7 +395,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         ({ png } = strongest
           ? await renderStrongest(lead.snapshot, lead.publicAvatar, { ...theme, galleryPortrait: undefined }, options,
             await readEnemyLevel(String(scope.qq)))
-          : await render(character.name, mode, rows, theme, undefined, { ...options, refreshSummary: summary }));
+          : { png: undefined });
       } catch {}
       if (!await unchanged()) return active.aborted ? undefined : changed;
       const image = png && { type: "image" as const, file: png };
@@ -403,7 +404,10 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         if (image) return [title + "\n" + summary, image];
         return [title, summary, $t("panel.group-rank.text_5e62b168a1")].join("\n");
       }
-      if (image) return image;
+      const pages = await renderRankPages(rows, (page, pagination) => render(character.name, mode, page, theme,
+        undefined, { ...options, refreshSummary: summary, pagination }), active).catch(() => undefined);
+      if (!await unchanged()) return active.aborted ? undefined : changed;
+      if (pages) return pages;
       return [$t("panel.group-rank.text_affd1ad3b0", { "name": character.name, "value2": rankModeNames[mode] }), summary, ...rows.map(({ uid, avatar }, index) => {
         const score = displayedRankScore(avatar, mode)!;
         const formatted = mode === "crit" || mode === "valid" ? score.toFixed(1) : String(score);
