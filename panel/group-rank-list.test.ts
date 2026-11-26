@@ -198,3 +198,56 @@ test("原神实时群榜先刷新所有登记 UID，再按当前人数显示", a
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("验证群成员通过米游社刷新面板排行及单人有效角色正常出图", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "lotus-gs-official-rank-"));
+  const avatar = {
+    id: 10000046, name: "胡桃", elem: "pyro", level: 90, promote: 6, cons: 0, _source: "enka",
+    talent: { a: 1, e: 1, q: 1 },
+    weapon: { name: "新手长枪", level: 90, promote: 6, affix: 1 },
+    artis: { 1: { name: "冒险家之花", set: "冒险家", level: 20, star: 5, mainId: 14001, attrIds: ["501224", "501204"] } },
+  };
+  const other = { ...avatar, id: 10000026, name: "魈", elem: "anemo" };
+  const theme: PanelTheme = {
+    characters: {}, artifacts: new Map(), artifactSets: new Map(), async picture() { return undefined; },
+    async metadata(_game, kind) {
+      if (kind === "character") return { name: "胡桃", weapon: "polearm",
+        attr: { keys: ["hp", "atk", "def", "cdmg"], details: { "80+": [9000, 190, 500, 10], "90": [10000, 200, 550, 20] } },
+        talentData: { a: { 重击伤害: [270] }, e: { 攻击力提高: [5] }, q: { 低血量时技能伤害: [350] } },
+      };
+      return { name: "新手长枪", attr: { atk: { "80+": 230, "90": 250 } } };
+    },
+  };
+
+  const members = new Set([42, 43, 44, 99]);
+  const role = (qq: number) => ({ uid: String(100123400 + qq), region: "cn_gf01", gameBiz: "hk4e_cn", chosen: true, nickname: "" });
+  const fetched: number[] = [], rendered: number[] = [];
+  const profiles = { async describe(qq: string) { return { loggedIn: true, roles: { gs: [role(Number(qq))] }, activeRoles: { gs: role(Number(qq)).uid } }; } };
+  let withdraw = false;
+  const board = createGroupPanelRank(directory, profiles, lockFile, new AbortController().signal, {
+    groups: "77", readEnabled: async () => true,
+    readShowcase: async () => { throw Error("public showcase must not be used"); },
+    official: {
+      async list(current) { expect(current).toEqual(new Set([42, 43, 44])); return [42, 43, 44].map(qq => ({ qq, profileId: 1, role: role(qq), observedAt: Date.now() })); },
+      async read(entry, _signal, verify) {
+        await verify(); fetched.push(entry.qq);
+        if (entry.qq === 44) throw Error("fixture refresh failed");
+        return { uid: entry.role.uid, avatars: entry.qq === 42 ? { [avatar.id]: avatar } : {} };
+      },
+    },
+    async render(_name, _mode, rows) {
+      rendered.push(rows.length);
+      if (withdraw) members.delete(42);
+      return { png: new Uint8Array([1]) };
+    },
+  });
+  const context = { message_type: "group", self_id: 99, user_id: 43, group_id: 77,
+    async listCurrentGroupMembers() { return [...members].map(id => ({ id })); } };
+  try {
+    expect(await board.query("#胡桃排行", context, async () => theme)).toMatchObject({ type: "image" });
+    expect(fetched.sort()).toEqual([42, 43, 44]);
+    expect(rendered).toEqual([1]);
+    withdraw = true;
+    expect(typeof await board.query("#胡桃排行", context, async () => theme)).toBe("string");
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});

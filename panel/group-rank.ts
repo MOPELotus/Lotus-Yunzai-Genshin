@@ -1,3 +1,4 @@
+import type { OfficialGroupPanels } from "../../../lib/group-panel-accounts.ts";
 import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
 import messageCatalog from "../i18n/zh-CN.json";
 const $t = createTextTranslator("genshin", messageCatalog.messages);
@@ -17,6 +18,7 @@ import { readGenshinShowcaseServer } from "./showcase-config.ts";
 import type { PanelTheme } from "./theme.ts";
 
 export interface GroupRankContext {
+  readonly reply?: (message: string) => unknown;
   readonly message_type?: string;
   readonly adapter?: string;
   readonly self_id?: number;
@@ -125,8 +127,8 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
   readEnabled = readGroupPanelRankEnabled, readLimit = readGroupPanelRankLimit,
   discardedAt, refresh = createGroupRankRefresh(), readShowcase = createGenshinGroupShowcaseReader(),
   readSelector = readGenshinShowcaseServer, renderStrongest = renderLeader,
-  readEnemyLevel = async () => genshinDamageEnemyLevel,
-}: { readonly groups?: string; readonly render?: Renderer; readonly discardedAt?: (qq: string, uid: string) => Promise<number>;
+  readEnemyLevel = async () => genshinDamageEnemyLevel, official,
+}: { readonly official?: OfficialGroupPanels<PanelSnapshot, PanelTheme>; readonly groups?: string; readonly render?: Renderer; readonly discardedAt?: (qq: string, uid: string) => Promise<number>;
   readonly readEnabled?: typeof readGroupPanelRankEnabled;
   readonly readLimit?: typeof readGroupPanelRankLimit;
   readonly refresh?: ReturnType<typeof createGroupRankRefresh>; readonly readShowcase?: ReturnType<typeof createGenshinGroupShowcaseReader>;
@@ -279,7 +281,8 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
       if (!members || active.aborted) return active.aborted ? undefined : $t("panel.group-rank.text_64ba9d6e54");
       const { character, strongest } = intent;
       const mode = character ? availableRankMode(intent.mode, character) : intent.mode;
-      const observations = await boundObservations(scope, members, () => true);
+      const observations = official ? (await official.list(new Set([...members].filter(id => id !== scope.bot)), active)).filter(row => row.qq !== scope.bot).map(row => ({ ...row, avatars: {} }))
+        : await boundObservations(scope, members, () => true);
       if (active.aborted) return;
       const subjects = new Map<string, BoundObservation>();
       // Prefer the latest observation when a UID occurs in several eligible profile slots.
@@ -287,10 +290,14 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         if ((subjects.get(row.role.uid)?.observedAt ?? -1) < row.observedAt) subjects.set(row.role.uid, row);
       }
       if (!subjects.size) return $t("panel.group-rank.text_de173256fa");
-      const [theme, selector] = await Promise.all([loadTheme(), readSelector()]);
+      if (official) await Promise.resolve().then(() => context.reply?.($t("group-rank.refreshing", { count: subjects.size }))).catch(() => {});
+      const [theme, selector] = await Promise.all([loadTheme(), official ? "" : readSelector()]);
       const requestShowcase = async (entry: BoundObservation, requestSignal: AbortSignal) => {
         if (!await stillCurrent(entry)) throw new Error($t("panel.group-rank.text_d4993da547"));
         requestSignal.throwIfAborted();
+        if (official) return official.read(entry, requestSignal, async () => {
+          if (!await stillCurrent(entry) || !await isEnabled(scope)) throw new Error($t("panel.group-rank.text_d4993da547"));
+        }, theme);
         const snapshot = await readShowcase(entry.role, selector, theme, requestSignal);
         if (snapshot && snapshot.uid !== entry.role.uid) throw new Error($t("panel.group-rank.text_f5b6fc3500"));
         return snapshot;
