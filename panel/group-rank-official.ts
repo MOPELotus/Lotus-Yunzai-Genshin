@@ -1,3 +1,4 @@
+import { cachedGroupPanels } from "../../../lib/group-panel-cache.ts";
 import type { createProfileStore } from "@lotus-yunzai/account";
 import type { createProfileHoyoClient } from "@lotus-yunzai/hoyo-client";
 import type { AcquireRoleArchiveLock } from "@lotus-yunzai/storage";
@@ -26,4 +27,14 @@ export function createGenshinOfficialGroupPanels(profiles: ReturnType<typeof cre
       });
       return snapshot as PanelSnapshot;
     });
+}
+
+export function createGenshinCachedGroupPanels(profiles: ReturnType<typeof createProfileStore>,
+  client: ReturnType<typeof createProfileHoyoClient>, lock: AcquireRoleArchiveLock, directory?: string) {
+  const archive = createGenshinPanelArchive(lock, { archiveDirectory: directory });
+  return cachedGroupPanels(profiles, "gs", createGenshinOfficialGroupPanels(profiles, client, lock, directory), async (entry, theme) => {
+    const snapshot = await archive.readPanel(String(entry.qq), entry.role.uid, theme);
+    if (!snapshot) throw new Error("group-panel-cache-missing");
+    return snapshot;
+  });
 }

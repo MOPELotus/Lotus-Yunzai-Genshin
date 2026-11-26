@@ -2874,7 +2874,7 @@
     "wish-sim.card.text_3867834e77": "Lotus-Yunzai",
     "wish-sim.reincarnation-card.text_155a1af781": "Lotus-Yunzai · Genshin",
     "panel.stygian-consent.group_target_required": "请在目标群管理该群的幽境群榜授权。",
-    "group-rank.refreshing": "正在刷新本群 {count} 个原神 UID 的完整面板，稍后生成排行。"
+    "group-rank.refreshing": "正在读取本群{count}个原神UID的缓存面板，之后生成排行..."
   },
   "parameters": {
     "achievement-command.text_d59bd480a3": {

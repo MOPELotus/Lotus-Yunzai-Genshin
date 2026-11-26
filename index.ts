@@ -1,4 +1,6 @@
-import { createGenshinOfficialGroupPanels } from "./panel/group-rank-official.ts";
+import { fileURLToPath as panelCacheFilePath } from "node:url";
+import { createGroupPanelCacheRefresh, type PanelCacheRuntime } from "../../lib/group-panel-cache.ts";
+import { createGenshinOfficialGroupPanels, createGenshinCachedGroupPanels } from "./panel/group-rank-official.ts";
 import { createTranslator as createTextTranslator } from "../../packages/i18n/index.ts";
 import messageCatalog from "./i18n/zh-CN.json";
 const $t = createTextTranslator("genshin", messageCatalog.messages);
@@ -177,11 +179,12 @@ interface GachaContext extends GroupRankContext {
     { readonly type: "record"; readonly file: Uint8Array }): unknown;
 }
 
-export function createModule({ signal, lockFile, runtimeVersion, roleQFace = true }: {
+export function createModule({ signal, lockFile, runtimeVersion, roleQFace = true, panelCacheRuntime }: {
   signal: AbortSignal;
   lockFile: Parameters<typeof createGenshinGachaHistoryStore>[1];
   runtimeVersion?: { readonly version?: string; readonly revision?: string };
   roleQFace?: boolean;
+  panelCacheRuntime?: PanelCacheRuntime;
 }) {
   const wishRoot = new URL("../../", import.meta.url);
   const reincarnation = createWishReincarnation({ signal, lockFile, readSettings: () => readGenshinWishSettings(wishRoot) });
@@ -225,7 +228,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
   const tarotCards = createGenshinTarotCards(tarotCardsDirectory, profiles, client, lockFile, signal);
   const fetchShowcase = createGenshinShowcaseClient();
   const groupRank = createGroupPanelRank(Bun.env.LOTUS_GENSHIN_PANEL_RANK_DIR?.trim() || groupPanelRankDirectory, profiles, lockFile, signal,
-    { official: createGenshinOfficialGroupPanels(profiles, client, lockFile), discardedAt: panelArchive.discardedAt, readShowcase: createGenshinGroupShowcaseReader(fetchShowcase),
+    { official: createGenshinCachedGroupPanels(profiles, client, lockFile), discardedAt: panelArchive.discardedAt, readShowcase: createGenshinGroupShowcaseReader(fetchShowcase),
       readEnemyLevel: panelPreferences.level });
   const groupRankMatches = new WeakMap<GachaContext, Awaited<ReturnType<typeof resolveGroupPanelRank>>>();
   const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase, groupRank });
@@ -373,8 +376,15 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
     }
   }
 
+  const cacheSignal = panelCacheRuntime ? AbortSignal.any([signal, panelCacheRuntime.disconnect]) : signal;
+  const refreshPanelCache = createGroupPanelCacheRefresh(profiles, createGenshinOfficialGroupPanels(profiles, client, lockFile),
+    lockFile, cacheSignal, panelCacheFilePath(new URL("../../data/genshin-panel-refresh/", import.meta.url)),
+    readPanelTheme);
+  const stopPanelCache = panelCacheRuntime?.register("gs", refreshPanelCache);
+
   return {
     commands: {},
+    async dispose() { await stopPanelCache?.(); },
     async gachaUpdate(qq: string, profileId: number, notify?: () => unknown, isDelegated?: boolean, workflow?: AbortSignal) {
       try {
         return await gachaUpdate(qq, profileId, notify, { isDelegated, workflow });
