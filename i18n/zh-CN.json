@@ -543,6 +543,10 @@
     "world-boss-ranking-import": {
       "description": "旧版世界 BOSS 榜单数据校验与导入",
       "source": "plugins/genshin/world-boss-ranking-import.ts"
+    },
+    "group-rank": {
+      "description": "原神群面板排行的成员登记校验、数据拉取与排行查询",
+      "source": "plugins/genshin/panel/group-rank.ts"
     }
   },
   "messages": {
