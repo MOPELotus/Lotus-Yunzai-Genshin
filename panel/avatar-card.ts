@@ -15,7 +15,7 @@ import { createAvatarPhotoLedger, type AvatarPhotoContext, type AvatarPhotoStora
 import { renderAvatarCard } from "./avatar-card-render.ts";
 import { object, officialPanel } from "./model.ts";
 import { createGenshinPanelArchive } from "./panel.ts";
-import { readPanelTheme, type PanelTheme } from "./theme.ts";
+import { readPanelTheme, type PanelPhoto, type PanelTheme } from "./theme.ts";
 
 const groups = {
   wife: [$t("panel.avatar-card.text_120a3a2fc2"), $t("panel.avatar-card.text_37f445e6f5"), $t("panel.avatar-card.text_55c4fadb32"), $t("panel.avatar-card.text_c02bff4a89"), $t("panel.avatar-card.text_203f1a8259")],
@@ -268,6 +268,12 @@ export function createGenshinAvatarCards(profiles: GenshinRoleDirectory, client:
   }
   return {
     query,
+    async rememberPanelOriginal(context: AvatarPhotoContext, confirmed: number, photo: PanelPhoto, profileId: number, uid: string) {
+      if (!context.user_id || lifecycle.aborted) return;
+      const { accountId, source } = await readOwnedGenshinUid(profiles, String(context.user_id), profileId, uid);
+      await photos.delivered(context, confirmed, photo, { profileId, uid, accountId,
+        region: source.role.region, gameBiz: source.role.gameBiz, explicitUid: true });
+    },
     async original(context: AvatarContext): Promise<MessageReply | undefined> {
       try {
         const record = await photos.find(context);

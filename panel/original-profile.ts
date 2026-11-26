@@ -141,7 +141,8 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
     [a, e, q].every(level => level?.original === 10);
   const candidates = [...(superBuild ? ["splash0.webp"] : []), ...(avatar.costume ? ["splash2.webp"] : []), "splash.webp", "gacha.webp"];
   const splashRoot = ["meta-gs", "character", avatar.name, "imgs"];
-  const gallerySplash = await theme.galleryPortrait?.(avatar, superBuild);
+  const gallery = await theme.galleryAsset?.(avatar, superBuild);
+  const gallerySplash = gallery?.image ?? await theme.galleryPortrait?.(avatar, superBuild);
   let costumeSplash: string | undefined;
   if (!gallerySplash && root) {
     for (const file of candidates) {
@@ -157,9 +158,10 @@ export async function originalProfileData(snapshot: PanelSnapshot, avatar: Panel
     const constellation = whole(cons?.[key], 6);
     return constellation ? consIcon(constellation) : resource(...icons, `talent-${key}.webp`);
   };
+  const original = gallery?.photo ?? (costumeSplash ? (await theme.pictureAsset?.(...costumeSplash.split("/").map(decodeURIComponent)))?.photo : undefined);
   const gameWeapon = weapon?.weaponType || text(meta?.weapon);
   return {
-    scale: 4, uid: snapshot.uid, elem: avatar.elem, changeProfile: change,
+    original, scale: 4, uid: snapshot.uid, elem: avatar.elem, changeProfile: change,
     data: { name: avatar.name, abbr: text(meta?.abbr) || avatar.name, cons: avatar.cons ?? 0,
       level: avatar.level, talent: { a, e, q }, dataSource: sourceLabel ?? sourceNames[avatar._source] ?? avatar._source,
       updateTime: avatar._time ? new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai", dateStyle: "short", timeStyle: "short" }).format(avatar._time) : "",
@@ -177,5 +179,5 @@ export async function renderOriginalProfile(snapshot: PanelSnapshot, avatar: Pan
   options: Parameters<typeof originalProfileData>[3], chat?: Parameters<typeof drawOriginalProfile>[3]) {
   const data = await originalProfileData(snapshot, avatar, theme, options);
   if (!data) throw new Error($t("panel.original-profile.text_b9e658f2a5"));
-  return drawOriginalProfile(data, theme, undefined, chat);
+  return { ...await drawOriginalProfile(data, theme, undefined, chat), original: data.original };
 }

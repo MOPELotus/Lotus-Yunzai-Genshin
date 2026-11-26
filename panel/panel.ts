@@ -1,3 +1,5 @@
+import type { AvatarPhotoContext } from "./avatar-card-original.ts";
+import type { PanelPhoto } from "./theme.ts";
 import { panelQueryUser } from "../../../lib/panel-query-target.ts";
 import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
 import messageCatalog from "../i18n/zh-CN.json";
@@ -149,7 +151,7 @@ export function createGenshinPanelArchive(lockFile: AcquireRoleArchiveLock, {
 type Renderers = {
   list(...args: Parameters<typeof renderPanelList>): Promise<{ readonly png: Uint8Array }>;
   detail(snapshot: PanelSnapshot, avatar: Parameters<typeof renderPanelDetail>[1], theme: PanelTheme,
-    options?: Parameters<typeof renderPanelDetail>[3] & { readonly inlineImageByteLimit?: number }): Promise<{ readonly png: Uint8Array }>;
+    options?: Parameters<typeof renderPanelDetail>[3] & { readonly inlineImageByteLimit?: number }): Promise<{ readonly png: Uint8Array; readonly original?: PanelPhoto }>;
   artifactList?(...args: Parameters<typeof renderArtifactList>): Promise<{ readonly png: Uint8Array }>;
   damage?(...args: Parameters<typeof renderDamageCard>): Promise<{ readonly png: Uint8Array }>;
   statistics?(...args: Parameters<typeof renderPanelStatistics>): Promise<{ readonly png: Uint8Array }>;
@@ -182,6 +184,7 @@ export function createGenshinPanelQuery(
     legacyPreferences = Bun.env.LOTUS_GENSHIN_PANEL_LEGACY_REDIS_URL?.trim(),
     preferences = createGenshinPanelDamagePreferences(lockFile, signal, archiveDirectory, legacyPreferences),
     groupRank,
+    onOriginal,
     qFace = true,
     readPanelDeletionBoundary,
     fetchShowcase = createGenshinShowcaseClient(),
@@ -191,6 +194,7 @@ export function createGenshinPanelQuery(
     now = Date.now,
   }: { readonly archiveDirectory?: string; readonly legacyDirectory?: string; readonly extremePanelFile?: string;
     readonly legacyPreferences?: string; readonly render?: Renderers; readonly qFace?: boolean;
+    readonly onOriginal?: (context: AvatarPhotoContext, confirmed: number, photo: PanelPhoto, profileId: number, uid: string) => Promise<void>;
     readonly preferences?: ReturnType<typeof createGenshinPanelDamagePreferences>;
     readonly readPanelDeletionBoundary?: ReadPanelDeletionBoundary;
     readonly fetchShowcase?: ReturnType<typeof createGenshinShowcaseClient>;
@@ -861,11 +865,21 @@ export function createGenshinPanelQuery(
         const properties = await readChangedPanelProperties(avatar, assets);
         const projected = { ...avatar, _lotus: { properties } };
         await verify();
+        let originalPhoto: PanelPhoto | undefined;
         try {
-          ({ png } = await render.detail(snapshot, projected, assets, { profileId, change, damage: "rows" in estimate ? estimate : undefined }));
+          ({ png, original: originalPhoto } = await render.detail(snapshot, projected, assets, { profileId, change, damage: "rows" in estimate ? estimate : undefined }));
         } catch {}
         await verify();
-        if (png) return { type: "image", file: png };
+        if (png) {
+          if (originalPhoto && onOriginal && context.user_id?.toString() === qq) {
+            const photo = originalPhoto;
+            return { type: "delivery", message: { type: "image", file: png }, async onDelivered(confirmed) {
+              await verify();
+              await onOriginal(context, confirmed, photo, profileId, uid);
+            } };
+          }
+          return { type: "image", file: png };
+        }
         return [title, change.reason, ...properties.map(row =>
           `${propertyLabels[row.key]} ${row.value ? displayNumber(row.value) : $t("panel.panel.text_182c3bd910", { "value1": displayNumber(row.base) })}`)].filter(Boolean).join("\n");
       }
@@ -900,8 +914,9 @@ export function createGenshinPanelQuery(
           .catch(() => undefined) : undefined;
         if (mode === "profile") await verify();
         let png: Uint8Array | undefined;
+        let original: PanelPhoto | undefined;
         try {
-          ({ png } = await render.detail(snapshot, avatar, assets, {
+          ({ png, original } = await render.detail(snapshot, avatar, assets, {
             pane: mode, profileId, damage: summary && "rows" in summary ? summary : undefined,
           }));
         } catch {}
@@ -910,6 +925,13 @@ export function createGenshinPanelQuery(
           if (observedAt !== undefined && groupRank) {
             await groupRank.observe(context, profileId, role, avatar, assets, observedAt, verify).catch(() => undefined);
             await verify();
+          }
+          if (original && onOriginal && context.user_id?.toString() === qq) {
+            const photo = original;
+            return { type: "delivery", message: { type: "image", file: png }, async onDelivered(confirmed) {
+              await verify();
+              await onOriginal(context, confirmed, photo, profileId, uid);
+            } };
           }
           return { type: "image", file: png };
         }

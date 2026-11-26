@@ -34,7 +34,7 @@ export interface PanelTheme extends PanelCatalog {
   readonly metadata?: (...parts: string[]) => Promise<Json>;
   readonly weaponNames?: () => Promise<readonly Readonly<Record<string, string>>[]>;
   readonly galleryPortrait?: (avatar: PortraitAvatar, special?: boolean) => Promise<Picture | undefined>;
-  readonly galleryAsset?: (avatar: PortraitAvatar) => Promise<Asset | undefined>;
+  readonly galleryAsset?: (avatar: PortraitAvatar, special?: boolean) => Promise<Asset | undefined>;
   readonly pictureAsset?: (...parts: string[]) => Promise<Asset | undefined>;
   readonly readPhoto?: (photo: PanelPhoto) => Promise<Uint8Array | undefined>;
   readonly picture: (...parts: string[]) => Promise<Picture | undefined>;
@@ -238,7 +238,7 @@ export async function readPanelTheme(directory = Bun.env.LOTUS_GENSHIN_PANEL_THE
   return {
     characters, artifacts, artifactSets, resourceRoot: installed, customAliases, commaGroup,
     async galleryPortrait(avatar, special) { return (await gallery(avatar, special))?.image; },
-    galleryAsset: avatar => gallery(avatar, false, true),
+    galleryAsset: (avatar, special = false) => gallery(avatar, special, true),
     async pictureAsset(...parts) {
       if (!installed || !parts.every(safeSegment)) return;
       const file = join(installed, ...parts);

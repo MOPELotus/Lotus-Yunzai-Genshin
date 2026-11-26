@@ -230,7 +230,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
   const groupRankMatches = new WeakMap<GachaContext, Awaited<ReturnType<typeof resolveGroupPanelRank>>>();
   const showcase = createGenshinShowcaseCommand(profiles, lockFile, signal, { readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase, groupRank });
   const panel = createGenshinPanelQuery(profiles, client, lockFile, signal, {
-    groupRank, preferences: panelPreferences, readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase, qFace: roleQFace,
+    groupRank, onOriginal: avatarCards.rememberPanelOriginal, preferences: panelPreferences, readPanelDeletionBoundary: panelArchive.discardedAt, fetchShowcase, qFace: roleQFace,
   });
   const abyssTeams = createGenshinAbyssTeams(profiles, panelArchive, panel.trainingRoster, signal);
   const sync = createGenshinGachaSync(profiles, client, history);
