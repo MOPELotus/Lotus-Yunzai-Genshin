@@ -1,3 +1,4 @@
+import { rankLabelLayout } from "../../../lib/rank-label-layout.ts";
 import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
 import messageCatalog from "../i18n/zh-CN.json";
 const $t = createTextTranslator("genshin", messageCatalog.messages);
@@ -14,8 +15,8 @@ type RenderMode = Parameters<typeof renderGenshinCardForChat>[3];
 type Writer = ReturnType<typeof typeset>;
 type Box = Parameters<typeof fill>[2];
 
-const width = 820;
-const displayWidth = 1148;
+const width = 1140;
+const displayWidth = 1596;
 const rowHeight = 60;
 const gap = 5;
 const gold = "#d3bc8e";
@@ -110,13 +111,13 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
     readonly refreshSummary?: string; readonly aggregateTitle?: string;
     readonly publicRanking?: { readonly filters: string; readonly count: number } } = {}) {
   const element = aggregateTitle ? "hydro" : rows[0]?.avatar.elem ?? "hydro";
-  const [fonts, backdrop, texture, medals, first, talentBadge, crown, emptyRelic, aliases, rarity, people] = await Promise.all([
+  const [fonts, backdrop, texture, medals, first, talentBadge, crown, emptyRelic, rarity, people] = await Promise.all([
     profileFonts(theme.resourceRoot),
     theme.picture("common", "bg", `bg-${element}.webp`),
     theme.picture("common", "cont", "card-bg.png"),
     theme.picture("character", "imgs", "mark-icon.png"), theme.picture("character", "imgs", "mark-icon2.png"),
     theme.picture("common", "bg", `talent-${element}.webp`), theme.picture("character", "imgs", "crown.png"),
-    theme.picture("common", "item", "artifact-icon.webp"), theme.weaponNames?.(),
+    theme.picture("common", "item", "artifact-icon.webp"),
     Promise.all([1, 2, 3, 4, 5].map(star => theme.picture("common", "item", `bg${star}.png`))),
     Promise.all(rows.map(({ avatar }) => assetsForRow(avatar, theme))),
   ]);
@@ -149,13 +150,13 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
     ctx.shadowColor = "#000";
     ctx.shadowBlur = 8;
     ctx.shadowOffsetY = 4;
-    write(aggregateTitle ?? `#${publicRanking ? $t("panel.group-rank-card.text_4eafa9e925") : ""}${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`, 20, 74, 36, { title: true, maxWidth: 780 });
+    write(aggregateTitle ?? `#${publicRanking ? $t("panel.group-rank-card.text_4eafa9e925") : ""}${name}${scoreMode ? rankModeNames[rankMode] : ""}排行`, 20, 74, 36, { title: true, maxWidth: width - 40 });
     ctx.restore();
-    panel(ctx, texture, [10, 97, 795, 166 + extra], () => {
-      fill(ctx, "#0006", [10, 97, 795, 40]);
-      fill(ctx, "#ffffff46", [10, 137, 795, 1]);
+    panel(ctx, texture, [10, 97, width - 25, 166 + extra], () => {
+      fill(ctx, "#0006", [10, 97, width - 25, 40]);
+      fill(ctx, "#ffffff46", [10, 137, width - 25, 1]);
       write(publicRanking ? $t("panel.group-rank-card.text_f48d2b932c") : $t("panel.group-rank-card.text_2a2a030720"), 30, 124, 16, { color: gold });
-      fill(ctx, "#0006", [10, 138, 795, 124 + extra]);
+      fill(ctx, "#0006", [10, 138, width - 25, 124 + extra]);
       const notes = publicRanking ? [
         [$t("panel.group-rank-card.text_a96c9a8541"), (rankMode === "damage" ? $t("panel.group-rank-card.text_fe2142d7c9") : $t("panel.group-rank-card.text_0e1133fcd3")) + $t("panel.group-rank-card.text_4b77c35468")],
         [$t("panel.group-rank-card.text_b5f15473fd"), publicRanking.filters], [$t("panel.group-rank-card.text_5e29d121dd"), $t("panel.group-rank-card.text_67ce28e000", { "count": publicRanking.count, "length": rows.length })],
@@ -172,15 +173,15 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
         font(13);
         const bodyX = x + ctx.measureText(heading).width + 3;
         write(refreshSummary && index === 4 ? $t("panel.group-rank-card.text_9e04b4d97d") : body,
-          bodyX, y, 13, { maxWidth: 781 - bodyX });
+          bodyX, y, 13, { maxWidth: width - 39 - bodyX });
       });
-      if (refreshSummary) write(refreshSummary, 54, 261, 13, { color: gold, maxWidth: 725 });
+      if (refreshSummary) write(refreshSummary, 54, 261, 13, { color: gold, maxWidth: width - 95 });
     });
 
     rows.forEach(({ uid, avatar }, index) => {
       const y = rowStart + index * (rowHeight + gap);
       const current = people[index]!;
-      panel(ctx, texture, [10, y, 795, rowHeight], () => {
+      panel(ctx, texture, [10, y, width - 25, rowHeight], () => {
         if (aggregateTitle) {
           const owner: Box = [18, y + 8, 43, 43];
           framedIcon(ctx, current.star ? rarity[current.star - 1] : undefined, owner, 21.5);
@@ -223,27 +224,30 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
         if (weapon) {
           framedIcon(ctx, current.weaponStar ? rarity[current.weaponStar - 1] : undefined, [360, y + 12, 36, 36], 6);
           contain(ctx, current.weapon, [355, y + 2, 46, 56]);
-          const label = weapon.name.length > 4 ? aliases?.[1]?.[weapon.name] || weapon.name : weapon.name;
-          write(label, 404, y + 24, 13, { color: gold, maxWidth: 48 });
+          font(13);
+          const nameWidth = ctx.measureText(weapon.name).width;
+          write(weapon.name, 404, y + 34, 13 * Math.min(1, 144 / nameWidth), { color: gold });
           if (weapon.affix !== undefined) badge(ctx, writer, $t("panel.group-rank-card.text_8f16cda3b9", { "affix": weapon.affix }), consColors[weapon.affix + 1] ?? "#666",
-            [404, y + 31, 26, 14]);
-          if (weapon.level !== undefined) write(`Lv.${weapon.level}`, 404, y + (weapon.affix === undefined ? 43 : 56), 12);
+            [556, y + 21, 26, 18]);
+          if (weapon.level !== undefined) write(`Lv.${weapon.level}`, 591, y + 34, 13);
         }
 
-        const relicBox: Box = [456, y + 12, 36, 36];
+        const relicBox: Box = [660, y + 12, 36, 36];
         framedIcon(ctx, avatar.sets.length ? rarity[4] : undefined, relicBox, 6);
-        if (avatar.sets.length === 2) current.sets.forEach((icon, i) => contain(ctx, icon, [456 + i * 11, y + 12 + i * 11, 25, 25]));
-        else contain(ctx, current.sets[0] ?? emptyRelic, [457, y + 13, 34, 34]);
-        write(avatar.sets.join(" + "), 499, y + 27, 12, { color: gold, maxWidth: 76 });
+        if (avatar.sets.length === 2) current.sets.forEach((icon, i) => contain(ctx, icon, [660 + i * 11, y + 12 + i * 11, 25, 25]));
+        else contain(ctx, current.sets[0] ?? emptyRelic, [661, y + 13, 34, 34]);
+        write(avatar.sets.join(" + "), 703, y + 27, 12, { color: gold, maxWidth: 110 });
         const grade = avatar.artifacts?.grade;
         const score = displayedRankScore(avatar, metric);
-        if (grade) badge(ctx, writer, grade, grades[grade] ?? "#aaa", [499, y + 34, 27, 15]);
-        if (score !== undefined) rankNumber(score, grade ? 532 : 499, y + 47, 16, 43);
-        columnDivider(ctx, 574, y + 9);
-        columnDivider(ctx, 675, y + 9);
+        if (grade) badge(ctx, writer, grade, grades[grade] ?? "#aaa", [703, y + 34, 27, 15]);
+        if (score !== undefined) rankNumber(score, grade ? 738 : 703, y + 47, 16, 75);
+        columnDivider(ctx, 824, y + 9);
+        columnDivider(ctx, 644, y + 9);
         if (avatar.damage) {
-          write(avatar.damage.title, 586, y + 24, 12, { color: grey, maxWidth: 82 });
-          rankNumber(avatar.damage.score, 586, y + 47, 18, 82, avatar.damage.percent ? "%" : "");
+          font(12);
+          const damageName = rankLabelLayout(avatar.damage.title, 270, value => ctx.measureText(value).width, 12);
+          damageName.lines.forEach((line, index) => write(line, 840, y + 15 + index * 13, damageName.size, { color: grey }));
+          rankNumber(avatar.damage.score, 840, y + 49, 18, 270, avatar.damage.percent ? "%" : "");
         }
       });
     });
