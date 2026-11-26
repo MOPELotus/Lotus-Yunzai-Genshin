@@ -355,7 +355,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
           images.push({ type: "image" as const, file: image.png });
         }
         if (!await unchanged()) return active.aborted ? undefined : changed;
-        if (images.length === Math.ceil(ranked.length / limit)) return { type: "forward" as const, nodes: images };
+        if (images.length === Math.ceil(ranked.length / limit)) return images.length === 1 ? images[0] : { type: "forward" as const, nodes: images };
         return [title, summary, ...ranked.map(({ avatar, metric, role }) => {
           const score = groupPanelNumber(displayedRankScore(avatar, metric)!.toFixed(1), theme.commaGroup);
           return `${avatar.name} · UID ${role.uid} · ${rankModeNames[metric]} ${score}${metric === "damage" && avatar.damage?.percent ? "%" : ""}`;
