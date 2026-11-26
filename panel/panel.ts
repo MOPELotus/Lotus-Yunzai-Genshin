@@ -1,3 +1,4 @@
+import { panelQueryUser } from "../../../lib/panel-query-target.ts";
 import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
 import messageCatalog from "../i18n/zh-CN.json";
 const $t = createTextTranslator("genshin", messageCatalog.messages);
@@ -274,6 +275,7 @@ export function createGenshinPanelQuery(
   };
 
   const query = async (message: string, context: GroupRankContext & {
+    readonly message?: string | readonly { readonly type: string; readonly qq?: unknown }[];
     readonly privateCredentialSignal?: AbortSignal; readonly inlineImageByteLimit?: number;
     readonly offerLegacyPanelRecovery?: LegacyPanelRecoveryOffer;
     readonly reply?: (message: string | Image, quote?: boolean, options?: ReplyOptions) => unknown;
@@ -483,7 +485,8 @@ export function createGenshinPanelQuery(
       return $t("panel.panel.text_581913dbf1");
     }
     if (materialDay && context.isDelegated) return $t("panel.panel.text_657b676110");
-    const user = context.user_id;
+    const user = command && ["list", "detail", "artifact-list", "statistics", "change"].includes(command.type)
+      ? panelQueryUser(context) : context.user_id;
     if (reload && context.isDelegated) return $t("panel.panel.text_f476dbc9db");
     if (!user || !Number.isSafeInteger(user) || user < 1) return $t("panel.panel.text_ce398b54ec");
     const qq = String(user);
@@ -588,7 +591,7 @@ export function createGenshinPanelQuery(
       const { name, type, mode } = command;
       const observeDetail = type === "detail" && mode === "profile";
       const registerList = !command.uid && (type === "list" || type === "update" || type === "reload") && groupRank?.register;
-      const observedAt = (observeDetail || registerList) && source && await groupRank?.allows(context) ? now() : undefined;
+      const observedAt = (observeDetail || registerList) && source && user === context.user_id && await groupRank?.allows(context) ? now() : undefined;
       const assets = preflight ?? await theme();
       const displayNumber = (value: string | number | undefined) => groupPanelNumber(String(value), assets.commaGroup);
       let snapshot: PanelSnapshot | undefined;
@@ -921,7 +924,7 @@ export function createGenshinPanelQuery(
         await registerList(context, profileId, role, observedAt, verify).catch(() => undefined);
         await verify();
       }
-      const ranking = source ? await groupRank?.listMarkers?.(context, profileId, role,
+      const ranking = source && user === context.user_id ? await groupRank?.listMarkers?.(context, profileId, role,
         avatars.map(avatar => avatar.id)).catch(() => undefined) : undefined;
       const renderList = async (marks?: typeof ranking): Promise<Image[]> => {
         const listOpts = { updated, profileId, qFace, rankMarkers: marks?.markers, rankParticipating: marks?.participating,
