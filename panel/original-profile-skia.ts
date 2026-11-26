@@ -98,15 +98,18 @@ export function typeset(ctx: Drawing, faces: Faces) {
     ctx.font = `${bold ? "bold " : ""}${size}px ${title ? faces.title : faces.text}`;
   }
   function write(value: string | number | undefined, x: number, y: number, size: number, {
-    color = body, align = "left", bold = false, title = false, maxWidth,
-  }: { color?: string; align?: CanvasTextAlign; bold?: boolean; title?: boolean; maxWidth?: number } = {}) {
+    color = body, align = "left", bold = false, title = false, maxWidth, outline = false,
+  }: { color?: string; align?: CanvasTextAlign; bold?: boolean; title?: boolean; maxWidth?: number; outline?: boolean } = {}) {
     if (value === undefined || value === "") return;
     font(size, bold, title);
     ctx.fillStyle = color;
     ctx.textAlign = align;
     ctx.textBaseline = "alphabetic";
     if (value === "Lotus-Yunzai") ctx.fillStyle = brandTextColor(ctx, value, x, y, maxWidth);
-    if (maxWidth !== undefined) ctx.fillText(String(value), x, y, maxWidth);
+    if (outline) {
+      const path = ctx.outlineText(String(value), maxWidth);
+      if (path) ctx.fill(path.offset(x, y));
+    } else if (maxWidth !== undefined) ctx.fillText(String(value), x, y, maxWidth);
     else ctx.fillText(String(value), x, y);
   }
   return { font, write };
@@ -469,7 +472,7 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
         const y = damageTop + 80 + top;
         fill(ctx, i % 2 ? "rgba(50,50,50,.4)" : dark, [10, y, 575, rowHeight]);
         fill(ctx, dark, [10, y, 230, rowHeight]);
-        for (const x of [10, 240, 424]) fill(ctx, "#fff4", [x, y, .65, rowHeight]);
+        for (const x of row.dmg ? [10, 240, 424] : [10, 240]) fill(ctx, "#fff4", [x, y, .65, rowHeight]);
         fill(ctx, "#fff4", [10, y, 575, .65]);
         lines.forEach((title, line) => write(title, 225, y + 26 + line * trialDamageTitleLineHeight, 15,
           { align: "right", color: gold, maxWidth: 210 }));
@@ -486,9 +489,9 @@ export async function drawOriginalProfile(model: Model, theme: PanelTheme, mode:
       const y = damageTop + damageHeight - 35;
       fill(ctx, "#0008", [10, y, 575, 35]);
       write($t("panel.original-profile-skia.text_91d6c72761", { "value1": damage.enemyLv ?? "", "value2": damage.enemyName || $t("panel.original-profile-skia.text_ea05b7f949"), "value3": damage.enemyLv ?? "" }),
-        25, y + 22, 12, { color: "#aaa", maxWidth: 355 });
+        25, y + 22, 12, { color: "#aaa", maxWidth: 355, outline: true });
       if (damage.createdBy) write($t("panel.original-profile-skia.text_c620039e10") + damage.createdBy, 570, y + 22, 12, {
-        align: "right", color: gold, maxWidth: 186,
+        align: "right", color: gold, maxWidth: 186, outline: true,
       });
     });
     ctx.save();
