@@ -1,3 +1,5 @@
+import { loadImage } from "skia-canvas";
+import { loadGroupRankQqAvatars } from "../../../lib/group-rank-qq-avatars.ts";
 import { rankLabelLayout } from "../../../lib/rank-label-layout.ts";
 import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
 import messageCatalog from "../i18n/zh-CN.json";
@@ -106,11 +108,12 @@ async function assetsForRow(avatar: RankAvatar, theme: PanelTheme) {
 }
 
 export async function renderGroupPanelRank(name: string, rankMode: RankMode,
-  rows: readonly { readonly uid: string; readonly avatar: RankAvatar }[], theme: PanelTheme, mode: RenderMode = "auto",
+  rows: readonly { readonly uid: string; readonly qq?: string; readonly avatar: RankAvatar }[], theme: PanelTheme, mode: RenderMode = "auto",
   { signal, inlineImageByteLimit, refreshSummary, aggregateTitle, publicRanking }: { readonly signal?: AbortSignal; readonly inlineImageByteLimit?: number;
     readonly refreshSummary?: string; readonly aggregateTitle?: string;
     readonly publicRanking?: { readonly filters: string; readonly count: number } } = {}) {
   const element = aggregateTitle ? "hydro" : rows[0]?.avatar.elem ?? "hydro";
+  const qqFaces = await loadGroupRankQqAvatars(rows.map(row => row.qq), signal);
   const [fonts, backdrop, texture, medals, first, talentBadge, crown, emptyRelic, rarity, people] = await Promise.all([
     profileFonts(theme.resourceRoot),
     theme.picture("common", "bg", `bg-${element}.webp`),
@@ -119,7 +122,9 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
     theme.picture("common", "bg", `talent-${element}.webp`), theme.picture("character", "imgs", "crown.png"),
     theme.picture("common", "item", "artifact-icon.webp"),
     Promise.all([1, 2, 3, 4, 5].map(star => theme.picture("common", "item", `bg${star}.png`))),
-    Promise.all(rows.map(({ avatar }) => assetsForRow(avatar, theme))),
+    Promise.all(rows.map(async ({ avatar, qq }) => ({ ...await assetsForRow(avatar, theme),
+      qqFace: qq && qqFaces.has(qq) ? await loadImage(qqFaces.get(qq)!).catch(() => undefined) : undefined,
+    }))),
   ]);
   const extra = refreshSummary ? 20 : 0;
   const rowStart = 269 + extra;
@@ -201,7 +206,7 @@ export async function renderGroupPanelRank(name: string, rankMode: RankMode,
         ctx.save();
         round(ctx, portrait, 25);
         ctx.clip();
-        cover(ctx, current.face, portrait);
+        cover(ctx, current.qqFace ?? current.face, portrait);
         ctx.restore();
         if (avatar.cons !== undefined) badge(ctx, writer, avatar.cons, consColors[avatar.cons] ?? "#666", [118, y + 14, 16, 16]);
         write(current.shortName, avatar.cons === undefined ? 118 : 138, y + 27, 17, { color: gold, maxWidth: 82 });

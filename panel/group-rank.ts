@@ -345,7 +345,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         const images = [];
         for (let index = 0; index < ranked.length; index += limit) {
           if (active.aborted) return;
-          const rows = ranked.slice(index, index + limit).map(row => ({ uid: row.role.uid, avatar: row.avatar }));
+          const rows = ranked.slice(index, index + limit).map(row => ({ qq: String(row.qq), uid: row.role.uid, avatar: row.avatar }));
           const aggregateTitle = ranked.length > limit ? `${title} · ${index / limit + 1}/${Math.ceil(ranked.length / limit)}` : title;
           const image = await render("", mode, rows, theme, undefined, {
             inlineImageByteLimit: context.inlineImageByteLimit, signal: active, refreshSummary: summary, aggregateTitle,
@@ -380,7 +380,7 @@ export function createGroupPanelRank(directory: string, profiles: RankProfiles, 
         (mode !== intent.mode ? $t("panel.group-rank.text_07475672f8") : "");
       const lead = ranked[0];
       if (!lead) return [summary, $t("panel.group-rank.text_9e7699b10f", { "name": character.name, "value2": rankModeNames[mode] })].join("\n");
-      const rows = ranked.map(row => ({ uid: row.role.uid, avatar: row.avatar }));
+      const rows = ranked.map(row => ({ qq: String(row.qq), uid: row.role.uid, avatar: row.avatar }));
       const unchanged = async () => {
         if (active.aborted) return false;
         const refreshed = await currentMembers(scope, context);
