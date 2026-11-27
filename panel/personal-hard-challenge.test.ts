@@ -150,3 +150,26 @@ test("only the selected own role is read; a profile switch during render blocks 
     expect(read).toBe(4);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+test('single-player blessings preserve actual assignments and never leak to multiplayer', () => {
+  const source={...data,data:[{...data.data[0],blings:[{avatar_id:10000042,is_plus:true},{avatar_id:'10000016',is_plus:false},{avatar_id:10000042,is_plus:false},{avatar_id:10000003},{avatar_id:'__proto__',is_plus:true}]}]};
+  const solo=buildPersonalHardChallenge(uid,{scheduleType:1,mode:'single'},source,[10000003]);
+  if('message'in solo)throw Error(solo.message);
+  expect(solo.blessings).toEqual([{id:10000042,empowered:true},{id:10000016,empowered:false}]);
+  const mp=buildPersonalHardChallenge(uid,{scheduleType:1,mode:'mp'},source,[10000003]);
+  if('message'in mp)throw Error(mp.message);
+  expect(mp.blessings).toEqual([]);
+  const best=buildPersonalHardChallenge(uid,{scheduleType:1,mode:'best'},source,[10000003]);
+  if('message'in best)throw Error(best.message);
+  expect(best.mode).toBe('mp');expect(best.blessings).toEqual([]);
+});
+
+test('legacy avatar assignment flags are read without inferring blessings from popular avatars', () => {
+  const source={...data,data:[{...data.data[0],avatars:[{avatar_id:'10000042',is_plus:'1'},{avatar_id:'10000016',is_plus:0},{avatar_id:10000003}]}]};
+  const model=buildPersonalHardChallenge(uid,{scheduleType:1,mode:'single'},source,[10000003]);
+  if('message'in model)throw Error(model.message);
+  expect(model.blessings).toEqual([{id:10000042,empowered:true},{id:10000016,empowered:false}]);
+  const empty=buildPersonalHardChallenge(uid,{scheduleType:1,mode:'single'},data,[10000042]);
+  if('message'in empty)throw Error(empty.message);
+  expect(empty.blessings).toEqual([]);
+});

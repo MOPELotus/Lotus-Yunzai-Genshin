@@ -81,7 +81,7 @@ export async function renderPersonalHardChallenge(model: PersonalHardChallenge, 
     if (image) pictures.set(url, image);
   }));
   const own = new Map(owned.map(row => [avatarId(object(row.base)?.id), row]));
-  const buffs = new Set(model.avatarIds);
+  const buffs = new Set(model.blessings.map(person => person.id));
   // This tiny context only measures the original fonts and never exports an image.
   const measurement = new Canvas(1, 1).getContext("2d");
   typeset(measurement, fonts).font(14);
@@ -95,8 +95,18 @@ export async function renderPersonalHardChallenge(model: PersonalHardChallenge, 
     const descHeight = descriptions.length ? 24 + descriptions.reduce((sum, lines) => sum + lines.length * lineHeight + 4, 0) : 0;
     return { round, team, descriptions, teamHeight, height: 72 + teamHeight + descHeight };
   }));
+  const blessingLines = [true, false].flatMap(empowered => {
+    const names = model.blessings.filter(person => person.empowered === empowered)
+      .map(person => text(object(theme.characters[String(person.id)])?.name) || String(person.id));
+    if (!names.length) return [];
+    const line = empowered ? $t("panel.personal-hard-challenge-card.empowered", { names: names.join("、") })
+      : $t("panel.personal-hard-challenge-card.ordinary", { names: names.join("、") });
+    return descriptionLines(line, value => measurement.measureText(value).width).map(spans => spans.map(span => span.text).join(""));
+  });
   const top = 190;
-  const notesTop = top + rows.reduce((height, row) => height + row.height + 10, rows.length ? 0 : 64);
+  const blessingTop = top + rows.reduce((height, row) => height + row.height + 10, rows.length ? 0 : 64);
+  const blessingHeight = blessingLines.length ? 36 + blessingLines.length * lineHeight : 0;
+  const notesTop = blessingTop + blessingHeight;
   const height = notesTop + 145;
   signal.throwIfAborted();
   return renderGenshinCardForChat(width, height, ctx => {
@@ -203,6 +213,11 @@ export async function renderPersonalHardChallenge(model: PersonalHardChallenge, 
       topY += rowHeight + 10;
     });
     const notes = [$t("panel.personal-hard-challenge-card.text_a94b0e32f7"), $t("panel.personal-hard-challenge-card.text_0990a241a3"), $t("panel.personal-hard-challenge-card.text_55c17cfafc")];
+    if (blessingHeight) {
+      surface(left, blessingTop, panelWidth, blessingHeight - 10, true);
+      blessingLines.forEach((line, index) => print(line, 33, blessingTop + 24 + index * lineHeight, 14,
+        { color: gold, maxWidth: panelWidth - 40 }));
+    }
     surface(left, notesTop, panelWidth, 94, true);
     notes.forEach((note, index) => print(`• ${note}`, 33, notesTop + 26 + index * 23, 14));
     print($t("panel.personal-hard-challenge-card.text_3867834e77"), width / 2, height - 22, 16, { align: "center" });

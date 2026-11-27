@@ -2017,6 +2017,8 @@
     "panel.personal-exploration-model.text_f6767366e1": "旧日之海",
     "panel.personal-exploration-model.text_fac827d9bd": "历史访客",
     "panel.personal-exploration-model.text_fd3b6e8246": "珍贵宝箱",
+    "panel.personal-hard-challenge-card.empowered": "恒昼辉光：{names}",
+    "panel.personal-hard-challenge-card.ordinary": "辉光：{names}",
     "panel.personal-hard-challenge-card.text_0618aa7e11": "最强一击",
     "panel.personal-hard-challenge-card.text_0990a241a3": "单人角色装备与圣遗物为当前状态",
     "panel.personal-hard-challenge-card.text_2e0a3266b0": "暂无图像",
@@ -4410,6 +4412,12 @@
     "panel.seven-saints-deck-card.text_24432b1be5": {
       "deckLabel": "牌组标签",
       "pageLabel": "页码标签"
+    },
+    "panel.personal-hard-challenge-card.empowered": {
+      "names": "角色名称列表"
+    },
+    "panel.personal-hard-challenge-card.ordinary": {
+      "names": "角色名称列表"
     }
   }
 }

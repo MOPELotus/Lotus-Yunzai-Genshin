@@ -1,3 +1,5 @@
+// Adapted from AxiuCN/Axiu-Plugin (commits ed94ade7..5f6107cb).
+// https://github.com/AxiuCN/Axiu-Plugin/compare/ed94ade7f6105b3b0dc5e679f21b34c0777bf65e...5f6107cb66cf82a9346a9f7048a56c1fcf0a4209
 import { createTranslator as createTextTranslator } from "../../../packages/i18n/index.ts";
 import messageCatalog from "../i18n/zh-CN.json";
 const $t = createTextTranslator("genshin", messageCatalog.messages);
@@ -76,6 +78,18 @@ export function buildPersonalHardChallenge(uid: string, selection: HardChallenge
   const chosen = mode === "single" ? singleBest : mpBest;
   const modeLabel = mode === "single" ? $t("panel.personal-hard-challenge-model.text_7077d6f614") : $t("panel.personal-hard-challenge-model.text_3501514738");
   if (!chosen) return { message: $t("panel.personal-hard-challenge-model.text_1ea17407e2", { "uid": uid, "period": period, "value3": selection.mode === "best" ? "" : modeLabel }) };
+  const blessingSource = Array.isArray(season?.blings) ? season.blings
+    : Array.isArray(season?.avatars) ? season.avatars : single?.avatars;
+  const assigned = new Map<number, { id: number; empowered: boolean }>();
+  if (mode === "single") {
+    for (const row of rows(blessingSource, 128)) {
+      const id = avatarId(row.avatar_id);
+      if (!id || !([true, false, 1, 0, "1", "0", "true", "false"] as readonly unknown[]).includes(row.is_plus)) continue;
+      const empowered = trueValue(row.is_plus);
+      const previous = assigned.get(id);
+      if (!previous || empowered) assigned.set(id, { id, empowered });
+    }
+  }
   const schedule = object(season?.schedule);
   const starts = whole(schedule?.start_time, 253402300799);
   const ends = whole(schedule?.end_time, 253402300799);
@@ -83,7 +97,7 @@ export function buildPersonalHardChallenge(uid: string, selection: HardChallenge
     uid, period, mode, modeLabel, selection: selection.mode,
     difficulty: chosen.difficulty, time: chosen.time, starts,
     date: starts && ends && starts <= ends ? `${formatTime(starts)} ～ ${formatTime(ends)}` : undefined,
-    version: text(schedule?.version ?? season?.version), avatarIds,
+    version: text(schedule?.version ?? season?.version), avatarIds, blessings: [...assigned.values()],
     rounds: rows((mode === "single" ? single : mp)?.challenge, 12).map((row, index) => {
       const enemy = object(row.monster);
       const records = Array.isArray(row.best_avatar) ? row.best_avatar : [];
