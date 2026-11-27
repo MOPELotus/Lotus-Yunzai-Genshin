@@ -15,7 +15,7 @@ export function renderGenshinCard(width: number, height: number, draw: Parameter
   return renderPng(Math.round(displayWidth * density), Math.ceil(height * zoom), ctx => {
     ctx.scale(zoom, zoom);
     return draw(ctx);
-  }, mode, { allowHalfScale: standard && density === 4 && allowHalfScale });
+  }, mode, { renderScale: density, allowHalfScale: standard && density === 4 && allowHalfScale });
 }
 
 export async function renderGenshinCardForChat(width: number, height: number, draw: Parameters<typeof renderPng>[2],
