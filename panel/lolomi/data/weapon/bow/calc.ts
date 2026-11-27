@@ -238,15 +238,15 @@ export default function (step, staticStep) {
         a2Dmg: step(16)
       }
     }, {
-      title: '满Buff下提高攻击力[atkPct]%',
-      refine: {
-        atkPct: step(48)
+      title: ({ params }) => `${Math.min(3, Math.max(0, Math.floor(params.magic_stacks ?? 3)))}名同元素队友攻击力提高[atkPct]%`,
+      data: {
+        atkPct: ({ params, refine }) => (16 + 4 * refine) * Math.min(3, Math.max(0, Math.floor(params.magic_stacks ?? 3)))
       }
     }],
     烈阳之嗣: {
-      title: '对于灼心状态下的敌人造成的伤害提升[dmg]%',
+      title: '攻击灼心状态下的敌人重击伤害提升[a2Dmg]%',
       refine: {
-        dmg: step(28)
+        a2Dmg: step(28)
       }
     },
     测距规: {

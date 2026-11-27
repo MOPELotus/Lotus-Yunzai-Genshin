@@ -48,10 +48,25 @@ type MiaoDamageArgs = Parameters<typeof MiaoCalc.getDmgFn>[0];
 export function miaoWithNativeRule(data: MiaoDamageArgs) {
   const run = MiaoCalc.getDmgFn(data);
   const ordinary = run.dynamic;
+  const reaction = run.reaction;
   return Object.assign(run, {
     withAttr(overrides: object = {}) {
       const attr = collection.merge(collection.cloneDeep(data.attr), collection.cloneDeep(overrides)) as MiaoDamageArgs["attr"];
       return miaoWithNativeRule({ ...data, attr, ds: { ...data.ds, attr } });
+    },
+    withParams(overrides: NonNullable<MiaoDamageArgs["params"]> = {}) {
+      const params = { ...data.params, ...overrides };
+      return miaoWithNativeRule({ ...data, params, ds: { ...data.ds, params } });
+    },
+    reaction(element: Parameters<typeof reaction>[0] = false, params: Parameters<typeof reaction>[1] = false,
+      talent: Parameters<typeof reaction>[2] = "fy") {
+      const current = params || data.params || false;
+      const result = reaction(element, current, talent);
+      if (element !== "lunarCharged" && element !== "lunarCrystallize") return result;
+      const raw = current ? Number(current.lunarShare ?? NaN) : NaN;
+      const share = Number.isFinite(raw) ? raw : 1;
+      return { ...result, ...(result.avg !== undefined && { avg: result.avg * share }),
+        ...(result.dmg !== undefined && { dmg: result.dmg * share }) };
     },
     dynamic(ratio?: number, talent?: boolean | string, dynamicData?: boolean, element?: boolean, base?: boolean | number) {
       const skill = talent as Parameters<typeof ordinary>[1];
@@ -102,8 +117,11 @@ export function nativeWeaponEffects(name: string, weapon: Json, affix: number): 
           : ({ refine }: { readonly refine: number }) => (Array.isArray(values) ? values[refine] : value) * count;
       }
     }
-    const title = text(row.title);
-    output.push({ ...row, data, title: row.isStatic || title.includes("：") ? title : `${name}：${title}` });
+    const originalTitle = row.title;
+    const title = typeof originalTitle === "function"
+      ? (context: unknown) => `${name}：${originalTitle(context)}`
+      : row.isStatic || text(originalTitle).includes("：") ? text(originalTitle) : `${name}：${text(originalTitle)}`;
+    output.push({ ...row, data, title });
   }
   return output;
 }

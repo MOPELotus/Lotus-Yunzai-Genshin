@@ -21,9 +21,20 @@ const c2Flat = (ds) => {
   return calc(attr.atk) * (isSweeper(ds) ? 5 : 0.8)
 }
 
-const starConduct = (ds, calcApi, rate, slot) => {
+// 祝歌自身10层：清扫者星超导命中耗2层、御前护卫耗1层
+const blessingQuota = (ds) => {
+  let left = ds.cons >= 2 ? 10 : 0
+  const need = isSweeper(ds) ? 2 : 1
+  return () => {
+    if (left < need) return 0
+    left -= need
+    return c2Flat(ds)
+  }
+}
+
+const starConduct = (ds, calcApi, rate, slot, flat = c2Flat(ds)) => {
   const { attr, calc } = ds
-  return calcApi.basic(calc(attr.atk) * rate / 100 + c2Flat(ds), slot, 'stellarConduct')
+  return calcApi.basic(calc(attr.atk) * rate / 100 + flat, slot, 'stellarConduct')
 }
 
 // 「净世卫仪」
@@ -36,10 +47,11 @@ const burstElectro = (ds, dmg) => {
 }
 
 // 「净世卫仪」辉映·星超导
-const burstStar = (ds, calcApi) => {
+const burstStar = (ds, calcApi, quota = null) => {
   const { talent } = ds
-  const r1 = starConduct(ds, calcApi, talent.q['一段雷元素伤害/星超导伤害2'][1], 'q')
-  const r5 = starConduct(ds, calcApi, talent.q['五段雷元素伤害/星超导伤害2'][1], 'q')
+  const take = quota || (() => c2Flat(ds))
+  const r1 = starConduct(ds, calcApi, talent.q['一段雷元素伤害/星超导伤害2'][1], 'q', take())
+  const r5 = starConduct(ds, calcApi, talent.q['五段雷元素伤害/星超导伤害2'][1], 'q', take())
   return { dmg: r1.dmg + r5.dmg, avg: r1.avg + r5.avg }
 }
 
@@ -55,20 +67,18 @@ const anchorCombo = (ds, dmg) => {
 }
 
 // 「荡除之志」清扫者特殊战技
-const clearStrike = (ds, calcApi) => {
+const clearStrike = (ds, calcApi, quota = null) => {
   const { attr, calc, talent, cons } = ds
-  const dmg = calcApi
   const boost = talent.q['荡除之志伤害提升'] / 100 * (cons >= 1 ? 2.2 : 1)
-  const rate = talent.e['荡除之志伤害'] * (1 + boost)
-  if (cons >= 6) {
-    const cpct = Math.min(calc(attr.atk) / 500 * 2.5, 10)
-    const cdmg = Math.min(calc(attr.atk) / 500 * 25, 100)
-    return dmg.withAttr({
-      cpct: { plus: (attr.cpct?.plus ?? 0) + cpct },
-      cdmg: { plus: (attr.cdmg?.plus ?? 0) + cdmg }
-    })(rate, 'e')
-  }
-  return dmg(rate, 'e')
+  const rate = talent.e['荡除之志星超导伤害'] * (1 + boost)
+  const flat = quota ? quota() : c2Flat(ds)
+  const api = cons >= 6
+    ? calcApi.withAttr({
+      cpct: { plus: (attr.cpct?.plus ?? 0) + Math.min(calc(attr.atk) / 500 * 2.5, 10) },
+      cdmg: { plus: (attr.cdmg?.plus ?? 0) + Math.min(calc(attr.atk) / 500 * 25, 100) }
+    })
+    : calcApi
+  return api.basic(calc(attr.atk) * rate / 100 + flat, 'e', 'stellarConduct')
 }
 
 // 「御前护卫」后台15秒
@@ -76,10 +86,11 @@ const calcGuardianRotation = (ds, calcApi) => {
   const { talent, params } = ds
   const dmg = calcApi
   const hits = params.synergyHits ?? 10
+  const quota = blessingQuota(ds)
   const synergy = dmg(talent.e['准雷定锚协同攻击伤害'], 'e')
-  const hold = dmg(talent.e['护持之志伤害'], 'e')
+  const hold = starConduct(ds, dmg, talent.e['护持之志星超导伤害'], 'e', quota())
   const be = burstElectro(ds, dmg)
-  const bs = burstStar(ds, dmg)
+  const bs = burstStar(ds, dmg, quota)
   return {
     dmg: synergy.dmg * hits + hold.dmg + be.dmg + bs.dmg,
     avg: synergy.avg * hits + hold.avg + be.avg + bs.avg
@@ -91,13 +102,19 @@ const calcSweeperRotation = (ds, calcApi) => {
   const { params } = ds
   const dmg = calcApi
   const rounds = params.sweeperRounds ?? 3
+  const quota = blessingQuota(ds)
   const be = burstElectro(ds, dmg)
-  const bs = burstStar(ds, dmg)
+  const bs = burstStar(ds, dmg, quota)
   const combo = anchorCombo(ds, dmg)
-  const clear = clearStrike(ds, dmg)
+  let clear = { dmg: 0, avg: 0 }
+  for (let i = 0; i < rounds + 1; i++) {
+    const hit = clearStrike(ds, dmg, quota)
+    clear.dmg += hit.dmg
+    clear.avg += hit.avg
+  }
   return {
-    dmg: be.dmg + bs.dmg + combo.dmg * rounds + clear.dmg * (rounds + 1),
-    avg: be.avg + bs.avg + combo.avg * rounds + clear.avg * (rounds + 1)
+    dmg: be.dmg + bs.dmg + combo.dmg * rounds + clear.dmg,
+    avg: be.avg + bs.avg + combo.avg * rounds + clear.avg
   }
 }
 
@@ -127,11 +144,11 @@ export const details = applyStandardTeam([
     params: { sweeper: false },
     dmg: ({ attr, calc }) => ({ avg: `${Math.round(Math.min(calc(attr.atk) / 1000 * 10, 40))}%`, type: 'text' })
   }, {
-    title: '「护持之志」伤害',
+    title: '「护持之志」星超导伤害',
     params: { sweeper: false },
-    dmg: ({ talent }, dmg) => dmg(talent.e['护持之志伤害'], 'e')
+    dmg: (ds, calcApi) => starConduct(ds, calcApi, ds.talent.e['护持之志星超导伤害'], 'e')
   }, {
-    title: '「荡除之志」伤害',
+    title: '「荡除之志」星超导伤害',
     params: { sweeper: true },
     dmg: (ds, calcApi) => clearStrike(ds, calcApi)
   }, {

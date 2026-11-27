@@ -272,6 +272,14 @@ let DmgCalc = {
           ret.avg *= s
           ret.dmg *= s
         }
+        if (!dmgBase && (ele === 'lunarCharged' || ele === 'lunarCrystallize')) {
+          // 反应月曜伤害分配占比：1 / 0.5 / 1/12（0.0833） / 1/12
+          // 单角色默认全额，队内贡献占比传 params.lunarShare
+          const lunarShare = Number(params ? (params.lunarShare ?? NaN) : NaN)
+          const s = Number.isFinite(lunarShare) ? lunarShare : 1
+          ret.avg *= s
+          ret.dmg *= s
+        }
         break
       }
 
@@ -372,6 +380,11 @@ let DmgCalc = {
     dmgFn.withAttr = function (overrides = {}) {
       const nextAttr = lodash.merge(lodash.cloneDeep(attr), lodash.cloneDeep(overrides))
       return DmgCalc.getDmgFn({ ...data, attr: nextAttr, ds: { ...ds, attr: nextAttr } })
+    }
+
+    dmgFn.withParams = function (overrides = {}) {
+      const nextParams = { ...data.params, ...overrides }
+      return DmgCalc.getDmgFn({ ...data, params: nextParams, ds: { ...ds, params: nextParams } })
     }
 
     dmgFn.basic = function (basicNum = 0, talent = false, ele = false, dynamicData = false) {

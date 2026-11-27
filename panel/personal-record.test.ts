@@ -284,9 +284,11 @@ test("探索模型保留七圣等级、持有计数与区域声望，展开层�
   expect(result.gcg).toBe(optional);
   expect(result.rows[0]?.[2]?.value).toBe("第10幕 圣牌4");
   expect(result.rows[0]?.[3]?.value).toBe("V");
-  expect(result.rows[2]?.[0]).toEqual({ label: "宝箱总数", total: 9109, value: 15 });
+  expect(result.rows[2]?.[0]).toEqual({ label: "宝箱总数", total: 9346, value: 15 });
   expect(result.rows[2]?.[1]?.value).toBe("D");
-  expect(result.rows[4]?.at(-1)).toEqual({ label: "冰神瞳", total: 140, value: 7 });
+  expect(result.rows[4]?.at(-1)).toEqual({ label: "冰神瞳", total: 230, value: 7 });
+  expect(buildPersonalExploration(role.uid, role.region, raw, optional, { releaseCaps: { iceculus: 232 } })?.rows[4]?.at(-1)?.total).toBe(232);
+  expect(buildPersonalExploration(role.uid, role.region, raw, optional, { releaseCaps: { cryoculus: 242 } })?.rows[4]?.at(-1)?.total).toBe(242);
   expect(result.rows[5]?.at(-1)?.value).toBe(2);
   expect(result.regions.map(row => row.id)).toEqual([20, 10, 6, 1]);
   expect(result.regions[1]?.details.map(row => row.value)).toEqual(["88.7%", "90%", "95.6%"]);

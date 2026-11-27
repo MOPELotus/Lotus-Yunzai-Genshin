@@ -822,7 +822,12 @@ let TeamBuff = [
       kx: ({ params }) => params.Xilonen_best ? 45 : (params.Xilonen_mid || params.Xilonen_low) ? 36 : 0,
       hpPct: ({ params }) => (params.Xilonen_hydro && (params.Xilonen_best || params.Xilonen_mid)) ? 45 : 0,
       atkPct: ({ params }) => (params.Xilonen_pyro && (params.Xilonen_best || params.Xilonen_mid)) ? 45 : 0,
-      dmg: ({ params, element }) => (element === '岩' && (params.Xilonen_best || params.Xilonen_mid)) ? 50 : 0,
+      dmg: ({ params, element }) => {
+        let v = (element === '岩' && (params.Xilonen_best || params.Xilonen_mid)) ? 50 : 0
+        if (params.Xilonen_best) v += 51.2
+        else if (params.Xilonen_mid) v += 25.6
+        return v
+      },
       cdmg: ({ params }) => (params.Xilonen_cryo && (params.Xilonen_best || params.Xilonen_mid)) ? 60 : 0,
       aPlus: LIMITED_PLUS.Xilonen.plus,
       a2Plus: LIMITED_PLUS.Xilonen.plus,
@@ -913,6 +918,12 @@ let TeamBuff = [
       atkPct: ({ params }) => params.Iansan_best ? 94 : params.Iansan_mid ? 62 : params.Iansan_low ? 30 : 0,
       dmg: 25,
     }
+  },
+  {
+    check: ({ params }) => params.Ororon_low || params.Ororon_mid || params.Ororon_best,
+    title: '欧洛伦',
+    // 6命：显象超感触发后场上角色攻击力+10%，默认满层3层30%
+    data: { atkPct: 30 }
   },
   {
     check: ({ params }) => params.Chevreuse_low || params.Chevreuse_mid || params.Chevreuse_best,
@@ -1301,4 +1312,4 @@ TeamBuff.forEach(b => {
   }
 })
 
-export { TeamBuff, LIMITED_PLUS, makeAutoTitle }
+export { TeamBuff, LIMITED_PLUS, makeAutoTitle, hexenCount }

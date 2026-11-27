@@ -1,4 +1,4 @@
-https://gitee.com/land-route_lu/lolomi-calc/tree/b18725103e95e8973d6efc02d5a074916178cf9a
+https://gitee.com/land-route_lu/lolomi-calc/tree/d7d31e9190d89c576b34627eb0298794ecbd9e38
 rules/ is damage/lolomi-gs/, only rules and shared rule functions.
 engine/ is llm-engine/, with host dependencies bound to module-local primitives.
 data/ is llm-data/meta-gs/, numeric catalogs and effect tables. No images are shipped.
@@ -7,4 +7,4 @@ presets/ records are derived from the four public replace/data/1/PlayerData/gs G
 Only the virtual preset ID and public role/equipment fields are retained. The source role aliases are from llm-data/meta-gs/character/alias.js, covered by data/LICENSE.
 artifact-rules.ts ports the six damage/lolomi-gs/<character>/artis_llm.js functions, including their original rule weights and selection order.
 
-Synchronized V4 formulas and numeric catalogs at b187251. Engine, presets, artifact scoring and adapters are unchanged from their previous port because the upstream diff does not touch them. data/weapon/desc.ts preserves the updated public simplified weapon descriptions; it does not add upstream runtime entry points.
+Synced Lolomi from b18725103e95e8973d6efc02d5a074916178cf9a to d7d31e9190d89c576b34627eb0298794ecbd9e38 (v1.4.5 and v1.4.6) with internal Bun/TS call adaptations, prioritizing local bundled data with fallback to original data, and preserving original licenses without porting host monkeypatches. Synced 7.2 exploration default totals and iceculus/cryoculus key compatibility from kissnavel/genshin (b7b58395b9c7ed3b47cffabeca2176bb117f840e).

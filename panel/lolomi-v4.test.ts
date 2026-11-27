@@ -11,11 +11,11 @@ const artis: PanelAvatar["artis"] = {
 };
 for (const [id, name, elem, weapon, title, cons, total] of [
   [10000149, "安娜丝塔夏", "cryo", "银昼", "荣耀站场15秒总伤", 0, 114846.49438733763],
-  [10000149, "安娜丝塔夏", "cryo", "银昼", "荣耀站场15秒总伤", 6, 452326.68773575954],
-  [10000147, "达妮卡", "electro", "西风大剑", "清扫者站场15秒总伤", 0, 30009.67567871238],
-  [10000147, "达妮卡", "electro", "西风大剑", "清扫者站场15秒总伤", 6, 77583.39253913211],
+  [10000149, "安娜丝塔夏", "cryo", "银昼", "荣耀站场15秒总伤", 6, 470265.63587841566],
+  [10000147, "达妮卡", "electro", "西风大剑", "清扫者站场15秒总伤", 0, 50964.106217838926],
+  [10000147, "达妮卡", "electro", "西风大剑", "清扫者站场15秒总伤", 6, 191483.9874116073],
 ] as const) {
-  test(`Lolomi V4 ${name}${cons}命走原生规则并计算十五秒输出`, async () => {
+  test(`Lolomi V5 ${name}${cons}命走原生规则并计算十五秒输出`, async () => {
     const avatar: PanelAvatar = { id, name, elem, level: 90, promote: 6, cons, _source: "enka", talent: { a: 10, e: 10, q: 10 },
       weapon: { name: weapon, level: 90, promote: 6, affix: 1 }, artis };
     const result = await estimatePanelDamage(avatar, theme, undefined, 103, { includeComparison: false });

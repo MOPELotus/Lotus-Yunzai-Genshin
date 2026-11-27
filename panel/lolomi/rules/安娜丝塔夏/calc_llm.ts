@@ -16,7 +16,7 @@ const starRoute = (params) => params.starSwirl
   : ['stellarConduct', 0]
 
 // 2命「荣耀」加成
-const gloryMult = (ds) => ds.cons >= 2 && ds.params.glory === true ? 1.25 : 1
+const gloryMult = (ds) => ds.cons >= 2 && ds.params.glory === true ? 1.3 : 1
 
 // 每次尾段攻击替换为星烁伤害
 const splitTail = (ds, times) => ds.params.huiying === false ? [times, 0] : [Math.max(times - 1, 0), 1]
@@ -349,7 +349,7 @@ export const buffs = [
     }
   }, {
     check: ({ params }) => params.glory === true,
-    title: '2命「致严冬，致同饮苦寒的人」荣耀：普攻/永夜将明/裁灭造成原本125%伤害，星烁反应擢升[elevated]%',
+    title: '2命「致严冬，致同饮苦寒的人」荣耀：普攻/永夜将明/裁灭造成原本130%伤害，星烁反应擢升[elevated]%',
     cons: 2,
     data: {
       elevated: 5

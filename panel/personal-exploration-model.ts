@@ -13,9 +13,9 @@ const nestedAreas: Readonly<Partial<Record<number, readonly number[]>>> = { 6: [
 const hiddenAreas = new Set([7, 11, 12, 13]);
 const abyssDifficulty = ["I", "II", "III", "IV", "V", "VI"];
 const statsSources = {
-  common: [$t("panel.personal-exploration-model.text_91c08bdc15"), "common_chest_number", 3838], exquisite: [$t("panel.personal-exploration-model.text_768cb85062"), "exquisite_chest_number", 3372],
-  precious: [$t("panel.personal-exploration-model.text_fd3b6e8246"), "precious_chest_number", 1073], luxurious: [$t("panel.personal-exploration-model.text_d81eb1fbbf"), "luxurious_chest_number", 410],
-  magic: [$t("panel.personal-exploration-model.text_621866408b"), "magic_chest_number", 416], anemo: [$t("panel.personal-exploration-model.text_5a7b053454"), "anemoculus_number", 66],
+  common: [$t("panel.personal-exploration-model.text_91c08bdc15"), "common_chest_number", 3915], exquisite: [$t("panel.personal-exploration-model.text_768cb85062"), "exquisite_chest_number", 3467],
+  precious: [$t("panel.personal-exploration-model.text_fd3b6e8246"), "precious_chest_number", 1105], luxurious: [$t("panel.personal-exploration-model.text_d81eb1fbbf"), "luxurious_chest_number", 423],
+  magic: [$t("panel.personal-exploration-model.text_621866408b"), "magic_chest_number", 436], anemo: [$t("panel.personal-exploration-model.text_5a7b053454"), "anemoculus_number", 66],
   geo: [$t("panel.personal-exploration-model.text_28e40752d0"), "geoculus_number", 131], electro: [$t("panel.personal-exploration-model.text_9041d1b550"), "electroculus_number", 181],
   dendro: [$t("panel.personal-exploration-model.text_4430295157"), "dendroculus_number", 271], hydro: [$t("panel.personal-exploration-model.text_50a6059df0"), "hydroculus_number", 271],
   pyro: [$t("panel.personal-exploration-model.text_d298290149"), "pyroculus_number", 271], lunar: [$t("panel.personal-exploration-model.text_ba87117a54"), "moonoculus_number", 271],
@@ -75,14 +75,14 @@ export function buildPersonalExploration(uid: string, region: string, data: Json
         ? $t("panel.personal-exploration-model.text_d9de113500", { "turn": turn, "value2": medals ? $t("panel.personal-exploration-model.text_db259684a6", { "medals": medals }) : "" }) : undefined),
       metric($t("panel.personal-exploration-model.text_c3354e0ec8"), hard?.is_unlock === false ? $t("panel.personal-exploration-model.text_308d62ba23") : hard?.has_data && difficulty
         ? abyssDifficulty[difficulty - 1] : undefined)],
-    [metric($t("panel.personal-exploration-model.text_dc584a653c"), avatarCount, cap("avatar", 121)), metric($t("panel.personal-exploration-model.text_63f6f759c3"), count("full_fetter_avatar_num"),
+    [metric($t("panel.personal-exploration-model.text_dc584a653c"), avatarCount, cap("avatar", 125)), metric($t("panel.personal-exploration-model.text_63f6f759c3"), count("full_fetter_avatar_num"),
       avatarCount !== undefined && avatarCount >= 3 ? avatarCount - 3 : undefined),
-      metric($t("panel.personal-exploration-model.text_9ae8a7ba33"), count("way_point_number"), cap("way_point", 839)), metric($t("panel.personal-exploration-model.text_61cc0e09df"), count("domain_number"), cap("domain", 74)),
-      metric($t("panel.personal-exploration-model.text_52b0e1703d"), count("achievement_number"), cap("achievement", 1844))],
+      metric($t("panel.personal-exploration-model.text_9ae8a7ba33"), count("way_point_number"), cap("way_point", 882)), metric($t("panel.personal-exploration-model.text_61cc0e09df"), count("domain_number"), cap("domain", 74)),
+      metric($t("panel.personal-exploration-model.text_52b0e1703d"), count("achievement_number"), cap("achievement", 1909))],
     [metric($t("panel.personal-exploration-model.text_07ee14024b"), totalChests, maxChests), acquisition, ...chests.slice(0, 3)],
     [...chests.slice(3), fromStats("anemo"), fromStats("geo"), fromStats("electro")],
     [fromStats("dendro"), fromStats("hydro"), fromStats("pyro"), fromStats("lunar"),
-      metric($t("panel.personal-exploration-model.text_00aca78702"), count("iceculus_number") ?? count("cryoculus_number"), cap("cryoculus", 140))],
+      metric($t("panel.personal-exploration-model.text_00aca78702"), count("iceculus_number") ?? count("cryoculus_number"), cap("iceculus", cap("cryoculus", 230)))],
   ];
   const home = Array.isArray(data.homes) && object(data.homes[0]);
   if (home) rows.push([metric($t("panel.personal-exploration-model.text_12291e5435"), whole(home.level, 10)), metric($t("panel.personal-exploration-model.text_0d3df62a9e"), whole(home.comfort_num, 100_000_000)),

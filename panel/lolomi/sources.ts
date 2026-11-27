@@ -1,5 +1,7 @@
-// Names and rules from fixed upstream revision b18725103e95e8973d6efc02d5a074916178cf9a.
+// Names and rules from fixed upstream revision d7d31e9190d89c576b34627eb0298794ecbd9e38.
 export const nativeRules: Readonly<Record<string, () => Promise<unknown>>> = {
+  "林尼": () => import("./rules/林尼/calc_llm.ts"),
+  "欧洛伦": () => import("./rules/欧洛伦/calc_llm.ts"),
   "七七": () => import("./rules/七七/calc_llm.ts"),
   "丝柯克": () => import("./rules/丝柯克/calc_llm.ts"),
   "丽莎": () => import("./rules/丽莎/calc_llm.ts"),
