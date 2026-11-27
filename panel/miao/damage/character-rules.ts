@@ -664,7 +664,7 @@ export const characterDamageRules: Readonly<Record<string, () => CharacterRule>>
     }]
 
     const mainAttr = 'atk,cpct,cdmg,mastery,dmg'
-    const defDmgKey = 'e'
+    const defDmgIdx = 6
 
     const buffs: (RuleBuff | string)[] = [{
       title: '被动天赋：基于元素精通提高杀生樱伤害[eDmg]%',
@@ -712,7 +712,7 @@ export const characterDamageRules: Readonly<Record<string, () => CharacterRule>>
         cdmg: 200
       }
     }]
-    return { details, mainAttr, defDmgKey, buffs }
+    return { details, mainAttr, defDmgIdx, buffs }
   },
   "兹白": () => {
     const details: RuleDetail[] = [
