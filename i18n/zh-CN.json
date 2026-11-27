@@ -4,6 +4,7 @@
   "namespace": "genshin",
   "description": "原神",
   "sections": {
+    "panel.personal-abyss-summary-card": {"description": "查询深境螺旋战绩汇总，按官方实际返回的9至12层展示各层上下半队伍、各间星数与通关时间。", "source": "plugins/genshin/panel/personal-abyss-summary-card.ts"},
     "achievement-card": {
       "description": "原神成就图片卡片渲染",
       "source": "plugins/genshin/achievement-card.ts"
@@ -550,6 +551,9 @@
     }
   },
   "messages": {
+    "panel.personal-abyss-summary-card.title": "深境螺旋战绩",
+    "panel.personal-abyss-summary-card.schedule": "{period}（{month}）· 战斗 {count} 次",
+    "panel.personal-abyss-summary-card.footer": "Lotus-Yunzai · Miao",
     "achievement-card.text_1180fe9512": "缺少原神成就卡的原版背景。",
     "achievement-card.text_4262c45dc7": "说明",
     "achievement-command.text_0006d696d8": "新增",
@@ -2879,6 +2883,7 @@
     "group-rank.refreshing": "正在读取本群{count}个原神UID的缓存面板，之后生成排行..."
   },
   "parameters": {
+    "panel.personal-abyss-summary-card.schedule": {"period": "挑战期数描述", "month": "月份", "count": "战斗总次数"},
     "achievement-command.text_d59bd480a3": {
       "completed": "已完成成就数量",
       "total": "成就总数量",

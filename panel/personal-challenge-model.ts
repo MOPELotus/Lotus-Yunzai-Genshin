@@ -105,25 +105,28 @@ export function buildPersonalChallenge(uid: string, selection: ChallengeSelectio
       }),
     } as const;
   }
+  const owned = new Map(rows(overview.avatars, 256).flatMap(row => {
+    const id = number(row.id);
+    return id === undefined ? [] : [[id, row] as const];
+  }));
   const floors = rows(data.floors, 16);
+  const floorDetails = (floor: Json) => ({
+    floor: number(floor.index)!, star: number(floor.star), maxStar: number(floor.max_star),
+    rooms: rows(floor.levels, 8).filter(room => {
+      const index = number(room.index);
+      return index !== undefined && index >= 1 && index <= 3;
+    }).map(room => {
+      const battles = rows(room.battles, 2);
+      const date = time(battles.find(battle => number(battle.index) === 1)?.timestamp ?? battles[0]?.timestamp);
+      return { index: number(room.index), date: date && `${dateFormat.format(date)} ${timeFormat.format(date)}`,
+        star: number(room.star), teams: battles.map((battle, at) => ({ upper: (number(battle.index) ?? at + 1) === 1,
+          avatars: rows(battle.avatars, 4).map(row => avatar(row, owned)) })).sort((a, b) => Number(b.upper) - Number(a.upper)) };
+    }).sort((a, b) => a.index! - b.index!),
+  });
   if (selection.floor !== undefined) {
     const floor = floors.find(row => number(row.index) === selection.floor);
     if (!floor) return { message: $t("panel.personal-challenge-model.text_39662ac928", { "uid": uid, "floor": selection.floor }) } as const;
-    const owned = new Map(rows(overview.avatars, 256).flatMap(row => {
-      const id = number(row.id);
-      return id === undefined ? [] : [[id, row] as const];
-    }));
-    return {
-      kind: "floor", uid, period, floor: selection.floor, star: number(floor.star), maxStar: number(floor.max_star),
-      rooms: rows(floor.levels, 8).flatMap(room => {
-        const battles = rows(room.battles, 2);
-        if (battles.length !== 2) return [];
-        const date = time(battles[0]?.timestamp);
-        return [{ index: number(room.index), date: date && `${dateFormat.format(date)} ${timeFormat.format(date)}`,
-          star: number(room.star), teams: battles.map((battle, at) => ({ upper: (number(battle.index) ?? at + 1) === 1,
-            avatars: rows(battle.avatars, 4).map(row => avatar(row, owned)) })) }];
-      }),
-    } as const;
+    return { kind: "floor", uid, period, ...floorDetails(floor) } as const;
   }
   const count = number(data.total_battle_times);
   if (count === undefined || count === 0) return { message: $t("panel.personal-challenge-model.text_d5e9ab2843", { "uid": uid }) } as const;
@@ -132,7 +135,10 @@ export function buildPersonalChallenge(uid: string, selection: ChallengeSelectio
   const stars = floors.filter(row => (number(row.index) ?? 0) >= 9).map(row => number(row.star) ?? 0);
   const metrics = ranks.map(key => avatar(rows(data[key], 1)[0] ?? { avatar_id: 10000007, value: 0 }));
   return {
-    kind: "abyss", uid, period, month: start && monthFormat.format(start), floor: label(data.max_floor),
+    kind: "abyss", uid, period,
+    floors: [...new Map(floors.filter(row => { const index = number(row.index); return index !== undefined && index >= 9 && index <= 12; })
+      .map(row => [number(row.index), floorDetails(row)] as const)).values()].sort((a, b) => a.floor - b.floor),
+    month: start && monthFormat.format(start), floor: label(data.max_floor),
     stars: `${stars.reduce((sum, item) => sum + item, 0)}（${stars.join("-")}）`, count,
     avatars: rows(data.reveal_rank, 16).map(row => avatar(row)),
     metrics: metrics.map(item => ({ ...item, formatted: item.value !== undefined && item.value > 1000

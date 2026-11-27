@@ -4,9 +4,10 @@ const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { loadOfficialArtwork } from "@lotus-yunzai/account";
 import { renderGenshinCard } from "../card-render.ts";
 import { nativeGenshinResourcesDirectory, originalFonts } from "./personal-record-card.ts";
-import { combatLabels, type ChallengeAvatar, type PersonalChallenge } from "./personal-challenge-model.ts";
+import { type ChallengeAvatar, type PersonalChallenge } from "./personal-challenge-model.ts";
 import { readPanelTheme, type Picture } from "./theme.ts";
 import { object, text, type Json } from "./model.ts";
+import { renderPersonalAbyssSummary } from "./personal-abyss-summary-card.ts";
 import { renderPersonalTheater } from "./personal-theater-card.ts";
 
 type Drawing = Parameters<Parameters<typeof renderGenshinCard>[2]>[0];
@@ -36,11 +37,11 @@ export async function renderPersonalChallenge(model: PersonalChallenge, signal: 
   readonly owned?: readonly Json[]; readonly inlineImageByteLimit?: number } = {}) {
   signal.throwIfAborted();
   if (model.kind === "theater") return renderPersonalTheater(model, signal, { mode, loadArt, owned, inlineImageByteLimit });
+  if (model.kind === "abyss") return renderPersonalAbyssSummary(model, signal, { mode, owned, inlineImageByteLimit });
   const [assets, metadata, font] = await Promise.all([
     readPanelTheme(directory, ""), readPanelTheme(), originalFonts(directory, "font", "HYWenHei-55W.ttf"),
   ]);
-  const characters = model.kind === "abyss" ? [...model.avatars, ...model.metrics] :
-    model.rooms.flatMap(room => room.teams.flatMap(team => team.avatars));
+  const characters = model.rooms.flatMap(room => room.teams.flatMap(team => team.avatars));
   const names = new Map(characters.map(avatar => {
     const entry = avatar.id === undefined ? undefined : object(metadata.characters[avatar.id]);
     return [avatar, text(entry?.name) || avatar.name] as const;
@@ -48,13 +49,9 @@ export async function renderPersonalChallenge(model: PersonalChallenge, signal: 
   const faces = new Map(await Promise.all([...new Set(names.values())].filter(name => name !== undefined).map(async name => [
     name, await metadata.picture("meta-gs", "character", name, "imgs", "face.webp"),
   ] as const)));
-  const [rarities, fill, star, sides] = await Promise.all([
+  const [rarities, fill, star] = await Promise.all([
     Promise.all([3, 4, 5].map(rarity => assets.picture("img", "other", `bg${rarity === 3 ? 105 : rarity}.png`))),
     assets.picture("img", "other", "fill.png"), assets.picture("img", "abyss", "star.png"),
-    model.kind === "abyss" ? Promise.all(model.metrics.map(async avatar => {
-      const name = names.get(avatar);
-      return name ? metadata.picture("meta-gs", "character", name, "imgs", "side.webp") : undefined;
-    })) : [],
   ]);
   const face = (avatar: ChallengeAvatar) => faces.get(names.get(avatar) ?? "");
   function portrait(ctx: Drawing, avatar: ChallengeAvatar, x: number, y: number, w: number, h: number,
@@ -83,36 +80,6 @@ export async function renderPersonalChallenge(model: PersonalChallenge, signal: 
     ctx.restore();
   }
 
-  if (model.kind === "abyss") {
-    const background = await assets.picture("img", "abyss", "bg.png");
-    const columns = 4, rowHeight = 77;
-    const cardsHeight = model.avatars.length ? Math.ceil(model.avatars.length / columns) * rowHeight : 0;
-    const height = 193 + cardsHeight;
-    signal.throwIfAborted();
-    return renderGenshinCard(400, height, ctx => {
-      const print = typeset(ctx, font);
-      box(ctx, "#18212b", 0, 0, 400, height);
-      image(ctx, background, 0, 0, 400);
-      box(ctx, "#384a5b96", 0, 7, 400, 45);
-      print(`ID：${model.uid}`, 40, 19, 14, 168); print($t("panel.personal-challenge-card.text_bfc7ca3615", { "value1": model.month ?? "—" }), 40, 40, 14, 168);
-      print($t("panel.personal-challenge-card.text_7093f863c3", { "value1": model.floor ?? "—" }), 220, 19, 14, 170); print($t("panel.personal-challenge-card.text_4591016ad4", { "stars": model.stars }), 220, 40, 14, 170);
-      print($t("panel.personal-challenge-card.text_0b28cf15d2"), 20, 66, 14, 115, "#d3bc8d");
-      model.avatars.forEach((avatar, i) => {
-        const rowLength = Math.min(columns, model.avatars.length - Math.floor(i / columns) * columns);
-        portrait(ctx, avatar, 200 - (rowLength - 1) * 42 - 29 + (i % columns) * 84, 83 + Math.floor(i / columns) * rowHeight,
-          58, 70, $t("panel.personal-challenge-card.text_cb14d1f588", { "value1": avatar.value ?? "—" }));
-      });
-      const top = 83 + cardsHeight;
-      print($t("panel.personal-challenge-card.text_a70aab580e"), 20, top + 8, 14, 115, "#d3bc8d");
-      combatLabels.forEach((label, i) => {
-        const row = Math.floor(i / 2), x = 40 + i % 2 * 180, y = top + 24 + row * 27;
-        if (i % 2 === 0 && row !== 1) box(ctx, "#384a5b96", 0, y, 400, 27);
-        const record = model.metrics[i - 1];
-        print(`${label}：${i ? record?.formatted ?? "—" : $t("panel.personal-challenge-card.text_c6cf658114", { "count": model.count })}`, x, y + 12, 14, record ? 143 : 168);
-        if (record) image(ctx, sides[i - 1] ?? face(record), 160 + i % 2 * 180, y, 24, 24);
-      });
-    }, mode, { displayWidth: 720 });
-  }
   const background = await assets.picture("img", "abyss", `floor${model.floor}.png`);
   const height = 97 + model.rooms.length * 206;
   signal.throwIfAborted();

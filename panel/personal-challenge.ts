@@ -12,7 +12,7 @@ import { PersonalTheaterThemeError } from "./personal-theater-card.ts";
 
 const abyss = /^#?(?:原神)?(?:(本期|上期|往期))?(?:深境螺旋|深渊|深境)(?:(本期|上期|往期))?(?:第?(9|10|11|12|九|十|十一|十二)层)?(?:\s*(\d{9,10}))?(?:\s*(?:档案|profile)\s*(\d{1,3}))?$/iu;
 const summarySuffix = String.raw`(?:(\d{1,3})(?:数据)?|(?:数据)?(?:(?:\s*(?:档案|profile))?\s*(\d{1,3}))?)$`;
-const abyssSummary = new RegExp(`^#(?:原神)?(?:上传)?(?:(本期|当期|上期|往期))?(?:深境螺旋|深渊|深境)${summarySuffix}`, "iu");
+const abyssSummary = new RegExp(`^#(?:原神)?(?:上传|喵喵)?(?:(本期|当期|上期|往期))?(?:深境螺旋|深渊|深境)${summarySuffix}`, "iu");
 const theater = new RegExp(`^#(?:原神)?(?:(本期|当期|上期|往期))?(?:幻想真境剧诗|剧诗|幻想|幻境)${summarySuffix}`, "iu");
 const floorNumbers: Readonly<Record<string, number>> = { 九: 9, 十: 10, 十一: 11, 十二: 12 };
 
@@ -76,9 +76,11 @@ export function createPersonalChallengeQuery(profiles: GenshinRoleProfiles,
       const model = buildPersonalChallenge(uid, command, official.overview, official.challenge);
       if ("message" in model) return model.message;
       let owned: readonly Json[] | undefined;
-      if (model.kind === "theater" && client.fetchGenshinTalents) {
-        const characterIds = [...new Set(model.rounds.flatMap(round =>
-          round.avatars.flatMap(avatar => avatar.type === 1 && avatar.id !== undefined ? [avatar.id] : [])))];
+      if ((model.kind === "theater" || model.kind === "abyss") && client.fetchGenshinTalents) {
+        const characterIds = [...new Set(model.kind === "theater"
+          ? model.rounds.flatMap(round => round.avatars.flatMap(avatar => avatar.type === 1 && avatar.id !== undefined ? [avatar.id] : []))
+          : [...model.metrics.filter(avatar => avatar.value !== 0), ...model.floors.flatMap(floor => floor.rooms.flatMap(room => room.teams.flatMap(team => team.avatars)))]
+            .flatMap(avatar => avatar.id !== undefined ? [avatar.id] : []))];
         if (characterIds.length) {
           try {
             const details = await client.fetchGenshinTalents(latest.source, { characterIds, signal });

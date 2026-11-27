@@ -49,6 +49,7 @@ test("bare personal current, previous and floor routes coexist with public Atlas
   expect(matchPersonalChallenge("#深渊往期第十二层 profile3")).toEqual({ mode: "abyss", scheduleType: 2, floor: 12, profileId: 3 });
   expect(matchPersonalChallenge("深渊12层")).toEqual({ mode: "abyss", scheduleType: 1, floor: 12, profileId: 1 });
   expect(matchPersonalChallenge("#深渊12层100000001 档案3")).toEqual({ mode: "abyss", scheduleType: 1, profileId: 3, uid, floor: 12 });
+  expect(matchPersonalChallenge("#喵喵深渊")).toEqual({ mode: "abyss", scheduleType: 1, profileId: 1 });
   expect(matchPersonalChallenge("#上传深渊")).toEqual({ mode: "abyss", scheduleType: 1, profileId: 1 });
   expect(matchPersonalChallenge("#当期深渊数据2")).toEqual({ mode: "abyss", scheduleType: 1, profileId: 2 });
   expect(matchPersonalChallenge("#当期幻想真境剧诗数据2")).toEqual({ mode: "theater", scheduleType: 1, profileId: 2 });
@@ -193,5 +194,49 @@ test("theater enriches only distinct owned team members and still renders if det
     expect(await query(command, contexts)).toContain("档案已变化");
     expect(detailCalls).toBe(3);
     expect(renderCalls).toBe(2);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+
+test("Miao summary keeps every returned high floor and actual room teams, while aliases share the summary", () => {
+  for (const command of ["#深渊", "#上传深渊", "#上期深渊"]) {
+    const model = buildPersonalChallenge(uid, matchPersonalChallenge(command)!, overview, result);
+    if (!("kind" in model) || model.kind !== "abyss") throw Error("Expected Miao abyss summary");
+    expect(model.floors.map(floor => floor.floor)).toEqual([9, 10, 11, 12]);
+    expect(model.floors.at(-1)?.rooms[0]?.teams.map(team => [team.upper, team.avatars[0]?.id])).toEqual([[true, furina.id], [false, keqing.id]]);
+  }
+  const source = { ...result, floors: [result.floors[4]!, result.floors[3]!] };
+  const model = buildPersonalChallenge(uid, matchPersonalChallenge("#上传深渊")!, overview, source);
+  if (!("kind" in model) || model.kind !== "abyss") throw Error("Expected summary");
+  expect(model.floors.map(floor => floor.floor)).toEqual([11, 12]);
+  expect(model.floors.map(floor => floor.rooms.length)).toEqual([1, 1]);
+  const partial = { ...result, floors: [{ index: 11, star: 1, levels: [{ ...stage, battles: [stage.battles[0]] }] }] };
+  const incomplete = buildPersonalChallenge(uid, matchPersonalChallenge("#深渊")!, overview, partial);
+  if (!("kind" in incomplete) || incomplete.kind !== "abyss") throw Error("Expected summary");
+  expect(incomplete.floors[0]?.rooms[0]?.teams).toHaveLength(1);
+  expect(incomplete.floors[0]?.rooms).toHaveLength(1);
+});
+
+test("Miao abyss enriches the same owned role and does not request duplicate characters", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "lotus-abyss-summary-"));
+  try {
+    await writeFile(join(directory, "42-3.yaml"), profile());
+    const profiles = createProfileStore(directory);
+    let requested: readonly number[] = [], enriched = false;
+    const query = createPersonalChallengeQuery(profiles, {
+      async fetchGenshinChallenge(source) { return { overview, challenge: result, revision: source.revision, refreshedCookie: false }; },
+      async fetchGenshinTalents(source, options) {
+        expect(source.role.uid).toBe(uid); requested = options.characterIds;
+        return { avatars: [{ base: { id: furina.id } }], revision: source.revision, refreshedCookie: false };
+      },
+    }, new AbortController().signal, async (model, _signal, options) => {
+      expect(model.kind).toBe("abyss"); enriched = options?.owned?.length === 1;
+      return { png: Buffer.from("summary"), engine: {} as never };
+    });
+    expect(await query(matchPersonalChallenge("#上传深渊 档案3")!, { user_id: 42, message_type: "group" })).toMatchObject({ type: "image" });
+    expect(new Set(requested).size).toBe(requested.length);
+    expect(requested).toContain(furina.id); expect(requested).toContain(keqing.id);
+    expect(requested).not.toContain(10000007);
+    expect(enriched).toBe(true);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
