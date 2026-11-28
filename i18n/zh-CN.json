@@ -4,7 +4,10 @@
   "namespace": "genshin",
   "description": "原神",
   "sections": {
-    "panel.personal-abyss-summary-card": {"description": "查询深境螺旋战绩汇总，按官方实际返回的9至12层展示各层上下半队伍、各间星数与通关时间。", "source": "plugins/genshin/panel/personal-abyss-summary-card.ts"},
+    "panel.personal-abyss-summary-card": {
+      "description": "查询深境螺旋战绩汇总，按官方实际返回的9至12层展示各层上下半队伍、各间星数与通关时间。",
+      "source": "plugins/genshin/panel/personal-abyss-summary-card.ts"
+    },
     "achievement-card": {
       "description": "原神成就图片卡片渲染",
       "source": "plugins/genshin/achievement-card.ts"
@@ -961,7 +964,7 @@
     "grow.tables.text_a74031beab": "精锻用魔矿",
     "index.text_04fe8978cd": "[genshin] 世界 BOSS",
     "index.text_052e0dea03": "UID:{uid} 本地暂无该卡池抽卡记录，请先使用 #更新抽卡记录{value2}。",
-    "index.text_060d1397ac": "#抽卡记录、#武器记录、#常驻记录、#集录记录 可查看对应卡池。",
+    "index.text_060d1397ac": "#抽卡记录 / #全部记录：按所选分辨率分别渲染并展示全部可用卡池（含新手池）\n#角色记录 / #武器记录 / #常驻记录 / #集录记录 / #新手记录：查看对应卡池记录",
     "index.text_08505e4298": "原神抽卡记录读取失败，请检查本地历史文件。",
     "index.text_088d3c566a": "[genshin] 原石札记",
     "index.text_09d85755e1": "[genshin] 角色别名",
@@ -2883,7 +2886,11 @@
     "group-rank.refreshing": "正在读取本群{count}个原神UID的缓存面板，之后生成排行..."
   },
   "parameters": {
-    "panel.personal-abyss-summary-card.schedule": {"period": "挑战期数描述", "month": "月份", "count": "战斗总次数"},
+    "panel.personal-abyss-summary-card.schedule": {
+      "period": "挑战期数描述",
+      "month": "月份",
+      "count": "战斗总次数"
+    },
     "achievement-command.text_d59bd480a3": {
       "completed": "已完成成就数量",
       "total": "成就总数量",
