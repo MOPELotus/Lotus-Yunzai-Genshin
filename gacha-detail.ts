@@ -4,7 +4,6 @@ const $t = createTextTranslator("genshin", messageCatalog.messages);
 import { gachaProbabilityFor, type GachaDisplaySettings } from "@lotus-yunzai/gacha/display-settings";
 import type { GenshinGachaPool } from "@lotus-yunzai/hoyo-client";
 import { applyGachaGuarantees, gachaLuckFor, type GachaLuck } from "@lotus-yunzai/gacha";
-import type { GenshinPreviousGacha } from "./gacha-history.ts";
 
 type ItemId = string | number;
 type Star = 3 | 4 | 5;
@@ -13,6 +12,7 @@ type DecimalOrZero = string | 0;
 export type GenshinDisplayPool = GenshinGachaPool | 100;
 
 const poolModels = {
+  100: { name: $t("gacha-special.text_dcfce30c45"), base: 0.006, soft: 74, step: 0.06, hard: 90, upRate: 0 },
   301: { name: $t("gacha-detail.text_c47b54e84e"), base: 0.006, soft: 74, step: 0.06, hard: 90, upRate: 0.55 },
   302: { name: $t("gacha-detail.text_4fe131173e"), base: 0.007, soft: 63, step: 0.07, hard: 80, upRate: 0.75 },
   200: { name: $t("gacha-detail.text_300b6634fe"), base: 0.006, soft: 74, step: 0.06, hard: 90, upRate: 0 },
@@ -72,8 +72,8 @@ export interface GenshinGachaDetailModel {
   readonly face: { readonly name: string; readonly face?: string; readonly banner?: string };
   readonly game: "gs";
   readonly elem: "hydro";
-  readonly type: "weapon" | 301 | 200 | 500;
-  readonly poolName: typeof poolModels[GenshinGachaPool]["name"];
+  readonly type: "weapon" | 100 | 301 | 200 | 500;
+  readonly poolName: typeof poolModels[GenshinDisplayPool]["name"];
   readonly gacha: {
     readonly stat: Stats;
     readonly items: Readonly<Record<string, Item>>;
@@ -89,9 +89,9 @@ export interface GenshinGachaDetailModel {
 
 export interface GenshinGachaDetailOptions {
   readonly uid: string;
-  readonly records: GenshinPreviousGacha;
+  readonly records: Readonly<Partial<Record<GenshinDisplayPool, unknown>>>;
   readonly face: GenshinGachaDetailModel["face"];
-  readonly pool?: GenshinGachaPool;
+  readonly pool?: GenshinDisplayPool;
   readonly now?: Date;
   readonly resolveItem?: (record: GenshinGachaPull) => { readonly id: ItemId; readonly name: string; readonly abbr: string; readonly img?: string } | undefined;
   readonly resolvePool?: (record: GenshinGachaPull) => { readonly isUp?: boolean; readonly isNewPool?: boolean } | undefined;
@@ -245,7 +245,7 @@ export function buildGenshinGachaDetail({
   const isvalidNum = reliableUp ? (upUsed / upNum).toFixed(2) : 0;
   const upYs = Number(isvalidNum) * 160;
   const guarantees = applyGachaGuarantees(model.upRate ? fiveLog : []);
-  const luck = gachaLuckFor(
+  const luck = pool === 100 ? undefined : gachaLuckFor(
     gachaProbabilityFor("gs", pool, model, display), fiveNum, fiveUsed, reliableUp ? upNum : 0, upUsed,
     guarantees, fiveLog.some(({ isNewPool }) => isNewPool), display?.luck,
   );

@@ -68,7 +68,7 @@ import { gachaPortraitCharacter, readGachaPlayerArt } from "@lotus-yunzai/gacha/
 import { readLegacyPlayerPortrait } from "../../lib/own-role-legacy-artwork.ts";
 import { createProfileHoyoClient, HoyoRequestError, type GenshinGachaPool } from "@lotus-yunzai/hoyo-client";
 import { createGenshinBackpackQuery, genshinBackpackCommand } from "./backpack.ts";
-import { buildGenshinGachaDetail } from "./gacha-detail.ts";
+import { buildGenshinGachaDetail, type GenshinDisplayPool } from "./gacha-detail.ts";
 import { renderGenshinGachaDetail } from "./gacha-detail-card.ts";
 import { genshinGachaThemeDirectory, readGenshinGachaSources, readGenshinUigfItems } from "./gacha-detail-source.ts";
 import { createGenshinGachaImport, gachaImportCommand } from "./gacha-import.ts";
@@ -99,7 +99,7 @@ const deviceHelpCommand = /^#?(电脑|pc|安卓|苹果|ios)帮助$/iu;
 const detailPools = new Map<string, GenshinGachaPool>([["武器", 302], ["常驻", 200], ["集录", 500]]);
 type VersionPool = NonNullable<GenshinGachaVersionOptions["type"]>;
 const versionPools = new Map<string, VersionPool>([["角色", "char"], ["武器", "weapon"], ["常驻", "normal"], ["集录", "mix"]]);
-type GachaView = { readonly detail: GenshinGachaPool } | { readonly version: VersionPool }
+type GachaView = { readonly detail: GenshinDisplayPool; readonly allPools?: true } | { readonly version: VersionPool }
   | { readonly special: "beginner" | "all" };
 const monthlyDirectory = fileURLToPath(new URL("../../data/genshin/monthly/", import.meta.url));
 const legacyMonthlyDirectory = fileURLToPath(new URL("../../data/NoteData/", import.meta.url));
@@ -136,7 +136,7 @@ function deviceGachaHelp(input: string) {
 function matchGachaQuery(message: string): { profileId: number; view: GachaView; all: boolean } | undefined {
   const special = specialCommand.exec(message);
   if (special) {
-    return { profileId: gameCommandProfileId("gs", special[2]), view: { special: special[1] ? "beginner" : "all" }, all: !special[1] };
+    return { profileId: gameCommandProfileId("gs", special[2]), view: special[1] ? { detail: 100 } : { detail: 301, allPools: true }, all: !special[1] };
   }
   const version = versionCommand.exec(message);
   if (version) {
@@ -149,7 +149,7 @@ function matchGachaQuery(message: string): { profileId: number; view: GachaView;
   const pool = poolCommand.exec(message);
   if (!pool) return;
   const name = pool[2]!;
-  if ((name === "抽卡" || name === "抽奖") && pool[4] !== "统计") return { profileId: gameCommandProfileId("gs", pool[5]), view: { special: "all" }, all: true };
+  if ((name === "抽卡" || name === "抽奖") && pool[4] !== "统计") return { profileId: gameCommandProfileId("gs", pool[5]), view: { detail: 301, allPools: true }, all: true };
   const view = pool[4] === "统计" ? { version: versionPools.get(name) ?? "up" }
     : { detail: detailPools.get(name) ?? 301 };
   return { profileId: gameCommandProfileId("gs", pool[5]), view, all: !!(pool[1] || pool[3]) };
@@ -319,7 +319,8 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       const { uid, nickname, avatar: officialAvatar } = await profiles.savedRole(qq, profileId, "gs");
       const special = "special" in selection ? selection.special : undefined;
       const records = special === "beginner" ? {} : await history.read(qq, uid);
-      const useBeginner = special === "beginner" || special === "all";
+      const allPools = "detail" in selection && selection.allPools;
+      const useBeginner = ("detail" in selection && selection.detail === 100) || allPools || special === "beginner" || special === "all";
       const beginner = useBeginner ? await history.readBeginner(qq, uid) : undefined;
       const themeDirectory = genshinGachaThemeDirectory();
       const [{ characters, ...sources }, saved] = await Promise.all([
@@ -333,9 +334,10 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       const { face, avatar } = await readGachaPlayerArt(themeDirectory, "gs", nickname || $t("index.text_4bf6868aa0"), character, officialAvatar, signal, roleQFace);
       const options = { uid, records, face, now: new Date(), ...sources };
       const display = !special ? await readGachaDisplaySettings(new URL("../../", import.meta.url)) : undefined;
-      function buildPage(page?: number) {
+      function buildPage(page?: number, pool?: GenshinDisplayPool) {
         if ("detail" in selection) {
-          const model = buildGenshinGachaDetail({ ...options, pool: selection.detail, display, page });
+          const model = buildGenshinGachaDetail({ ...options, records: useBeginner ? { ...records, 100: beginner ?? [] } : records,
+            pool: pool ?? selection.detail, display, page, ...(allPools && { maxRows: 0 }) });
           return model && { kind: "detail" as const, model };
         }
         if ("special" in selection) {
@@ -345,12 +347,15 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
         const model = buildGenshinGachaVersion({ ...options, type: selection.version, maxRows: display?.versionRows, page });
         return model && { kind: "version" as const, model };
       }
-      const initial = buildPage(all ? 1 : undefined);
+      const poolPages = allPools ? ([301, 302, 200, 500, 100] as const).flatMap(pool => {
+        const result = buildPage(undefined, pool); return result ? [result] : [];
+      }) : undefined;
+      const initial = poolPages ? poolPages[0] : buildPage(all ? 1 : undefined);
       if (!initial) return special === "beginner" ? $t("index.text_7404b79d59", { "uid": uid })
         : $t("index.text_052e0dea03", { "uid": uid, "value2": profileId === 1 ? "" : profileId });
       type Page = NonNullable<ReturnType<typeof buildPage>>;
-      const planned: Page[] = [];
-      for (let page = 1; page <= (all ? ("pageInfo" in initial.model ? initial.model.pageInfo?.total ?? 1 : 1) : 1); page++) {
+      const planned: Page[] = poolPages ?? [];
+      if (!poolPages) for (let page = 1; page <= (all ? ("pageInfo" in initial.model ? initial.model.pageInfo?.total ?? 1 : 1) : 1); page++) {
         const result = page === 1 ? initial : buildPage(page);
         if (!result) continue;
         if (result.kind === "special") {
@@ -363,7 +368,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
         const title = first.kind === "version" ? $t("index.text_acbebaddd8", { "poolName": first.model.poolName, "count": first.model.pageInfo?.count })
           : first.kind === "detail" ? $t("index.text_2eefd98a1a", { "poolName": first.model.poolName, "fiveNum": first.model.gacha.stat.fiveNum }) : "";
         return await gachaImageReply({
-          total, title: $t("index.text_f87fdb63c4", { "uid": uid, "title": title, "total": total }), signal,
+          total, title: $t("index.text_f87fdb63c4", { "uid": uid, "title": allPools ? "" : title }).trim(), signal,
           forward: context.forward,
           async verifyRole() { return (await profiles.savedRole(qq, profileId, "gs").catch(() => undefined))?.uid === uid; },
           changedRoleMessage: $t("index.text_5982fc0b5b"),

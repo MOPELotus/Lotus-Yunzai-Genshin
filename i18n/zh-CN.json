@@ -1043,7 +1043,7 @@
     "index.text_e3d88c81d1": "[genshin] 幽境危战群榜",
     "index.text_eb069d3961": "[genshin] 模拟祈愿",
     "index.text_f23b6c6db3": "{name}记录：收到 {received} 条，新增 {added} 条，共 {total} 条",
-    "index.text_f87fdb63c4": "UID:{uid} {title}，分{total}张图",
+    "index.text_f87fdb63c4": "UID:{uid} {title}",
     "index.text_f8ef8d98f1": "[genshin] 充值记录",
     "index.text_faa3f484e1": "原神抽卡记录已读取，原版详情图暂时无法生成。",
     "monthly-archive.text_648de7ec85": "{subject}内容或归属无效。",
@@ -3255,8 +3255,7 @@
     },
     "index.text_f87fdb63c4": {
       "uid": "玩家游戏 UID",
-      "title": "统计标题",
-      "total": "图片总页数"
+      "title": "统计标题"
     },
     "index.text_b8d9e3c25d": {
       "suffix": "导出命令后缀（含格式与档案号）"
