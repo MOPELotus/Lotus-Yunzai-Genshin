@@ -168,7 +168,7 @@ export function buildGenshinGachaSpecial({
       if (result) data.push(result);
     }
   }
-  if (!data.length) {
+  {
     const result = poolView(uid, 100, beginner, resolveItem, resolvePool);
     if (result) data.push(result);
   }

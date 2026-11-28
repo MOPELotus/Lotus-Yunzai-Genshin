@@ -1,3 +1,4 @@
+import { splitGachaPoolPages, subdivideGachaPage } from "../../lib/gacha-pool-pages.ts";
 import { fileURLToPath as panelCacheFilePath } from "node:url";
 import { createGroupPanelCacheRefresh, type PanelCacheRuntime } from "../../lib/group-panel-cache.ts";
 import { createGenshinOfficialGroupPanels, createGenshinCachedGroupPanels } from "./panel/group-rank-official.ts";
@@ -135,7 +136,7 @@ function deviceGachaHelp(input: string) {
 function matchGachaQuery(message: string): { profileId: number; view: GachaView; all: boolean } | undefined {
   const special = specialCommand.exec(message);
   if (special) {
-    return { profileId: gameCommandProfileId("gs", special[2]), view: { special: special[1] ? "beginner" : "all" }, all: false };
+    return { profileId: gameCommandProfileId("gs", special[2]), view: { special: special[1] ? "beginner" : "all" }, all: !special[1] };
   }
   const version = versionCommand.exec(message);
   if (version) {
@@ -148,6 +149,7 @@ function matchGachaQuery(message: string): { profileId: number; view: GachaView;
   const pool = poolCommand.exec(message);
   if (!pool) return;
   const name = pool[2]!;
+  if ((name === "抽卡" || name === "抽奖") && pool[4] !== "统计") return { profileId: gameCommandProfileId("gs", pool[5]), view: { special: "all" }, all: true };
   const view = pool[4] === "统计" ? { version: versionPools.get(name) ?? "up" }
     : { detail: detailPools.get(name) ?? 301 };
   return { profileId: gameCommandProfileId("gs", pool[5]), view, all: !!(pool[1] || pool[3]) };
@@ -316,7 +318,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
       const { uid, nickname, avatar: officialAvatar } = await profiles.savedRole(qq, profileId, "gs");
       const special = "special" in selection ? selection.special : undefined;
       const records = special === "beginner" ? {} : await history.read(qq, uid);
-      const useBeginner = special === "beginner" || (special === "all" && !Object.values(records).some((rows) => rows.length));
+      const useBeginner = special === "beginner" || special === "all";
       const beginner = useBeginner ? await history.readBeginner(qq, uid) : undefined;
       const themeDirectory = genshinGachaThemeDirectory();
       const [{ characters, ...sources }, saved] = await Promise.all([
@@ -342,20 +344,31 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
         const model = buildGenshinGachaVersion({ ...options, type: selection.version, maxRows: display?.versionRows, page });
         return model && { kind: "version" as const, model };
       }
-      const first = buildPage(all ? 1 : undefined);
-      if (!first) return special === "beginner" ? $t("index.text_7404b79d59", { "uid": uid })
+      const initial = buildPage(all ? 1 : undefined);
+      if (!initial) return special === "beginner" ? $t("index.text_7404b79d59", { "uid": uid })
         : $t("index.text_052e0dea03", { "uid": uid, "value2": profileId === 1 ? "" : profileId });
+      type Page = NonNullable<ReturnType<typeof buildPage>>;
+      const planned: Page[] = [];
+      for (let page = 1; page <= (all ? ("pageInfo" in initial.model ? initial.model.pageInfo?.total ?? 1 : 1) : 1); page++) {
+        const result = page === 1 ? initial : buildPage(page);
+        if (!result) continue;
+        if (result.kind === "special") {
+          for (const model of splitGachaPoolPages(result.model, "data", "fiveLog")) planned.push({ ...result, model });
+        } else planned.push(result);
+      }
+      const first = planned[0] ?? initial;
       try {
-        const total = first.kind === "special" ? 1 : first.model.pageInfo?.total ?? 1;
+        const total = planned.length;
         const title = first.kind === "version" ? $t("index.text_acbebaddd8", { "poolName": first.model.poolName, "count": first.model.pageInfo?.count })
           : first.kind === "detail" ? $t("index.text_2eefd98a1a", { "poolName": first.model.poolName, "fiveNum": first.model.gacha.stat.fiveNum }) : "";
         return await gachaImageReply({
           total, title: $t("index.text_f87fdb63c4", { "uid": uid, "title": title, "total": total }), signal,
           inlineImageByteLimit: context.inlineImageByteLimit, forward: context.forward,
+          splitPage: page => subdivideGachaPage(planned, page, "data", "fiveLog"),
           async verifyRole() { return (await profiles.savedRole(qq, profileId, "gs").catch(() => undefined))?.uid === uid; },
           changedRoleMessage: $t("index.text_5982fc0b5b"),
           render(page, scale) {
-            const result = page === 1 ? first : buildPage(page);
+            const result = planned[page - 1];
             if (!result) throw new Error($t("index.text_25abb3a468"));
             const options = { themeDirectory, scale, avatar, qFace: roleQFace };
             return result.kind === "special" ? renderGenshinGachaSpecial(result.model, options)
