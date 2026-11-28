@@ -1,4 +1,4 @@
-import { splitGachaPoolPages, subdivideGachaPage } from "../../lib/gacha-pool-pages.ts";
+import { splitGachaPoolPages } from "../../lib/gacha-pool-pages.ts";
 import { fileURLToPath as panelCacheFilePath } from "node:url";
 import { createGroupPanelCacheRefresh, type PanelCacheRuntime } from "../../lib/group-panel-cache.ts";
 import { createGenshinOfficialGroupPanels, createGenshinCachedGroupPanels } from "./panel/group-rank-official.ts";
@@ -363,8 +363,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
           : first.kind === "detail" ? $t("index.text_2eefd98a1a", { "poolName": first.model.poolName, "fiveNum": first.model.gacha.stat.fiveNum }) : "";
         return await gachaImageReply({
           total, title: $t("index.text_f87fdb63c4", { "uid": uid, "title": title, "total": total }), signal,
-          inlineImageByteLimit: context.inlineImageByteLimit, forward: context.forward,
-          splitPage: page => subdivideGachaPage(planned, page, "data", "fiveLog"),
+          forward: context.forward,
           async verifyRole() { return (await profiles.savedRole(qq, profileId, "gs").catch(() => undefined))?.uid === uid; },
           changedRoleMessage: $t("index.text_5982fc0b5b"),
           render(page, scale) {
