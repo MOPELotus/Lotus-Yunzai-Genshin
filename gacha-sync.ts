@@ -35,7 +35,7 @@ export function createGenshinGachaSync(
         const current = await profiles.requestContext(qq, profileId, "gs", uid).catch(() => undefined);
         if (current?.revision !== latest.revision || current?.role.uid !== uid ||
             (current.role.region && current.role.region !== latest.region) ||
-            (current.role.gameBiz && current.role.gameBiz !== "hk4e_cn")) {
+            (current.role.gameBiz && current.role.gameBiz !== (original.role.gameBiz || "hk4e_cn"))) {
           throw new ProfileError("changed", $t("gacha-sync.text_928d22712e"));
         }
         options.signal?.throwIfAborted();

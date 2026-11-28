@@ -79,9 +79,13 @@ function decimal(value: unknown): string | undefined {
   if (typeof value === "string" && idPattern.test(value)) return value.replace(/^0+/u, "") || undefined;
 }
 
-function regionFor(uid: string): "cn_gf01" | "cn_qd01" {
-  if (!/^[1-5]\d{8}$/u.test(uid)) throw new TypeError($t("gacha-uigf.text_c96414799d"));
-  return uid.startsWith("5") ? "cn_qd01" : "cn_gf01";
+function regionFor(uid: string) {
+  if (/^[1-5]\d{8}$/u.test(uid)) return uid.startsWith("5") ? "cn_qd01" : "cn_gf01";
+  if (/^6\d{8}$/u.test(uid)) return "os_usa";
+  if (/^7\d{8}$/u.test(uid)) return "os_euro";
+  if (/^(?:8|18)\d{8}$/u.test(uid)) return "os_asia";
+  if (/^9\d{8}$/u.test(uid)) return "os_cht";
+  throw new TypeError($t("gacha-uigf.text_3d89410a99"));
 }
 
 function zone(value: unknown): number {

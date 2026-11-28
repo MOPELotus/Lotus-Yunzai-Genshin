@@ -8,6 +8,7 @@ export type GenshinRoleProfiles = Pick<ReturnType<typeof createProfileStore>, "r
 export type GenshinRoleDirectory = GenshinRoleProfiles & Pick<ReturnType<typeof createProfileStore>, "listIds">;
 
 export function genshinLoginAccount(source: ProfileRequestContext) {
+  if (source.international && source.game === "gs" && source.role.gameBiz === "hk4e_global" && /^os_(?:usa|euro|asia|cht)$/u.test(source.role.region)) return source.international.accountId;
   const accountId = source.account?.stuid || source.account?.ltuid;
   return accountId && previewRedeemIdentity(source) === accountId ? accountId : undefined;
 }

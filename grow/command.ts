@@ -160,9 +160,9 @@ export function createGenshinGrowQuery(profiles: QueryProfiles,
         } else if (source.qq !== qq || source.profileId !== request.profileId ||
           (request.uid && request.uid !== source.role.uid) || (uid && uid !== source.role.uid)) {
           notice.push($t("grow.command.text_c53c819d47"));
-        } else if (source.role.gameBiz === "hk4e_global" || source.role.region.startsWith("os_")) {
+        } else if (!source.international && (source.role.gameBiz === "hk4e_global" || source.role.region.startsWith("os_"))) {
           notice.push($t("grow.command.text_94f5a91bbe"));
-        } else if (!source.account.cookie || !source.device.id || !source.device.fp) {
+        } else if (!source.international && (!source.account.cookie || !source.device.id || !source.device.fp)) {
           notice.push($t("grow.command.text_df001bfd1e"));
         } else {
           const item = growthInventoryPlan(target, result);

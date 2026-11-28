@@ -34,8 +34,10 @@ function object(value: unknown): Record<string, unknown> {
 }
 
 function assertIdentity({ qq, accountId, uid, region }: GenshinMonthlyIdentity) {
+  const overseas = (region === "os_usa" && /^6\d{8}$/u.test(uid)) || (region === "os_euro" && /^7\d{8}$/u.test(uid)) ||
+    (region === "os_asia" && /^(?:8|18)\d{8}$/u.test(uid)) || (region === "os_cht" && /^9\d{8}$/u.test(uid));
   if (!/^[1-9]\d{0,19}$/u.test(qq) || !/^[1-9]\d{0,19}$/u.test(accountId) ||
-      !/^[1-5]\d{8}$/u.test(uid) || region !== (uid.startsWith("5") ? "cn_qd01" : "cn_gf01")) invalid();
+      (!overseas && (!/^[1-5]\d{8}$/u.test(uid) || region !== (uid.startsWith("5") ? "cn_qd01" : "cn_gf01")))) invalid();
 }
 
 function isMissing(error: unknown) {

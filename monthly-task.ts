@@ -27,7 +27,10 @@ interface Context {
 
 class TaskStopped extends Error {}
 
-function isMainlandRole({ uid, region, gameBiz }: GameRole) {
+function isRecordRole({ uid, region, gameBiz }: GameRole) {
+  if (gameBiz === "hk4e_global") return (region === "os_usa" && /^6\d{8}$/u.test(uid)) ||
+    (region === "os_euro" && /^7\d{8}$/u.test(uid)) || (region === "os_asia" && /^(?:8|18)\d{8}$/u.test(uid)) ||
+    (region === "os_cht" && /^9\d{8}$/u.test(uid));
   return gameBiz === "hk4e_cn" && /^[1-5]\d{8}$/u.test(uid) &&
     region === (uid.startsWith("5") ? "cn_qd01" : "cn_gf01");
 }
@@ -44,7 +47,7 @@ async function taskTargets(profiles: Profiles, guard: () => void) {
     for (const source of sources) {
       const { role } = source;
       const accountId = genshinLoginAccount(source);
-      if (!accountId || !isMainlandRole(role) || targets.has(role.uid)) continue;
+      if (!accountId || !isRecordRole(role) || targets.has(role.uid)) continue;
       targets.set(role.uid, { qq, profileId, accountId, uid: role.uid, region: role.region, gameBiz: role.gameBiz });
     }
   }

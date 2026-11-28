@@ -101,8 +101,10 @@ export function mergeGenshinGachaHistory(
   repairOfficialRows = false,
 ) {
   const { uid, region } = latest;
-  if (!/^[1-5]\d{8}$/u.test(uid) || (region !== "cn_gf01" && region !== "cn_qd01") ||
-      (uid.startsWith("5") !== (region === "cn_qd01")) ||
+  const overseas = (region === "os_usa" && /^6\d{8}$/u.test(uid)) || (region === "os_euro" && /^7\d{8}$/u.test(uid)) ||
+    (region === "os_asia" && /^(?:8|18)\d{8}$/u.test(uid)) || (region === "os_cht" && /^9\d{8}$/u.test(uid));
+  if ((!overseas && (!/^[1-5]\d{8}$/u.test(uid) || (region !== "cn_gf01" && region !== "cn_qd01") ||
+      (uid.startsWith("5") !== (region === "cn_qd01")))) ||
       (expected && (expected.uid !== uid || (expected.region && expected.region !== region)))) {
     throw new TypeError($t("gacha-history.text_7871a3c30e"));
   }
