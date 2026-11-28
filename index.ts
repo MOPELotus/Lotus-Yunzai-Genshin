@@ -181,12 +181,13 @@ interface GachaContext extends GroupRankContext {
     { readonly type: "record"; readonly file: Uint8Array }): unknown;
 }
 
-export function createModule({ signal, lockFile, runtimeVersion, roleQFace = true, panelCacheRuntime }: {
+export function createModule({ signal, lockFile, runtimeVersion, roleQFace = true, panelCacheRuntime, hoyoTransport }: {
   signal: AbortSignal;
   lockFile: Parameters<typeof createGenshinGachaHistoryStore>[1];
   runtimeVersion?: { readonly version?: string; readonly revision?: string };
   roleQFace?: boolean;
   panelCacheRuntime?: PanelCacheRuntime;
+  hoyoTransport?: Parameters<typeof createProfileHoyoClient>[1];
 }) {
   const wishRoot = new URL("../../", import.meta.url);
   const reincarnation = createWishReincarnation({ signal, lockFile, readSettings: () => readGenshinWishSettings(wishRoot) });
@@ -200,7 +201,7 @@ export function createModule({ signal, lockFile, runtimeVersion, roleQFace = tru
   const profiles = createProfileStore(Bun.env.LOTUS_PROFILE_DIR || undefined);
   const history = createGenshinGachaHistoryStore(historyDirectory, lockFile);
   const achievements = createAchievementCommand(profiles, lockFile, signal);
-  const client = createProfileHoyoClient(profiles);
+  const client = createProfileHoyoClient(profiles, hoyoTransport);
   const monthlyArchive = createGenshinMonthlyArchive(Bun.env.LOTUS_GENSHIN_MONTHLY_DIR?.trim() || monthlyDirectory,
     Bun.env.LOTUS_GENSHIN_LEGACY_MONTHLY_DIR?.trim() || legacyMonthlyDirectory, lockFile);
   const monthly = createGenshinMonthlyQuery(profiles, client, signal, { archive: monthlyArchive });
